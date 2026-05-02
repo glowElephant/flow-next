@@ -48,7 +48,12 @@ if [[ -f "$PWD/.claude-plugin/marketplace.json" ]] || [[ -f "$PWD/plugins/flow-n
   exit 1
 fi
 
-TEST_DIR="/tmp/audit-smoke-$$"
+TEST_DIR="${TEST_DIR:-${RUNNER_TEMP:-${TMPDIR:-/tmp}}/audit-smoke-$$}"
+# Normalize Windows backslashes from $RUNNER_TEMP to forward slashes
+# so paths interpolated into `python -c "..."` source code are not
+# corrupted by Python escape parsing (e.g. `D:\a\_temp` → `D:<bell>...`).
+# Windows accepts forward-slash paths natively; no-op on Linux/macOS.
+TEST_DIR="${TEST_DIR//\\//}"
 PASS=0
 FAIL=0
 
@@ -83,7 +88,7 @@ assert_rc() {
 
 assert_grep() {
   local needle="$1" haystack="$2" label="$3"
-  if printf '%s\n' "$haystack" | grep -qF -- "$needle"; then
+  if grep -qF -- "$needle" <<< "$haystack"; then
     ok "$label  (found: '$needle')"
   else
     fail "$label  (missing: '$needle')"
@@ -112,7 +117,7 @@ assert_grep_re() {
 # JSON value extraction via python.
 json_get() {
   local file="$1" expr="$2"
-  "$PYTHON_BIN" -c "import json; d=json.load(open('$file')); print($expr)" 2>&1 || true
+  "$PYTHON_BIN" -c "import json; d=json.load(open(r'$file')); print($expr)" 2>&1 | tr -d '\r' || true
 }
 
 assert_eq_jq() {

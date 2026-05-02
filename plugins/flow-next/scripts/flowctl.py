@@ -1468,11 +1468,19 @@ def is_supported_schema(version: Any) -> bool:
 
 
 def atomic_write(path: Path, content: str) -> None:
-    """Write file atomically via temp + rename."""
+    """Write file atomically via temp + rename.
+
+    `newline=""` preserves whatever line endings are in `content` exactly
+    (no LF→CRLF translation on Windows). flow-next writes content with
+    explicit `\\n` line endings; the LF→CRLF translation in Python's text
+    mode is a long-standing source of platform-divergent behavior — files
+    look "modified" in git diffs across OSes, and round-trip comparisons
+    in tests get spurious mismatches.
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp_path = tempfile.mkstemp(dir=path.parent, suffix=".tmp")
     try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
+        with os.fdopen(fd, "w", encoding="utf-8", newline="") as f:
             f.write(content)
         os.replace(tmp_path, path)
     except Exception:
@@ -5119,6 +5127,22 @@ def _prospect_parse_frontmatter(text: str) -> Optional[dict[str, Any]]:
         # whether the block contained any non-blank lines.
         if not result and any(line.strip() for line in fm_text.splitlines()):
             return None
+        # `_parse_inline_yaml` keeps booleans as strings ("memory entries don't
+        # need typed scalars" per its docstring), but prospect frontmatter ships
+        # typed booleans (`floor_violation`, `generation_under_volume`) that
+        # `validate_prospect_frontmatter` and the Phase 2/3 ranker treat as
+        # `bool`. Coerce here so the fallback path round-trips equivalently to
+        # PyYAML — without this, runners without PyYAML installed see
+        # `parsed["floor_violation"] is True` evaluate False even when the
+        # serialized value was `floor_violation: true`.
+        for _bool_key in ("floor_violation", "generation_under_volume"):
+            _v = result.get(_bool_key)
+            if isinstance(_v, str):
+                _norm = _v.strip().lower()
+                if _norm in ("true", "yes", "on"):
+                    result[_bool_key] = True
+                elif _norm in ("false", "no", "off"):
+                    result[_bool_key] = False
         return result
 
 
@@ -9005,6 +9029,13 @@ def cmd_glossary_add(args: argparse.Namespace) -> None:
     else:
         definition_text = definition_inline or ""
 
+    # Normalize CRLF / CR to LF before any further processing. Bash on
+    # Windows (Git Bash / MSYS) writes CRLF to pipes by default; Python's
+    # text-mode stdin universal-newlines doesn't always translate when the
+    # pipe was opened in binary mode by the parent process. Defensive
+    # universal-newlines normalization keeps the stored definition LF-only
+    # regardless of caller's platform.
+    definition_text = definition_text.replace("\r\n", "\n").replace("\r", "\n")
     # Strip a single trailing newline (common when piping from heredoc /
     # editor). Internal newlines preserved.
     definition_text = definition_text.rstrip("\n")
