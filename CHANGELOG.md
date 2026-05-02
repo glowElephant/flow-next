@@ -2,6 +2,21 @@
 
 All notable changes to the flow-next.
 
+## [flow-next 0.41.0] - 2026-05-02
+
+### Changed
+- **CI smoke matrix expanded to 7 suites on ubuntu / macos / windows.** Beyond `ci_test.sh` (already in matrix), the workflow now runs `resolve-pr_smoke_test.sh`, `strategy_smoke_test.sh`, `audit_smoke_test.sh`, `glossary_smoke_test.sh`, `prospect_smoke_test.sh`, `impl-review_smoke_test.sh`, and `smoke_test.sh` on each OS leg. ~596 assertions per leg, ~260s runtime, matrix wall time ~4 min. `fail-fast: false` so one OS failure no longer cancels the others; `defaults.run.shell: bash` unifies the matrix; `if: always()` on each smoke step ensures full diagnostic in one run. Skipped: `ralph_smoke_test.sh`, `ralph_smoke_rp.sh`, `plan_review_prompt_smoke.sh` — need external CLIs (claude / codex / rp-cli) not on hosted runners.
+
+### Fixed
+- **`atomic_write` no longer silently translates LF → CRLF on Windows.** Python's text-mode default `newline=None` on the `os.fdopen` inside `atomic_write` translates `\n` to `os.linesep` (`\r\n` on Windows). Every flowctl-written file (memory entries, glossary entries, prospect artifacts, `STRATEGY.md`, epic/task specs) ended up with CRLF on Windows checkouts, causing phantom "modified" diffs in cross-OS git checkouts and round-trip byte-comparison failures. Fix: pass `newline=""` so on-disk content matches the LF line endings flow-next writes everywhere.
+- **`flowctl glossary add --definition-file -` normalizes CRLF/CR to LF on stdin.** Bash on Windows (Git Bash / MSYS) writes CRLF to pipes by default; Python's text-mode stdin universal-newlines didn't always fire when the parent opened the pipe in binary mode. Result: glossary `--definition-file -` stored multi-line definitions with CRLF instead of LF on Windows, breaking byte-equal round-trip comparisons. Defensive `.replace('\r\n', '\n').replace('\r', '\n')` runs immediately after `sys.stdin.read()`.
+- **`_prospect_parse_frontmatter` coerces typed booleans in the no-PyYAML fallback path.** `_parse_inline_yaml` deliberately keeps booleans as strings (memory entries don't need typed scalars), but prospect frontmatter ships typed booleans (`floor_violation`, `generation_under_volume`) that `validate_prospect_frontmatter` and downstream consumers expect as `bool`. Without PyYAML installed, `parsed["floor_violation"] is True` evaluated `False` even when the serialized value was `floor_violation: true`. Fallback now post-coerces those two prospect-specific keys.
+- **Multiple Windows-portability fixes across smoke tests.** `TEST_DIR` now honors `$TEST_DIR` env override, falls back through `$RUNNER_TEMP` → `$TMPDIR` → `/tmp`; backslashes are normalized to forward slashes after expansion (Python on Windows accepts forward-slash paths and is corrupted when bash interpolates `D:\a\_temp` into Python source — `\a` is bell). `SCRIPT_DIR` and `PLUGIN_ROOT` get `cygpath -m` conversion on Windows so `import flowctl` from inline Python resolves. `assert_grep` rewritten to use here-strings (no `printf | grep` SIGPIPE under `pipefail` when `grep -q` exits early on a found match in a large haystack). `json_get` strips `\r` from output (Python's `print()` text-mode stdout translates internal `\n` in JSON values to `\r\n` on Windows). Em-dashes in strategy fixtures replaced with `--` (Git Bash + cp1252 locale wrote em-dashes as cp1252 single-byte). Strategy T10 subprocess calls use `[sys.executable, FLOWCTL_PY, ...]` instead of `[FLOWCTL]` (the bash wrapper isn't a valid Win32 exe). Ralph-regression sweeps in prospect Case 11 + impl-review skip on `$RUNNER_OS=Windows` (ralph_smoke embeds POSIX patterns; the regression check tests prospect/impl-review env-var handling, unrelated to ralph's Windows portability).
+
+### CI workflow
+- `core.autocrlf=false` step before `actions/checkout@v4` so heredoc and fixture line endings are preserved as LF on Windows runners (default Windows-runner config converts LF → CRLF, mangling content compared byte-identically by smokes).
+- `git config --global user.email/name` before tests (smoke_test.sh exercises `git commit` flows; runners ship git without identity → "fatal: empty ident name").
+
 ## [flow-next 0.40.0] - 2026-05-01
 
 ### Added
