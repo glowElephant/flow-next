@@ -15,9 +15,12 @@ SRC_AGENTS="$PLUGIN_DIR/agents"
 SRC_HOOKS="$PLUGIN_DIR/hooks/hooks.json"
 
 # Model defaults (same as install-codex.sh)
-CODEX_MODEL_INTELLIGENT="${CODEX_MODEL_INTELLIGENT:-gpt-5.4}"
+CODEX_MODEL_INTELLIGENT="${CODEX_MODEL_INTELLIGENT:-gpt-5.5}"
 CODEX_MODEL_FAST="${CODEX_MODEL_FAST:-gpt-5.4-mini}"
-CODEX_REASONING_EFFORT="${CODEX_REASONING_EFFORT:-high}"
+# Default reasoning effort for scout/analyst/editorial subagents.
+# Review-shaped agents (quality-auditor) override to a higher tier — see reasoning_effort_for().
+CODEX_REASONING_EFFORT="${CODEX_REASONING_EFFORT:-medium}"
+CODEX_REASONING_EFFORT_AUDITOR="${CODEX_REASONING_EFFORT_AUDITOR:-high}"
 
 # Colors
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; NC='\033[0m'
@@ -60,6 +63,16 @@ model_supports_reasoning() {
   case "$1" in
     *mini*|*spark*) return 1 ;;
     *) return 0 ;;
+  esac
+}
+
+# Per-agent reasoning effort. Review-shaped agents (quality-auditor) need
+# higher reasoning than scout/editorial agents — they're a second pair of
+# eyes on uncommitted changes, so undershooting risks missed regressions.
+reasoning_effort_for() {
+  case "$1" in
+    quality-auditor) echo "$CODEX_REASONING_EFFORT_AUDITOR" ;;
+    *)               echo "$CODEX_REASONING_EFFORT" ;;
   esac
 }
 
@@ -620,7 +633,7 @@ for md_file in "$SRC_AGENTS"/*.md; do
     if [ -n "$codex_model" ]; then
       echo "model = \"$codex_model\""
       if model_supports_reasoning "$codex_model"; then
-        echo "model_reasoning_effort = \"$CODEX_REASONING_EFFORT\""
+        echo "model_reasoning_effort = \"$(reasoning_effort_for "$codex_name")\""
       fi
     else
       echo "# model: inherited from parent"

@@ -2,6 +2,13 @@
 
 All notable changes to the flow-next.
 
+## [flow-next 0.41.1] - 2026-05-07
+
+### Changed
+- **Codex subagent default model bumped `gpt-5.4` → `gpt-5.5`.** The 11 intelligent subagents (opus-tier + smart-sonnet-tier in the Claude Code mapping) now use `gpt-5.5` in their pre-built tomls. The 8 fast scouts stay on `gpt-5.4-mini` (mini doesn't support reasoning tiers; no value in bumping). `worker` and `pr-comment-resolver` continue inheriting from parent. `flowctl.py`'s review-backend default was already `gpt-5.5:high` (lines 2632 / 2661) — this change closes the gap between subagent and review-backend defaults.
+- **Per-agent reasoning effort split: `quality-auditor` stays at `high`; all other intelligent subagents drop to `medium`.** `quality-auditor` is review-shaped (a second pair of eyes on uncommitted changes) — undershooting risks missed regressions. Scout / editorial agents (10 of them) run efficiently at `medium`. New env vars `CODEX_REASONING_EFFORT` (default `medium`) and `CODEX_REASONING_EFFORT_AUDITOR` (default `high`) override per tier; new helper `reasoning_effort_for(<agent>)` in `sync-codex.sh` dispatches per-agent. The actual review backend (`flowctl impl-review` / `plan-review` / `completion-review`) is configured separately and unaffected — it remains at `gpt-5.5:high` via `flowctl.py`.
+- **Doc updates.** `CLAUDE.md` model-mapping table reformatted to a 5-row tier with explicit per-agent reasoning column; example `codex:gpt-5.4:xhigh` spec-form examples updated to `codex:gpt-5.5:xhigh`. `plugins/flow-next/README.md` model-mapping section updated to match. Registry catalog rows (`gpt-5.5`, `gpt-5.4`, `gpt-5.2`, ...) preserved — `gpt-5.4` remains a valid catalog model, just not the subagent default.
+
 ## [flow-next 0.41.0] - 2026-05-02
 
 ### Changed

@@ -6,7 +6,7 @@
 [![Claude Code](https://img.shields.io/badge/Claude_Code-Plugin-blueviolet)](https://claude.ai/code)
 [![OpenAI Codex](https://img.shields.io/badge/OpenAI_Codex-Plugin-10a37f)](https://developers.openai.com/codex/cli/)
 
-[![Version](https://img.shields.io/badge/Version-0.41.0-green)](../../CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-0.41.1-green)](../../CHANGELOG.md)
 
 [![Status](https://img.shields.io/badge/Status-Active_Development-brightgreen)](../../CHANGELOG.md)
 [![Discord](https://img.shields.io/badge/Discord-Join-5865F2?logo=discord&logoColor=white)](https://discord.gg/f3DYq8AAm5)
@@ -1301,8 +1301,8 @@ Notes:
 - `rp:model` and `rp:model:effort` are rejected — RepoPrompt picks model via its window/session config, not per-call.
 - Codex `minimal` effort passes flowctl validation but is rejected server-side when `web_search` is enabled. Safe for flowctl reviews (no `web_search` used).
 - Copilot `claude-*` models reject `--effort` at runtime — flowctl drops the flag automatically.
-- Field-level resolution: env fills **missing** spec fields only. Task spec `codex:gpt-5.2` plus `FLOW_CODEX_EFFORT=low` resolves to `codex:gpt-5.2:low`. Same task with `FLOW_CODEX_MODEL=gpt-5.4` still resolves to `codex:gpt-5.2:low` — explicit spec values win over env.
-- To override a stored task spec for one session, set `FLOW_REVIEW_BACKEND=codex:gpt-5.4:high` (full spec) or pass `--spec codex:gpt-5.4:high` on the review command.
+- Field-level resolution: env fills **missing** spec fields only. Task spec `codex:gpt-5.2` plus `FLOW_CODEX_EFFORT=low` resolves to `codex:gpt-5.2:low`. Same task with `FLOW_CODEX_MODEL=gpt-5.5` still resolves to `codex:gpt-5.2:low` — explicit spec values win over env.
+- To override a stored task spec for one session, set `FLOW_REVIEW_BACKEND=codex:gpt-5.5:high` (full spec) or pass `--spec codex:gpt-5.5:high` on the review command.
 
 **Inspect resolved backend:**
 ```bash
@@ -2528,22 +2528,23 @@ In Codex, skills appear with display names in the `$` dropdown (e.g. **Flow Setu
 - Setup skill (`$flow-next-setup`) — detects Codex platform, copies agents/hooks/flowctl to project
 - `openai.yaml` UI metadata for Codex app display (brand color, descriptions)
 
-#### Model mapping (3-tier)
+#### Model mapping (per-agent reasoning tier)
 
-| Tier | Codex Model | Agents | Reasoning |
-|------|-------------|--------|-----------|
-| Intelligent | `gpt-5.4` | quality-auditor, flow-gap-analyst, context-scout | high |
-| Smart scouts | `gpt-5.4` | epic-scout, agents-md-scout, docs-gap-scout | high |
-| Fast scouts | `gpt-5.4-mini` | build, env, testing, tooling, observability, security, workflow, memory scouts | default |
-| Inherited | parent model | worker, plan-sync | parent |
+| Tier | Codex Model | Reasoning | Agents |
+|------|-------------|-----------|--------|
+| Review-shaped | `gpt-5.5` | `high` | quality-auditor |
+| Scout / editorial | `gpt-5.5` | `medium` | flow-gap-analyst, context-scout, docs-scout, github-scout, practice-scout, repo-scout, plan-sync, epic-scout, agents-md-scout, docs-gap-scout |
+| Fast scouts | `gpt-5.4-mini` | n/a | build, env, testing, tooling, observability, security, workflow, memory scouts |
+| Inherited | parent model | parent | worker, pr-comment-resolver |
 
-Smart scouts need deeper reasoning for context building. Fast scouts check file presence and patterns — `gpt-5.4-mini` handles them efficiently.
+`quality-auditor` is review-shaped (a second pair of eyes on uncommitted changes) and stays at `high` — undershooting risks missed regressions. Other intelligent agents do scout/editorial work and run efficiently at `medium`. The actual review backend (`flowctl impl-review` / `plan-review` / `completion-review`) is configured separately in `flowctl.py` and defaults to `gpt-5.5:high` on its own.
 
 Override model defaults (global install only):
 ```bash
-CODEX_MODEL_INTELLIGENT=gpt-5.4 \
+CODEX_MODEL_INTELLIGENT=gpt-5.5 \
 CODEX_MODEL_FAST=gpt-5.4-mini \
-CODEX_REASONING_EFFORT=high \
+CODEX_REASONING_EFFORT=medium \
+CODEX_REASONING_EFFORT_AUDITOR=high \
 CODEX_MAX_THREADS=12 \
 ./scripts/install-codex.sh flow-next
 ```
