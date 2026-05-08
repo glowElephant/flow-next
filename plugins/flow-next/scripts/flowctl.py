@@ -89,6 +89,12 @@ MIGRATE_MANIFEST_FILE = ".migration-manifest"
 # giving up. Migration is bounded (file-system operations on a small tree).
 MIGRATE_LOCK_WAIT_SECS = 30
 MIGRATE_LOCK_POLL_SECS = 0.5
+# Grace window for the pid-file write to land after `os.mkdir(lock_dir)`. A
+# crash between the two leaves a lock with no PID inside; without a grace
+# threshold we'd wait the full `MIGRATE_LOCK_WAIT_SECS` and never reclaim
+# the stale lock. After this many seconds with the lock dir present and no
+# pid file, treat the lock as crashed and reclaim it.
+MIGRATE_LOCK_PID_GRACE_SECS = 5
 
 # Glossary (fn-38.2): repo-root + nearest-ancestor markdown file.
 GLOSSARY_FILE = "GLOSSARY.md"
@@ -13651,14 +13657,44 @@ def _migrate_acquire_lock(flow_dir: Path, *, use_json: bool) -> Path:
             os.mkdir(lock_dir)
         except FileExistsError:
             # Lock is held — check liveness of the holder.
-            holder_pid = None
+            holder_pid: Optional[int] = None
             try:
                 holder_pid = int((pid_file).read_text(encoding="utf-8").strip())
             except (OSError, ValueError):
                 holder_pid = None
-            if holder_pid is not None and not _migrate_pid_alive(holder_pid):
-                # Stale lock from a crashed migration. Reclaim atomically by
-                # removing pid file + lock dir, then retrying mkdir.
+
+            stale = False
+            if holder_pid is not None:
+                # Have a PID — check whether the process is still alive.
+                if not _migrate_pid_alive(holder_pid):
+                    stale = True
+            else:
+                # No readable PID. Three possibilities, all converging on
+                # "reclaim if old enough":
+                #   1. Crash between mkdir() and pid_file write — lock is stale.
+                #   2. Concurrent peer is racing the pid-file write — wait a
+                #      small grace window before reclaiming.
+                #   3. Garbage in pid file — treat as crash.
+                # Compare lock_dir mtime to a grace threshold. If older than
+                # MIGRATE_LOCK_PID_GRACE_SECS, reclaim. Use lock_dir.stat().
+                try:
+                    lock_age = _monotonic_now() - lock_dir.stat().st_mtime
+                except OSError:
+                    # Lock dir vanished — peer reclaimed; retry mkdir.
+                    continue
+                # st_mtime returns wall-clock; we should compare against
+                # wall-clock too. But _monotonic_now() is monotonic. Use
+                # time.time() for the wall-clock comparison.
+                import time as _time
+
+                lock_age_wall = _time.time() - lock_dir.stat().st_mtime
+                if lock_age_wall >= MIGRATE_LOCK_PID_GRACE_SECS:
+                    stale = True
+
+            if stale:
+                # Stale lock from a crashed migration (or pid-write race past
+                # the grace window). Reclaim atomically: remove pid file (if
+                # present) + lock dir, then retry mkdir on the next loop.
                 try:
                     pid_file.unlink(missing_ok=True)
                 except OSError:
@@ -13671,8 +13707,9 @@ def _migrate_acquire_lock(flow_dir: Path, *, use_json: bool) -> Path:
                 continue
             # Live holder — wait + retry.
             if _monotonic_now() >= deadline:
+                holder_repr = holder_pid if holder_pid is not None else "<unknown pid>"
                 error_exit(
-                    f"migrate-rename: another migration is in progress (lock at {lock_dir} held by pid {holder_pid}). "
+                    f"migrate-rename: another migration is in progress (lock at {lock_dir} held by pid {holder_repr}). "
                     f"Waited {MIGRATE_LOCK_WAIT_SECS}s.",
                     use_json=use_json,
                     code=1,
@@ -14381,10 +14418,12 @@ def _rollback_post_migration_writes(
             if rel not in expected_specs:
                 unexpected.append(rel)
 
-    # Spec Markdown: unexpected if not present in backup's specs/ AND not
-    # present in backup's epics/ (pre-1.0 markdown ALWAYS lives at specs/<id>.md
-    # but be defensive). A spec.md created post-migration via `flowctl spec
-    # create` has no backup counterpart.
+    # Spec Markdown: unexpected if either (a) no backup counterpart (post-
+    # migration `flowctl spec create`) OR (b) backup counterpart exists but
+    # content has been mutated since migration (`flowctl spec set-plan`,
+    # manual edit, etc). The content check uses byte-level comparison via
+    # filecmp.cmp(shallow=False) so identical post-migration touches don't
+    # trip the guard.
     if specs_dir.exists():
         backup_specs_md = backup / SPECS_DIR
         backup_epics_md = backup / EPICS_DIR
@@ -14392,26 +14431,84 @@ def _rollback_post_migration_writes(
             rel = str(md_file.relative_to(flow_dir))
             backup_md_at_specs = backup_specs_md / md_file.name
             backup_md_at_epics = backup_epics_md / md_file.name
-            if not backup_md_at_specs.exists() and not backup_md_at_epics.exists():
+            if backup_md_at_specs.exists():
+                if not _migrate_files_equal(md_file, backup_md_at_specs):
+                    unexpected.append(rel)
+            elif backup_md_at_epics.exists():
+                if not _migrate_files_equal(md_file, backup_md_at_epics):
+                    unexpected.append(rel)
+            else:
+                # No backup counterpart — created post-migration.
                 unexpected.append(rel)
 
-    # Tasks: unexpected if no backup counterpart AND not in manifest rewrites.
+    # Spec JSON content drift: a `move_spec_json` entry only proves the file
+    # existed pre-migration; if the post-migration file has been mutated
+    # (e.g. `flowctl spec set-plan` rewrites the JSON sidecar), rollback
+    # should refuse just like for markdown. The backup JSON lives at the
+    # pre-migration path (epics/<id>.json or specs/<id>.json depending on
+    # 0.x layout). Compare to the backup variant we know about.
+    if specs_dir.exists():
+        backup_specs_json = backup / SPECS_DIR
+        backup_epics_json = backup / EPICS_DIR
+        for spec_file in sorted(specs_dir.glob("fn-*.json")):
+            rel = str(spec_file.relative_to(flow_dir))
+            if rel not in expected_specs:
+                continue  # Already flagged above as missing from manifest.
+            backup_json_at_specs = backup_specs_json / spec_file.name
+            backup_json_at_epics = backup_epics_json / spec_file.name
+            if backup_json_at_specs.exists():
+                if not _migrate_files_equal(spec_file, backup_json_at_specs):
+                    unexpected.append(rel)
+            elif backup_json_at_epics.exists():
+                if not _migrate_files_equal(spec_file, backup_json_at_epics):
+                    unexpected.append(rel)
+
+    # Tasks: unexpected if no backup counterpart AND not in manifest rewrites,
+    # OR backup counterpart present but content mutated post-migration.
     tasks_dir = flow_dir / TASKS_DIR
     if tasks_dir.exists():
         backup_tasks = backup / TASKS_DIR
         for task_file in sorted(tasks_dir.glob("fn-*.json")):
             rel = str(task_file.relative_to(flow_dir))
             backup_task = backup_tasks / task_file.name
-            if not backup_task.exists() and rel not in expected_tasks:
+            if not backup_task.exists():
+                if rel not in expected_tasks:
+                    unexpected.append(rel)
+                continue
+            # Backup exists. Skip the content check when the manifest recorded a
+            # canonicalize_task_for_write rewrite — that's the migration's own
+            # touch (epic -> spec key rename), not a user write. For tasks NOT
+            # in the rewrite list, content drift means a user wrote to it.
+            if rel in expected_tasks:
+                continue
+            if not _migrate_files_equal(task_file, backup_task):
                 unexpected.append(rel)
-        # Markdown task specs: same shape as spec markdown.
+        # Markdown task specs: created or mutated post-migration.
         for md_file in sorted(tasks_dir.glob("fn-*.md")):
             rel = str(md_file.relative_to(flow_dir))
             backup_md = backup_tasks / md_file.name
             if not backup_md.exists():
                 unexpected.append(rel)
+            elif not _migrate_files_equal(md_file, backup_md):
+                unexpected.append(rel)
 
     return unexpected
+
+
+def _migrate_files_equal(a: Path, b: Path) -> bool:
+    """Byte-equality check for two paths. Returns False on any read error.
+
+    Uses filecmp.cmp(shallow=False) so we get a real content comparison rather
+    than mtime+size heuristics (which would false-negative on identical content
+    written at different times — the migration itself touches mtimes via
+    shutil.copy2).
+    """
+    import filecmp
+
+    try:
+        return filecmp.cmp(str(a), str(b), shallow=False)
+    except OSError:
+        return False
 
 
 def _rollback_apply(
@@ -14472,19 +14569,24 @@ def _rollback_apply(
             shutil.copy2(src, target)
         actions.append(f"restored {name} from backup (copy)")
 
-    # Step C: also restore any "specs/<id>.json" the backup holds — pre-1.0
-    # repos that already had specs/ JSON (rare but valid) need their pre-migration
-    # state back. Filter to fn-*.json so we don't clobber unrelated specs files.
+    # Step C: restore everything the backup holds in specs/. Pre-1.0 repos always
+    # had spec markdown at specs/<id>.md (the JSON sidecar was at epics/<id>.json
+    # in 0.x but the Markdown invariant was specs/). Some 0.x repos also had
+    # specs/<id>.json (rare). We restore BOTH .md and .json from the backup so
+    # post-migration edits to spec markdown (`flowctl spec set-plan` etc) revert
+    # to pre-migration content. Filter to fn-*.{md,json} so we don't clobber
+    # unrelated specs files (e.g. user notes).
     specs_in_backup = backup_dir / SPECS_DIR
     if specs_in_backup.exists():
         target_specs = flow_dir / SPECS_DIR
         target_specs.mkdir(parents=True, exist_ok=True)
-        for spec_file in specs_in_backup.glob("fn-*.json"):
-            target = target_specs / spec_file.name
-            if target.exists():
-                target.unlink()
-            shutil.copy2(spec_file, target)
-            actions.append(f"restored {SPECS_DIR}/{spec_file.name} from backup (copy)")
+        for pattern in ("fn-*.json", "fn-*.md"):
+            for spec_file in specs_in_backup.glob(pattern):
+                target = target_specs / spec_file.name
+                if target.exists():
+                    target.unlink()
+                shutil.copy2(spec_file, target)
+                actions.append(f"restored {SPECS_DIR}/{spec_file.name} from backup (copy)")
 
     # Step D: remove the sentinel + manifest.
     sentinel = flow_dir / FLOW_VERSION_SENTINEL
