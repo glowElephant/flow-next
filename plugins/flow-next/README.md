@@ -21,6 +21,8 @@
 
 🌐 **Prefer a visual overview?** See the [Flow-Next app page](https://mickel.tech/apps/flow-next) for diagrams and examples.
 
+👥 **Adopting in a team?** See the [Teams + Spec-Driven Development guide](docs/teams.md) — maps the agentic SDLC to Flow-Next commands, names the six handover objects, walks through Spec-as-PR, parallel work from one spec, R-ID frozen-at-handover, the symmetric interview pattern, and the Week 1 / Month 1 / Quarter 1 adoption ladder.
+
 > **What's new in 0.42.0:** PR-as-cognitive-aid. New `/flow-next:make-pr` skill closes the gap between "all tasks done" and "human reviews the PR" — renders a reviewable PR body from nine flow-next input streams (epic spec with R-IDs, per-task `done_summary` + evidence commits, decisions / bug / architecture-patterns memory, glossary changes, strategy alignment, deferred review findings, the diff itself). Body sections include TL;DR, R-ID coverage table, Critical changes (high-churn / cross-module / public-interface / security-sensitive / behavior-visible), Decisions, Memory references, Glossary/strategy deltas, Open items, and Where to look (reviewer-focus list). Mermaid codefences when diff crosses module boundaries (max 3 diagrams × 12 nodes; markdown codefence — GitHub / GitLab / Gitea render natively). Default `--draft` if open items > 0 or under Ralph; `--ready` overrides. Uses `gh pr create --body-file` (LLM-markdown safety — heredocs choke on backticks / `$` / dollar-paren). NOT Ralph-blocked — PR creation is the autonomous-loop terminus. NO cross-model review of the body — each harness is competent at "what looks important here?" given the rich structured input; `/flow-next:impl-review` already covers the *code itself*. New `flowctl epic export-cognitive-aid` plumbing aggregates the 9 streams into a single JSON payload. [Full changelog](../../CHANGELOG.md).
 >
 > Recent highlights: [PR-as-cognitive-aid skill](#pr-creation) (0.42.0), [project strategy anchor](#project-strategy) (0.40.0), [project glossary + decision records + doc-aware interview](#project-glossary) (0.39.0), [capture skill](#capture) for conversation-to-spec synthesis (0.38.0), [interview grill-me patterns](#flow-nextinterview) (0.38.0), agent-native [memory audit](#memory-system) (0.37.0), [memory migrate skill](#memory-system) (0.37.0), [PR feedback resolver](#pr-feedback-resolution) (0.34.0), [prospect skill](#prospecting) for ranked candidate ideation (0.36.0).
@@ -33,6 +35,7 @@
 - [The Workflow](#the-workflow) — Strategy → idea → spec → tasks → ship → maintain
 - [Why It Works](#why-it-works)
 - [Quick Start](#quick-start) — Install, setup, use
+- [Teams + Spec-Driven Development](docs/teams.md) — SDLC mapping, handover objects, adoption ladder
 - [When to Use What](#when-to-use-what) — Prospect / Capture / Interview / Plan
 - [Prospecting](#prospecting) — `/flow-next:prospect`
 - [Capture](#capture) — `/flow-next:capture`
