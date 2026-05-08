@@ -74,8 +74,8 @@ Implement the deterministic CLI migration path: `flowctl migrate-rename` (dry-ru
 - [ ] Cross-platform: lockfile mechanism works on macOS, Linux, Windows.
 
 ## Done summary
-
+Implemented `flowctl migrate-rename` (pre-1.0 → 1.0 .flow/ layout migration) and `flowctl migrate-rollback` with cross-platform `os.mkdir` lockfile, two-phase backup with `.complete` marker, top-level `.flow/.migration-manifest`, atomic sentinel write at `.flow/.flow_version`, and full crash-recovery decision tree. SHIP from codex:gpt-5.5:high after 6 review cycles addressing 10 compound findings (cross-platform PID liveness, content-drift detection, manifest SHA256 anchors, mid-migration contamination wipe, atomic sentinel + payload validation).
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 841e02de81d5aec464c4032edd5231be905cdbdb, 89a1105b7084913eea367197a1b6a299398efb30, be8d7003e7981a4eeb91e0f78c98a50f2e15c47e, 55359f892eaba6641d10fa32be5586cae92fc215, f68145f600a0b0d4ae0291dfa0ab436f647ad1e5, 3153b1424a413246e1d6927f6e61d4bdf7642074, 57cfd7548a9c2cc7dd59f1de5857ccceef344f90, b2f5dd3d63d5f9436883629012c275608f84f4e0
+- Tests: bash /tmp/migrate_rename_test.sh (13/13), bash /tmp/migrate_rename_review_fixes.sh (5/5), bash /tmp/migrate_rename_review2.sh (5/5), bash /tmp/migrate_rename_review3.sh (3/3), bash /tmp/migrate_rename_review4.sh (2/2), bash /tmp/migrate_rename_review5.sh (3/3), bash /tmp/migrate_rename_review6.sh (4/4), bash /tmp/migrate_rename_concurrency.sh (2/2), bash plugins/flow-next/scripts/ci_test.sh (57/57)
 - PRs:
