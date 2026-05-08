@@ -64,9 +64,31 @@ MEMORY_DIR = "memory"
 PROSPECTS_DIR = "prospects"
 PROSPECTS_ARCHIVE_DIR = "_archive"
 CONFIG_FILE = "config.json"
-# fn-43.3 will write this file last during migration; fn-43.4 reads it for the
-# banner-suppression check. T1 only references it for the write-location rule.
+# fn-43.3: written LAST during migrate-rename as the idempotency anchor; fn-43.4
+# reads it for the banner-suppression check. T1 references it for the write-
+# location rule (alias-mode == no sentinel + epics/ exists). The text payload
+# is the flow-next data-layout version, NOT the plugin semver.
 FLOW_VERSION_SENTINEL = ".flow_version"
+FLOW_VERSION_PAYLOAD = "1.0.0"  # Written into .flow/.flow_version on migration.
+
+# fn-43.3 — migrate-rename / migrate-rollback infrastructure.
+# - Lock dir: cross-platform mutual exclusion via `os.mkdir` (atomic on POSIX
+#   + Windows). PID is written inside as a stale-detection signal.
+# - Backup dir: `.flow/.backup-pre-1.0/` (full pre-migration snapshot). The
+#   `.complete` marker inside is written ONLY after copy finishes; absence
+#   means the backup is mid-flight (crash recovery decision tree key).
+# - Manifest: `.flow/.migration-manifest` at the TOP LEVEL (NOT inside the
+#   backup). Rollback uses it to detect post-migration writes and to enumerate
+#   files that the migration created (so they can be deleted before restore).
+#   Rollback DELETES the manifest so a subsequent migrate-rename runs clean.
+MIGRATE_LOCK_DIR = ".migrating"
+MIGRATE_BACKUP_DIR = ".backup-pre-1.0"
+MIGRATE_BACKUP_COMPLETE_MARKER = ".complete"
+MIGRATE_MANIFEST_FILE = ".migration-manifest"
+# Wait at most this many seconds for a peer migrate-rename to finish before
+# giving up. Migration is bounded (file-system operations on a small tree).
+MIGRATE_LOCK_WAIT_SECS = 30
+MIGRATE_LOCK_POLL_SECS = 0.5
 
 # Glossary (fn-38.2): repo-root + nearest-ancestor markdown file.
 GLOSSARY_FILE = "GLOSSARY.md"
@@ -13582,6 +13604,914 @@ def cmd_migrate_state(args: argparse.Namespace) -> None:
             print("Definition files cleaned (runtime fields removed)")
 
 
+# --- fn-43.3: epic→spec on-disk migration (migrate-rename / migrate-rollback) ---
+#
+# Two version markers track migration state and must move together:
+#   1. `meta.json["schema_version"]` — 2 in 0.x, 3 post-migration.
+#   2. `.flow/.flow_version` text file — absent in 0.x, "1.0.0" post-migration.
+#
+# T1 owns the SCHEMA_VERSION constant (set to 3); T3 verifies the constant +
+# handles the on-disk migration of existing 0.x meta.json files. T1 also
+# already writes `next_spec` for fresh inits; T3 migrates `next_epic` -> `next_spec`
+# in 0.x meta.json files that predate T1.
+#
+# Crash-recovery decision tree (executed on every migrate-rename invocation):
+#   * Sentinel present                   -> migration already done; idempotent skip.
+#   * Sentinel absent, no .complete      -> backup mid-copy crashed (or never ran);
+#                                            wipe the partial backup dir, restart at step 4.
+#   * Sentinel absent, .complete present -> backup intact but mid-migration crashed;
+#                                            COPY backup contents back over `.flow/`,
+#                                            then restart at step 4 (fresh attempt).
+#
+# Lockfile (.flow/.migrating/) uses os.mkdir for cross-platform atomicity (NOT
+# fcntl — Windows has no fcntl).  The PID inside lets us detect stale locks.
+
+
+def _migrate_pre_1_0_layout_present(flow_dir: Path) -> bool:
+    """True iff .flow/ looks like a pre-1.0 repo (has .flow/epics/, no sentinel)."""
+    sentinel = flow_dir / FLOW_VERSION_SENTINEL
+    if sentinel.exists():
+        return False
+    return (flow_dir / EPICS_DIR).exists()
+
+
+def _migrate_acquire_lock(flow_dir: Path, *, use_json: bool) -> Path:
+    """Acquire the cross-platform mkdir lock. Returns the lock dir path.
+
+    Strategy: `os.mkdir` is atomic on POSIX + Windows. If the dir already
+    exists, read the PID inside; if the holder is dead, reclaim the lock. If
+    the holder is alive, poll up to MIGRATE_LOCK_WAIT_SECS before giving up.
+    """
+    lock_dir = flow_dir / MIGRATE_LOCK_DIR
+    pid_file = lock_dir / "pid"
+    deadline = _monotonic_now() + MIGRATE_LOCK_WAIT_SECS
+
+    while True:
+        try:
+            os.mkdir(lock_dir)
+        except FileExistsError:
+            # Lock is held — check liveness of the holder.
+            holder_pid = None
+            try:
+                holder_pid = int((pid_file).read_text(encoding="utf-8").strip())
+            except (OSError, ValueError):
+                holder_pid = None
+            if holder_pid is not None and not _migrate_pid_alive(holder_pid):
+                # Stale lock from a crashed migration. Reclaim atomically by
+                # removing pid file + lock dir, then retrying mkdir.
+                try:
+                    pid_file.unlink(missing_ok=True)
+                except OSError:
+                    pass
+                try:
+                    os.rmdir(lock_dir)
+                except OSError:
+                    # Another process raced us to reclaim; loop again.
+                    pass
+                continue
+            # Live holder — wait + retry.
+            if _monotonic_now() >= deadline:
+                error_exit(
+                    f"migrate-rename: another migration is in progress (lock at {lock_dir} held by pid {holder_pid}). "
+                    f"Waited {MIGRATE_LOCK_WAIT_SECS}s.",
+                    use_json=use_json,
+                    code=1,
+                )
+            _migrate_sleep(MIGRATE_LOCK_POLL_SECS)
+            continue
+        else:
+            # Lock acquired; record PID inside.
+            try:
+                pid_file.write_text(str(os.getpid()), encoding="utf-8")
+            except OSError:
+                # Best-effort; lock dir presence is the real signal.
+                pass
+            return lock_dir
+
+
+def _migrate_release_lock(lock_dir: Path) -> None:
+    """Release the mkdir lock. Best-effort: never raise on cleanup."""
+    try:
+        (lock_dir / "pid").unlink(missing_ok=True)
+    except OSError:
+        pass
+    try:
+        os.rmdir(lock_dir)
+    except OSError:
+        pass
+
+
+def _migrate_pid_alive(pid: int) -> bool:
+    """Cross-platform check whether a PID still exists.
+
+    POSIX: `os.kill(pid, 0)` raises ProcessLookupError if the process is gone.
+    Windows: Python's os.kill with 0 also works on Windows 3.x+ for liveness.
+    Treat any unexpected exception as "alive" (safer to wait than reclaim).
+    """
+    if pid <= 0:
+        return False
+    try:
+        os.kill(pid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        # Process exists but we can't signal it — still alive.
+        return True
+    except OSError:
+        # Windows raises OSError(EINVAL) on bad pids; treat as dead.
+        return False
+
+
+def _monotonic_now() -> float:
+    """Indirection so tests can override timing without monkeypatching `time`."""
+    import time as _time
+
+    return _time.monotonic()
+
+
+def _migrate_sleep(seconds: float) -> None:
+    import time as _time
+
+    _time.sleep(seconds)
+
+
+def _migrate_writable(flow_dir: Path) -> bool:
+    """Probe whether `.flow/` is writable. Returns False on read-only filesystems.
+
+    Uses a tempfile probe rather than checking permissions because a read-only
+    bind mount may report writable permissions but fail on actual writes.
+    """
+    try:
+        probe_fd, probe_path = tempfile.mkstemp(dir=flow_dir, prefix=".rw-probe-", suffix=".tmp")
+    except OSError:
+        return False
+    try:
+        os.close(probe_fd)
+    except OSError:
+        pass
+    try:
+        os.unlink(probe_path)
+    except OSError:
+        pass
+    return True
+
+
+def _migrate_copy_tree_to_backup(flow_dir: Path, backup_dir: Path) -> None:
+    """Copy `.flow/` contents into `backup_dir` excluding self + transient files.
+
+    Excludes (must NOT end up in the backup):
+      - the backup dir itself (would recurse / explode on disk)
+      - `.migration-manifest` (top-level scratch file, not part of pre-1.0 state)
+      - `.banner-acknowledged` (fn-43.4 banner suppression marker)
+      - `.migrating` (the active lock dir)
+    """
+    backup_dir.mkdir(parents=True, exist_ok=True)
+    excluded = {
+        MIGRATE_BACKUP_DIR,
+        MIGRATE_MANIFEST_FILE,
+        ".banner-acknowledged",
+        MIGRATE_LOCK_DIR,
+    }
+    for entry in flow_dir.iterdir():
+        if entry.name in excluded:
+            continue
+        target = backup_dir / entry.name
+        if entry.is_dir():
+            shutil.copytree(entry, target, symlinks=True)
+        else:
+            shutil.copy2(entry, target)
+
+
+def _migrate_clear_partial_backup(backup_dir: Path) -> None:
+    """Remove a backup directory left mid-copy (no `.complete` marker)."""
+    if backup_dir.exists():
+        shutil.rmtree(backup_dir)
+
+
+def _migrate_recover_from_complete_backup(flow_dir: Path, backup_dir: Path) -> None:
+    """Restore `.flow/` contents from a complete backup (mid-migration crash).
+
+    Copies (does NOT move) backup contents back over `.flow/` so the backup
+    remains intact for a subsequent rollback. Conservative: anything in
+    `.flow/` that wasn't in the backup is left in place; the rollback path
+    handles full reset.
+    """
+    for entry in backup_dir.iterdir():
+        if entry.name == MIGRATE_BACKUP_COMPLETE_MARKER:
+            continue
+        target = flow_dir / entry.name
+        if target.exists():
+            if target.is_dir():
+                shutil.rmtree(target)
+            else:
+                target.unlink()
+        if entry.is_dir():
+            shutil.copytree(entry, target, symlinks=True)
+        else:
+            shutil.copy2(entry, target)
+
+
+def _migrate_handle_crash_recovery(
+    flow_dir: Path, backup_dir: Path, *, use_json: bool, dry_run: bool
+) -> list[str]:
+    """Walk the crash-recovery decision tree before starting fresh migrate steps.
+
+    Returns a list of human-readable recovery actions performed (empty when
+    no recovery was needed). Caller plans/applies these alongside the main
+    migration plan.
+    """
+    sentinel = flow_dir / FLOW_VERSION_SENTINEL
+    actions: list[str] = []
+    if sentinel.exists():
+        # Caller will short-circuit; this branch shouldn't be hit.
+        return actions
+
+    if not backup_dir.exists():
+        return actions
+
+    complete = backup_dir / MIGRATE_BACKUP_COMPLETE_MARKER
+    if not complete.exists():
+        # Mid-copy crash: discard the partial backup so step 4 can re-run.
+        if dry_run:
+            actions.append(f"would discard partial backup at {backup_dir}")
+        else:
+            _migrate_clear_partial_backup(backup_dir)
+            actions.append(f"discarded partial backup at {backup_dir}")
+        return actions
+
+    # Backup is complete but no sentinel: mid-migration crash. Restore by copy
+    # so step 4 can produce a fresh backup snapshot.
+    if dry_run:
+        actions.append(f"would restore from {backup_dir} and discard it before re-migrating")
+        return actions
+    _migrate_recover_from_complete_backup(flow_dir, backup_dir)
+    _migrate_clear_partial_backup(backup_dir)
+    actions.append(f"restored {flow_dir} from {backup_dir} and discarded it for re-migration")
+    return actions
+
+
+def _migrate_collect_plan(flow_dir: Path) -> dict[str, Any]:
+    """Build a deterministic plan for the pre-1.0 -> 1.0 layout migration.
+
+    Plan fields:
+      epic_jsons:    list of (src, dst) tuples for .flow/epics/*.json -> .flow/specs/
+      meta_rewrite:  whether meta.json needs key rename / schema bump
+      task_rewrites: list of task json paths needing the canonical-spec rewrite
+      remove_epics_dir: whether to rmdir .flow/epics/ at the end
+    """
+    plan: dict[str, Any] = {
+        "epic_jsons": [],
+        "meta_rewrite": False,
+        "task_rewrites": [],
+        "remove_epics_dir": False,
+    }
+
+    epics_dir = flow_dir / EPICS_DIR
+    specs_dir = flow_dir / SPECS_DIR
+    if epics_dir.exists():
+        for src in sorted(epics_dir.glob("fn-*.json")):
+            dst = specs_dir / src.name
+            plan["epic_jsons"].append((src, dst))
+        plan["remove_epics_dir"] = True
+
+    meta_path = flow_dir / META_FILE
+    if meta_path.exists():
+        try:
+            meta = load_json(meta_path)
+        except Exception:
+            meta = None
+        if isinstance(meta, dict):
+            current_schema = meta.get("schema_version")
+            needs_schema_bump = current_schema != SCHEMA_VERSION
+            needs_key_rename = "next_epic" in meta and "next_spec" not in meta
+            if needs_schema_bump or needs_key_rename:
+                plan["meta_rewrite"] = True
+
+    tasks_dir = flow_dir / TASKS_DIR
+    if tasks_dir.exists():
+        for task_file in sorted(tasks_dir.glob("fn-*.json")):
+            try:
+                task_data = load_json(task_file)
+            except Exception:
+                continue
+            if "epic" in task_data or "epic_id" in task_data:
+                plan["task_rewrites"].append(task_file)
+
+    return plan
+
+
+def _migrate_apply_plan(
+    flow_dir: Path, plan: dict[str, Any]
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Apply the migration plan. Returns (manifest_entries, meta_summary).
+
+    Each manifest entry records: {action, src, dst, prev (when applicable)}.
+    Caller writes the manifest file at .flow/.migration-manifest and the
+    sentinel file as the very last step (after the lock is dropped).
+    """
+    entries: list[dict[str, Any]] = []
+    meta_summary: dict[str, Any] = {}
+
+    # Step 7: move JSON files from epics/ to specs/ (atomic per-file os.replace).
+    specs_dir = flow_dir / SPECS_DIR
+    specs_dir.mkdir(parents=True, exist_ok=True)
+    for src, dst in plan["epic_jsons"]:
+        os.replace(src, dst)
+        entries.append({
+            "action": "move_spec_json",
+            "src": str(src.relative_to(flow_dir)),
+            "dst": str(dst.relative_to(flow_dir)),
+        })
+
+    # Step 8: rewrite meta.json (rename next_epic -> next_spec; bump schema).
+    if plan["meta_rewrite"]:
+        meta_path = flow_dir / META_FILE
+        meta = load_json(meta_path) if meta_path.exists() else {}
+        meta_before = dict(meta)
+        if "next_spec" not in meta and "next_epic" in meta:
+            meta["next_spec"] = meta.pop("next_epic")
+        elif "next_epic" in meta:
+            # Both present (unusual). Drop legacy and keep canonical.
+            meta.pop("next_epic", None)
+        meta["schema_version"] = SCHEMA_VERSION
+        atomic_write_json(meta_path, meta)
+        entries.append({
+            "action": "rewrite_meta",
+            "path": META_FILE,
+            "prev": meta_before,
+            "next": dict(meta),
+        })
+        meta_summary = {"prev": meta_before, "next": dict(meta)}
+
+    # Step 9: rewrite task JSON to canonical spec key.
+    for task_file in plan["task_rewrites"]:
+        task_data = load_json(task_file)
+        before_keys = sorted(k for k in ("epic", "epic_id", "spec", "spec_id") if k in task_data)
+        canonicalize_task_for_write(task_data)
+        atomic_write_json(task_file, task_data)
+        after_keys = sorted(k for k in ("epic", "epic_id", "spec", "spec_id") if k in task_data)
+        entries.append({
+            "action": "rewrite_task",
+            "path": str(task_file.relative_to(flow_dir)),
+            "prev_keys": before_keys,
+            "next_keys": after_keys,
+        })
+
+    # Step 10: remove now-empty .flow/epics/ directory.
+    if plan["remove_epics_dir"]:
+        epics_dir = flow_dir / EPICS_DIR
+        try:
+            # Only succeeds if directory is empty after the moves above.
+            epics_dir.rmdir()
+            entries.append({"action": "rmdir_epics", "path": EPICS_DIR})
+        except OSError:
+            # Non-fatal: leave the directory if something else is in it. The
+            # banner / detect path will still flag "alias mode = no migration"
+            # because the sentinel write is what tips the layout, but with
+            # epics/ still present a follow-up run can clean it up.
+            entries.append({
+                "action": "rmdir_epics_skipped",
+                "path": EPICS_DIR,
+                "reason": "directory not empty",
+            })
+
+    return entries, meta_summary
+
+
+def _migrate_describe_plan(plan: dict[str, Any]) -> list[str]:
+    """Render a human-readable description of a migration plan."""
+    lines: list[str] = []
+    if plan["epic_jsons"]:
+        for src, dst in plan["epic_jsons"]:
+            lines.append(f"move {src.name}: {EPICS_DIR}/ -> {SPECS_DIR}/")
+    if plan["meta_rewrite"]:
+        lines.append(
+            "rewrite meta.json: schema_version -> 3, next_epic -> next_spec (when present)"
+        )
+    if plan["task_rewrites"]:
+        for task_file in plan["task_rewrites"]:
+            lines.append(f"rewrite {task_file.name}: epic -> spec (canonical task key)")
+    if plan["remove_epics_dir"]:
+        lines.append(f"remove empty {EPICS_DIR}/ directory")
+    if not lines:
+        lines.append("no changes required (already on 1.0 layout)")
+    return lines
+
+
+def cmd_migrate_rename(args: argparse.Namespace) -> None:
+    """Migrate a pre-1.0 .flow/ layout to the 1.0 spec-canonical layout.
+
+    Steps (per fn-43.3 spec):
+      1. Verify SCHEMA_VERSION == 3 (T1 invariant).
+      2. Acquire .flow/.migrating lock.
+      3. Detect pre-1.0 layout. Idempotent skip if already migrated.
+      4. Copy `.flow/` -> `.flow/.backup-pre-1.0/` and write `.complete`.
+      5. Clean any stale `.flow/.migration-manifest`.
+      6. Initialize empty manifest at `.flow/.migration-manifest` (top level).
+      7-10. Move JSON, rewrite meta + tasks, remove empty `.flow/epics/`.
+      11. Write `.flow/.flow_version` = "1.0.0" (LAST).
+      12. Release the lock.
+    """
+    is_json = bool(getattr(args, "json", False))
+    assume_yes = bool(getattr(args, "yes", False))
+    explicit_dry = bool(getattr(args, "dry_run", False))
+    # Default: dry-run unless --yes is passed. Explicit --dry-run wins over --yes
+    # only if the user passed both (flag-conflict surfaces as plan-only output).
+    dry_run = explicit_dry or not assume_yes
+    if explicit_dry and assume_yes:
+        # Surface the conflict explicitly so a CI-set `--yes` doesn't silently
+        # become a no-op when a CLI default flips on `--dry-run` somewhere.
+        if is_json:
+            error_exit(
+                "migrate-rename: cannot pass both --dry-run and --yes.",
+                use_json=is_json,
+                code=2,
+            )
+        else:
+            error_exit(
+                "migrate-rename: --dry-run and --yes are mutually exclusive.",
+                use_json=is_json,
+                code=2,
+            )
+
+    # 1. Verify T1's SCHEMA_VERSION bump landed before doing anything destructive.
+    if SCHEMA_VERSION != 3:
+        error_exit(
+            "migrate-rename: SCHEMA_VERSION must be 3 (fn-43.1 invariant). "
+            f"Got {SCHEMA_VERSION}. Refusing to migrate against an unverified constant.",
+            use_json=is_json,
+            code=1,
+        )
+
+    if not ensure_flow_exists():
+        error_exit(
+            ".flow/ does not exist. Nothing to migrate.",
+            use_json=is_json,
+            code=1,
+        )
+
+    flow_dir = get_flow_dir()
+    sentinel = flow_dir / FLOW_VERSION_SENTINEL
+
+    # Fast-path idempotency check (advisory). The authoritative check happens
+    # AFTER the lock so two parallel migrate-rename --yes invocations don't
+    # both re-migrate (TOCTOU between the unlocked sentinel probe and the
+    # lock-acquire). The fast-path keeps single-process invocations cheap by
+    # avoiding the (small) cost of a probe + mkdir + rmdir on a no-op.
+    if sentinel.exists() and dry_run:
+        if is_json:
+            json_output({
+                "migrated": False,
+                "reason": "already migrated",
+                "flow_version": sentinel.read_text(encoding="utf-8").strip(),
+                "dry_run": dry_run,
+            })
+        else:
+            print(f".flow/ already on layout {sentinel.read_text(encoding='utf-8').strip()}; nothing to do.")
+        return
+
+    # Read-only filesystem refusal: an explicit `--yes` against a read-only
+    # `.flow/` must fail loudly (T4's banner-only path is non-blocking; T3 is
+    # the explicit user-driven path and must surface the error).
+    if not dry_run and not _migrate_writable(flow_dir):
+        error_exit(
+            "migrate-rename: .flow/ is read-only; migration cannot proceed. "
+            "Run with write access (e.g. fix filesystem permissions or remount rw).",
+            use_json=is_json,
+            code=1,
+        )
+
+    # 2. Acquire lock. (Skip in dry-run — no writes, no peers to coordinate
+    # with, and acquiring a lock dir is itself a write.)
+    lock_dir: Optional[Path] = None
+    if not dry_run:
+        lock_dir = _migrate_acquire_lock(flow_dir, use_json=is_json)
+
+    try:
+        # Authoritative idempotency check, post-lock. A peer migrate-rename
+        # may have completed while we waited; respect their work and exit
+        # cleanly with the same shape as the fast-path check above.
+        if sentinel.exists():
+            payload = sentinel.read_text(encoding="utf-8").strip()
+            if is_json:
+                json_output({
+                    "migrated": False,
+                    "reason": "already migrated",
+                    "flow_version": payload,
+                    "dry_run": dry_run,
+                })
+            else:
+                print(f".flow/ already on layout {payload}; nothing to do.")
+            return
+
+        # 3. Pre-1.0 layout check + crash recovery.
+        backup_dir = flow_dir / MIGRATE_BACKUP_DIR
+        recovery_actions = _migrate_handle_crash_recovery(
+            flow_dir, backup_dir, use_json=is_json, dry_run=dry_run
+        )
+
+        if not _migrate_pre_1_0_layout_present(flow_dir):
+            # No epics/ dir AND no sentinel — fresh 1.0 init missing the
+            # sentinel file. Safe to write the sentinel + bump meta and exit.
+            plan = _migrate_collect_plan(flow_dir)
+            description = _migrate_describe_plan(plan)
+            description.append(f"write {FLOW_VERSION_SENTINEL} = {FLOW_VERSION_PAYLOAD}")
+            if dry_run:
+                if is_json:
+                    json_output({
+                        "migrated": False,
+                        "dry_run": True,
+                        "would_apply": True,
+                        "plan": description,
+                        "recovery": recovery_actions,
+                    })
+                else:
+                    print("Pre-1.0 layout not detected (no .flow/epics/). Will only write the sentinel + bump schema:")
+                    for line in description:
+                        print(f"  - {line}")
+                    print("\nRe-run with --yes to apply.")
+                return
+
+            # Apply the (possibly empty) plan + write sentinel.
+            entries, meta_summary = _migrate_apply_plan(flow_dir, plan)
+            manifest_path = flow_dir / MIGRATE_MANIFEST_FILE
+            manifest = {
+                "version": 1,
+                "started_at": now_iso(),
+                "schema_version_to": SCHEMA_VERSION,
+                "entries": entries,
+                "meta_summary": meta_summary,
+            }
+            atomic_write_json(manifest_path, manifest)
+            (flow_dir / FLOW_VERSION_SENTINEL).write_text(
+                FLOW_VERSION_PAYLOAD + "\n", encoding="utf-8"
+            )
+            if is_json:
+                json_output({
+                    "migrated": True,
+                    "dry_run": False,
+                    "plan": description,
+                    "entries": entries,
+                    "recovery": recovery_actions,
+                    "manifest_path": str(manifest_path),
+                    "sentinel_path": str(flow_dir / FLOW_VERSION_SENTINEL),
+                })
+            else:
+                print("Migration applied (no pre-1.0 layout — sentinel + schema bump only):")
+                for line in description:
+                    print(f"  - {line}")
+            return
+
+        # Pre-1.0 layout confirmed. Plan + apply the full migration.
+        plan = _migrate_collect_plan(flow_dir)
+        description = _migrate_describe_plan(plan)
+        backup_summary = f"backup .flow/ -> {MIGRATE_BACKUP_DIR}/ (with .complete marker)"
+        sentinel_summary = f"write {FLOW_VERSION_SENTINEL} = {FLOW_VERSION_PAYLOAD} (LAST)"
+
+        if dry_run:
+            full_plan = [backup_summary] + description + [sentinel_summary]
+            if is_json:
+                json_output({
+                    "migrated": False,
+                    "dry_run": True,
+                    "would_apply": True,
+                    "plan": full_plan,
+                    "recovery": recovery_actions,
+                })
+            else:
+                print("Migration plan (dry-run):")
+                for line in full_plan:
+                    print(f"  - {line}")
+                print("\nRe-run with --yes to apply.")
+            return
+
+        # Optional confirmation prompt for non-JSON, non-yes invocations.
+        if not assume_yes and not is_json:
+            try:
+                answer = input("\nApply migration? [y/N] ").strip().lower()
+            except (EOFError, KeyboardInterrupt):
+                print("\nAborted.")
+                sys.exit(1)
+            if answer not in ("y", "yes"):
+                print("Aborted.")
+                sys.exit(1)
+        elif not assume_yes and is_json:
+            error_exit(
+                "migrate-rename --json requires --yes for write operations.",
+                use_json=is_json,
+                code=1,
+            )
+
+        # 4. Backup. Write `.complete` only after the copy finishes.
+        if backup_dir.exists():
+            # Crash-recovery already discarded partial backups; any leftover here
+            # is a complete-but-orphaned snapshot. Safest path: refuse rather than
+            # silently overwrite a backup that may belong to a different lineage.
+            error_exit(
+                f"migrate-rename: stale backup at {backup_dir}. Run `flowctl migrate-rollback --yes` "
+                "to restore from it, or remove it manually before retrying.",
+                use_json=is_json,
+                code=1,
+            )
+        _migrate_copy_tree_to_backup(flow_dir, backup_dir)
+        (backup_dir / MIGRATE_BACKUP_COMPLETE_MARKER).write_text(
+            now_iso() + "\n", encoding="utf-8"
+        )
+
+        # 5. Clean any stale top-level manifest before re-init.
+        manifest_path = flow_dir / MIGRATE_MANIFEST_FILE
+        try:
+            manifest_path.unlink()
+        except FileNotFoundError:
+            pass
+
+        # 6. Initialize empty manifest (rewritten with entries below).
+        atomic_write_json(manifest_path, {
+            "version": 1,
+            "started_at": now_iso(),
+            "schema_version_to": SCHEMA_VERSION,
+            "entries": [],
+        })
+
+        # 7-10. Apply plan.
+        entries, meta_summary = _migrate_apply_plan(flow_dir, plan)
+        atomic_write_json(manifest_path, {
+            "version": 1,
+            "started_at": now_iso(),
+            "schema_version_to": SCHEMA_VERSION,
+            "entries": entries,
+            "meta_summary": meta_summary,
+        })
+
+        # 11. Sentinel — written LAST. Plain text, payload is FLOW_VERSION_PAYLOAD.
+        (flow_dir / FLOW_VERSION_SENTINEL).write_text(
+            FLOW_VERSION_PAYLOAD + "\n", encoding="utf-8"
+        )
+
+        if is_json:
+            json_output({
+                "migrated": True,
+                "dry_run": False,
+                "plan": [backup_summary] + description + [sentinel_summary],
+                "entries": entries,
+                "recovery": recovery_actions,
+                "manifest_path": str(manifest_path),
+                "sentinel_path": str(flow_dir / FLOW_VERSION_SENTINEL),
+                "backup_path": str(backup_dir),
+            })
+        else:
+            print("Migration applied:")
+            for line in [backup_summary] + description + [sentinel_summary]:
+                print(f"  - {line}")
+            print(f"\nBackup retained at {backup_dir} (immutable). Use `flowctl migrate-rollback --yes` to undo.")
+
+    finally:
+        # 12. Release lock (skipped in dry-run because we never acquired it).
+        if lock_dir is not None:
+            _migrate_release_lock(lock_dir)
+
+
+def _rollback_post_migration_writes(
+    flow_dir: Path, manifest: dict[str, Any]
+) -> list[str]:
+    """Detect post-migration writes by diffing actual files vs. manifest entries.
+
+    A post-migration write is any `.flow/specs/*.json` (or task JSON) that exists
+    on disk but is NOT recorded in the manifest. Returns the list of unexpected
+    paths (relative to flow_dir).
+    """
+    expected_specs: set[str] = set()
+    expected_tasks: set[str] = set()
+    for entry in manifest.get("entries", []):
+        action = entry.get("action")
+        if action == "move_spec_json":
+            dst = entry.get("dst")
+            if isinstance(dst, str):
+                expected_specs.add(dst)
+        elif action == "rewrite_task":
+            path = entry.get("path")
+            if isinstance(path, str):
+                expected_tasks.add(path)
+
+    unexpected: list[str] = []
+    specs_dir = flow_dir / SPECS_DIR
+    if specs_dir.exists():
+        for spec_file in sorted(specs_dir.glob("fn-*.json")):
+            rel = str(spec_file.relative_to(flow_dir))
+            if rel not in expected_specs:
+                unexpected.append(rel)
+
+    tasks_dir = flow_dir / TASKS_DIR
+    if tasks_dir.exists():
+        for task_file in sorted(tasks_dir.glob("fn-*.json")):
+            rel = str(task_file.relative_to(flow_dir))
+            # Tasks might exist with NO rewrite (already canonical pre-migration),
+            # so the manifest's task list isn't an exhaustive whitelist. Instead,
+            # check existence in backup. If a task was added after migration
+            # (no backup counterpart, no manifest rewrite entry), flag it.
+            backup_task = flow_dir / MIGRATE_BACKUP_DIR / TASKS_DIR / task_file.name
+            if not backup_task.exists() and rel not in expected_tasks:
+                unexpected.append(rel)
+
+    return unexpected
+
+
+def _rollback_apply(
+    flow_dir: Path,
+    backup_dir: Path,
+    manifest: dict[str, Any],
+    *,
+    unexpected_paths: Optional[list[str]] = None,
+) -> list[str]:
+    """Restore pre-migration layout by COPYING from backup. Returns action log.
+
+    `unexpected_paths` carries the post-migration writes detected by
+    `_rollback_post_migration_writes`. They are discarded here when
+    `--force-overwrite-post-migration-changes` brought us into this branch
+    (caller passes them only after confirming `force` is set).
+    """
+    actions: list[str] = []
+
+    # Step 0: discard any post-migration writes the caller authorized to drop.
+    if unexpected_paths:
+        for rel in unexpected_paths:
+            target = flow_dir / rel
+            try:
+                target.unlink()
+                actions.append(f"discarded post-migration {rel}")
+            except FileNotFoundError:
+                pass
+
+    # Step A: delete files that the migration created (per manifest).
+    for entry in manifest.get("entries", []):
+        action = entry.get("action")
+        if action == "move_spec_json":
+            dst = entry.get("dst")
+            if isinstance(dst, str):
+                target = flow_dir / dst
+                try:
+                    target.unlink()
+                    actions.append(f"removed {dst}")
+                except FileNotFoundError:
+                    pass
+
+    # Step B: restore from backup by COPY (never move). Backup remains intact.
+    # Restore epics/, meta.json, and any task JSON / spec JSON that the backup
+    # holds (so the canonical task-key story reverts too).
+    for name in (EPICS_DIR, TASKS_DIR, META_FILE):
+        src = backup_dir / name
+        if not src.exists():
+            continue
+        target = flow_dir / name
+        if target.exists():
+            if target.is_dir():
+                shutil.rmtree(target)
+            else:
+                target.unlink()
+        if src.is_dir():
+            shutil.copytree(src, target, symlinks=True)
+        else:
+            shutil.copy2(src, target)
+        actions.append(f"restored {name} from backup (copy)")
+
+    # Step C: also restore any "specs/<id>.json" the backup holds — pre-1.0
+    # repos that already had specs/ JSON (rare but valid) need their pre-migration
+    # state back. Filter to fn-*.json so we don't clobber unrelated specs files.
+    specs_in_backup = backup_dir / SPECS_DIR
+    if specs_in_backup.exists():
+        target_specs = flow_dir / SPECS_DIR
+        target_specs.mkdir(parents=True, exist_ok=True)
+        for spec_file in specs_in_backup.glob("fn-*.json"):
+            target = target_specs / spec_file.name
+            if target.exists():
+                target.unlink()
+            shutil.copy2(spec_file, target)
+            actions.append(f"restored {SPECS_DIR}/{spec_file.name} from backup (copy)")
+
+    # Step D: remove the sentinel + manifest.
+    sentinel = flow_dir / FLOW_VERSION_SENTINEL
+    try:
+        sentinel.unlink()
+        actions.append(f"removed {FLOW_VERSION_SENTINEL}")
+    except FileNotFoundError:
+        pass
+    manifest_path = flow_dir / MIGRATE_MANIFEST_FILE
+    try:
+        manifest_path.unlink()
+        actions.append(f"removed {MIGRATE_MANIFEST_FILE}")
+    except FileNotFoundError:
+        pass
+
+    return actions
+
+
+def cmd_migrate_rollback(args: argparse.Namespace) -> None:
+    """Restore pre-1.0 layout from `.flow/.backup-pre-1.0/`.
+
+    Refuses if any post-migration spec / task file exists outside the manifest
+    unless `--force-overwrite-post-migration-changes` is passed. The backup
+    directory is left fully intact (rollback is repeatable: migrate -> rollback
+    -> migrate -> rollback).
+    """
+    is_json = bool(getattr(args, "json", False))
+    assume_yes = bool(getattr(args, "yes", False))
+    force = bool(getattr(args, "force_overwrite_post_migration_changes", False))
+
+    if not ensure_flow_exists():
+        error_exit(
+            ".flow/ does not exist. Nothing to roll back.",
+            use_json=is_json,
+            code=1,
+        )
+
+    flow_dir = get_flow_dir()
+    backup_dir = flow_dir / MIGRATE_BACKUP_DIR
+    complete = backup_dir / MIGRATE_BACKUP_COMPLETE_MARKER
+
+    if not backup_dir.exists() or not complete.exists():
+        error_exit(
+            f"migrate-rollback: no complete backup at {backup_dir}. "
+            "Either no migration has run, or the backup was deleted manually.",
+            use_json=is_json,
+            code=1,
+        )
+
+    manifest_path = flow_dir / MIGRATE_MANIFEST_FILE
+    if not manifest_path.exists():
+        error_exit(
+            f"migrate-rollback: manifest missing at {manifest_path}. "
+            "Cannot detect post-migration writes safely.",
+            use_json=is_json,
+            code=1,
+        )
+
+    try:
+        manifest = load_json(manifest_path)
+    except Exception as exc:
+        error_exit(
+            f"migrate-rollback: manifest at {manifest_path} unreadable: {exc}",
+            use_json=is_json,
+            code=1,
+        )
+
+    if not assume_yes:
+        error_exit(
+            "migrate-rollback: pass --yes to perform the rollback.",
+            use_json=is_json,
+            code=1,
+        )
+
+    # Read-only filesystem refusal — same shape as migrate-rename.
+    if not _migrate_writable(flow_dir):
+        error_exit(
+            "migrate-rollback: .flow/ is read-only; rollback cannot proceed.",
+            use_json=is_json,
+            code=1,
+        )
+
+    # Acquire the same lock so rollback can't race a parallel migrate-rename.
+    lock_dir = _migrate_acquire_lock(flow_dir, use_json=is_json)
+    try:
+        unexpected = _rollback_post_migration_writes(flow_dir, manifest)
+        if unexpected and not force:
+            error_exit(
+                "migrate-rollback: post-migration writes detected. Pass "
+                "--force-overwrite-post-migration-changes to discard them. "
+                f"Unexpected paths: {', '.join(unexpected)}",
+                use_json=is_json,
+                code=1,
+            )
+
+        actions = _rollback_apply(
+            flow_dir,
+            backup_dir,
+            manifest,
+            unexpected_paths=unexpected if force else None,
+        )
+    finally:
+        _migrate_release_lock(lock_dir)
+
+    if is_json:
+        json_output({
+            "rolled_back": True,
+            "actions": actions,
+            "post_migration_writes_overridden": bool(unexpected and force),
+            "unexpected_paths": unexpected,
+            "backup_path": str(backup_dir),
+        })
+    else:
+        print("Rollback applied:")
+        for action in actions:
+            print(f"  - {action}")
+        if unexpected and force:
+            print(
+                "\nDiscarded post-migration writes: "
+                + ", ".join(unexpected)
+            )
+        print(f"\nBackup retained at {backup_dir} (rollback is repeatable).")
+
+
 def cmd_spec_close(args: argparse.Namespace) -> None:
     """Close a spec (all tasks must be done)."""
     if not ensure_flow_exists():
@@ -19505,6 +20435,42 @@ def main() -> None:
     )
     p_migrate.add_argument("--json", action="store_true", help="JSON output")
     p_migrate.set_defaults(func=cmd_migrate_state)
+
+    # migrate-rename (fn-43.3): pre-1.0 -> 1.0 spec layout migration.
+    p_migrate_rename = subparsers.add_parser(
+        "migrate-rename",
+        help="Migrate pre-1.0 .flow/ layout (epics/) to 1.0 spec-canonical layout (specs/)",
+    )
+    p_migrate_rename.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print plan without applying changes (default when --yes is not set)",
+    )
+    p_migrate_rename.add_argument(
+        "--yes",
+        action="store_true",
+        help="Apply migration (writes .flow/.backup-pre-1.0/, .migration-manifest, sentinel)",
+    )
+    p_migrate_rename.add_argument("--json", action="store_true", help="JSON output")
+    p_migrate_rename.set_defaults(func=cmd_migrate_rename)
+
+    # migrate-rollback (fn-43.3): restore pre-1.0 layout from `.backup-pre-1.0/`.
+    p_migrate_rollback = subparsers.add_parser(
+        "migrate-rollback",
+        help="Restore pre-1.0 .flow/ layout from .flow/.backup-pre-1.0/",
+    )
+    p_migrate_rollback.add_argument(
+        "--yes", action="store_true", help="Apply the rollback (required)"
+    )
+    p_migrate_rollback.add_argument(
+        "--force-overwrite-post-migration-changes",
+        action="store_true",
+        help="Discard post-migration spec/task writes (otherwise refused)",
+    )
+    p_migrate_rollback.add_argument(
+        "--json", action="store_true", help="JSON output"
+    )
+    p_migrate_rollback.set_defaults(func=cmd_migrate_rollback)
 
     # validate
     p_validate = subparsers.add_parser("validate", help="Validate spec or all")
