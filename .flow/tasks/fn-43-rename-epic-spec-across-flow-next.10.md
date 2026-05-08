@@ -67,7 +67,7 @@ Sweep the medium- and low-density skills (everything not covered by T7a, T7b, T8
 - [ ] flow-next-plan/steps.md Step 5 uses `flowctl spec create + spec set-plan` heredoc.
 - [ ] flow-next-setup workflow.md has an "upgrade detected" branch that prompts via `AskUserQuestion` with three options (migrate / defer / suppress) and dispatches to `flowctl migrate-rename --yes` on user accept.
 - [ ] flow-next-setup template files (usage.md, agents-md-snippet.md, claude-md-snippet.md) use spec vocabulary -- new user repos get clean prose. (R17 setup templates).
-- [ ] `AskUserQuestion` call in setup upgrade branch uses canonical Claude-native name (sync-codex.sh rewrites for Codex mirror in T13).
+- [ ] `AskUserQuestion` call in setup upgrade branch uses canonical Claude-native name (sync-codex.sh rewrites for Codex mirror in T15). <!-- Updated by plan-sync: T6 done summary confirms Codex mirror regen lives in T15, not T13 -->
 
 ## Done summary
 
