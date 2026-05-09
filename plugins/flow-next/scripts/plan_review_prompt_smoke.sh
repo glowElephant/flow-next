@@ -64,7 +64,7 @@ chmod +x scripts/ralph/flowctl
 
 FLOWCTL="scripts/ralph/flowctl"
 $FLOWCTL init --json >/dev/null
-$FLOWCTL epic create --title "Tiny lib" --json >/dev/null
+$FLOWCTL spec create --title "Tiny lib" --json >/dev/null
 
 cat > "$TEST_DIR/epic.md" <<'EOF'
 # fn-1 Tiny lib
@@ -105,7 +105,7 @@ Edit src/index.ts and README.md only. Repo is source-only (no build step).
 - None
 EOF
 
-$FLOWCTL epic set-plan "$EPIC_ID" --file "$TEST_DIR/epic.md" --json >/dev/null
+$FLOWCTL spec set-plan "$EPIC_ID" --file "$TEST_DIR/epic.md" --json >/dev/null
 
 RUN_DIR="scripts/ralph/runs/smoke-plan-review"
 RECEIPT_PATH="$RUN_DIR/receipts/plan-$EPIC_ID.json"
@@ -121,7 +121,7 @@ out = Path(sys.argv[2])
 epic = sys.argv[3]
 receipt = sys.argv[4]
 
-text = tpl.replace("{{EPIC_ID}}", epic)
+text = tpl.replace("{{SPEC_ID}}", epic)
 text = text.replace("{{PLAN_REVIEW}}", "rp")
 text = text.replace("{{REQUIRE_PLAN_REVIEW}}", "1")
 text = text.replace("{{REVIEW_RECEIPT_PATH}}", receipt)

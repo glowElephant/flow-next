@@ -20525,11 +20525,12 @@ def main() -> None:
     p_strategy_list.add_argument("--json", action="store_true", help="JSON output")
     p_strategy_list.set_defaults(func=cmd_strategy_list)
 
-    # fn-43.1: register `flowctl spec *` and `flowctl epic *` as parallel
-    # subparsers. Both dispatch to the same cmd_spec_* handlers (the
-    # cmd_epic_* names are aliases assigned post-function-definition). T2
-    # will layer the deprecation emission on the epic-side dispatch via a
-    # SubParserAction wrapper; T1 ships them silently.
+    # fn-43.1: register `flowctl spec *` (canonical) plus its legacy
+    # alias `flowctl epic *` as parallel subparsers (R30 alias context).
+    # Both dispatch to the same cmd_spec_* handlers (the cmd_epic_* names
+    # are aliases assigned post-function-definition). T2 layers the
+    # deprecation emission on the epic-side dispatch via a SubParserAction
+    # wrapper; T1 ships them silently.
     def _add_spec_subparsers(parent_sub, *, noun: str, dest: str) -> None:
         """Register the 11 sub-subcommands on a `spec` or `epic` parent.
 

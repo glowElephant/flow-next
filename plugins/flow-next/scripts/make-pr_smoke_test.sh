@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # fn-42-flow-nextmake-pr-pr-as-cognitive-aid.7
-# Smoke tests for `flowctl epic export-cognitive-aid` aggregator (Task 1)
+# Smoke tests for `flowctl spec export-cognitive-aid` aggregator (Task 1)
 # and the /flow-next:make-pr skill body-rendering / --dry-run plumbing.
 #
 # This is the LATE PROOF POINT for fn-42. Tasks 1-6 land the flowctl
@@ -8,7 +8,7 @@
 # the export plumbing and (where applicable) the skill scaffold are wired.
 #
 # Cases (T1-T11 from spec R29):
-#   T1.  `flowctl epic export-cognitive-aid <epic> --base main --json` returns
+#   T1.  `flowctl spec export-cognitive-aid <epic> --base main --json` returns
 #        valid JSON with all top-level keys.
 #   T2.  `--section diff` returns only the diff slice; full payload reachable
 #        without flag.
@@ -287,7 +287,7 @@ EOF
     rm -f /tmp/make-pr-smoke-spec.md
 
     # Create + complete 2 tasks (each with one real evidence commit)
-    T1_RAW="$("$FLOWCTL" task create --epic "$EPIC_ID" --title "First task" --json)"
+    T1_RAW="$("$FLOWCTL" task create --spec "$EPIC_ID" --title "First task" --json)"
     T1_ID="$(echo "$T1_RAW" | "$PYTHON_BIN" -c 'import json,sys; print(json.load(sys.stdin)["id"])')"
 
     # Create cross-module changes via two new files in different module roots.
@@ -348,7 +348,7 @@ PYEOF
     fi
 
     # T2 — second task, second commit
-    T2_RAW="$("$FLOWCTL" task create --epic "$EPIC_ID" --title "Second task" --json)"
+    T2_RAW="$("$FLOWCTL" task create --spec "$EPIC_ID" --title "Second task" --json)"
     T2_ID="$(echo "$T2_RAW" | "$PYTHON_BIN" -c 'import json,sys; print(json.load(sys.stdin)["id"])')"
     cat > src/mod_a/baz.py <<'EOF'
 """Module A baz file."""

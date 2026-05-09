@@ -821,6 +821,19 @@ else
   echo -e "  ${GREEN}✓${NC} No R19 strategy-doc fluff in Codex mirror"
 fi
 
+# R30 mirror scan — alias-vocabulary guard for the Codex mirror (fn-43 task 14).
+# Catch fresh prose that uses the legacy `flowctl epic*` CLI surface instead
+# of canonical 1.0 `flowctl spec*`. Lines describing deprecation / alias /
+# legacy semantics are excluded — these legitimately reference the legacy
+# form. references/ files are also excluded (anti-pattern documentation).
+alias_refs=$( { grep -rE 'flowctl epic\b|flowctl epics\b' "$CODEX_DIR/skills/" "$CODEX_DIR/agents/" 2>/dev/null || true; } | { grep -vE '/references/' || true; } | { grep -vE 'deprecat|legacy|alias|_emit_rename_|removed in 2\.0|flow-next 1\.0 renamed' || true; } | wc -l | tr -d ' ')
+if [ "$alias_refs" != "0" ]; then
+  echo -e "  ${RED}✗${NC} $alias_refs R30 legacy CLI vocabulary refs in codex mirror — clean canonical first, then re-run sync"
+  errors=$((errors + 1))
+else
+  echo -e "  ${GREEN}✓${NC} No R30 legacy CLI vocabulary in Codex mirror"
+fi
+
 # Validate openai.yaml files — every skill in REQUIRED_OPENAI_YAML_SKILLS
 # MUST have one. Missing entries fail CI. Extras are fine (utility skills
 # may opt in later).

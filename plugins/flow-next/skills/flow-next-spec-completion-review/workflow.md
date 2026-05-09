@@ -44,7 +44,7 @@ FLOW_REVIEW_BACKEND=copilot:claude-opus-4.5 $FLOWCTL copilot completion-review "
 $FLOWCTL codex completion-review "$SPEC_ID" --spec "codex:gpt-5.5:xhigh" --receipt "$RECEIPT_PATH"
 ```
 
-Per-spec `default_review` (set via `flowctl epic set-backend`) overrides env.
+Per-spec `default_review` (set via `flowctl spec set-backend`) overrides env.
 
 **If backend is "none"**: Skip review, inform user, and exit cleanly (no error).
 
