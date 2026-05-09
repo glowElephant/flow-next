@@ -102,8 +102,8 @@ Helpers landed in T2 that downstream tests should target: `_emit_rename_deprecat
 - [ ] CI integration: the Python unit tests run alongside existing pytest invocations on Linux + macOS + Windows.
 
 ## Done summary
-
+Added 5 Python unittest suites totaling 104 tests covering fn-43.17 invariants: pre-1.0 → 1.0 migration (24 cases incl. 4-case crash recovery, SHA256 drift, atomic sentinel write), cross-platform `os.mkdir` lockfile + POSIX `os.kill` and Windows `OpenProcess` ctypes PID liveness (12 cases), JSON read-compat dual-emit driven through real `cmd_*` invocations (30 cases — `spec`/`epic`, `specs`/`epics`, `spec_id`/`epic_id`, `next_spec`/`next_epic` all covered via `json_output` capture + one subprocess round-trip), three-layout write-location selector + read fallback (12 cases), and banner suppression matrix incl. dedup flag, ack-window helper, forward-compat warning on major≥2, stderr-only invariant, exception swallowing (26 cases). Wired into `.github/workflows/test-flow-next.yml` to run on ubuntu/macos/windows.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 033616dec7350a45ee87197f8605f7bc5fd1fe72, 7059d3cb89c2b066e8b6df04e6e35e164e3d3d57, 8e90f2891d0f806f0c90fa4acde97acf5739b529
+- Tests: python3 -m unittest discover -s plugins/flow-next/tests -p test_migrate_rename.py, python3 -m unittest discover -s plugins/flow-next/tests -p test_lockfile.py, python3 -m unittest discover -s plugins/flow-next/tests -p test_read_compat.py, python3 -m unittest discover -s plugins/flow-next/tests -p test_write_location.py, python3 -m unittest discover -s plugins/flow-next/tests -p test_banner.py
 - PRs:
