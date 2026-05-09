@@ -912,7 +912,7 @@ except Exception:
 PY
 }
 
-# Create/switch to run branch (once at start, all epics work here)
+# Create/switch to run branch (once at start, all specs work here)
 ensure_run_branch() {
   if [[ "$BRANCH_MODE" != "new" ]]; then
     return
@@ -949,7 +949,7 @@ ui_header
 ui_config
 ui_version_check
 
-# Create run branch once at start (all epics work on same branch)
+# Create run branch once at start (all specs work on same branch)
 ensure_run_branch
 
 iter=1
@@ -1266,7 +1266,7 @@ Violations break automation and leave the user with incomplete work. Be precise,
   append_progress "$verdict" "$promise" "$plan_review_status" "$task_status" "$completion_review_status"
 
   # NEVER honor COMPLETE from worker output (GH-73: premature completion bug)
-  # Workers are single-task/single-epic scope. Completion detection happens via
+  # Workers are single-task/single-spec scope. Completion detection happens via
   # the selector returning status=none at the top of the loop. Workers should
   # NEVER output COMPLETE (both prompt_work.md and prompt_plan.md forbid it).
   # If Claude outputs COMPLETE anyway, log it and continue - let selector decide.
