@@ -931,13 +931,19 @@ ensure_run_branch() {
   git -C "$ROOT_DIR" checkout -b "$branch" >/dev/null 2>&1
 }
 
-SPECS_FILE=""
-EPICS_FILE=""  # legacy alias — kept in scope for any inherited shell function
-if [[ -n "${SPECS// }" ]]; then
+# Resolve the run-scope file. Precedence (first match wins):
+#   1. SPECS_FILE  (canonical env var; honored if user/script sets it externally)
+#   2. EPICS_FILE  (legacy env var — same alias permanence guarantee as flowctl T2)
+#   3. SPECS list  (config.env knob; we generate a JSON file under $RUN_DIR)
+#   4. (none)      (unscoped — selector walks every open spec)
+SPECS_FILE="${SPECS_FILE:-${EPICS_FILE:-}}"
+if [[ -z "$SPECS_FILE" && -n "${SPECS// }" ]]; then
   SPECS_FILE="$RUN_DIR/run.json"
-  EPICS_FILE="$SPECS_FILE"
   write_specs_file "$SPECS" > "$SPECS_FILE"
 fi
+# Mirror canonical → legacy so any downstream reader using the legacy name
+# keeps working without an explicit setting.
+EPICS_FILE="$SPECS_FILE"
 
 ui_header
 ui_config
