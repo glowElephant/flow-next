@@ -10,7 +10,7 @@
 #
 # (The plugin name is optional and defaults to flow-next — kept for backward
 # compatibility with older one-liners. The legacy `flow` plugin was removed
-# in flow-next 1.0.1.)
+# in flow-next 1.0.2.)
 #
 # What gets installed (from pre-built codex/ directory):
 #   - Skills:    codex/skills/             → ~/.codex/skills/
@@ -46,7 +46,7 @@ NC='\033[0m'
 PLUGIN="${1:-flow-next}"
 if [ "$PLUGIN" != "flow-next" ]; then
     echo -e "${RED}Error: only 'flow-next' is supported${NC}"
-    echo "The legacy 'flow' plugin was removed in flow-next 1.0.1."
+    echo "The legacy 'flow' plugin was removed in flow-next 1.0.2."
     echo "Usage: $0 [flow-next]"
     exit 1
 fi
