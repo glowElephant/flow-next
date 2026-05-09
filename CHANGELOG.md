@@ -15,7 +15,7 @@ All notable changes to the flow-next.
 - **Deterministic (automation):** `flowctl migrate-rename --dry-run` first to preview the plan; then `flowctl migrate-rename --yes` to apply. The migration is transactional — atomic backup at `.flow/.backup-pre-1.0/`, lockfile-guarded against concurrent runs, sentinel `.flow/.migration-manifest` for idempotency, crash-recovery decision tree on every invocation. Migrates `.flow/epics/<id>.md` → `.flow/specs/<id>.md`, rewrites `epic:` → `spec:` keys in JSON state files, leaves the canonical filesystem layout under `.flow/specs/`.
 
 ### Optional cleanup
-- **Refresh your CLAUDE.md / AGENTS.md prose.** Aliases keep examples working forever, but the deprecation banner stops nagging once your prose uses `flowctl spec` everywhere. Quick `sed` snippet:
+- **Refresh your CLAUDE.md / AGENTS.md prose.** Aliases keep examples working through 1.x (see Alias removal timeline below), but the deprecation banner stops nagging once your prose uses `flowctl spec` everywhere. Quick `sed` snippet:
   ```bash
   # In-place rewrite (BSD sed — macOS); GNU sed users drop the empty -i argument.
   sed -i '' \
