@@ -3800,20 +3800,66 @@ def find_spec_json_path(flow_dir: Path, spec_id: str) -> Path:
     return get_specs_json_write_dir(flow_dir) / f"{spec_id}.json"
 
 
-def resolve_spec_arg(args: argparse.Namespace) -> Optional[str]:
+def expand_bare_spec_id(
+    flow_dir: Path, spec_id: Optional[str], *, use_json: bool = False
+) -> Optional[str]:
+    """Expand a bare spec id (fn-N) to its slugged form (fn-N-slug) when no
+    literal `<spec_id>.json` exists. No-op when literal exists, when input is
+    None / empty / not a spec-id format, or when no slugged match is found.
+    Calls error_exit on ambiguous prefix (multiple slugged matches)."""
+    if not spec_id or not is_spec_id(spec_id):
+        return spec_id
+    canonical = flow_dir / SPECS_JSON_DIR / f"{spec_id}.json"
+    legacy = flow_dir / EPICS_DIR / f"{spec_id}.json"
+    if canonical.exists() or legacy.exists():
+        return spec_id
+    matches = sorted(
+        {
+            path.stem
+            for path in list(
+                (flow_dir / SPECS_JSON_DIR).glob(f"{spec_id}-*.json")
+            )
+            + list((flow_dir / EPICS_DIR).glob(f"{spec_id}-*.json"))
+        }
+    )
+    if len(matches) == 1:
+        return matches[0]
+    if len(matches) > 1:
+        error_exit(
+            f"Spec id '{spec_id}' is ambiguous. Matches: {', '.join(matches)}. "
+            "Use the full slug to disambiguate.",
+            use_json=use_json,
+        )
+    return spec_id
+
+
+def resolve_spec_arg(
+    args: argparse.Namespace, flow_dir: Optional[Path] = None
+) -> Optional[str]:
     """Resolve the spec id from --spec or its legacy alias --epic.
 
     Canonical --spec wins when both are passed. When only --epic is set, T2
     emits a one-shot stderr deprecation warning (per process per legacy form)
     via `_emit_rename_deprecation`. Suppressed when `FLOW_NO_DEPRECATION=1`.
+
+    When `flow_dir` is provided, the resolved id is run through
+    `expand_bare_spec_id` so callers automatically support bare-id prefix
+    expansion (`fn-43` → `fn-43-rename-foo`). Callers without `flow_dir` (e.g.,
+    schema-only contexts) get the raw resolved id.
     """
     spec = getattr(args, "spec", None)
-    if spec:
-        return spec
-    legacy = getattr(args, "epic", None)
-    if legacy:
-        _emit_rename_deprecation("--epic", "--spec")
-    return legacy
+    if not spec:
+        legacy = getattr(args, "epic", None)
+        if legacy:
+            _emit_rename_deprecation("--epic", "--spec")
+            spec = legacy
+    if not spec:
+        return None
+    if flow_dir is not None:
+        return expand_bare_spec_id(
+            flow_dir, spec, use_json=getattr(args, "json", False)
+        )
+    return spec
 
 
 # Track which legacy forms have already emitted a deprecation warning in this
@@ -9829,7 +9875,7 @@ def cmd_task_create(args: argparse.Namespace) -> None:
             ".flow/ does not exist. Run 'flowctl init' first.", use_json=args.json
         )
 
-    spec_id = resolve_spec_arg(args)
+    spec_id = resolve_spec_arg(args, get_flow_dir())
     if not spec_id or not is_spec_id(spec_id):
         error_exit(
             f"Invalid spec ID: {spec_id}. Expected format: fn-N or fn-N-slug (e.g., fn-1, fn-1-add-auth)", use_json=args.json
@@ -10059,6 +10105,7 @@ def cmd_show(args: argparse.Namespace) -> None:
     flow_dir = get_flow_dir()
 
     if is_spec_id(args.id):
+        args.id = expand_bare_spec_id(flow_dir, args.id, use_json=args.json)
         spec_path = find_spec_json_path(flow_dir, args.id)
         epic_data = normalize_epic(
             load_json_or_exit(spec_path, f"Spec {args.id}", use_json=args.json)
@@ -10220,7 +10267,7 @@ def cmd_tasks(args: argparse.Namespace) -> None:
     flow_dir = get_flow_dir()
     tasks_dir = flow_dir / TASKS_DIR
 
-    spec_filter = resolve_spec_arg(args)
+    spec_filter = resolve_spec_arg(args, get_flow_dir())
 
     tasks = []
     if tasks_dir.exists():
@@ -10397,6 +10444,7 @@ def cmd_cat(args: argparse.Namespace) -> None:
     flow_dir = get_flow_dir()
 
     if is_spec_id(args.id):
+        args.id = expand_bare_spec_id(flow_dir, args.id, use_json=False)
         spec_path = flow_dir / SPECS_DIR / f"{args.id}.md"
     elif is_task_id(args.id):
         spec_path = flow_dir / TASKS_DIR / f"{args.id}.md"
@@ -10424,6 +10472,7 @@ def cmd_spec_set_plan(args: argparse.Namespace) -> None:
         )
 
     flow_dir = get_flow_dir()
+    args.id = expand_bare_spec_id(flow_dir, args.id, use_json=args.json)
     spec_json_path = find_spec_json_path(flow_dir, args.id)
 
     # Verify spec exists (will be loaded later for timestamp update)
@@ -10473,6 +10522,7 @@ def cmd_spec_set_plan_review_status(args: argparse.Namespace) -> None:
         )
 
     flow_dir = get_flow_dir()
+    args.id = expand_bare_spec_id(flow_dir, args.id, use_json=args.json)
     spec_json_path = find_spec_json_path(flow_dir, args.id)
 
     if not spec_json_path.exists():
@@ -10516,6 +10566,7 @@ def cmd_spec_set_completion_review_status(args: argparse.Namespace) -> None:
         )
 
     flow_dir = get_flow_dir()
+    args.id = expand_bare_spec_id(flow_dir, args.id, use_json=args.json)
     spec_json_path = find_spec_json_path(flow_dir, args.id)
 
     if not spec_json_path.exists():
@@ -10559,6 +10610,7 @@ def cmd_spec_set_branch(args: argparse.Namespace) -> None:
         )
 
     flow_dir = get_flow_dir()
+    args.id = expand_bare_spec_id(flow_dir, args.id, use_json=args.json)
     spec_json_path = find_spec_json_path(flow_dir, args.id)
 
     if not spec_json_path.exists():
@@ -10929,6 +10981,7 @@ def cmd_spec_set_backend(args: argparse.Namespace) -> None:
         )
 
     flow_dir = get_flow_dir()
+    args.id = expand_bare_spec_id(flow_dir, args.id, use_json=args.json)
     spec_path = find_spec_json_path(flow_dir, args.id)
 
     if not spec_path.exists():
@@ -12926,7 +12979,7 @@ def cmd_ready(args: argparse.Namespace) -> None:
             ".flow/ does not exist. Run 'flowctl init' first.", use_json=args.json
         )
 
-    spec_id = resolve_spec_arg(args)
+    spec_id = resolve_spec_arg(args, get_flow_dir())
     if not spec_id or not is_spec_id(spec_id):
         error_exit(
             f"Invalid spec ID: {spec_id}. Expected format: fn-N or fn-N-slug (e.g., fn-1, fn-1-add-auth)", use_json=args.json
@@ -15057,6 +15110,7 @@ def cmd_spec_close(args: argparse.Namespace) -> None:
         )
 
     flow_dir = get_flow_dir()
+    args.id = expand_bare_spec_id(flow_dir, args.id, use_json=args.json)
     spec_path = find_spec_json_path(flow_dir, args.id)
 
     if not spec_path.exists():
@@ -19669,7 +19723,7 @@ def cmd_checkpoint_save(args: argparse.Namespace) -> None:
             ".flow/ does not exist. Run 'flowctl init' first.", use_json=args.json
         )
 
-    epic_id = resolve_spec_arg(args)
+    epic_id = resolve_spec_arg(args, get_flow_dir())
     if not epic_id or not is_spec_id(epic_id):
         error_exit(
             f"Invalid spec ID: {epic_id}. Expected format: fn-N or fn-N-slug (e.g., fn-1, fn-1-add-auth)",
@@ -19756,7 +19810,7 @@ def cmd_checkpoint_restore(args: argparse.Namespace) -> None:
             ".flow/ does not exist. Run 'flowctl init' first.", use_json=args.json
         )
 
-    epic_id = resolve_spec_arg(args)
+    epic_id = resolve_spec_arg(args, get_flow_dir())
     if not epic_id or not is_spec_id(epic_id):
         error_exit(
             f"Invalid spec ID: {epic_id}. Expected format: fn-N or fn-N-slug (e.g., fn-1, fn-1-add-auth)",
@@ -19854,7 +19908,7 @@ def cmd_checkpoint_delete(args: argparse.Namespace) -> None:
             ".flow/ does not exist. Run 'flowctl init' first.", use_json=args.json
         )
 
-    epic_id = resolve_spec_arg(args)
+    epic_id = resolve_spec_arg(args, get_flow_dir())
     if not epic_id or not is_spec_id(epic_id):
         error_exit(
             f"Invalid spec ID: {epic_id}. Expected format: fn-N or fn-N-slug (e.g., fn-1, fn-1-add-auth)",
@@ -19898,7 +19952,7 @@ def cmd_validate(args: argparse.Namespace) -> None:
             ".flow/ does not exist. Run 'flowctl init' first.", use_json=args.json
         )
 
-    spec_id_arg = resolve_spec_arg(args)
+    spec_id_arg = resolve_spec_arg(args, get_flow_dir())
     # Require either --spec (canonical) / --epic (legacy alias) or --all
     if not spec_id_arg and not getattr(args, "all", False):
         error_exit("Must specify --spec (legacy alias: --epic) or --all", use_json=args.json)

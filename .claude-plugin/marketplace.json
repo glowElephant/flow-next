@@ -12,7 +12,7 @@
     {
       "name": "flow-next",
       "description": "Zero-dependency planning + execution with .flow/ task tracking and Ralph autonomous mode (multi-model review gates). Worker subagent per task for context isolation. Includes 21 subagents, 19 commands, 23 skills.",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "author": {
         "name": "Gordon Mickel",
         "email": "gordon@mickel.tech",

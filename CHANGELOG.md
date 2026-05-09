@@ -2,6 +2,11 @@
 
 All notable changes to the flow-next.
 
+## [flow-next 1.0.1] - 2026-05-09
+
+### Fixed
+- **Bare spec id (`fn-N`) resolves to slugged spec (`fn-N-slug`) across all spec-id-accepting commands.** Pre-1.0.1, `flowctl show fn-43` failed with "Spec fn-43 missing" because the resolver did literal `<id>.json` lookup — only `flowctl show fn-43-rename-epic-spec-across-flow-next` worked. The same issue silently mis-globbed `flowctl tasks --spec fn-43` and `flowctl ready --spec fn-43` to zero results. Now: when the literal file is absent and exactly one slugged file matches `<id>-*.json`, the bare form expands automatically. Multiple matches error with a disambiguation list ("Spec id 'fn-N' is ambiguous. Matches: fn-N-foo, fn-N-bar. Use the full slug."). Single canonical helper `expand_bare_spec_id` runs at the entry of every spec-id command (`show` / `cat` / `close` / `set-plan` / `set-plan-review-status` / `set-completion-review-status` / `set-backend` / `tasks --spec` / `ready --spec` / `next --spec` / `validate --spec` / `checkpoint *`). Pre-existing limitation since 0.x — not introduced in 1.0.0; surfaced and fixed during 1.0 dogfooding. (12 unit tests in `tests/test_expand_bare_spec_id.py`.)
+
 ## [flow-next 1.0.0] - 2026-05-09
 
 ### What changed
