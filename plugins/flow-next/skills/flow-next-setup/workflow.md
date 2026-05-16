@@ -109,17 +109,17 @@ Also read plugin version from the platform-specific manifest:
 Check whichever matches `PLATFORM`. Fall back to `.claude-plugin/plugin.json` if the platform-specific file doesn't exist.
 
 **If `setup_version` exists (already set up):**
-- If **same version**: tell user "Already set up with v<VERSION>. Re-run to update docs only? (y/n)"
-  - If yes: skip to Step 6 (docs)
+- If **same version**: tell user "Already set up with v<VERSION>. Re-run to refresh files + docs? (y/n)"
+  - If yes: continue from Step 3 — re-copy bin + templates + docs (idempotent; same-version refresh should NOT skip the file copy, otherwise a project running an unchanged version number but a moved template lands docs that point at a missing path)
   - If no: done
 - If **older version**: tell user "Updating from v<OLD> to v<NEW>" and continue
 
 **If no `setup_version`:** continue (first-time setup)
 
-## Step 3: Create .flow/bin/
+## Step 3: Create .flow/bin/ and .flow/templates/
 
 ```bash
-mkdir -p .flow/bin
+mkdir -p .flow/bin .flow/templates
 ```
 
 ## Step 4: Copy files
@@ -131,8 +131,11 @@ Copy using Bash `cp` with absolute paths:
 ```bash
 cp "${PLUGIN_ROOT}/scripts/flowctl" .flow/bin/flowctl
 cp "${PLUGIN_ROOT}/scripts/flowctl.py" .flow/bin/flowctl.py
+cp "${PLUGIN_ROOT}/templates/spec.md" .flow/templates/spec.md
 chmod +x .flow/bin/flowctl
 ```
+
+`.flow/templates/spec.md` is the canonical 7-section spec scaffold that the AGENTS.md / CLAUDE.md snippet points downstream agents at. Copying it project-local means the path the snippet references resolves without depending on the plugin install location.
 
 Then read [templates/usage.md](templates/usage.md) and write it to `.flow/usage.md`.
 
@@ -436,6 +439,7 @@ Platform: <claude-code|codex|droid>
 Installed:
 - .flow/bin/flowctl (v<VERSION>)
 - .flow/bin/flowctl.py
+- .flow/templates/spec.md
 - .flow/usage.md
 ```
 
@@ -465,6 +469,6 @@ Documentation updated:
 Notes:
 - Re-run /flow-next:setup after plugin updates to refresh scripts
 - Interested in autonomous mode? Run /flow-next:ralph-init
-- Uninstall (run manually): rm -rf .flow/bin .flow/usage.md and remove <!-- BEGIN/END FLOW-NEXT --> block from docs
+- Uninstall (run manually): rm -rf .flow/bin .flow/templates .flow/usage.md and remove <!-- BEGIN/END FLOW-NEXT --> block from docs
 - This setup is optional - plugin works without it
 ```
