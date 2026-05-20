@@ -148,6 +148,80 @@ chmod +x .flow/bin/flowctl
 
 `.flow/templates/spec.md` is the canonical 7-section spec scaffold that the AGENTS.md / CLAUDE.md snippet points downstream agents at. Copying it project-local means the path the snippet references resolves without depending on the plugin install location.
 
+### Step 4a: Opt-in `<repo_root>/SPEC.md` customization (interactive)
+
+The spec-template discovery cascade prefers a customized scaffold at the repo root over `.flow/templates/spec.md` and the bundled plugin copy. This step lets the user opt into seeding `<repo_root>/SPEC.md` from the canonical template so they can edit it without diving into `.flow/templates/`.
+
+**Detect what's already at the repo root** (case-insensitive FS handling — macOS APFS, Windows NTFS):
+
+```bash
+HITS=$(ls -1 SPEC.md spec.md 2>/dev/null | sort -u | wc -l | tr -d ' ')
+```
+
+Then branch:
+
+**1. `HITS=0` (neither file exists)** — ask the user via `plain-text numbered prompt`:
+
+- **header**: `Copy canonical spec template to <repo-root>/SPEC.md?`
+- **body**: `The spec template discovery cascade prefers <repo-root>/SPEC.md over .flow/templates/spec.md, so customizations there apply to every new spec without affecting other projects. The canonical template at ${PLUGIN_ROOT}/templates/spec.md ships with the 7 canonical sections, scope-owner annotations, and the ## Decision Context H3 conditional. Skipping is safe — the cascade falls through to .flow/templates/spec.md (just copied above), so all downstream skills still resolve a template.`
+- **options**:
+ - `Copy template` — write `<repo_root>/SPEC.md` from the bundled template (carries the customization-location top-comment). Print the path so the user knows where to edit.
+ - `Skip` — no write. Cascade falls through to `.flow/templates/spec.md`. Documentation cross-links (CLAUDE.md / AGENTS.md snippets) explain how to opt in later: just copy `.flow/templates/spec.md` to `<repo-root>/SPEC.md`.
+ - `abort` — exit cleanly. Earlier steps (Step 1 `flowctl init`, Step 3 mkdir, Step 4 bin/template copies above) may already have run; they are idempotent and safe to leave. No `<repo_root>/SPEC.md` write; Step 4b onward skipped. Re-run `/flow-next:setup` later to complete setup.
+
+On `Copy template`: write the file via Bash `cp` with absolute paths.
+
+```bash
+cp "${PLUGIN_ROOT}/templates/spec.md" SPEC.md
+```
+
+**2. `HITS=1` (single hit OR case-insensitive FS collapsing both to one)** — capture whichever filename actually exists into `EXISTING` (no prompt). Both the read-for-compare and the overwrite target route through `EXISTING` so lowercase `spec.md` repos do not silently fall back to a missing `SPEC.md`:
+
+```bash
+EXISTING=$(ls -1 SPEC.md spec.md 2>/dev/null | head -1)
+```
+
+Fall through to the byte-compare re-setup gate below.
+
+**3. `HITS=2` (case-sensitive FS with both distinct files)** — prefer uppercase + print a stderr warning, then fall through to the byte-compare gate against `SPEC.md`:
+
+```bash
+echo "warn: both SPEC.md and spec.md exist at repo root; preferring uppercase. Unusual setup likely from cross-platform sync." >&2
+EXISTING=SPEC.md
+```
+
+**Re-setup byte-compare gate** (when a repo-root spec file exists from a prior `/flow-next:setup`-`Copy template` and the user may have edited it). Read both sides via `EXISTING` and normalize before comparing:
+
+```bash
+# Normalize: strip trailing newlines + replace CRLF with LF
+USER_CONTENT=$(cat "$EXISTING" | tr -d '\r')
+CANONICAL_CONTENT=$(cat "${PLUGIN_ROOT}/templates/spec.md" | tr -d '\r')
+# Strip trailing newlines from both
+USER_NORM=$(printf '%s' "$USER_CONTENT")
+CANONICAL_NORM=$(printf '%s' "$CANONICAL_CONTENT")
+```
+
+Or in Python:
+
+```python
+def normalize(b: bytes) -> bytes:
+ return b.replace(b"\r\n", b"\n").rstrip(b"\n")
+identical = normalize(user_bytes) == normalize(canonical_bytes)
+```
+
+Then:
+
+- **Identical** (after normalization): no-op. Skip the write — re-running setup must not bump mtime on unchanged files.
+- **Customized** (any deviation after normalization): do NOT silently replace. Ask the user via `plain-text numbered prompt`:
+ - **header**: `Overwrite customized <repo-root>/$EXISTING?`
+ - **body**: `<repo-root>/$EXISTING exists and differs from the canonical template shipped with this plugin version (CRLF and trailing newlines ignored). Overwriting replaces your edits. Keeping skips this file (you can manually merge later via diff against \`${PLUGIN_ROOT}/templates/spec.md\`).`
+ - **options**:
+ - `Keep mine (Recommended)` — leave `<repo-root>/$EXISTING` unchanged. Print the path to the canonical template so the user can diff manually.
+ - `Overwrite with canonical` — replace `<repo-root>/$EXISTING` (same filename — do NOT rename lowercase `spec.md` to uppercase `SPEC.md` here; preserve the user's casing) with the bundled template content. Repo customization is lost.
+ - `abort` — exit cleanly. Earlier steps (Step 1 `flowctl init`, Step 3 mkdir, Step 4 bin/template copies above) may already have run; they are idempotent and safe to leave. No `<repo-root>/$EXISTING` write; Step 4b onward skipped. Re-run `/flow-next:setup` later to complete setup.
+
+**Note:** Setup writes uppercase `SPEC.md` only on the **fresh-seed** path (`HITS=0` `Copy template`). Never seed lowercase `spec.md` from scratch. The lowercase entry in the cascade is read-only at discovery time — present only for users who deliberately created lowercase. On the **re-setup overwrite** path above, preserve the user's existing filename casing via `$EXISTING` (so a lowercase `spec.md` stays lowercase after `Overwrite with canonical`).
+
 Then handle `.flow/usage.md` — preserve any repo-customized variant:
 
 1. Read [templates/usage.md](templates/usage.md) (this is the canonical content).
@@ -233,12 +307,23 @@ HAVE_RP=$(which rp-cli >/dev/null 2>&1 && echo 1 || echo 0)
 HAVE_CODEX=$(which codex >/dev/null 2>&1 && echo 1 || echo 0)
 HAVE_COPILOT=$(which copilot >/dev/null 2>&1 && echo 1 || echo 0)
 
-# Read current config values if they exist
-CURRENT_BACKEND=$("${PLUGIN_ROOT}/scripts/flowctl" config get review.backend --json 2>/dev/null | jq -r '.value // empty')
-CURRENT_MEMORY=$("${PLUGIN_ROOT}/scripts/flowctl" config get memory.enabled --json 2>/dev/null | jq -r '.value // empty')
-CURRENT_PLANSYNC=$("${PLUGIN_ROOT}/scripts/flowctl" config get planSync.enabled --json 2>/dev/null | jq -r '.value // empty')
-CURRENT_CROSSEPIC=$("${PLUGIN_ROOT}/scripts/flowctl" config get planSync.crossEpic --json 2>/dev/null | jq -r '.value // empty')
-CURRENT_GITHUB_SCOUT=$("${PLUGIN_ROOT}/scripts/flowctl" config get scouts.github --json 2>/dev/null | jq -r '.value // empty')
+# Read current config values if they exist.
+# NB: pass `--raw` to bypass merged defaults. Without it, `flowctl config get`
+# returns the built-in default for unset keys (e.g. `planSync.crossSpec` →
+# `false`), and the `[[ -z "$CURRENT_*" ]]` guards below would skip first-run
+# prompts for any default-false option. `--raw` makes `null` mean "absent
+# from .flow/config.json"; we use an explicit `if .value == null` filter
+# (NOT `.value // empty`, which collapses boolean `false` to "" because
+# jq treats `false` as a falsy LHS for `//`). See PR #135 cycle 2.
+CURRENT_BACKEND=$("${PLUGIN_ROOT}/scripts/flowctl" config get review.backend --raw --json 2>/dev/null | jq -r 'if .value == null then "" else (.value | tostring) end')
+CURRENT_MEMORY=$("${PLUGIN_ROOT}/scripts/flowctl" config get memory.enabled --raw --json 2>/dev/null | jq -r 'if .value == null then "" else (.value | tostring) end')
+CURRENT_PLANSYNC=$("${PLUGIN_ROOT}/scripts/flowctl" config get planSync.enabled --raw --json 2>/dev/null | jq -r 'if .value == null then "" else (.value | tostring) end')
+# planSync.crossSpec is canonical; planSync.crossEpic is a read-only legacy
+# alias (removed in 2.0). The `--raw` probe checks both keys in the on-disk
+# file (canonical wins on presence, legacy fills in on fallback); deprecation
+# fires only when the user typed the legacy alias, which is never here.
+CURRENT_CROSSSPEC=$("${PLUGIN_ROOT}/scripts/flowctl" config get planSync.crossSpec --raw --json 2>/dev/null | jq -r 'if .value == null then "" else (.value | tostring) end')
+CURRENT_GITHUB_SCOUT=$("${PLUGIN_ROOT}/scripts/flowctl" config get scouts.github --raw --json 2>/dev/null | jq -r 'if .value == null then "" else (.value | tostring) end')
 ```
 
 Store detection results for use in questions. When showing options, indicate current value if set (e.g., "(current)" after the matching option label).
@@ -267,7 +352,7 @@ If ANY config values are already set, print a notice before asking questions:
 Current configuration:
 - Memory: <enabled|disabled> (change with: flowctl config set memory.enabled <true|false>)
 - Plan-Sync: <enabled|disabled> (change with: flowctl config set planSync.enabled <true|false>)
-- Plan-Sync cross-spec: <enabled|disabled> (change with: flowctl config set planSync.crossEpic <true|false>)
+- Plan-Sync cross-spec: <enabled|disabled> (change with: flowctl config set planSync.crossSpec <true|false>)
 - Review backend: <current value, bare or spec form> (change with: flowctl config set review.backend <codex|rp|copilot|none OR spec form like codex:gpt-5.4:xhigh>)
 - GitHub scout: <enabled|disabled> (change with: flowctl config set scouts.github <true|false>)
 ```
@@ -308,7 +393,9 @@ Available questions (include only if corresponding config is unset):
 }
 ```
 
-**Plan-Sync cross-spec question** (include if CURRENT_PLANSYNC is "true" AND CURRENT_CROSSEPIC is empty; the underlying config key is `planSync.crossEpic` for back-compat):
+**Plan-Sync cross-spec question** (include if CURRENT_PLANSYNC is "true" AND CURRENT_CROSSSPEC is empty)[^crossspec-legacy]:
+
+[^crossspec-legacy]: The canonical config key is `planSync.crossSpec`. The pre-1.1.3 name `planSync.crossEpic` remains readable as a legacy alias (one-line stderr deprecation; removed in 2.0).
 ```json
 {
  "header": "Cross-Spec",
@@ -414,9 +501,9 @@ Only process answers for questions that were asked (config values that were unse
 - If "Yes": `"${PLUGIN_ROOT}/scripts/flowctl" config set planSync.enabled true --json`
 - If "No": `"${PLUGIN_ROOT}/scripts/flowctl" config set planSync.enabled false --json`
 
-**Plan-Sync cross-spec** (if question was asked; config key is `planSync.crossEpic` for back-compat):
-- If "Yes": `"${PLUGIN_ROOT}/scripts/flowctl" config set planSync.crossEpic true --json`
-- If "No": `"${PLUGIN_ROOT}/scripts/flowctl" config set planSync.crossEpic false --json`
+**Plan-Sync cross-spec** (if question was asked; canonical key is `planSync.crossSpec` — the legacy `planSync.crossEpic` alias is read-only and removed in 2.0):
+- If "Yes": `"${PLUGIN_ROOT}/scripts/flowctl" config set planSync.crossSpec true --json`
+- If "No": `"${PLUGIN_ROOT}/scripts/flowctl" config set planSync.crossSpec false --json`
 
 **GitHub Scout** (if question was asked):
 - If "Yes": `"${PLUGIN_ROOT}/scripts/flowctl" config set scouts.github true --json`
@@ -478,6 +565,7 @@ Installed:
 - .flow/bin/flowctl.py
 - .flow/templates/spec.md
 - .flow/usage.md
+- <repo-root>/SPEC.md (only if Step 4a "Copy template" was chosen — otherwise omit this line)
 ```
 
 **If PLATFORM=codex, also show:**
