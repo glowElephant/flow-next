@@ -174,9 +174,23 @@ fi
 
 # --- PATH patches (all .md files) ---
 find "$CODEX_DIR/skills" -name "*.md" -type f | while read -r f; do
-  # Add $HOME/.codex fallback to FLOWCTL assignment
+  # Rewrite FLOWCTL assignment to the direct $HOME/.codex form.
+  # Inside Codex, neither DROID_PLUGIN_ROOT nor CLAUDE_PLUGIN_ROOT is ever set —
+  # only $HOME/.codex resolves (install-codex.sh's canonical target). The old
+  # `${DROID_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-$HOME/.codex}}` chain was dead
+  # code in the mirror. See fn-48.1 (R4a).
   sed -i.bak \
-    -e 's|\${DROID_PLUGIN_ROOT:-\${CLAUDE_PLUGIN_ROOT}}/scripts/flowctl|\${DROID_PLUGIN_ROOT:-\${CLAUDE_PLUGIN_ROOT:-$HOME/.codex}}/scripts/flowctl|g' \
+    -e 's|\${DROID_PLUGIN_ROOT:-\${CLAUDE_PLUGIN_ROOT}}/scripts/flowctl|$HOME/.codex/scripts/flowctl|g' \
+    "$f"
+
+  # fn-48.6: canonical files now use a once-per-skill `PLUGIN_ROOT` prelude
+  # (e.g. flow-next-ralph-init/SKILL.md) to collapse 10+ inline expansions.
+  # Rewrite the PLUGIN_ROOT assignment to the direct Codex form so subsequent
+  # `$PLUGIN_ROOT/...` references resolve. Then path-remap specific subtrees
+  # that have different on-disk layouts in the Codex install (templates land
+  # at `~/.codex/templates/<skill>` rather than `~/.codex/skills/<skill>/templates`).
+  sed -i.bak \
+    -e 's|PLUGIN_ROOT="\${DROID_PLUGIN_ROOT:-\${CLAUDE_PLUGIN_ROOT}}"|PLUGIN_ROOT="$HOME/.codex"|g' \
     "$f"
 
   # After every FLOWCTL= line, insert local fallback (if not already present)
@@ -190,10 +204,13 @@ find "$CODEX_DIR/skills" -name "*.md" -type f | while read -r f; do
     { print }
   ' "$f" > "${f}.tmp" && mv "${f}.tmp" "$f"
 
-  # Template/script path patches
+  # Template/script path patches — both legacy inline form and the new
+  # fn-48.6 `$PLUGIN_ROOT/...` consolidated form.
   sed -i.bak \
     -e 's|\${DROID_PLUGIN_ROOT:-\${CLAUDE_PLUGIN_ROOT}}/skills/flow-next-ralph-init/templates|~/.codex/templates/flow-next-ralph-init|g' \
     -e 's|\${DROID_PLUGIN_ROOT:-\${CLAUDE_PLUGIN_ROOT}}/skills/flow-next-worktree-kit/scripts|~/.codex/scripts|g' \
+    -e 's|\$PLUGIN_ROOT/skills/flow-next-ralph-init/templates|~/.codex/templates/flow-next-ralph-init|g' \
+    -e 's|\$PLUGIN_ROOT/skills/flow-next-worktree-kit/scripts|~/.codex/scripts|g' \
     "$f"
 
   # plugin.json path: primary → .codex-plugin, fallback → .claude-plugin
@@ -359,7 +376,15 @@ RP_WARNING='
 '
 
 for skill in flow-next-impl-review flow-next-plan-review flow-next-spec-completion-review; do
-  wf="$CODEX_DIR/skills/$skill/workflow.md"
+  # Prefer the backend-split workflow-rp.md (fn-48.3+) — the RP warning only
+  # applies to the RP path. If the skill hasn't been split yet, fall back to
+  # the monolithic workflow.md so unaffected skills keep the warning at the
+  # top of their file.
+  if [ -f "$CODEX_DIR/skills/$skill/workflow-rp.md" ]; then
+    wf="$CODEX_DIR/skills/$skill/workflow-rp.md"
+  else
+    wf="$CODEX_DIR/skills/$skill/workflow.md"
+  fi
   if [ -f "$wf" ]; then
     { head -1 "$wf"; echo "$RP_WARNING"; tail -n +2 "$wf"; } > "${wf}.tmp"
     mv "${wf}.tmp" "$wf"
