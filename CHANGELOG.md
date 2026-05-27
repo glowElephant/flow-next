@@ -2,6 +2,14 @@
 
 All notable changes to the flow-next.
 
+## [flow-next 1.3.2] - 2026-05-27
+
+### Added
+- **`/flow-next:map` surfaces a heuristic-0-features hint** — live-testing on flow-next's own repo (clawpatch 0.4.0) showed the provider-free heuristic mapper returns **0 features** for repos that don't match clawpatch's conventional app/framework detectors (npm bins, Next.js routes, Python packages, Rails/Laravel/Django, Go/Rust, JVM, .NET, SwiftPM, Phoenix). flow-next's own repo — plugin + markdown-skill + `flowctl.py` CLI + bun TUI — matches none, so heuristic produced 0 features while clawpatch flagged `weak=true`. The Phase 5 summary previously printed a silent "Mapped: 0 feature(s)"; it now explains the conventional-layout targeting and suggests `--source=auto` (heuristic-first, provider only if weak) or `--source=agent` (always provider-backed), noting both need `CLAWPATCH_PROVIDER` + tokens. (`--source=agent` via codex produced 9 well-scoped features for flow-next in testing.) `SKILL.md` + docs note the same. Behavioral addition on the 0-feature path only; happy path unchanged.
+
+### Fixed
+- **`.gitignore` ignores `.clawpatch/` at repo root** — the `/flow-next:map` skill writes a self-contained `.clawpatch/.gitignore` (`*` + `!.gitignore`) for user repos, but the `!.gitignore` negation leaves that one file trackable, and flow-next's own `work` skill stages via `git add -A`. Root-ignoring `.clawpatch/` keeps the dogfood repo's local feature map (regenerable via `/flow-next:map --source=agent`) out of the plugin repo.
+
 ## [flow-next 1.3.1] - 2026-05-27
 
 ### Fixed
