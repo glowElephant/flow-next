@@ -31,11 +31,43 @@ Steps to ship a new version of flow-next.
 ./scripts/bump.sh <patch|minor|major> flow-next   # 1. bump versions
 ./scripts/sync-codex.sh                            # 2. regenerate Codex mirror
 jq . plugins/flow-next/.codex-plugin/plugin.json   # 3. verify version
-# 4. update CHANGELOG.md with [flow-next X.Y.Z] entry
+# 4. update CHANGELOG.md with [flow-next X.Y.Z] entry (repo canonical, keep-a-changelog style)
+# 5. update the flow-next.dev docs-site changelog — see "Docs-site changelog entry" below
 
 git add -A && git commit -m "chore(flow-next): bump version to X.Y.Z"
 git push
 
 git tag flow-next-vX.Y.Z && git push origin flow-next-vX.Y.Z   # triggers release + Discord
 ```
+
+## Docs-site changelog entry (flow-next.dev)
+
+The public, human-readable changelog at `~/work/flow-next.dev/src/content/docs/releases/changelog.mdx` is **not** a copy of the repo `CHANGELOG.md` — it is a *scannable* highlights page with a strict format. Every release MUST follow it so the page stays readable (one line per release, expand for detail) and the right-sidebar TOC stays a version index.
+
+**Per-release format — add to the TOP of the `## Latest` section:**
+
+```mdx
+### X.Y.Z — <short title (3-6 words)>
+
+**<one-sentence summary of what changed and why it matters — the "what">.**
+
+<details>
+<summary>Detail</summary>
+
+<the full prose — lift the substance from the repo CHANGELOG.md entry. Code spans,
+links, file paths all fine. Blank lines around this block so MDX renders the markdown.>
+
+</details>
+```
+
+**Rules:**
+- **Heading is `### X.Y.Z — title`** (h3). This is what makes the TOC a version index and gives visual breaks. Never use a bare bullet.
+- **Bold one-liner is mandatory** — it's the scannable summary. Keep it to one sentence.
+- **`<details>` only for verbose releases** (multi-paragraph behavior changes). Trivial patches (a one-liner fix) can skip the disclosure and just carry the bold summary + a sentence or two of plain prose.
+- **Newest at the top of `## Latest`.** When `## Latest` grows past ~4-5 entries, migrate the oldest ones down to `## Earlier releases` (same format; collapse their detail or trim to the one-liner).
+- **Don't duplicate the whole repo CHANGELOG.** The docs-site page is the public story, not every commit. The repo `CHANGELOG.md` stays canonical (linked at the top of the page).
+- **Bump the docs-site version refs** in the same commit: `src/lib/site.ts` `FLOW_NEXT_VERSION` + `package.json` `version` → `X.Y.Z`.
+- **Gate:** `cd ~/work/flow-next.dev && pnpm build` must pass (MDX `<details>` + mermaid render). Commit separately in the `flow-next.dev` repo.
+
+The `## Maintaining this page (for contributors)` disclosure at the bottom of `changelog.mdx` documents this same format inline for editors working in the file.
 

@@ -82,7 +82,7 @@ flow-next is a first-class citizen on Claude Code, Codex, and Factory Droid. **A
 - Marketing/docs site lives at `~/work/flow-next.dev` (`https://flow-next.dev`).
 - When changing Flow-Next behavior, commands, setup, public vocabulary, README/docs, `teams.md`, `ralph.md`, `flowctl.md`, release notes, or anything user-facing, update `~/work/flow-next.dev` in the same workstream.
 - Keep the site comprehensive: landing page copy, Starlight docs pages, navigation, examples, install instructions, and cross-links should match current Flow-Next reality.
-- Update the docs-site changelog/release page too. If a changelog page does not exist yet, create one before handoff.
+- Update the docs-site changelog/release page too, following the strict per-release format in [`agent_docs/releasing.md`](agent_docs/releasing.md) "Docs-site changelog entry" — version `### X.Y.Z — title` heading + bold one-line summary + `<details>` for verbose releases, newest at the top of `## Latest`, and bump `src/lib/site.ts` `FLOW_NEXT_VERSION` + `package.json`. It's a scannable highlights page, NOT a copy of the repo `CHANGELOG.md`. If a changelog page does not exist yet, create one before handoff.
 - Run the docs-site gate before handoff: `cd ~/work/flow-next.dev && pnpm build`.
 - Commit docs-site changes separately in the `flow-next.dev` repo unless the user asks for a combined handoff.
 
