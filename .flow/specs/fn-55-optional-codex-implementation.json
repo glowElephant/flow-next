@@ -1,6 +1,11 @@
 {
   "branch_name": "fn-55-optional-codex-implementation",
+  "completion_review_status": "unknown",
+  "completion_reviewed_at": null,
   "created_at": "2026-06-04T21:35:42.368673Z",
+  "default_impl": null,
+  "default_review": null,
+  "default_sync": null,
   "depends_on_epics": [],
   "id": "fn-55-optional-codex-implementation",
   "next_task": 1,
@@ -12,12 +17,12 @@
   "tracker": {
     "baseHashFlow": null,
     "baseHashTracker": null,
-    "id": null,
-    "identifier": null,
-    "lastSyncedAt": null,
+    "id": "FLOW-6",
+    "identifier": "FLOW-6",
+    "lastSyncedAt": "2026-06-04T21:38:17.172860Z",
     "mergeBaseFlow": null,
     "mergeBaseTracker": null,
-    "url": null
+    "url": "https://linear.app/gmickel/issue/FLOW-6"
   },
-  "updated_at": "2026-06-04T21:35:42.675257Z"
+  "updated_at": "2026-06-04T21:38:17.173095Z"
 }
