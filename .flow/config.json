@@ -17,15 +17,15 @@
     "conflictTiebreak": "always-ask",
     "enabled": true,
     "perEvent": {
-      "capture": "off",
-      "completionReview": "off",
-      "interview": "off",
-      "makePr": "off",
-      "plan": "off",
-      "resolvePr": "off",
+      "capture": "reconcile",
+      "completionReview": "reconcile",
+      "interview": "reconcile",
+      "makePr": "comment",
+      "plan": "reconcile",
+      "resolvePr": "comment",
       "work": {
-        "done": "off",
-        "firstClaim": "off"
+        "done": "comment",
+        "firstClaim": "push"
       }
     },
     "perTracker": {
