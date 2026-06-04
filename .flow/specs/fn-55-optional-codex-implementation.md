@@ -2,8 +2,8 @@
 
 ## Conversation Evidence
 
-> user: "i heard they now had a --codex option for ce-work (the pendant to flow-next:work) -- check it out please"
-> user: "yes i want a spec, don't mention the compound engineering plugin specifically, the model to use should always be gpt-5.5 medium unless otherwise stated by the user, this is a new spec and not tied to the optimization work."
+> user: "i heard they now had a --codex option for [an external plugin's work command] (the pendant to flow-next:work) -- check it out please"  *(source plugin name redacted per request)*
+> user: "yes i want a spec, [keep the source plugin unnamed], the model to use should always be gpt-5.5 medium unless otherwise stated by the user, this is a new spec and not tied to the optimization work."
 > user: "make sure build in a way that it's an optional path that doesn't bloat our work skill, progressive discovery as always, make heavy use of their code snippets as they are surely thoroughly tested"
 > [context: a proven, battle-tested external delegation implementation drives code implementation through `codex exec` while the orchestrating Claude agent keeps planning / review / git / decisions. Its invocation template, `--output-schema` result contract, background-launch+poll loop, per-batch effort model, rollback / circuit-breaker, and pre-flight gates are the reusable substrate this spec lifts.]
 
