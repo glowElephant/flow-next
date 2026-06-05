@@ -1,6 +1,6 @@
 # Other Platforms
 
-Flow-next is a first-class citizen on Claude Code (canonical), OpenAI Codex (pre-built mirror), and Factory Droid (native cross-platform patterns). A community port exists for OpenCode. xAI **Grok Build** reads the Claude Code plugin with zero config — skills and hooks load (confirmed via `grok inspect`) — but whether flow-next's **multi-agent flows** run is **unverified** (see [Grok Build](#grok-build-claude-code-compatibility) below).
+Flow-next is a first-class citizen on Claude Code (canonical), OpenAI Codex (pre-built mirror), and Factory Droid (native cross-platform patterns). A community port exists for OpenCode. xAI **Grok Build** reads the Claude Code plugin with zero config — skills load and the `/flow-next:*` commands **run when typed** (hooks fire); the slash *autocomplete* under-lists them and flow-next's **multi-agent flows** are still **unverified** (see [Grok Build](#grok-build-claude-code-compatibility) below).
 
 ## Install matrix
 
@@ -9,7 +9,7 @@ Flow-next is a first-class citizen on Claude Code (canonical), OpenAI Codex (pre
 | Claude Code | `/plugin marketplace add gmickel/flow-next-marketplace && /plugin install flow-next` | `.claude-plugin/plugin.json` | Canonical environment |
 | Factory Droid | `droid plugin marketplace add https://github.com/gmickel/flow-next && droid plugin install flow-next` (in Droid CLI) | `.claude-plugin/plugin.json` (Droid auto-translates Claude Code plugin format) | Native cross-platform patterns |
 | OpenAI Codex | `git clone https://github.com/gmickel/flow-next.git && cd flow-next && ./scripts/install-codex.sh` | `.codex-plugin/plugin.json` | Pre-built mirror under `plugins/flow-next/codex/` |
-| Grok Build (xAI) | Auto-discovered if installed in Claude Code (run `grok inspect`); or add `gmickel/flow-next` as a `[[marketplace.sources]]` entry. **Not** `grok plugin install <repo>`. | `.claude-plugin/plugin.json` (read via Claude Code compat) | Skills + hooks load (confirmed). Multi-agent flows **unverified** — see below |
+| Grok Build (xAI) | Auto-discovered if installed in Claude Code (run `grok inspect`); or add `gmickel/flow-next` as a `[[marketplace.sources]]` entry. **Not** `grok plugin install <repo>`. | `.claude-plugin/plugin.json` (read via Claude Code compat) | Skills load; `/flow-next:*` run when typed + hooks fire. Autocomplete under-lists; multi-agent **unverified** — see below |
 | OpenCode | See [flow-next-opencode](https://github.com/gmickel/flow-next-opencode) | n/a | Community port |
 
 > The canonical install path on Claude Code is the marketplace. Direct `--plugin-dir` (`claude --plugin-dir ./plugins/flow-next`) is the development path.
@@ -158,22 +158,19 @@ chmod +x .flow/bin/flowctl
 
 > **Do NOT run `grok plugin install https://github.com/gmickel/flow-next`.** That is the **single-plugin** git installer; the repo root is a **marketplace** (the plugin is nested at `plugins/flow-next/`), so it errors `no plugins found in the source (no plugin.json or convention components)` — there is no single plugin at the repo root. This is the same reason you don't `claude plugin install` a marketplace repo. Use the marketplace / auto-read path above.
 
-### What's confirmed (Grok 0.2.27 alpha, via `grok inspect`)
+### What works (Grok 0.2.27 alpha)
 
-- All flow-next **skills** load as `plugin: flow-next` (and appear as `/<skill-name>` slash commands).
-- The Ralph-guard **hook** loads (`file → plugin: flow-next`).
+- All 24 flow-next **skills** load (`grok inspect`: `plugin: flow-next`); discovery used the **Claude Code plugin install** directly (`Marketplaces (0)`, no Grok-side config).
+- **The `/flow-next:<name>` commands run when typed.** Confirmed: typing `/flow-next:plan` fires `user_prompt_submit`, loads the `flow-next-plan` skill, and runs its workflow — **hooks fire** (`user_prompt_submit` + skill hooks). The Ralph-guard **hook** loads (`file → plugin: flow-next`).
 - **MCP servers** resolve (e.g. RepoPrompt, linear-server).
-- Discovery used the **Claude Code plugin install** directly — `Marketplaces (0)`, no Grok-side config.
 
-### Open question — agents / multi-agent flows are UNVERIFIED
+### Known gaps
 
-The docs say Grok reads Claude Code **agents**, but `grok inspect` (0.2.27 alpha) surfaced **only the 3 builtin agents** (`general-purpose`, `explore`, `plan`) and reported **`1 agents`** for the flow-next plugin — not flow-next's **21 subagents** (`worker`, the `*-scout`s, `pr-comment-resolver`, …). flow-next's engine dispatches those by `subagent_type`, so the **fan-out skills** — `/flow-next:work`, `/flow-next:plan`, `/flow-next:prime`, `/flow-next:prospect`, `/flow-next:resolve-pr` — depend on them resolving.
+- **Slash autocomplete is incomplete (discoverability only — commands still run).** Grok's slash *menu* lists only skills it treats as user-invocable — for flow-next that's the ~7 with **no** `user-invocable` key (`flow-next`, `flow-next-deps`, `flow-next-drive`, `flow-next-export-context`, `flow-next-rp-explorer`, `flow-next-worktree-kit`). The 20 skills set `user-invocable: false` and the 22 `commands/flow-next/*.md` wrappers **don't appear in the menu — but they execute fine when typed in full** (e.g. `/flow-next:plan`). flow-next deliberately marks skills `user-invocable: false` because the Claude Code entry point is the command wrapper; Grok's autocomplete keys on the skill flag, so the menu under-lists. Not a functional blocker — just type the command.
+- **Multi-agent dispatch — still unverified.** flow-next's fan-out flows (`/flow-next:work`, `:plan`, `:prime`, `:prospect`, `:resolve-pr`) spawn custom subagents (`worker`, the `*-scout`s, `pr-comment-resolver`) by `subagent_type`. `grok inspect` shows only the 3 builtin agents + a `1 agents` count for the plugin, not flow-next's 21 — and the docs' "reads agents" claim is unconfirmed in practice. The plan skill *starts* under Grok (screenshot-confirmed), but whether its scouts actually spawn, and whether `/flow-next:work` runs end-to-end, needs a full run to confirm. Treat the multi-agent engine as untested on Grok until then.
+- **Ralph autonomous mode — experimental.** Hooks fire, but Grok's hook lifecycle + matcher surface differ from Claude Code's; not validated.
 
-This is a **claim-vs-observed contradiction** that `inspect` alone can't settle (loaded-but-unlisted vs not-registered). **Until a functional run confirms subagent dispatch on Grok, treat the fan-out skills as untested there.** Single-context skills that don't spawn subagents (`/flow-next` task/spec management, `/flow-next:capture`, `/flow-next:interview`, `/flow-next:make-pr`, `/flow-next:tracker-sync`) are the safe subset.
-
-**Ralph autonomous mode** is likewise unverified — the guard hook loads, but Grok's hook lifecycle + matcher surface differ from Claude Code's. Treat as experimental.
-
-> **Status (Grok 0.2.27 alpha):** discovery + skill/hook loading confirmed; agent registration looks incomplete in `inspect` (contradicts the docs' "reads agents" claim); multi-agent dispatch + Ralph behavior need a functional smoke before flow-next claims Grok support. Re-assess on the next Grok release / once subagent behavior is confirmed.
+> **Status (Grok 0.2.27 alpha):** skills load; `/flow-next:*` slash commands **execute when typed** (hooks fire); MCP resolves. Open: the slash *autocomplete* omits command-wrapped + `user-invocable: false` skills (they still run when typed); multi-agent subagent dispatch + Ralph behavior need a full-run confirmation. Re-assess once subagent dispatch is verified.
 
 ## Windows + Copilot review backend
 
