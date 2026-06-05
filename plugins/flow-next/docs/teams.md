@@ -24,6 +24,7 @@ The vocabulary on this page — *handover objects*, *Delegate / Review / Own*, *
   - [Strategy alignment](#strategy-alignment)
 - [Multi-developer coordination](#multi-developer-coordination)
 - [Autonomous mode (Ralph) in a team](#autonomous-mode-ralph-in-a-team)
+- [Tracker sync & Linear Diffs](#tracker-sync--linear-diffs)
 - [What flow-next does *not* replace](#what-flow-next-does-not-replace)
 - [Adoption ladder](#adoption-ladder)
 - [Where to go next](#where-to-go-next)
@@ -396,6 +397,16 @@ In a team setting:
 - **Ralph fits the methodology's iterative-loop *vs* factory-of-agents distinction.** Iterative-loop = `/work` with a human at the keyboard. Factory = Ralph. The choice is per-spec, not per-team.
 
 Ralph emits run logs to `scripts/ralph/runs/<run>/` — receipts, verbose logs, the Claude session jsonl. The morning-review workflow lives in [ralph.md — Morning Review Workflow](ralph.md#morning-review-workflow).
+
+---
+
+## Tracker sync & Linear Diffs
+
+Teams that live in Linear or GitHub Issues don't have to leave their board. `/flow-next:tracker-sync` **projects** a `.flow/specs/<id>.md` spec onto a tracker issue (Linear first, GitHub next) and reconciles body, status, and comments two-way. **Projection, not coordination** — the spec stays the source of truth and the quality layer; the tracker is a co-editable mirror that never drives flow state or spawns agents. Hook it up once via the discovery ceremony; from then on the lifecycle (capture → plan → work → completion-review) keeps the linked issue in sync — on by default per event, opt out with `flowctl config set tracker.perEvent.<event> off`.
+
+**Linear Diffs — review the PR inside the issue.** When `tracker.type == linear`, Flow-Next makes your PRs [Linear Diffs](https://linear.app/docs/diffs)-ready automatically: `/flow-next:make-pr` writes a **non-closing** `Ref WOR-N` line into the PR body (plus a rich PR attachment on the GraphQL transport), so Linear's GitHub integration auto-links the PR and renders its full diff, file changes, checks, and inline review threads **directly on the issue** — you approve / request changes / merge without leaving Linear. *Non-closing* (`Ref`, not `Fixes`) is deliberate: the PR renders as a diff but does **not** auto-complete the issue on merge — `/flow-next:spec-completion-review` owns the Done transition. The PR↔issue link is unconditional once the bridge is active (no `makePr` opt-in needed). One-time Linear-side setup is required (the GitHub integration with code access, your personal GitHub connection, and "Enable code reviews"). **GitHub-tracker** users get no Linear Diffs — the PR is cross-linked natively (`Refs #N`) and review happens on GitHub.
+
+Full reference — setup ceremony, hybrid ids, transport ladder, who-wins reconciliation: [`tracker-sync.md`](tracker-sync.md). A screenshot of a Flow-Next PR rendered as a Linear Diff is on [flow-next.dev](https://flow-next.dev/teams/tracker-sync/#linear-diffs--review-the-pr-inside-the-issue).
 
 ---
 
