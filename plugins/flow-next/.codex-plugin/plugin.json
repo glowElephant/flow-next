@@ -1,13 +1,13 @@
 {
   "name": "flow-next",
-  "version": "1.10.1",
+  "version": "1.10.2",
   "description": "Zero-dependency planning + execution with .flow/ task tracking and Ralph autonomous mode. Worker subagent per task for context isolation. Compatible with Codex, Claude Code, and Factory Droid.",
   "author": {
     "name": "Gordon Mickel",
     "email": "gordon@mickel.tech",
     "url": "https://mickel.tech"
   },
-  "homepage": "https://mickel.tech/apps/flow-next",
+  "homepage": "https://flow-next.dev",
   "repository": "https://github.com/gmickel/flow-next",
   "license": "MIT",
   "keywords": [
@@ -28,7 +28,7 @@
       "Read",
       "Write"
     ],
-    "websiteURL": "https://mickel.tech/apps/flow-next",
+    "websiteURL": "https://flow-next.dev",
     "brandColor": "#3B82F6"
   }
 }

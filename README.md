@@ -3,7 +3,7 @@
 # Flow-Next
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Flow-next](https://img.shields.io/badge/Flow--next-v1.10.1-green)](CHANGELOG.md)
+[![Flow-next](https://img.shields.io/badge/Flow--next-v1.10.2-green)](CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/Docs-📖-informational)](plugins/flow-next/docs/README.md)
 
 [![Author](https://img.shields.io/badge/Author-Gordon_Mickel-orange)](https://mickel.tech)
@@ -272,7 +272,7 @@ The repo holds the offline-resilient reference. [flow-next.dev](https://flow-nex
 | Local plugin dev + smoke tests + Ralph e2e | [`agent_docs/local-dev.md`](agent_docs/local-dev.md) | — |
 | Repo strategic intent + active tracks | [`STRATEGY.md`](STRATEGY.md) | — |
 | Canonical vocabulary | [`GLOSSARY.md`](GLOSSARY.md) | — |
-| Visual overview, diagrams, methodology | — | [`mickel.tech/apps/flow-next`](https://mickel.tech/apps/flow-next) · [`flow-next.dev`](https://flow-next.dev) |
+| Visual overview, diagrams, methodology | — | [`flow-next.dev`](https://flow-next.dev) |
 
 Doc index with one-line descriptions: [`plugins/flow-next/docs/README.md`](plugins/flow-next/docs/README.md).
 

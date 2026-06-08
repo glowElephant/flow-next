@@ -2,6 +2,11 @@
 
 All notable changes to the flow-next.
 
+## [flow-next 1.10.2] - 2026-06-08
+
+### Fixed
+- **Plugin homepage now points at the canonical product site `https://flow-next.dev`** instead of the stale `https://mickel.tech/apps/flow-next`. The `homepage` field in `.claude-plugin/marketplace.json`, `plugins/flow-next/.claude-plugin/plugin.json`, and `plugins/flow-next/.codex-plugin/plugin.json` (plus the Codex manifest's `interface.websiteURL`) all carried the old URL; `.cursor-plugin/plugin.json` was already correct, so the rest were just drift. `author.url` / `owner.url` (Gordon's personal site / GitHub) are unchanged. Also aligned the `flow-next-tui` package `homepage` and the README "Visual overview" doc row (which redundantly listed both URLs) to `flow-next.dev`.
+
 ## [flow-next 1.10.1] - 2026-06-08
 
 ### Fixed
