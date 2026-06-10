@@ -27,6 +27,21 @@ FLOWCTL="$HOME/.codex/scripts/flowctl"
 [ -x "$FLOWCTL" ] || FLOWCTL=".flow/bin/flowctl"
 ```
 
+## Pre-check: Local setup version
+
+Non-blocking, same pattern as `/flow-next:plan` — one-line nag when the local setup lags the plugin:
+
+```bash
+SETUP_VER=$(jq -r '.setup_version // empty' .flow/meta.json 2>/dev/null)
+PLUGIN_JSON="${DROID_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-$HOME/.codex}}/.codex-plugin/plugin.json"
+PLUGIN_VER=$(jq -r '.version' "$PLUGIN_JSON" 2>/dev/null || echo "unknown")
+if [[ -n "$SETUP_VER" && "$PLUGIN_VER" != "unknown" && "$SETUP_VER" != "$PLUGIN_VER" ]]; then
+ echo "Plugin updated to v${PLUGIN_VER}. Run /flow-next:setup to refresh local scripts (current: v${SETUP_VER})." >&2
+fi
+```
+
+Continue regardless (never blocks; silent when setup was never run or versions match).
+
 **Inline skill (no `context: fork`)** — `plain-text numbered prompt` must stay reachable across phases. Subagents can't call plain-text numbered prompts (Claude Code issues #12890, #34592). The discovery ceremony (Phase 1) and genuine-conflict surfacing (handled in fn-52.4/.5) both require user choice in interactive mode.
 
 ## flowctl owns plumbing; the skill owns judgment

@@ -26,6 +26,21 @@ FLOWCTL="$HOME/.codex/scripts/flowctl"
 [ -x "$FLOWCTL" ] || FLOWCTL=".flow/bin/flowctl"
 ```
 
+## Pre-check: Local setup version
+
+Non-blocking, same pattern as `/flow-next:plan` — one-line nag when the local setup lags the plugin:
+
+```bash
+SETUP_VER=$(jq -r '.setup_version // empty' .flow/meta.json 2>/dev/null)
+PLUGIN_JSON="${DROID_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-$HOME/.codex}}/.codex-plugin/plugin.json"
+PLUGIN_VER=$(jq -r '.version' "$PLUGIN_JSON" 2>/dev/null || echo "unknown")
+if [[ -n "$SETUP_VER" && "$PLUGIN_VER" != "unknown" && "$SETUP_VER" != "$PLUGIN_VER" ]]; then
+ echo "Plugin updated to v${PLUGIN_VER}. Run /flow-next:setup to refresh local scripts (current: v${SETUP_VER})." >&2
+fi
+```
+
+Continue regardless (never blocks; silent when setup was never run or versions match).
+
 **Ask the user via plain text.** Render the options below as a numbered list `1.` … `N.`, followed by a final option `N+1. Other — type your own answer`. Print the question, then the numbered list, then **stop and wait for the user's next message before continuing**. Parse the reply as: a bare number `1`–`N+1` → that option; the literal text of an option label → that option; free text after `Other` → custom answer.
 
 **Inline skill (no `context: fork`)** — runs on the host agent, not a forked subagent, because the **prepare** phase must ask the user for undocumented facts (target URL / test account — info-only, never a confirm gate) and a forked subagent cannot ask the user back (Claude Code issues #12890, #34592). The host asks via `plain-text numbered prompt`.

@@ -10,6 +10,21 @@ Scaffold or update repo-local Ralph harness. Opt-in only.
 
 ## Preamble
 
+## Pre-check: Local setup version
+
+Non-blocking, same pattern as `/flow-next:plan` — one-line nag when the local setup lags the plugin:
+
+```bash
+SETUP_VER=$(jq -r '.setup_version // empty' .flow/meta.json 2>/dev/null)
+PLUGIN_JSON="${DROID_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-$HOME/.codex}}/.codex-plugin/plugin.json"
+PLUGIN_VER=$(jq -r '.version' "$PLUGIN_JSON" 2>/dev/null || echo "unknown")
+if [[ -n "$SETUP_VER" && "$PLUGIN_VER" != "unknown" && "$SETUP_VER" != "$PLUGIN_VER" ]]; then
+ echo "Plugin updated to v${PLUGIN_VER}. Run /flow-next:setup to refresh local scripts (current: v${SETUP_VER})." >&2
+fi
+```
+
+Continue regardless (never blocks; silent when setup was never run or versions match).
+
 The plugin root resolves once via the cross-platform env-var fallback (Droid uses `DROID_PLUGIN_ROOT`; Claude Code documents `CLAUDE_PLUGIN_ROOT` as its compat alias). Subsequent blocks use `$PLUGIN_ROOT`:
 
 ```bash

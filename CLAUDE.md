@@ -105,6 +105,7 @@ flow-next is a first-class citizen on Claude Code, Codex, and Factory Droid. **A
 | Cross-platform install matrix (Claude / Codex / Droid / OpenCode) | [`plugins/flow-next/docs/platforms.md`](plugins/flow-next/docs/platforms.md) |
 | Codebase feature map (optional) | [`plugins/flow-next/skills/flow-next-map/`](plugins/flow-next/skills/flow-next-map/) — `/flow-next:map` wraps `clawpatch map` |
 | Troubleshooting + uninstall | [`plugins/flow-next/docs/troubleshooting.md`](plugins/flow-next/docs/troubleshooting.md) |
+| Canonical spec-template scaffold (single source of truth — section list, scope-owner annotations, `## Decision Context` flat-vs-H3 conditional; `.flow/templates/spec.md` is a setup-managed copy) | [`plugins/flow-next/templates/spec.md`](plugins/flow-next/templates/spec.md) |
 | Adding a new `/flow-next:<name>` skill | [`agent_docs/adding-skills.md`](agent_docs/adding-skills.md) |
 | Cutting a release | [`agent_docs/releasing.md`](agent_docs/releasing.md) |
 | Local plugin dev + smoke tests + Ralph e2e | [`agent_docs/local-dev.md`](agent_docs/local-dev.md) |
