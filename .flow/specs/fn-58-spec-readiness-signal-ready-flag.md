@@ -41,6 +41,8 @@ flowctl owns the field + set/query plumbing; the skills own *when* to set it and
 - Linear readiness is a state-**name** match layered on the existing `state.type` mapping — a custom "Ready" state typically carries `state.type=unstarted`, which alone cannot distinguish Todo from Ready (same name-override pattern as status-sync). [inferred]
 - GitHub issues have no workflow states — for GitHub-tracked projects `tracker.readyState` resolves to a label. [inferred]
 - The `ready` flag lives in the committed spec JSON (same placement as `plan_review_status`), so tracker-driven re-projection may produce working-tree changes on sync — accepted, identical to existing status-sync behavior. [inferred]
+- Readiness projection rides the fn-57 observability layer (shipped 1.11.0): tracker-sync ops that project `readyState` emit `--event`-tagged receipts, auditable via the read-only `flowctl sync check`. [inferred]
+- The capture/interview "mark ready?" prompt (R5) reuses the post-approve consent-question pattern capture gained in fn-57.7 (vocabulary scan → read-back option → post-write) — the precedent is now shipped, not hypothetical. [inferred]
 
 ## Acceptance Criteria
 <!-- scope: both -->

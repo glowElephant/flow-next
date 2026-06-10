@@ -41,6 +41,7 @@ Autonomous signaling: sets a lightweight `FLOW_AUTONOMOUS=1` "no user questions"
 - Iteration / budget ceilings are the host loop's concern, but the skill must report `NO_WORK` cleanly so the host can stop. [inferred]
 - If a sub-skill would still ask under autonomy (genuinely ambiguous), report `NEEDS_HUMAN` rather than block on a question. [paraphrase]
 - Cross-platform: canonical Claude tool names; `sync-codex.sh` rewrites `AskUserQuestion` → numbered prompt and `Task` → `spawn_agent`. [strategy:Cross-platform parity]
+- Sub-skills now ship fn-57's end-of-run tracker self-check (four-state `Tracker sync:` summary slot + one-cycle retro-fire, 1.11.0) — a pilot tick inherits tracker observability for free; the verdict passes the slot state through rather than re-checking. [inferred]
 
 ## Acceptance Criteria
 <!-- scope: both -->
@@ -54,7 +55,7 @@ Autonomous signaling: sets a lightweight `FLOW_AUTONOMOUS=1` "no user questions"
 - **R7:** A spec that fails to advance twice is taken out of selection — its `ready` flag is cleared and the reason is reported in the `BLOCKED` verdict — and skipped on later ticks; no thrashing. [paraphrase]
 - **R8:** It is driver-agnostic — works invoked by Claude Code `/loop`, Claude Code `/goal`, or Codex `/goal`. [user]
 - **R9:** Cross-platform parity — canonical Claude tool names; `sync-codex.sh` handles the Codex mirror rewrites. [strategy:Cross-platform parity]
-- **R10:** Docs + flow-next.dev updated — new skill page, both navbars, changelog, command reference, version bump. [user]
+- **R10:** Docs + flow-next.dev updated — new skill page, both navbars, changelog, command reference, version bump. The hero pillar grid is data-array-extensible since fn-57.8 — evaluate adding a loop/autonomy pillar as part of the site work ("may need to add more there later too, like the loop stuff"). [user]
 - **R11:** plan, work, and make-pr detect `FLOW_AUTONOMOUS` alongside `FLOW_RALPH` for question-suppression and safe defaults; under it make-pr forces draft and hard-errors instead of prompting. [inferred]
 
 ## Boundaries

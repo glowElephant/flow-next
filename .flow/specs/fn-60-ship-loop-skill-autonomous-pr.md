@@ -37,6 +37,8 @@ Per cadence tick, for each open PR the loop authored:
 
 - ~30-minute patience window for the first automated review; convergence = no new threads since the last resolve. [user]
 - Operates only on PRs the build-loop authored — discovered as open PRs whose head branch matches a flow spec's `branch_name` (make-pr bodies embed the spec id as a secondary signal); never arbitrary PRs. [inferred]
+- make-pr §4.6b (shipped 1.11.0) guarantees the PR body carries the tracker ref post-create — the body-embedded secondary discovery signal is now reliable; `branch_name` match stays primary. [inferred]
+- The post-merge close (R13) flips the linked issue to its terminal state + posts the release/verdict comment + emits an event-tagged receipt through the fn-57 layer — the exact flow exercised manually at the 1.11.0 release. [inferred]
 - CI-fix attempts are bounded per PR; on exhaustion the PR is durably marked (e.g. a `flow-next:needs-human` label — survives sessions, visible on GitHub), reported `NEEDS_HUMAN`, and skipped on later ticks. [inferred]
 - The patience window anchors to the last push, not PR creation — a CI-fix push invalidates prior reviews and restarts the wait. [inferred]
 - "Approving automated review" must be a detectable, per-project signal (a bot's APPROVE review or a configured reviewer's clean verdict) — reviewer bots differ in whether they file formal approvals. [inferred]
