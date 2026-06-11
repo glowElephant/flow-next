@@ -148,6 +148,7 @@ When `tracker.readyState` is configured (the optional ceremony question above), 
 - **Stale-config degradation.** A configured state name / label that no longer resolves on the tracker (renamed/deleted) ⇒ **warn + `noop` receipt + flag untouched + the sync continues** — one bad knob never aborts the run, and a stale `readyState` must not silently un-ready every linked spec.
 - **Orthogonal to status.** The projection never feeds the who-wins ladder above, never advances `lastSyncedAt` by itself, and never blocks — body/status/comments reconcile exactly as before. `readyState: null` (the default) skips it entirely: no calls, no receipts, no flag writes.
 - **Opting back out.** `flowctl config set tracker.readyState null` clears the knob (the literal `null` token is stored as JSON null) — the projection goes dormant and local `spec ready`/`unready` is authoritative again.
+- **Pilot interplay (1.13.0+).** [`/flow-next:pilot`](../skills/flow-next-pilot/SKILL.md) selects ready specs and, after two healthy no-advance ticks, runs a local `spec unready` (don't-thrash). On a `readyState`-configured repo that local write is **advisory until the board reflects it** — the next pull projects the issue's state back, re-readying the spec, and pilot treats a ready-again spec as human re-blessed (strikes cleared). So when pilot strikes a spec out, **move the issue out of the ready state on the board** before the next sync; re-blessing after a fix is the reverse move. The board stays the single control plane for readiness either way.
 
 ## Ralph-safe — never blocks
 
