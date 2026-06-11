@@ -1043,6 +1043,13 @@ def is_negative_context(line):
         return True
     if 'do NOT use' in line and 'plain-text numbered prompt' in line:
         return True
+    # Hard-error / no-user prose ("questions hard-error ...", "no user to
+    # ask ..."). These lines DESCRIBE a Ralph/autonomous branch that refuses
+    # to ask — injecting the R2 ask block here would contradict the branch
+    # semantics (observed: make-pr autonomous bullet, fn-59.3 review).
+    if ('hard-error' in line or 'no user to ask' in line) \
+            and 'plain-text numbered prompt' in line:
+        return True
     # Capability-negation prose ("cannot call X", "can't ask via X", "cannot
     # use X"). These describe a subagent/context that is UNABLE to ask — a
     # descriptive site (e.g. the delegation reference's "the worker is a
@@ -1194,6 +1201,7 @@ generate_openai_yaml "flow-next-memory-migrate" "Flow Memory Migrate" "Migrate l
 generate_openai_yaml "flow-next-make-pr" "Flow Make PR" "Render a cognitive-aid PR body from flow-next state and open via gh" "#3B82F6" false
 generate_openai_yaml "flow-next-tracker-sync" "Flow Tracker Sync" "Project a spec to a tracker (Linear/GitHub) and reconcile two-way — NOT plan-sync" "#3B82F6" false
 generate_openai_yaml "flow-next-qa" "Flow QA" "Live-app real-user QA pass derived from the spec — drives the running app, files P0/P1/P2 findings, emits a YES/NO verdict" "#3B82F6" false
+generate_openai_yaml "flow-next-pilot" "Flow Pilot" "Single-tick autonomous build-loop conductor — one ready spec, one stage per tick, terminal PILOT_VERDICT line" "#3B82F6" false
 
 # Review skills (red, explicit)
 generate_openai_yaml "flow-next-impl-review" "Flow Implementation Review" "Carmack-level code review via RepoPrompt"  "#EF4444" false
@@ -1260,6 +1268,7 @@ REQUIRED_OPENAI_YAML_SKILLS=(
   "flow-next-make-pr"
   "flow-next-tracker-sync"
   "flow-next-qa"
+  "flow-next-pilot"
   "flow-next-impl-review"
   "flow-next-plan-review"
   "flow-next-spec-completion-review"

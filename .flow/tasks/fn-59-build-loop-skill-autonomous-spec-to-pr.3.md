@@ -8,6 +8,7 @@ Docs (repo + flow-next.dev), the Ralph-vs-pilot story, the hero autonomy pillar,
 
 **Size:** M
 **Files:** repo: `README.md`, `GLOSSARY.md`, `CLAUDE.md` (Where-to-look row), `plugins/flow-next/docs/README.md` + `docs/ralph.md`, 3 manifests' count strings, `CHANGELOG.md`, version files (bump.sh), `plugins/flow-next/codex/**` (regen incl. new pilot mirror + openai.yaml); site: `src/content/docs/skills/pilot.mdx` (new) + BOTH navbars + `ralph/*.mdx` cross-links + `src/pages/index.astro` hero `proofPillars` + changelog + `FLOW_NEXT_VERSION`/`package.json`
+<!-- Updated by plan-sync: fn-59.1 added a new skill AND a new command (commands/flow-next/pilot.md) but left manifests at 1.12.0 counts. Count-string targets verified against actual files: skills 26→27, commands 22→23. Per-manifest: .claude-plugin/plugin.json description "21 subagents, 22 commands, 26 skills" → "...23 commands, 27 skills"; .claude-plugin/marketplace.json plugins[0].description same string → same bump; .codex-plugin/plugin.json carries "21 subagents, 26 skills" in interface.longDescription ONLY (top description has no counts) → "...27 skills" (no command count there). The README "Twenty-six"→"Twenty-seven" skills + commands-table row still hold; also bump the commands count if README states one. -->`
 
 ## Approach
 
@@ -37,7 +38,8 @@ Docs (repo + flow-next.dev), the Ralph-vs-pilot story, the hero autonomy pillar,
 - [ ] Site commit separate, unpushed until tag
 
 ## Done summary
-_(to be filled at completion)_
-
+1.13.0 release surfaces for /flow-next:pilot: repo docs (README Twenty-seven + commands row + two-path autonomy blurb, GLOSSARY Pilot/Verdict terms + Ralph contrast, docs/ralph.md "Host-driven loop vs Ralph" subsection with drive recipes and version gates, docs index + CLAUDE.md rows), manifest count sweep (21 subagents / 23 commands / 27 skills), CHANGELOG 1.13.0, bump.sh minor lockstep, and the committed Codex mirror regen including the new pilot mirror (openai.yaml present, R2 audit clean — plus an is_negative_context hardening so the R2 ask block can never anchor in autonomous hard-error prose). flow-next.dev updated in a separate unpushed commit (5b806f4): new skills/pilot.mdx in BOTH navbars, ralph cross-links, seventh hero pillar "Autonomous loop", changelog entry, FLOW_NEXT_VERSION/package.json 1.13.0, pnpm build green. RP impl-review SHIP after 2 fix rounds; repo docs batch implemented via codex delegation (gpt-5.5/medium, class=success).
 ## Evidence
-_(to be filled at completion)_
+- Commits: 3465f89, 2550f95, 49496fb, 3ff66b5
+- Tests: for f in plugins/flow-next/tests/test_*.py; do python3 $f; done (all green), ./scripts/sync-codex.sh (validation green: 28 skills, 21 agents, openai.yaml coverage incl. flow-next-pilot), cd ~/work/flow-next.dev && pnpm build (59 pages, green; site commit 5b806f4, unpushed until tag), jq parse + count grep across README + 3 manifests (27 skills / 23 commands / 21 subagents), version lockstep check: 1.13.0 across 5 manifests + README badge + site FLOW_NEXT_VERSION/package.json
+- PRs:
