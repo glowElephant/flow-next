@@ -99,3 +99,7 @@ The detect → surface → ask → never-assume flow `/flow-next:tracker-sync` r
 ## tracker-key handle
 
 A tracker identifier (e.g. `WOR-17`) used as a **resolvable flow id**, the hybrid id model. **Tracker-first** specs are canonically `wor-17-slug` (tasks `wor-17-slug.M`); bare `wor-17` / `wor-17.M` resolve as aliases. **Flow-first** specs keep `fn-NN-slug` and store `WOR-17` in `tracker.identifier` as a resolvable display alias. Resolution is case-insensitive (`show wor-17`, `work wor-17` resolve); the native `fn-` scheme is reserved (`fn-N` allocation counts `fn-*` only); one tracker team per repo; **ids never rename** on link.
+
+## render lens
+
+A regenerable human-review artifact (HTML) derived from a markdown source of truth; never the storage format, always re-derivable.
