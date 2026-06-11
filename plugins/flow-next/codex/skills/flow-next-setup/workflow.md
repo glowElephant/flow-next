@@ -287,9 +287,17 @@ fi
 
 ```bash
 if [ -f .codex/config.toml ]; then
- if ! grep -q 'codex_hooks' .codex/config.toml 2>/dev/null; then
- echo -e '\n[features]\ncodex_hooks = true' >> .codex/config.toml
- echo "Enabled codex_hooks in .codex/config.toml"
+ # `[features].hooks` is the current key; `codex_hooks` is the deprecated
+ # pre-2026 spelling (Codex warns on every run). A repo carrying ONLY the old
+ # key still needs the new one written — detect them separately (the old key
+ # must not satisfy the check), and migrate the old spelling in place.
+ if grep -qE '^ *codex_hooks *= *true' .codex/config.toml 2>/dev/null; then
+ sed -i.bak 's/^ *codex_hooks *= *true/hooks = true/' .codex/config.toml && rm -f .codex/config.toml.bak
+ echo "Migrated deprecated codex_hooks -> hooks in .codex/config.toml"
+ fi
+ if ! grep -qE '^ *hooks *= *true' .codex/config.toml 2>/dev/null; then
+ echo -e '\n[features]\nhooks = true' >> .codex/config.toml
+ echo "Enabled hooks in .codex/config.toml"
  fi
 fi
 ```

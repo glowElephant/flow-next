@@ -60,6 +60,8 @@ Dirty tree means dirty outside `.flow/`; pilot leaves state untouched. No cleanu
 
 Parse `$ARGUMENTS` for the scope lock, dry-run switch, and passthroughs. Unknown flags warn to stderr and are ignored. Defaults are `research=grep`, `depth=short`, and `review` resolved later via `$FLOWCTL review-backend`.
 
+The loop handles both `--flag=value` and space-separated `--flag value` forms directly via a `PREV` token holder. It deliberately avoids bash positional parameters (`shift`-based parsing) — the host's argument interpolation rewrites positional tokens inside skill code blocks, which corrupts a `case`-on-positionals parse (observed live in the 1.13.0 dogfood).
+
 ```bash
 RAW_ARGS="$ARGUMENTS"
 PILOT_SPEC=""
@@ -68,23 +70,26 @@ PILOT_REVIEW=""
 PILOT_RESEARCH="grep"
 PILOT_DEPTH="short"
 
-set -- $RAW_ARGS
-while [[ $# -gt 0 ]]; do
-  case "$1" in
-    --spec)      PILOT_SPEC="$2"; shift 2 ;;
-    --spec=*)    PILOT_SPEC="${1#--spec=}"; shift ;;
-    --dry-run)   PILOT_DRY_RUN=1; shift ;;
-    --review)    PILOT_REVIEW="$2"; shift 2 ;;
-    --review=*)  PILOT_REVIEW="${1#--review=}"; shift ;;
-    --research)  PILOT_RESEARCH="$2"; shift 2 ;;
-    --research=*) PILOT_RESEARCH="${1#--research=}"; shift ;;
-    --depth)     PILOT_DEPTH="$2"; shift 2 ;;
-    --depth=*)   PILOT_DEPTH="${1#--depth=}"; shift ;;
-    --) shift; break ;;
-    -*) echo "Unknown flag: $1 (ignored by /flow-next:pilot)" >&2; shift ;;
-    *)  echo "Unknown argument: $1 (ignored by /flow-next:pilot)" >&2; shift ;;
+PREV=""
+for ARG in $RAW_ARGS; do
+  case "$PREV" in
+    --spec)     PILOT_SPEC="$ARG"; PREV=""; continue ;;
+    --review)   PILOT_REVIEW="$ARG"; PREV=""; continue ;;
+    --research) PILOT_RESEARCH="$ARG"; PREV=""; continue ;;
+    --depth)    PILOT_DEPTH="$ARG"; PREV=""; continue ;;
+  esac
+  case "$ARG" in
+    --spec|--review|--research|--depth) PREV="$ARG" ;;
+    --spec=*)     PILOT_SPEC="${ARG#--spec=}" ;;
+    --dry-run)    PILOT_DRY_RUN=1 ;;
+    --review=*)   PILOT_REVIEW="${ARG#--review=}" ;;
+    --research=*) PILOT_RESEARCH="${ARG#--research=}" ;;
+    --depth=*)    PILOT_DEPTH="${ARG#--depth=}" ;;
+    -*) echo "Unknown flag: $ARG (ignored by /flow-next:pilot)" >&2 ;;
+    *)  echo "Unknown argument: $ARG (ignored by /flow-next:pilot)" >&2 ;;
   esac
 done
+[[ -n "$PREV" ]] && echo "Flag $PREV given without a value (ignored by /flow-next:pilot)" >&2
 export PILOT_SPEC PILOT_DRY_RUN PILOT_REVIEW PILOT_RESEARCH PILOT_DEPTH
 ```
 
@@ -132,4 +137,4 @@ Execute [workflow.md](workflow.md) in order:
 
 ## Unattended runs — rp caveat
 
-The `rp` review backend needs the RepoPrompt GUI. For unattended or overnight driving, use `--review=codex`, `--review=copilot`, or `--review=none`. Wall-clock limits and iteration caps belong to the driver (`/goal --tokens`, `/goal` stop clauses, or `/loop` cadence); a pilot tick has no timeout machinery.
+The `rp` review backend runs headlessly via rp-cli — it only needs the Repo Prompt app running on the same Mac (cold start: `open -ga "Repo Prompt"`, MCP responds within seconds; a stopped app fails FAST with a clear error, never a hang). For machines without the app (remote/CI), use `--review=codex`, `--review=copilot`, or `--review=none`. Wall-clock limits and iteration caps belong to the driver (`/goal --tokens`, `/goal` stop clauses, or `/loop` cadence); a pilot tick has no timeout machinery.

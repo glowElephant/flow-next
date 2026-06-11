@@ -1068,6 +1068,10 @@ def get_default_tracker_config() -> dict:
             # /flow-next:qa skill treats any non-`off` value as `comment`.
             # Default `off` keeps every existing repo silent until opted in.
             "qa": "off",
+            # fn-60 (R13) — opt-in post-merge touchpoint for /flow-next:land
+            # (flip linked issue terminal + release/verdict comment). Nested
+            # like work.*; default off keeps non-land repos at zero overhead.
+            "land": {"merged": "off"},
         },
         "perTracker": {
             "teamId": None,
@@ -1152,6 +1156,35 @@ def get_default_config() -> dict:
             # auto (default) | ask. The auto|ask behavior is implemented in
             # fn-55.2; this task only sets the default + documents the enum.
             "delegateDecision": "auto",
+        },
+        # fn-60.2 — /flow-next:land babysit-loop defaults, seeded so
+        # `config get land.*` returns values (NOT null) on a fresh repo.
+        # Consumed by the opt-in flow-next-land skill (fn-60.1); flowctl
+        # itself only stores/serves them.
+        "land": {
+            # Follow the project's release instructions after merge.
+            # Also no-ops when no release docs/scripts are discovered.
+            "release": True,
+            # Patience window (minutes) for automated reviewers, anchored
+            # to the LAST push — a land-authored CI-fix push restarts it.
+            "patienceMinutes": 30,
+            # Merge review signal: silence (default) | approve | <github-login>.
+            #   silence  — ≥1 automated review + zero unresolved threads +
+            #              no new threads within the patience window.
+            #   approve  — formal reviewDecision == APPROVED.
+            #   <login>  — that reviewer's latest review is APPROVED/clean.
+            "reviewSignal": "silence",
+            # CSV allowlist of automated-reviewer logins, supplementing the
+            # `[bot]`-suffix rule. Default empty = suffix rule only.
+            "automatedReviewers": "",
+            # One-shot comment land posts to summon a reviewer bot when a
+            # DRAFT PR has zero automated reviews (bots like Codex do not
+            # auto-review drafts; pilot's PRs are born draft). Empty =
+            # never post; e.g. "@codex review".
+            "reviewTrigger": "",
+            # Max CI-fix attempts per PR before the durable
+            # `flow-next:needs-human` label + skip.
+            "ciFixBudget": 3,
         },
     }
 
@@ -14221,7 +14254,9 @@ def cmd_spec_export_cognitive_aid(args: argparse.Namespace) -> None:
             code=1,
         )
 
-    spec_id = getattr(args, "id", None)
+    # Casefold first so uppercase tracker display handles (WOR-17) survive
+    # the validity check — resolve_spec_id_arg below canonicalizes fully.
+    spec_id = casefold_handle(getattr(args, "id", None))
     if not spec_id or not is_spec_id(spec_id):
         error_exit(
             f"Invalid spec ID: {spec_id}. Expected format: fn-N or fn-N-slug "
@@ -14229,6 +14264,8 @@ def cmd_spec_export_cognitive_aid(args: argparse.Namespace) -> None:
             use_json=use_json,
             code=2,
         )
+    # Resolve short ids / tracker handles to the canonical on-disk id (fn-60).
+    spec_id = resolve_spec_id_arg(get_flow_dir(), spec_id, use_json=use_json)
 
     base_ref = getattr(args, "base", None)
     if not base_ref:
@@ -14872,6 +14909,21 @@ def cmd_task_set_spec(args: argparse.Namespace) -> None:
     # Full file replacement mode (like epic set-plan)
     if has_file:
         content = read_file_or_stdin(args.file, "Spec file", use_json=args.json)
+        # Append any missing required scaffold headings (fn-60 dogfood: a
+        # --file replacement that omits Done summary / Evidence left tasks
+        # failing `validate` on every planning run). Stubs match the create
+        # scaffold; existing headings are never touched.
+        _missing = [h for h in TASK_SPEC_HEADINGS if not re.search(
+            rf"^{re.escape(h)}\s*$", content, flags=re.MULTILINE)]
+        if _missing:
+            _stubs = {
+                "## Description": "## Description\nTBD\n",
+                "## Acceptance": "## Acceptance\n- [ ] TBD\n",
+                "## Done summary": "## Done summary\nTBD\n",
+                "## Evidence": "## Evidence\n- Commits:\n- Tests:\n- PRs:\n",
+            }
+            content = content.rstrip("\n") + "\n\n" + "\n".join(
+                _stubs[h] for h in _missing)
         atomic_write(task_spec_path, content)
         task_data["updated_at"] = now_iso()
         canonicalize_task_for_write(task_data)
@@ -20907,11 +20959,8 @@ def cmd_codex_plan_review(args: argparse.Namespace) -> None:
     if not ensure_flow_exists():
         error_exit(".flow/ does not exist", use_json=args.json)
 
-    epic_id = args.epic
-
-    # Validate spec ID
-    if not is_spec_id(epic_id):
-        error_exit(f"Invalid spec ID: {epic_id}", use_json=args.json)
+    # Resolve short ids / tracker handles to the canonical on-disk id (fn-60).
+    epic_id = resolve_spec_id_arg(get_flow_dir(), args.epic, use_json=args.json)
 
     # Require --files argument for plan-review (no automatic file parsing)
     files_arg = getattr(args, "files", None)
@@ -21287,11 +21336,8 @@ def cmd_codex_completion_review(args: argparse.Namespace) -> None:
     if not ensure_flow_exists():
         error_exit(".flow/ does not exist", use_json=args.json)
 
-    epic_id = args.epic
-
-    # Validate spec ID
-    if not is_spec_id(epic_id):
-        error_exit(f"Invalid spec ID: {epic_id}", use_json=args.json)
+    # Resolve short ids / tracker handles to the canonical on-disk id (fn-60).
+    epic_id = resolve_spec_id_arg(get_flow_dir(), args.epic, use_json=args.json)
 
     flow_dir = get_flow_dir()
 
@@ -21781,10 +21827,8 @@ def cmd_copilot_plan_review(args: argparse.Namespace) -> None:
     if not ensure_flow_exists():
         error_exit(".flow/ does not exist", use_json=args.json)
 
-    epic_id = args.epic
-
-    if not is_spec_id(epic_id):
-        error_exit(f"Invalid spec ID: {epic_id}", use_json=args.json)
+    # Resolve short ids / tracker handles to the canonical on-disk id (fn-60).
+    epic_id = resolve_spec_id_arg(get_flow_dir(), args.epic, use_json=args.json)
 
     files_arg = getattr(args, "files", None)
     if not files_arg:
@@ -21958,10 +22002,8 @@ def cmd_copilot_completion_review(args: argparse.Namespace) -> None:
     if not ensure_flow_exists():
         error_exit(".flow/ does not exist", use_json=args.json)
 
-    epic_id = args.epic
-
-    if not is_spec_id(epic_id):
-        error_exit(f"Invalid spec ID: {epic_id}", use_json=args.json)
+    # Resolve short ids / tracker handles to the canonical on-disk id (fn-60).
+    epic_id = resolve_spec_id_arg(get_flow_dir(), args.epic, use_json=args.json)
 
     flow_dir = get_flow_dir()
 

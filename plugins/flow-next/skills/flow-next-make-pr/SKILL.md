@@ -40,23 +40,29 @@ BASE_REF=""
 SPEC_ID=""
 AUTONOMOUS=0
 
-# Tokenize and walk the argument list.
-set -- $RAW_ARGS
-while [[ $# -gt 0 ]]; do
-  case "$1" in
-    --draft)      DRAFT_FORCE="draft"; shift ;;
-    --ready)      DRAFT_FORCE="ready"; shift ;;
-    --no-mermaid) NO_MERMAID=1; shift ;;
-    --memory)     WRITE_MEMORY=1; shift ;;
-    --dry-run)    DRY_RUN=1; shift ;;
-    --base)       BASE_REF="$2"; shift 2 ;;
-    --base=*)     BASE_REF="${1#--base=}"; shift ;;
-    mode:autonomous) AUTONOMOUS=1; shift ;;
-    --) shift; break ;;
-    -*) echo "Unknown flag: $1" >&2; exit 2 ;;
-    *)  SPEC_ID="$1"; shift ;;
+# Tokenize and walk the argument list. The loop handles both `--base=<ref>`
+# and space-separated `--base <ref>` via a PREV token holder. Deliberately NO
+# bash positional parameters here — the host's argument interpolation rewrites
+# positional tokens inside skill code blocks (pilot dogfood finding, 1.13.0).
+PREV=""
+for ARG in $RAW_ARGS; do
+  case "$PREV" in
+    --base) BASE_REF="$ARG"; PREV=""; continue ;;
+  esac
+  case "$ARG" in
+    --draft)      DRAFT_FORCE="draft" ;;
+    --ready)      DRAFT_FORCE="ready" ;;
+    --no-mermaid) NO_MERMAID=1 ;;
+    --memory)     WRITE_MEMORY=1 ;;
+    --dry-run)    DRY_RUN=1 ;;
+    --base)       PREV="$ARG" ;;
+    --base=*)     BASE_REF="${ARG#--base=}" ;;
+    mode:autonomous) AUTONOMOUS=1 ;;
+    -*) echo "Unknown flag: $ARG" >&2; exit 2 ;;
+    *)  SPEC_ID="$ARG" ;;
   esac
 done
+[[ -n "$PREV" ]] && { echo "Flag $PREV given without a value" >&2; exit 2; }
 
 # Secondary signal: process-level autonomous driver (env survives only
 # within one process tree; the token is the primary, prose-safe carrier).
