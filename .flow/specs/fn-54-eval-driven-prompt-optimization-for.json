@@ -6,7 +6,9 @@
   "default_impl": null,
   "default_review": null,
   "default_sync": null,
-  "depends_on_epics": [],
+  "depends_on_epics": [
+    "fn-60-ship-loop-skill-autonomous-pr"
+  ],
   "id": "fn-54-eval-driven-prompt-optimization-for",
   "next_task": 1,
   "plan_review_status": "unknown",
@@ -24,5 +26,5 @@
     "mergeBaseTracker": null,
     "url": "https://linear.app/gmickel/issue/FLOW-5"
   },
-  "updated_at": "2026-06-04T21:19:49.753778Z"
+  "updated_at": "2026-06-11T13:33:35.857981Z"
 }
