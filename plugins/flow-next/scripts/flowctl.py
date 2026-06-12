@@ -1186,15 +1186,56 @@ def get_default_config() -> dict:
             # `flow-next:needs-human` label + skip.
             "ciFixBudget": 3,
         },
+        # fn-62.1 — optional HTML artifact mode (render lenses), seeded so
+        # `config get artifacts.html.enabled` returns False (NOT null) on a
+        # fresh repo via the defaults MERGE (load_flow_config), NOT by
+        # persisting the key into config.json: `init` deliberately skips
+        # this block (see _init_persisted_defaults) so the setup ceremony's
+        # include-only-if-unset `--raw` probe still reads null until the
+        # user explicitly decides. OFF by default: with it off,
+        # participating skills load no reference file, write no artifacts,
+        # and open no Lavish session. flowctl only stores/serves the knob —
+        # generation is agentic (the skills read the disclosure reference);
+        # artifacts live at the fixed deterministic paths
+        # .flow/artifacts/<spec-id>/{spec,pr}.html (never timestamped —
+        # Lavish keys sessions on the absolute path).
+        "artifacts": {"html": {"enabled": False}},
     }
+
+
+# Config blocks `flowctl init` must NOT materialize into .flow/config.json.
+# The setup ceremony (flow-next-setup workflow.md Step 6) gates its
+# include-only-if-unset questions on `config get <key> --raw` returning null
+# (= "user never decided"). Step 1 runs `init` BEFORE that detection, so any
+# default `init` persists would permanently suppress the question. Reads are
+# unaffected: load_flow_config() merges get_default_config() over the file,
+# so merged `config get` still returns the seeded default.
+# Scoped to fn-62's artifacts block only — the older ask-at-setup keys
+# (memory.enabled, planSync.enabled, scouts.github) predate this and keep
+# their materialize-on-init behavior unchanged.
+_INIT_UNMATERIALIZED_BLOCKS = ("artifacts",)
+
+
+def _init_persisted_defaults() -> dict:
+    """Defaults `cmd_init` writes/merges into config.json.
+
+    Equal to get_default_config() minus _INIT_UNMATERIALIZED_BLOCKS, so the
+    raw-file presence of those keys stays a faithful "explicitly set"
+    provenance signal for the setup ceremony's `--raw` probe.
+    """
+    defaults = get_default_config()
+    for block in _INIT_UNMATERIALIZED_BLOCKS:
+        defaults.pop(block, None)
+    return defaults
 
 
 # Canonical mapping for legacy config keys. Reads of a legacy key resolve to the
 # canonical key when present in the raw file; writes always target the canonical.
 # Mirrors the fn-43 epic→spec rename cadence.
-_CONFIG_KEY_ALIASES: dict[str, str] = {
-    "planSync.crossEpic": "planSync.crossSpec",
-}
+# Empty since 2.0.0: the `planSync.crossEpic` → `planSync.crossSpec` alias
+# (deprecated 1.1.3+) was removed per the documented 1.x deprecation promise.
+# The resolution machinery below stays for future key renames.
+_CONFIG_KEY_ALIASES: dict[str, str] = {}
 
 
 def deep_merge(base: dict, override: dict) -> dict:
@@ -1277,11 +1318,11 @@ def resolve_config_key_for_read(key: str):
       Populated whenever the user typed the legacy alias by name, even if
       canonical is also present in the raw file. Canonical value precedence
       is unchanged — the deprecation fires on the legacy *input form*, not on
-      where the value came from, so scripts still asking for the legacy key
-      after `set planSync.crossSpec` keep getting the migration signal
-      before 2.0 removes the alias. When the user reads the canonical key,
-      no warning fires even if the legacy key supplied the value via
-      fallback — they're already on the new name.
+      where the value came from, so scripts still asking for a legacy key
+      after switching their writes to the canonical keep getting the
+      migration signal until the alias is removed. When the user reads the
+      canonical key, no warning fires even if the legacy key supplied the
+      value via fallback — they're already on the new name.
 
     Canonical-vs-legacy precedence is identical in both directions:
     canonical wins when present in the raw file; legacy fills in when
@@ -1331,7 +1372,8 @@ def resolve_config_key_for_write(key: str) -> tuple[str, str]:
     a known legacy key, ``deprecation_legacy_form`` is non-empty and the
     caller should emit a deprecation warning. The actual write must target
     the canonical key; the legacy entry (if present in the file) is left
-    untouched — it becomes "wins-on-fallback-only" until 2.0.
+    untouched — it becomes "wins-on-fallback-only" until the alias is
+    removed at the next major.
     """
     canonical = _CONFIG_KEY_ALIASES.get(key)
     if canonical is None:
@@ -5101,7 +5143,7 @@ def cmd_init(args: argparse.Namespace) -> None:
     # Config: create or upgrade (merge missing defaults)
     config_path = flow_dir / CONFIG_FILE
     if not config_path.exists():
-        atomic_write_json(config_path, get_default_config())
+        atomic_write_json(config_path, _init_persisted_defaults())
         actions.append("created config.json")
     else:
         # Load raw config, compare with merged (which includes new defaults)
@@ -5111,24 +5153,10 @@ def cmd_init(args: argparse.Namespace) -> None:
                 raw = {}
         except (json.JSONDecodeError, Exception):
             raw = {}
-        # Pre-merge migration (1.1.11): if user has legacy planSync.crossEpic
-        # and no canonical planSync.crossSpec, mirror the legacy value to
-        # canonical so the new default (False) doesn't silently flip the
-        # user's effective setting. Read precedence (1.1.3+) is "canonical
-        # wins on presence", so without this mirror, every upgrading user
-        # who had crossEpic set lost their cross-spec sync silently. Legacy
-        # key is kept readable through 1.x per the deprecation cadence.
-        ps = raw.get("planSync")
-        if (
-            isinstance(ps, dict)
-            and "crossEpic" in ps
-            and "crossSpec" not in ps
-        ):
-            ps["crossSpec"] = ps["crossEpic"]
-            actions.append(
-                "mirrored legacy planSync.crossEpic → canonical planSync.crossSpec"
-            )
-        merged = deep_merge(get_default_config(), raw)
+        # The 1.1.11 pre-merge crossEpic→crossSpec mirror was removed in
+        # 2.0.0 along with the `planSync.crossEpic` alias: a leftover legacy
+        # key in the file is now inert (preserved by the merge, never read).
+        merged = deep_merge(_init_persisted_defaults(), raw)
         if merged != raw:
             atomic_write_json(config_path, merged)
             actions.append("upgraded config.json (added missing keys)")
@@ -5427,7 +5455,7 @@ def cmd_config_get(args: argparse.Namespace) -> None:
             if legacy_raw is not _CONFIG_RAW_SENTINEL:
                 value = legacy_raw
                 if user_typed_legacy:
-                    _emit_rename_deprecation(legacy, canonical, extra="Removed in 2.0.")
+                    _emit_rename_deprecation(legacy, canonical)
             else:
                 value = None
         else:
@@ -5447,7 +5475,7 @@ def cmd_config_get(args: argparse.Namespace) -> None:
     _, value, deprecation_legacy = resolve_config_key_for_read(args.key)
     if deprecation_legacy:
         canonical = _CONFIG_KEY_ALIASES[deprecation_legacy]
-        _emit_rename_deprecation(deprecation_legacy, canonical, extra="Removed in 2.0.")
+        _emit_rename_deprecation(deprecation_legacy, canonical)
 
     if args.json:
         json_output({"key": args.key, "value": value})
@@ -5469,9 +5497,7 @@ def cmd_config_set(args: argparse.Namespace) -> None:
 
     canonical_key, deprecation_legacy = resolve_config_key_for_write(args.key)
     if deprecation_legacy:
-        _emit_rename_deprecation(
-            deprecation_legacy, canonical_key, extra="Removed in 2.0."
-        )
+        _emit_rename_deprecation(deprecation_legacy, canonical_key)
 
     set_config(canonical_key, args.value)
     new_value = get_config(canonical_key)

@@ -573,8 +573,9 @@ flowctl config toggle memory.enabled [--json]
 | `land.automatedReviewers` | string | `""` | CSV allowlist of reviewer logins land counts as automated, supplementing the `[bot]`-suffix rule. |
 | `land.reviewTrigger` | string | `""` | One-shot comment land posts to summon a reviewer bot on a draft PR with zero automated reviews (e.g. `"@codex review"` — bots don't auto-review drafts). Empty = never post. |
 | `land.ciFixBudget` | int | `3` | CI-fix attempts per PR before land durably labels it `flow-next:needs-human` and skips it on later ticks. |
+| `artifacts.html.enabled` | bool | `false` | **Optional HTML artifact mode (fn-62, 2.0.0+).** Enable with `flowctl config set artifacts.html.enabled true`: participating skills (capture, plan, make-pr) load the shared render-lens reference and emit self-contained HTML artifacts at the fixed paths `.flow/artifacts/<spec-id>/spec.html` / `pr.html` (regenerable lenses, never timestamped — markdown stays the sole source of truth and artifacts are never parsed back as state). **OFF by default** — with it off, no reference file loads, no artifacts are written, no Lavish session opens; behavior is byte-identical to markdown-only. flowctl only stores the knob; generation is skill-side. |
 
-\* `planSync.crossEpic` is the legacy alias — still readable in 1.x with a one-line stderr deprecation warning (suppress via `FLOW_NO_DEPRECATION=1`); removed in 2.0. `set` writes the canonical key only; `get` prefers `crossSpec` and falls back to `crossEpic` only when `crossSpec` is absent from the raw config file.
+\* The pre-1.1.3 legacy alias `planSync.crossEpic` was **removed in 2.0.0** (it was readable through 1.x with a stderr deprecation warning). `flowctl` no longer reads or writes it — a leftover `crossEpic` key in `.flow/config.json` is inert. If you relied on it, set the canonical key once: `flowctl config set planSync.crossSpec true`.
 
 Priority: `--review=...` argument > `FLOW_REVIEW_BACKEND` env > `.flow/config.json` > error.
 
