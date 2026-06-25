@@ -1,0 +1,29 @@
+{
+  "branch_name": "fn-67-flow-nextguide-opinionated-router-over",
+  "completion_review_status": "unknown",
+  "completion_reviewed_at": null,
+  "created_at": "2026-06-23T20:05:26.279963Z",
+  "default_impl": null,
+  "default_review": null,
+  "default_sync": null,
+  "depends_on_epics": [],
+  "id": "fn-67-flow-nextguide-opinionated-router-over",
+  "next_task": 1,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-67-flow-nextguide-opinionated-router-over.md",
+  "status": "open",
+  "title": "/flow-next:guide \u2014 opinionated router over flow-next's skill flows",
+  "tracker": {
+    "baseHashFlow": null,
+    "baseHashTracker": null,
+    "depRelations": [],
+    "id": "FLOW-16",
+    "identifier": "FLOW-16",
+    "lastSyncedAt": "2026-06-23T20:10:17.404695Z",
+    "mergeBaseFlow": null,
+    "mergeBaseTracker": null,
+    "url": "https://linear.app/gmickel/issue/FLOW-16"
+  },
+  "updated_at": "2026-06-23T20:10:17.404873Z"
+}
