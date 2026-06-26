@@ -13,7 +13,7 @@
   "plan_reviewed_at": null,
   "spec_path": ".flow/specs/fn-70-tracker-sync-jira-adapter-rest-api.md",
   "status": "open",
-  "title": "tracker-sync Jira adapter (REST API token-first; MCP secondary)",
+  "title": "tracker-sync Jira adapter — REST PAT + agentic Atlassian MCP (Linear-style ladder)",
   "tracker": {
     "baseHashFlow": "a21ee9ab629dd0e8491b7823634db94822f89e7ee46d77bf22a46ee214257593",
     "baseHashTracker": "c7036007f5f0ca65476aedddbc7c60614b7fc9a041bf166e04c366f53cc7f874",

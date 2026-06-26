@@ -12,7 +12,7 @@ The reference model is `~/repos/mattpocock-skills/skills/engineering/ask-matt/SK
 ## Architecture & Data Models
 <!-- scope: technical -->
 
-A single SKILL.md at `plugins/flow-next/skills/flow-next-guide/SKILL.md`, registered as `/flow-next:guide`. **User-invoked**: `disable-model-invocation: true` in frontmatter; the `description` is a human-facing one-liner (no trigger list). It is mostly **reference content** (an opinionated map), not a multi-step procedure — but it MAY end an interaction by dispatching the user into the chosen skill (prose `/flow-next:<skill>` invocation, the platform's normal skill hand-off), and MAY ask a clarifying question to disambiguate the user's situation before recommending a route.
+A SKILL.md at `plugins/flow-next/skills/flow-next-guide/SKILL.md` **plus the mandatory thin command wrapper** `plugins/flow-next/commands/flow-next/guide.md` (every one of the live `/flow-next:*` commands has one — it's what makes the skill typeable as a slash command on Claude Code; per `agent_docs/adding-skills.md`). **User-invoked**: frontmatter is `name: flow-next-guide` + `user-invocable: false` on the skill (the repo's real convention — 22 skills use it; `disable-model-invocation` does NOT exist anywhere in flow-next), with the command wrapper exposing `/flow-next:guide` and a human-facing one-line `description` (no trigger list). It is mostly **reference content** (an opinionated map), not a multi-step procedure — but it MAY end an interaction by dispatching the user into the chosen skill (prose `/flow-next:<skill>` invocation, the platform's normal skill hand-off), and MAY ask a clarifying question to disambiguate the user's situation before recommending a route.
 
 The map is organized as **flows**, mirroring ask-matt's spine but populated with flow-next reality:
 
@@ -30,14 +30,14 @@ The map is organized as **flows**, mirroring ask-matt's spine but populated with
 
 - **Invocation:** `/flow-next:guide` (user-only). Optional free-text argument describing the situation ("I have a rough idea and a codebase", "PR has review comments", "memory feels stale") → the guide recommends the route for that situation instead of printing the whole map.
 - **Output:** an opinionated recommendation — the relevant flow, the **single next concrete command** to run, and the key trap to avoid — plus an offer to hand off into that skill. Bare invocation (no argument) prints the full flow map.
-- **Frontmatter:** `name: flow-next-guide`, one-line human-facing `description`, `disable-model-invocation: true`.
-- **Cross-platform:** canonical Claude tool names; `scripts/sync-codex.sh` regenerates the Codex mirror (`AskUserQuestion` → numbered prompt; any `Task` → `spawn_agent`). Registered in marketplace/plugin manifests and the docs-site navigation (both navbars — see CLAUDE.md "Navigation — TWO sources").
+- **Frontmatter / files:** skill `name: flow-next-guide` + `user-invocable: false` + one-line human-facing `description`; **plus** the `commands/flow-next/guide.md` wrapper (mirroring an existing command file). No `disable-model-invocation` (not a flow-next key).
+- **Cross-platform:** canonical Claude tool names; `scripts/sync-codex.sh` regenerates the Codex mirror (`AskUserQuestion` → numbered prompt; any `Task` → `spawn_agent`) — which **requires the two sync-codex edits** `generate_openai_yaml` registration + adding `flow-next-guide` to the `REQUIRED_OPENAI_YAML_SKILLS` array (adding-skills steps 4–5), or the Codex sync validation fails. Codex emits `allow_implicit_invocation: false` for the user-invoked skill. Registered in marketplace/plugin manifests and the docs-site navigation (both navbars — see CLAUDE.md "Navigation — TWO sources").
 
 ## Edge Cases & Constraints
 <!-- scope: technical -->
 
 - **Not an autocomplete.** If the recommendation collapses to "run the skill whose name matches your words", it has failed its purpose — every route must carry at least one opinion/branch/guardrail the bare skill description does not already give. This is the acceptance bar, not a nice-to-have.
-- **`disable-model-invocation` cross-platform.** Claude Code honors it (user-only). If a target platform (Codex/Droid) does not, the skill stays *reachable* and merely also becomes model-invokable — harmless for a read-only guide. Do not rely on the flag for correctness; rely on it for token economy on Claude.
+- **User-invoked cross-platform.** `user-invocable: false` (Claude) + the sync-codex `allow_implicit_invocation: false` emission keep the guide human-reached, not model-auto-fired. If a target platform doesn't honor the flag, the guide stays *reachable* and merely also becomes model-invokable — harmless for a read-only guide. Correctness rests on the command wrapper existing, not on any model-suppression flag.
 - **Staleness risk.** A hand-maintained map drifts when skills are added/renamed/removed. Mitigations: (a) cross-reference canonical docs instead of duplicating; (b) `agent_docs/adding-skills.md` gains a checklist line "update /flow-next:guide if the skill changes a flow"; (c) the map names flows and decisions (slow-changing) over exhaustive per-skill prose (fast-changing).
 - **No new flowctl plumbing.** Pure skill content; no Python, no state, no receipts. (Architecture rule: host agent is the intelligence; this is reference + light dispatch.)
 - **Self-reference / loop.** The guide never recommends itself; it never dispatches another user-invoked skill that would dead-end (it points the human at what to *type*, consistent with the user-invoked → user-invoked reachability limit).
@@ -46,13 +46,13 @@ The map is organized as **flows**, mirroring ask-matt's spine but populated with
 ## Acceptance Criteria
 <!-- scope: both -->
 
-- **R1:** A new user-invoked skill `/flow-next:guide` exists at `plugins/flow-next/skills/flow-next-guide/SKILL.md` with `disable-model-invocation: true` and a one-line human-facing `description` (no trigger list).
+- **R1:** A new user-invoked skill exists at `plugins/flow-next/skills/flow-next-guide/SKILL.md` (`name: flow-next-guide`, `user-invocable: false`, one-line human-facing `description`, no trigger list) **with its mandatory `plugins/flow-next/commands/flow-next/guide.md` command wrapper** (without which `/flow-next:guide` is not invocable as a slash command on Claude Code). No `disable-model-invocation` key.
 - **R2:** Bare `/flow-next:guide` prints an opinionated flow map organized as flows (main idea→PR flow, autonomous drivers, maintenance/health, review/QA, tracker bridge) — not a flat alphabetical skill list.
 - **R3:** Given a free-text situation argument, the guide recommends the matching flow, the single next concrete command, and the key trap to avoid, and offers to hand off into that skill.
 - **R4:** Every recommended route carries at least one opinion, branch condition, sequencing rule, or guardrail beyond what the target skill's own description states (the "not an autocomplete" bar).
 - **R5:** Baked-in opinions are sourced from the live repo (`CLAUDE.md` / `STRATEGY.md` / docs / shipped conventions) or an explicit Gordon decision — none fabricated; the body cross-references canonical docs rather than duplicating them.
 - **R6:** The skill covers, at minimum, every currently shipped `/flow-next:*` user-facing command, each placed in exactly one flow with its role stated.
-- **R7:** Cross-platform parity — canonical Claude names; `sync-codex.sh` regenerates the Codex mirror cleanly; the skill is registered in plugin/marketplace manifests.
+- **R7:** Cross-platform parity — canonical Claude names; `sync-codex.sh` regenerates the Codex mirror cleanly, **including the `generate_openai_yaml` registration + adding `flow-next-guide` to `REQUIRED_OPENAI_YAML_SKILLS`** (adding-skills steps 4–5; otherwise sync validation fails); the skill + command wrapper are registered in plugin/marketplace manifests.
 - **R8:** Docs + flow-next.dev updated — skill page, BOTH navbars (`DocsRail`/`site.ts` + Starlight `astro.config.mjs`), changelog entry, and the command reference; plugin version bumped per the release process.
 - **R9:** `agent_docs/adding-skills.md` gains a step reminding authors to update `/flow-next:guide` when a new/renamed/removed skill changes a flow (staleness mitigation).
 
@@ -76,15 +76,16 @@ Triggered by Matt Pocock's `/ask-matt` router landing in `mattpocock/skills` (20
 ### Implementation Tradeoffs
 <!-- scope: technical -->
 
-- **User-invoked over model-invoked:** a guide the model auto-fires would be noise; this is a thing a human reaches for when lost. `disable-model-invocation: true` also keeps its description a cheap human-facing one-liner (the same economy Matt measured at ~63% off description cost across his user-invoked set) — a small down-payment on the larger token-reduction idea that this spec deliberately leaves unspecced.
+- **User-invoked over model-invoked:** a guide the model auto-fires would be noise; this is a thing a human reaches for when lost. `user-invocable: false` also keeps its description a cheap human-facing one-liner — a small down-payment on the larger token-reduction idea this spec deliberately leaves unspecced.
 - **Opinionated map over generated index:** an auto-generated skill index would always be current but never *opinionated* — and opinion is the whole point. We accept hand-maintenance + staleness risk (mitigated by doc cross-refs, an `adding-skills.md` checklist line, and naming slow-changing flows over fast-changing per-skill prose) in exchange for real judgment.
 - **Reference-heavy, light dispatch:** mostly a read; the only "action" is handing the user into the chosen skill. No flowctl plumbing — consistent with the repo's "host agent is the intelligence" architecture rule.
-- **Rejected — fold in the token-reduction sweep:** keeping the repo-wide `disable-model-invocation` refactor out keeps this spec shippable on its own and lets the larger refactor be evaluated on its own merits (Gordon chose "report only" on 2026-06-23).
+- **Rejected — fold in the token-reduction sweep:** keeping the repo-wide user-invocation refactor out keeps this spec shippable on its own and lets the larger refactor be evaluated on its own merits (Gordon chose "report only" on 2026-06-23).
 
 ## Strategy Alignment
 <!-- STRATEGY.md cross-check at author time -->
 
 - Lowers the adoption / recall cost of the flow-next skill suite — supports the "spec-driven SDLC that teams actually run" thrust by making the canonical flows discoverable in-session.
+- **Command-count discipline (the one real tension):** STRATEGY's "slash-command count and density" metric says "v1.0 holds the line on count," and CLAUDE.md's editing rule is "don't add commands unless explicitly requested." This spec adds the 24th command — justified because (a) Gordon explicitly requested it (Conversation Evidence), and (b) it's a **meta/router** command (a discoverability aid over the existing handovers), not a new handover object, so it doesn't inflate the *handover* surface the metric guards. Worth stating, not glossing.
 - **Cross-platform parity** track — canonical Claude names + sync-codex mirror.
 - Reinforces *"the host agent IS the intelligence"* — no new flowctl engine; the guide is curated reference + judgment.
 
