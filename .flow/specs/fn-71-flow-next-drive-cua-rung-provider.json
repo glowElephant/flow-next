@@ -9,8 +9,8 @@
   "depends_on_epics": [],
   "id": "fn-71-flow-next-drive-cua-rung-provider",
   "next_task": 1,
-  "plan_review_status": "unknown",
-  "plan_reviewed_at": null,
+  "plan_review_status": "ship",
+  "plan_reviewed_at": "2026-06-26T12:59:15.749916Z",
   "spec_path": ".flow/specs/fn-71-flow-next-drive-cua-rung-provider.md",
   "status": "open",
   "title": "flow-next-drive CUA rung \u2014 provider-agnostic cross-platform computer-use (Windows/native/sandbox)",
@@ -25,5 +25,5 @@
     "mergeBaseTracker": "# tracker projection on FLOW board, full reconcile 2026-06-26\n",
     "url": "https://linear.app/gmickel/issue/FLOW-20"
   },
-  "updated_at": "2026-06-26T12:14:00.906490Z"
+  "updated_at": "2026-06-26T12:59:15.750309Z"
 }
