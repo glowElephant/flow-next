@@ -96,6 +96,12 @@ fi
 FEEDBACK_JSON=$(bash "$SCRIPTS/get-pr-comments" "$PR_NUMBER")
 ```
 
+`get-pr-comments` returns **open** inline review threads plus top-level PR
+comments and review bodies. Open thread detection is intentionally
+`isResolved != true`: GitHub/GraphQL can report newly-created unresolved
+threads as `null`, not only `false`. Never re-filter open threads with
+`isResolved == false`; that drops Codex/Bugbot inline findings.
+
 `FEEDBACK_JSON` shape (from `get-pr-comments`):
 
 ```json
@@ -141,6 +147,23 @@ FEEDBACK_JSON=$(jq --argjson c "$PR_COMMENT_JSON" --arg pr "$PR_NUMBER" '
 ```
 
 If `FEEDBACK_JSON` is empty (`review_threads=[]`, `pr_comments=[]`, `review_bodies=[]`), skip to Phase 10 with "no open feedback" message.
+
+**Fetch observability (mandatory for full mode and watch loops):** after every
+fetch, inspect and report all three feedback surfaces before triage:
+
+```bash
+jq -r '
+  "review_threads=\(.review_threads|length) pr_comments=\(.pr_comments|length) review_bodies=\(.review_bodies|length)",
+  (.review_threads[]? | "THREAD \(.id) \(.path):\(.line // .originalLine) author=\(.comments[-1].author.login // .comments[-1].author) body=\(.comments[-1].body | gsub("\n"; " ") | .[0:220])"),
+  (.pr_comments[]? | "PR_COMMENT \(.id) author=\(.author) body=\(.body | gsub("\n"; " ") | .[0:220])"),
+  (.review_bodies[]? | "REVIEW_BODY \(.id) author=\(.author) state=\(.state) body=\(.body | gsub("\n"; " ") | .[0:220])")
+' <<<"$FEEDBACK_JSON"
+```
+
+Automated reviewers often split signal across surfaces: Codex and Bugbot review
+bodies may be boilerplate ("Here are some automated review suggestions..."),
+while the actionable findings are inline `review_threads`. Treat wrapper bodies
+as hints to inspect thread counts, not as proof there is no actionable feedback.
 
 ---
 
@@ -366,6 +389,12 @@ Reply body already carries `> quoted feedback\n\n<response>` from the resolver â
 ```bash
 REMAINING=$(bash "$SCRIPTS/get-pr-comments" "$PR_NUMBER" | jq '.review_threads | length')
 ```
+
+`get-pr-comments` already applies the open-thread rule (`isResolved != true`),
+so `REMAINING` includes threads whose GraphQL `isResolved` value was `false` or
+`null`. If you fetch review threads manually, use
+`select(.isResolved != true)` or `select(.isResolved | not)`, never
+`select(.isResolved == false)`.
 
 If `REMAINING > 0` **and** some of those threads aren't in the `needs-human` set (which will legitimately stay open):
 

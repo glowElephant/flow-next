@@ -6,7 +6,7 @@ OWNER_REPO="$(gh repo view --json nameWithOwner --jq .nameWithOwner)"
 OWNER="${OWNER_REPO%/*}"
 REPO="${OWNER_REPO#*/}"
 
-# Fetch unresolved review threads, PR comments, review bodies in one GraphQL call.
+# Fetch open review threads, PR comments, review bodies in one GraphQL call.
 # Also fetch last N resolved threads for cross-invocation signal.
 #
 # Pagination strategy:
@@ -157,7 +157,9 @@ jq -n \
     pr_number: ($pr | tonumber),
     review_threads: [
       $threads[]
-      | select(.isResolved == false)
+      # GitHub can surface open review threads as either false or null.
+      # Treat only literal true as resolved.
+      | select(.isResolved != true)
       | {id, isOutdated, path, line, originalLine, startLine, originalStartLine, comments: .comments.nodes}
     ],
     pr_comments: [

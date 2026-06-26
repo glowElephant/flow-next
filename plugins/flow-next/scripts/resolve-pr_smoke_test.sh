@@ -10,7 +10,8 @@
 #      signal + spatial-overlap precheck), the 11-item category enum, and the 4-row table.
 #   5. File-overlap shape: workflow.md Phase 5 covers file sets, serializing overlaps, batch 4.
 #   6. Dry-run shape: workflow.md Phase 4 has --dry-run early-exit before mutation phases.
-#   7. Ralph isolation: no ralph template references resolve-pr / flow-next-resolve-pr /
+#   7. Open-thread detection: null is treated as open, not dropped by == false.
+#   8. Ralph isolation: no ralph template references resolve-pr / flow-next-resolve-pr /
 #      pr-comment-resolver.
 #
 # Pure shape assertions — no live PR operations, no GraphQL calls, no mutations.
@@ -207,6 +208,34 @@ phase2_has 'actionability'                    'actionability filter'
 phase2_has 'already.replied'                  'already-replied filter'
 phase2_has 'Triage: *N new, *M pending, *K dropped' 'Triage count format'
 phase2_has 'silent'                           'silent-drop language for non-actionable'
+
+# -----------------------------------------------------------------------------
+# Section 3.5: Open-thread detection
+# -----------------------------------------------------------------------------
+echo
+echo -e "${YELLOW}--- Section 3.5: open-thread detection ---${NC}"
+
+GET_PR_COMMENTS="$SKILL_SCRIPTS/get-pr-comments"
+
+if grep -q 'select(.isResolved != true)' "$GET_PR_COMMENTS"; then
+  pass "get-pr-comments treats null/false isResolved as open"
+else
+  fail "get-pr-comments must use select(.isResolved != true) for open threads"
+fi
+
+if grep -q 'isResolved == false' "$GET_PR_COMMENTS"; then
+  fail "get-pr-comments still filters open threads with isResolved == false"
+else
+  pass "get-pr-comments avoids isResolved == false"
+fi
+
+if grep -q 'Never re-filter open threads with' "$WORKFLOW" \
+   && grep -q 'isResolved != true' "$WORKFLOW" \
+   && grep -q 'Automated reviewers often split signal across surfaces' "$WORKFLOW"; then
+  pass "workflow documents null-open threads and multi-surface review inspection"
+else
+  fail "workflow missing open-thread / Codex-Bugbot surface guidance"
+fi
 
 # -----------------------------------------------------------------------------
 # Section 4: Cluster gate shape (cluster-analysis.md + workflow.md Phase 3)

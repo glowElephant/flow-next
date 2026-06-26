@@ -2,6 +2,17 @@
 
 All notable changes to the flow-next.
 
+## [flow-next 2.1.3] - 2026-06-26
+
+### Fixed
+- **`/flow-next:resolve-pr` now keeps GitHub review threads whose `isResolved` value is `null` in scope**. GitHub/GraphQL can surface newly-created unresolved inline review threads as `null`, not only `false`; the PR feedback fetch now treats only literal `true` as resolved. This prevents Codex/Bugbot inline findings from being silently dropped during full-mode and watch-loop review passes.
+
+### Changed
+- **Resolve-pr fetch observability is now mandatory in full mode and watch loops**. The workflow prints counts and previews for all three feedback surfaces — inline review threads, top-level PR comments, and review bodies — so automated-review wrapper comments cannot be mistaken for the full review signal.
+
+### Notes
+- Patch release — behavior fix and skill guidance only. No new PR mutation authority, no merge-policy changes, and no change to the bounded resolve/verify loop. Codex mirror regenerated and smoke/CI shape tests updated to pin the null-open thread rule.
+
 ## [flow-next 2.1.2] - 2026-06-18
 
 ### Fixed
