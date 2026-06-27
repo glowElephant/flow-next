@@ -15,7 +15,7 @@
   "plan_reviewed_at": "2026-06-26T13:30:38.431789Z",
   "ready": true,
   "spec_path": ".flow/specs/fn-72-qa-as-an-optional-pipeline-stage-spec.md",
-  "status": "open",
+  "status": "done",
   "title": "QA as an optional pipeline stage \u2014 lean, agentic, evidence-aware",
   "tracker": {
     "baseHashFlow": "f7ada234a1037afac88dcfe3815aa1b0f96b193729ca047d9dc7ac1997fcfa2a",
@@ -28,5 +28,5 @@
     "mergeBaseTracker": "# fn-72 QA as an optional pipeline stage \u2014 lean, agentic, evidence-aware\n(projected to FLOW-21 via tracker-sync; full body lives on Linear)\n",
     "url": "https://linear.app/gmickel/issue/FLOW-21"
   },
-  "updated_at": "2026-06-27T07:36:45.704238Z"
+  "updated_at": "2026-06-27T09:41:21.144067Z"
 }
