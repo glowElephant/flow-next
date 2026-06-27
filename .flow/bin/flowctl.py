@@ -1243,9 +1243,9 @@ def get_default_config() -> dict:
         # fn-72.2 — optional QA pipeline stage gate, seeded so
         # `config get pipeline.qa` returns the enum string "off" (NOT null)
         # on a fresh repo via the defaults MERGE. STRING-ENUM (off|on), NOT a
-        # bool: the pilot gate read is the canonical 3-clause guard
-        # (value != "off" && value != "null"), so the activating value is the
-        # literal "on" — bool `true` is NOT recognized (memory
+        # bool: the pilot gate is a STRICT positive read — `[ "$value" = "on" ]`
+        # — so ONLY the literal "on" activates the stage; "off" / null / a coerced
+        # bool `true` / a typo all leave it OFF (memory
         # docs-activation-command-for-string-enum). OFF by default: pilot's
         # stage set + behavior are byte-for-byte unchanged with it off. This
         # is NOT in _INIT_UNMATERIALIZED_BLOCKS — unlike the artifacts block
