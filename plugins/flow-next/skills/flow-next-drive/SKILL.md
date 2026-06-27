@@ -1,6 +1,6 @@
 ---
 name: flow-next-drive
-description: Drive any UI surface like a real user - a web app, a Chromium-backed desktop app (Electron / WebView2, reached over CDP), or a genuinely native app (macOS AppKit/SwiftUI, or a non-CDP webview) reached via Computer Use. Detects the surface, picks the best available driver, degrades gracefully. Use to navigate sites, verify deployed UI, test web or desktop apps, capture baseline screenshots, drive a sign-in flow, scrape data, fill forms, run an e2e check, or inspect current page state. Triggers on "check the page", "verify UI", "test the site", "test this app", "drive the app", "automate this desktop app", "read docs at", "look up API", "visit URL", "browse", "screenshot", "scrape", "e2e test", "login flow", "capture baseline", "see how it looks", "inspect current", "before redesign", "Electron app", "native app".
+description: Drive any UI surface like a real user - a web app, a Chromium-backed desktop app (Electron / WebView2, reached over CDP), or a genuinely native app (macOS AppKit/SwiftUI, or a non-CDP webview) reached via the Cua Driver / Computer Use. Detects the surface, picks the best available driver, degrades gracefully. Use to navigate sites, verify deployed UI, test web or desktop apps, capture baseline screenshots, drive a sign-in flow, scrape data, fill forms, run an e2e check, or inspect current page state. Triggers on "check the page", "verify UI", "test the site", "test this app", "drive the app", "automate this desktop app", "read docs at", "look up API", "visit URL", "browse", "screenshot", "scrape", "e2e test", "login flow", "capture baseline", "see how it looks", "inspect current", "before redesign", "Electron app", "native app".
 ---
 
 # flow-next-drive — surface-aware UI automation
@@ -19,7 +19,7 @@ Classify the target into one of three buckets and take the matching path. The un
 |---|---------|------------|------|
 | A | **Web app** | A URL in a browser (localhost dev server, staging, production) | **Web ladder** (Step 3) |
 | B | **Chromium-backed desktop app** | Electron / Windows WebView2 — Chromium under the hood, exposes a CDP debug port | **Web ladder** (Step 3), attaching over CDP to the app's remote-debugging port |
-| C | **True-native / non-CDP surface** | macOS AppKit/SwiftUI, Catalyst, or a webview exposing no CDP (macOS WKWebView, which Tauri uses on macOS) | **Native rung** (Step 4) → Computer Use |
+| C | **True-native / non-CDP surface** | macOS AppKit/SwiftUI, Catalyst, or a webview exposing no CDP (macOS WKWebView, which Tauri uses on macOS) | **Native rung** (Step 4) — **Cua Driver** → **Computer Use** (attended); **Cua Sandbox** (headless/CI) |
 
 How to decide:
 
@@ -59,23 +59,34 @@ Probe availability top-down and use the **highest rung that passes**; fail soft 
 
 > **agent-browser command detail lives in the rung reference, not here.** The default-rung reference [`references/agent-browser.md`](references/agent-browser.md) is the entry point — setup/version check, the universal flow in agent-browser commands, the Chromium-desktop (Electron / WebView2) CDP driver, the `--headed` daemon-reuse gotcha, and an index into the per-topic references it folds: `commands.md`, `advanced.md` (CDP attach), `auth.md`, `snapshot-refs.md`, `session-management.md`, `proxy.md`, `debugging.md`.
 
-## Step 4 — Native rung (surface C): Computer Use
+## Step 4 — Native rung (surface C): Cua Driver, then Computer Use
 
-A genuinely native app (or a non-CDP webview) has no browser tab to attach to. The only way to drive it is **Computer Use** — the model looks at the screen, moves a cursor, clicks, and types. Driver-agnostic across what the host offers: **Codex Computer Use** (macOS/Windows) and/or **Anthropic "Claude" Computer Use** (the API `computer` tool, run via its own harness — a controlled display/sandbox or an MCP wrapper). Detect availability and use whichever the environment provides; verify the tool/beta-header version at build (it drifts).
+A genuinely native app (or a non-CDP webview) has no browser tab to attach to — the model has to drive the live machine. This rung is provider-agnostic; probe for the best available driver in this order, prefer the highest that passes, degrade to the next:
 
-The actuation differs from the web ladder but the universal flow (Step 2) is identical — `observe → act → verify → capture`, described as goal + success state, not pixel coordinates.
+| Probe | Driver | Reference |
+|-------|--------|-----------|
+| `cua-driver` MCP registered / `command -v cua-driver` (real display) | **Cua Driver** — MIT, provider-agnostic, **background** (no focus steal), macOS/Windows (Linux pre-release), accessibility-tree-based. Preferred when present. | `references/cua.md` |
+| Codex CU available, or a Claude Computer-Use harness present | **Computer Use** — Codex CU (macOS/Windows) / Anthropic Claude CU (the API `computer` tool via its own harness). Screen-takeover. | `references/computer-use.md` |
+| **Headless / CI** (no display) and a sandbox backend (`lume`/Docker/QEMU, or opted-in cloud) | **Cua Sandbox** — drive inside an isolated VM/container; the **only** native option with no real screen. Opt-in per run, torn down each run; local backend default, cua.ai cloud explicit opt-in. | `references/cua.md` |
+| None present | **Documented limitation** — document the gap and stop; never fail silently. | — |
 
-→ Read `references/computer-use.md` for availability detection, the enable/permission walkthrough, the driving loop, safety/hygiene, and the full graceful-degradation table.
+All share the universal flow (Step 2) — `observe → act → verify → capture`, described as goal + success state, not pixel coordinates; only the actuation differs. **Detect, never assume** (`command -v`, MCP list, `uname -s`); no native driver is ever a hard dependency. **Attended vs headless splits the precedence:** on a real display, prefer the background Cua Driver → Computer Use; on a **headless/CI** host (no screen) the **Cua Sandbox** is the only native option — the explicit ordering, the local-default/cloud-opt-in split, and provisioning/teardown live in `references/cua.md`.
+
+→ Read `references/cua.md` for Cua Driver detection, the install/permission walkthrough (multi-host MCP wiring), the AX-tree driving loop, the macOS permission-split evidence mode, the Native-rung precedence list, licensing, and degradation.
+→ Read `references/computer-use.md` for Computer Use availability detection, the enable/permission walkthrough, the driving loop, safety/hygiene, and the full graceful-degradation table.
 
 ## Driver detection & graceful degradation (all surfaces)
 
-1. **Probe, don't assume.** Detect each non-default rung before planning around it (`command -v`, MCP list, `uname -s` for macOS-only Computer Use). Treat anything above the default rung as *probably absent*.
+1. **Probe, don't assume.** Detect each non-default rung before planning around it (`command -v`, MCP list, `uname -s` for the macOS-only paths). Treat anything above the default rung — incl. **Cua Driver** and **Computer Use** — as *probably absent*.
 2. **Pick the highest rung that passes; fail soft to the next.** The terminal rung is always manual / documented-limitation — the pass still completes.
-3. **Computer Use is never required and never on a headless/CI path.** Most VMs/Linux/CI lack it.
-4. **Graceful degradation when no Computer Use is present:**
+3. **No native driver is required or on a headless/CI path.** Neither the local Cua Driver nor Computer Use runs without a real display; most VMs/Linux/CI lack both. (Headless/CI native driving is the opt-in **Cua Sandbox** surface — see `references/cua.md`.)
+4. **Graceful degradation on the native rung (C):** *(Determine attended vs headless first — `$CI` ⇒ headless, else the empirical `cua-driver call get_screen_size` display probe; NOT `$DISPLAY` on macOS. See `references/cua.md` § "Determining headless / CI".)*
+   - **Attended (real display):** prefer **Cua Driver** (background, provider-agnostic) when present → else **Computer Use** (screen-takeover) → else **documented-limitation** (document, don't fail).
+   - **Headless / CI (no display):** the **Cua Sandbox** is the only native option (provision a hermetic VM, drive, tear down each run); local backend is the default, cua.ai cloud is explicit opt-in (bills + egress). No backend and no opted-in cloud → documented-limitation. See `references/cua.md`.
    - A **Chromium-backed app (B)** still drives via the web-ladder CDP attach (Step 3), or by driving its local dev-server URL in a browser. Note that shell-level integration (system tray, native menus, OS dialogs) can't be reached this way — surface that limitation.
-   - A **genuinely native app (C)** with no Computer Use → document the limitation rather than fail.
-5. **agent-browser stays the only assumed-present driver.** No MCP server or Computer Use is ever a hard install dependency.
+   - A **genuinely native app (C)** with no native driver at all → document the limitation rather than fail.
+   - On macOS, the Cua Driver's **Accessibility-vs-Screen-Recording permission split** means driving can work while screenshots don't — surface "AX-only evidence, no screenshot" rather than emit an empty one (`references/cua.md`).
+5. **agent-browser stays the only assumed-present driver.** No MCP server, Cua Driver, or Computer Use is ever a hard install dependency; flowctl never imports any of them.
 
 ## Boundaries
 
