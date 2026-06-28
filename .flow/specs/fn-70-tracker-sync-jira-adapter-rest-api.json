@@ -11,6 +11,7 @@
   "next_task": 1,
   "plan_review_status": "ship",
   "plan_reviewed_at": "2026-06-28T13:27:45.551220Z",
+  "ready": true,
   "spec_path": ".flow/specs/fn-70-tracker-sync-jira-adapter-rest-api.md",
   "status": "open",
   "title": "tracker-sync Jira adapter \u2014 REST PAT + agentic Atlassian MCP (Linear-style ladder)",
@@ -25,5 +26,5 @@
     "mergeBaseTracker": "# tracker projection on FLOW board, full reconcile 2026-06-26\n",
     "url": "https://linear.app/gmickel/issue/FLOW-19"
   },
-  "updated_at": "2026-06-28T13:27:45.551398Z"
+  "updated_at": "2026-06-28T14:18:18.586805Z"
 }
