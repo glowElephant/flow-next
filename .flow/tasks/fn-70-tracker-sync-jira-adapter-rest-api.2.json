@@ -1,0 +1,16 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-06-28T07:21:48.237239Z",
+  "depends_on": [
+    "fn-70-tracker-sync-jira-adapter-rest-api.1"
+  ],
+  "id": "fn-70-tracker-sync-jira-adapter-rest-api.2",
+  "priority": null,
+  "spec": "fn-70-tracker-sync-jira-adapter-rest-api",
+  "spec_path": ".flow/tasks/fn-70-tracker-sync-jira-adapter-rest-api.2.md",
+  "status": "todo",
+  "title": "references/jira.md \u2014 REST v3 single-rung + 6 core + auth + PR-link",
+  "updated_at": "2026-06-28T09:51:39.340195Z"
+}

@@ -1,0 +1,16 @@
+{
+  "assignee": null,
+  "claim_note": "",
+  "claimed_at": null,
+  "created_at": "2026-06-28T07:19:19.140313Z",
+  "depends_on": [
+    "fn-69-tracker-sync-gitlab-adapter-glab-cli.1"
+  ],
+  "id": "fn-69-tracker-sync-gitlab-adapter-glab-cli.2",
+  "priority": null,
+  "spec": "fn-69-tracker-sync-gitlab-adapter-glab-cli",
+  "spec_path": ".flow/tasks/fn-69-tracker-sync-gitlab-adapter-glab-cli.2.md",
+  "status": "todo",
+  "title": "references/gitlab.md \u2014 full GitLab adapter (9 methods, glab+token ladder)",
+  "updated_at": "2026-06-28T11:17:08.514990Z"
+}
