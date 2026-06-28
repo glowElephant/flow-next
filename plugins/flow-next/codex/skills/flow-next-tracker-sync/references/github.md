@@ -453,9 +453,9 @@ gh api -H "X-GitHub-Api-Version: 2026-03-10" \
  "repos/$OWNER/$REPO/issues/$NUMBER/dependencies/blocked_by" \
  --jq '.[] | {number, id}'
 ```
-Each blocker issue → one `relation`: `{ from: "#"+A.number (blocked), to: "#"+blocker.number (blocking), type: "blocks", source: "unknown" }`. Native deps store no authorship, so `source` is `unknown` and the flow-side `depRelations` ledger (fn-64.1) is the provenance authority (R6/R7) — same as Linear's native relations.
+Each blocker issue → one `relation`: `{ from: "#"+A.number (blocked), to: "#"+blocker.number (blocking), type: "blocks", source: "unknown", linkPresent: true }`. Native deps store no authorship, so `source` is `unknown` and the flow-side `depRelations` ledger (fn-64.1) is the provenance authority (R6/R7) — same as Linear's native relations. `linkPresent` is always `true` on this path — a native blocked-by dependency **is** the tracker-visible link (GitHub has no separate-link-plus-block split like GitLab; nothing can orphan).
 
-**Fallback:** parse the `#N` lines **inside** the `<!-- flow:deps -->` … `<!-- /flow:deps -->` markers of the issue body (`gh issue view "$NUMBER" --json body -q .body`). Each `#N` inside the markers → `{ from: "#"+A.number, to: "#N", type: "blocks", source: "flow" }` (inside the fence ⇒ provably ours). `#N` references **outside** the markers are NOT relations — never returned (they could be any human cross-reference).
+**Fallback:** parse the `#N` lines **inside** the `<!-- flow:deps -->` … `<!-- /flow:deps -->` markers of the issue body (`gh issue view "$NUMBER" --json body -q .body`). Each `#N` inside the markers → `{ from: "#"+A.number, to: "#N", type: "blocks", source: "flow", linkPresent: true }` (inside the fence ⇒ provably ours). On this reduced rung the fenced block **is** the sole visible projection (there is no separate native link to diverge from), so `linkPresent` is `true` — unlike GitLab, GitHub never emits `block-only`/`linkPresent:false`. `#N` references **outside** the markers are NOT relations — never returned (they could be any human cross-reference).
 
 ### `setIssueRelation(issue=A, blockedBy=B)` → ok | errored | noop
 
@@ -524,7 +524,7 @@ Verify per method:
 | `postComment` | `gh issue comment --body-file -` | `save_comment` / `commentCreate` | same `comment` |
 | `readStatus` | from `state`+`stateReason`+`status:` label | from `state{name type}` | same `status{raw,normalized}` |
 | `setStatus` | `gh issue close/reopen` + `status:` label | `save_issue(state)` / `issueUpdate(stateId)` | ok / `errored` |
-| `listIssueRelations` | native `…/dependencies/blocked_by` (reduced → fenced `#N` block) | `issue{ relations + inverseRelations }` | same blocked-by `relation[]` (`{from,to,type:"blocks",source}`) |
+| `listIssueRelations` | native `…/dependencies/blocked_by` (reduced → fenced `#N` block) | `issue{ relations + inverseRelations }` | same blocked-by `relation[]` (`{from,to,type:"blocks",source,linkPresent:true}` — GitHub never orphans) |
 | `setIssueRelation` | native POST `blocked_by` (reduced → fenced-block append) | `issueRelationCreate(type:blocks)` | ok / `errored` / `noop`; read-before-write on both |
 | `listOpenIssues` (fn-68) | `gh issue list --state open --label readyState` | `issues(filter:{state:{name:{eqIgnoreCase}}})` | same `issue[]` at the **exact** readyState lane (label vs state name — both exact, no ordering) |
 | status map | open/closed+reason+`status:` label (reduced — recovered via label) | team `workflowStates` / `list_issue_statuses` | same **normalized** vocabulary out |
@@ -537,7 +537,7 @@ best-effort normalized value; that is a documented reduced-fidelity case, not a
 parity break (the struct shape is still identical).
 
 The same holds for relations: native `blocked_by` deps and the fenced `#N` block
-both produce the **identical** normalized `relation[]` (`{from,to,type:"blocks",source}`),
+both produce the **identical** normalized `relation[]` (`{from,to,type:"blocks",source,linkPresent}` — `linkPresent` always `true` on GitHub, the relation IS the visible projection),
 so the skill (fn-64.5) sees one transport-blind hook regardless of which GitHub
 path served it — only the `source` field differs (`unknown` on native, deferring
 to the ledger; `flow` inside the fenced marker). Native-vs-fallback is a fidelity

@@ -1498,6 +1498,7 @@ if [ "$TRK_ACTIVE" = "true" ]; then
   case "$TRK_TYPE" in
     linear) [ -n "$TRK_ID" ] && REF="Ref ${TRK_ID}" ;;      # WOR-N → Linear auto-link + Diffs
     github) [ -n "$TRK_ID" ] && REF="Refs ${TRK_ID}" ;;      # #N → native GitHub cross-reference
+    gitlab) [ -n "$TRK_ID" ] && REF="Ref \`${TRK_ID}\`" ;;    # <project>#<iid> in BACKTICKS → inline code, so GitHub does NOT autolink it as a cross-repo "owner/repo#N" reference (a GitLab key whose path also names a GitHub repo would otherwise mis-link to GitHub issue #N). A GitHub-PR ref can't link a GitLab issue anyway — the real cross-link is the §5.6 non-closing PR-URL note on the GitLab issue.
   esac
   # Idempotency: match the exact ref LINE (whole-line, case-insensitive), NOT any
   # substring — the cognitive-aid body already mentions the spec path
@@ -1784,7 +1785,15 @@ if [[ -n "$PR_URL" ]] \
   #            via reconcileStatus (open prEvidence → in-review, non-terminal, status-sync.md
   #            row 4); the §4.6a body ref already enabled the auto-link + Diffs. Optional breadcrumb comment.
   #   github → native `Refs #N` (github.md) + status:in-review label.
-  #   (the PR URL itself rides as evidence in the comment/attachment, not the op token.)
+  #   gitlab → the GitLab adapter posts a non-closing PR-URL **note** on the issue
+  #            (gitlab.md §makePr) — NEVER a `Closes #N` (flow-next owns terminal Done
+  #            via land.merged) — + the open/closed-side status:in-review label. A
+  #            GitHub-PR body ref can't auto-link a cross-instance GitLab issue, so the
+  #            note IS the cross-link; the §4.6a `Ref <project>#<iid>` is a human breadcrumb.
+  #   (PR URL source: reconcile RE-DERIVES it from `mergeEvidenceProbe(spec.branch_name)` —
+  #    the same probe yielding open/merged queries the code host `gh pr … --json url,state`
+  #    (status-sync.md) — so the op token `reconcile <spec-id>` deliberately omits it; the
+  #    note dedupes on the URL so a re-run never stacks duplicates. gitlab.md §makePr.)
   # The open PR is the merge-evidence `open` bucket → In Review, NEVER terminal (no MERGED).
   # Unlinked spec → flow-first link (create + base-snapshot) first, then reconcile the now-linked
   # spec → link the PR / Diff + In Review (tracker-sync §Phase 3 create-if-unlinked). No-op only if no transport reachable.

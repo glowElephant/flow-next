@@ -116,7 +116,7 @@ named op:
   — the same explicit signal as the flow `ready` flag), via the `listOpenIssues`
   adapter method. Returns normalized `issue[]` (`{id, identifier, title, status,
   labels, url}`) — **transport-blind**: backlog mode reads the struct and never
-  branches on Linear-vs-GitHub.
+  branches on tracker type (Linear / GitHub / GitLab).
 - **`tracker.readyState` unset ⇒ `list-open` no-ops** (returns `[]` + a note): no
   promoted lane exists to filter on, so backlog mode runs the **flow-ready specs
   only**. The flow `ready` flag needs no tracker (R17). Same floor when no transport
@@ -163,6 +163,15 @@ edges come from **two** sources and feed **one** existing sorter:
   ```text
   /flow-next:tracker-sync list-relations <tracker-id> mode:autonomous   # per tracker issue
   ```
+
+  **The `<tracker-id>` passed is the candidate's `listOpenIssues` normalized
+  `issue.identifier` (the display handle `<project>#<iid>` / `WOR-17` / `#123`), NOT the
+  opaque global `id`.** On GitLab the global id can't index the
+  `/projects/:id/issues/:iid` path — the adapter needs the `<project>#<iid>` the
+  identifier carries (gitlab.md § identity). `list-open` already returns `identifier`
+  per issue, so the pilot passes that handle straight through; Linear/GitHub resolve
+  their display handle the same way. (Spec-backed candidates pass the spec/tracker id,
+  which resolves to the stored `tracker.identifier`.)
 
   (This routes through the `listIssueRelations` adapter method from fn-64 over the
   same transport-blind ladder — backlog mode never calls a tracker API directly. It
@@ -307,6 +316,11 @@ the stable-anchor authoring, the comments-sync dedup, and the answer round-trip
 /flow-next:tracker-sync question <spec-id | tracker-id> mode:autonomous
 ```
 
+For a **tracker-only** subject the `<tracker-id>` is the candidate's `list-open`
+`issue.identifier` (the display handle, not the opaque global id) — posting the comment
+hits `POST /projects/:id/issues/:iid/notes` on GitLab, which needs the `<project>#<iid>`
+the identifier carries (gitlab.md § identity); a spec-backed subject passes its `<spec-id>`.
+
 Where the question parks depends on whether a spec exists:
 
 - **Spec-backed** (`question <spec-id>`) — the durable parked state lives in the
@@ -380,10 +394,18 @@ posts a comment. It calls **no** tracker-specific API and **never** branches on
 tracker type; the active adapter (from `tracker.type`) supplies the wire query behind
 the normalized interface.
 
-- **v1 ships on Linear + GitHub** — the two adapters that already implement
-  `listOpenIssues` / `listIssueRelations` / the comment ops (fn-68.2 / fn-64).
-- **GitLab (fn-69) and Jira (fn-70)** inherit the same contract once their adapters
-  ship — backlog mode layers coverage on with **zero** pilot changes (no
+- **Ships on Linear, GitHub + GitLab** — the three adapters that implement
+  `listOpenIssues` / `listIssueRelations` / the comment ops (fn-68.2 / fn-64 / fn-69).
+  On **GitLab** the adapter derives the project-local `iid` its issue API paths require
+  from the issue's normalized **`identifier`** (`<project>#<iid>`) — never the global
+  id (gitlab.md § identity / fetchIssue). That identifier is available in **both**
+  backlog cases, so no spec is required: a **spec-backed** issue carries it as the
+  stored `tracker.identifier`, and a **tracker-only** issue (one `list-open` enumerated
+  with no flow spec) carries it in the `listOpenIssues` normalized `issue.identifier`.
+  The normalized op signature is identical for every tracker; the iid derivation is an
+  adapter-internal concern, so pilot still branches on **no** tracker type.
+- **Jira (fn-70)** inherits the same contract once its adapter
+  ships — backlog mode layers coverage on with **zero** pilot changes (no
   tracker-specific code lives here to update).
 - **Zero-setup (R17).** Each tracker resolves via tracker-sync's discovery-ceremony
   probe ladder, preferring auth the company already has (`gh`/`glab` CLI session,

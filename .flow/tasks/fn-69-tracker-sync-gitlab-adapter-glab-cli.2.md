@@ -1,3 +1,7 @@
+---
+satisfies: [R1, R2, R5, R6]
+---
+
 ## Goal
 Author `references/gitlab.md` — the complete, transport-blind GitLab adapter — modeled section-for-section on `references/github.md`. Covers the transport ladder, all nine adapter-interface methods, reduced-status mapping, identity, relations, and enumeration. Prose the host agent follows, NOT literal code. **Endpoints/limits verified live 2026-06-28** (`~/work/agent-scripts/flow-smoke/out/FINDINGS-gitlab.md`). (Spec R1, R2, R5, R6.)
 
@@ -32,9 +36,8 @@ Author `references/gitlab.md` — the complete, transport-blind GitLab adapter �
 TBD
 
 ## Done summary
-TBD
-
+Authored `references/gitlab.md` — the complete nine-method GitLab adapter reference doc for tracker-sync, modeled section-for-section on `references/github.md`. Documents the `glab api` → raw-REST → no-op transport ladder, URL-encoded project paths (both rungs), the PRIVATE-TOKEN/JOB-TOKEN header ladder, reduced open/closed status with `status:` label fidelity, the readiness-label ceremony, global-issue-id durable identity + `flow:<id>` label, `system==true` note filtering, `authorAuthority` from project `access_level`, and the Premium-403 → `relates_to`+`<!-- flow:deps -->` block relation degrade ladder.
 ## Evidence
-- Commits:
-- Tests:
+- Commits: 901a024db48aa86d413aa92316d851dffafb4613
+- Tests: python3 -m py_compile flowctl.py (unchanged, compiles), internal markdown cross-link + anchor resolution check (all OK), section-parity check vs references/github.md (all sections covered), triage-skip docs-only SHIP receipt
 - PRs:
