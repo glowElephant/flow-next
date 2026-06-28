@@ -20,7 +20,7 @@
     "qa": "off"
   },
   "planSync": {
-    "crossSpec": false,
+    "crossSpec": true,
     "enabled": true
   },
   "review": {
