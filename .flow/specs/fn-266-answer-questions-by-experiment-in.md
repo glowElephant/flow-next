@@ -61,6 +61,8 @@ This spec is one of a set captured together to strengthen `/flow-next:flow`: the
 
 Related open work: fn-260 R8 studies refine's question count against a sealed answer key. This spec changes refine's question categories, so sequence the two: land this spec before that study's baseline is drawn, or after its result, never between its draws.
 
+Delivery order: 9 of 10 in this set (fn-262 → fn-261 → fn-264 → fn-263 → fn-268 → fn-267 → fn-265 → fn-269 → fn-266 → fn-270); independent; sequence around fn-260 R8's refine study. Hard dependencies are recorded on the spec, so `flowctl spec chain` refuses a spec whose dependency is not done. Route: direct, `/flow-next:work fn-266-answer-questions-by-experiment-in --no-plan`.
+
 ## Strategy Alignment
 
 Serves the approach line that material product or authority choices need refinement while everything else stays with the owner: experiments move factual questions off the user.

@@ -60,6 +60,8 @@ The maintainer sees `/flow-next:flow` as the product's strongest surface and wan
 
 This spec is one of a set captured together to strengthen `/flow-next:flow`: the feature map stays current, the feature map across live-app routes, a hardened defect route, the hill-climb loop, answering questions by experiment, sharper handovers, a read-only PR status answer, diagnosing a captured profile, and resume and review hygiene. It depends on "the feature map stays current", which must land first so intake reads a map that is kept true; the live-app-routes spec and the defect route spec depend on this one.
 
+Delivery order: 2 of 10 in this set (fn-262 → fn-261 → fn-264 → fn-263 → fn-268 → fn-267 → fn-265 → fn-269 → fn-266 → fn-270); needs fn-262. Hard dependencies are recorded on the spec, so `flowctl spec chain` refuses a spec whose dependency is not done. Route: direct, `/flow-next:work fn-261-feature-map-aware-bug-intake-in-flow --no-plan`.
+
 ## Strategy Alignment
 
 Serves the approach line that `/flow-next:flow` is the one dial on the default path: it reads whatever the user has and routes it, and this makes the defect route cheaper when a map exists. Serves the **Self-improving through normal work** track: the feature map is a compounding surface, and this gives it a second everyday reader beside QA, so the navigation knowledge pays off on every bug report rather than only on QA runs.

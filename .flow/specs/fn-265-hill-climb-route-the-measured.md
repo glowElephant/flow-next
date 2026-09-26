@@ -81,6 +81,8 @@ This spec is one of a set captured together to strengthen `/flow-next:flow`: kee
 
 Related open work: fn-260 parks the decision on whether the spec template gains a `## Quick commands` section, so this loop names its own regression-gate command in the pre-registration and uses Quick commands only when a spec has them.
 
+Delivery order: 7 of 10 in this set (fn-262 → fn-261 → fn-264 → fn-263 → fn-268 → fn-267 → fn-265 → fn-269 → fn-266 → fn-270); independent; the largest new loop. Hard dependencies are recorded on the spec, so `flowctl spec chain` refuses a spec whose dependency is not done. Route: direct, `/flow-next:work fn-265-hill-climb-route-the-measured --no-plan`.
+
 ## Strategy Alignment
 
 Serves the approach line that a ready spec runs through work with a capable agent and that evidence, not narration, decides: the loop makes every kept change carry its own measurement. Serves **Self-improving through normal work**: proven mechanisms feed memory so later climbs start ahead.

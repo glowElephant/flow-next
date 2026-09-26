@@ -80,6 +80,8 @@ This spec is one of a set captured together to strengthen `/flow-next:flow`: kee
 
 Related open work: fn-260 R2 studies splitting what `flow --auto` loads per hop, including intake-only routing content. The defect route's step detail lives with work and the worker, and any routing-row wording stays within the row so auto's per-hop load does not grow; worker additions follow fn-260 R4's conditional-reference placement.
 
+Delivery order: 3 of 10 in this set (fn-262 → fn-261 → fn-264 → fn-263 → fn-268 → fn-267 → fn-265 → fn-269 → fn-266 → fn-270); needs fn-261; both change the defect route's reproduction step. Hard dependencies are recorded on the spec, so `flowctl spec chain` refuses a spec whose dependency is not done. Route: direct, `/flow-next:work fn-264-defect-route-v2-prior-fixes-diagnosis --no-plan`.
+
 ## Strategy Alignment
 
 Serves the approach line that flow reads whatever the user has and routes it through one shared routing reference; this makes the most common route do its job fully. Serves **Self-improving through normal work**: refuted hypotheses and root causes flow into the bug track, and the prior-fix check reads them back.

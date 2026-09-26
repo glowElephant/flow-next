@@ -64,6 +64,8 @@ This spec is one of a set captured together to strengthen `/flow-next:flow`: the
 
 Related open work: fn-260 R3 and R4 study moving rarely used work and worker content into references loaded only when their condition holds. The escalation-format lines added here belong to the always-reached escalation path, so they stay where the escalation format lives; nothing here adds to the rare branches those studies move.
 
+Delivery order: 6 of 10 in this set (fn-262 → fn-261 → fn-264 → fn-263 → fn-268 → fn-267 → fn-265 → fn-269 → fn-266 → fn-270); independent and small. Hard dependencies are recorded on the spec, so `flowctl spec chain` refuses a spec whose dependency is not done. Route: direct, `/flow-next:work fn-267-sharper-handovers-shared-assumption-and --no-plan`.
+
 ## Strategy Alignment
 
 Serves the approach line of reviewable handover objects between idea and merge: both changes make an existing handover object carry the reasoning a human needs.

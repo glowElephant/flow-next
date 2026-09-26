@@ -63,6 +63,8 @@ This spec is one of a set captured together to strengthen `/flow-next:flow`: the
 
 Related open work: fn-260 R5 studies trimming the drive skill's main file to save tokens. New drive text from this spec goes into drive's existing references, not its always-loaded file.
 
+Delivery order: 4 of 10 in this set (fn-262 → fn-261 → fn-264 → fn-263 → fn-268 → fn-267 → fn-265 → fn-269 → fn-266 → fn-270); needs fn-262 and fn-261; extends fn-261's resolved-feature record. Hard dependencies are recorded on the spec, so `flowctl spec chain` refuses a spec whose dependency is not done. Route: direct, `/flow-next:work fn-263-feature-map-across-flows-live-app-routes --no-plan`.
+
 ## Strategy Alignment
 
 Serves the approach line that flow is the one dial on the default path: the routes it chooses get faster when the map exists. Serves **Self-improving through normal work**: the map becomes a shared asset every live route reads and reports drift against.

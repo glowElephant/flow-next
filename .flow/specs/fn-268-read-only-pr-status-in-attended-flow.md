@@ -56,6 +56,8 @@ The maintainer confirmed the scope condition directly ("will 7 : read-only pr st
 
 This spec is one of a set captured together to strengthen `/flow-next:flow`: the feature map stays current, feature-map-aware bug intake (fn-261), the feature map across live-app routes, a hardened defect route, the hill-climb loop, answering questions by experiment, sharper handovers, diagnosing a captured profile, and resume and review hygiene. It stands alone.
 
+Delivery order: 5 of 10 in this set (fn-262 → fn-261 → fn-264 → fn-263 → fn-268 → fn-267 → fn-265 → fn-269 → fn-266 → fn-270); independent and small. Hard dependencies are recorded on the spec, so `flowctl spec chain` refuses a spec whose dependency is not done. Route: direct, `/flow-next:work fn-268-read-only-pr-status-in-attended-flow --no-plan`.
+
 ## Strategy Alignment
 
 Serves the approach line that attended flow stops at the next decision that is the user's: a status question contains no decision to make.

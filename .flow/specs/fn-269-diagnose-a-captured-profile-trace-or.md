@@ -68,6 +68,8 @@ This spec is one of a set captured together to strengthen `/flow-next:flow`: kee
 
 Related open work: fn-260 R2 studies splitting what `flow --auto` loads per hop, including intake-only routing rows. The new captured-profile row is intake-only (auto never takes raw intent) and is placed so it joins whatever intake-only split that study keeps.
 
+Delivery order: 8 of 10 in this set (fn-262 → fn-261 → fn-264 → fn-263 → fn-268 → fn-267 → fn-265 → fn-269 → fn-266 → fn-270); independent; its recommended next routes point at fn-265 and fn-264, so it reads best after them. Hard dependencies are recorded on the spec, so `flowctl spec chain` refuses a spec whose dependency is not done. Route: direct, `/flow-next:work fn-269-diagnose-a-captured-profile-trace-or --no-plan`.
+
 ## Strategy Alignment
 
 Serves the approach line that flow reads whatever the user has, including artifacts, and routes it through one shared routing reference; evidence over narration is kept by the confidence labels.

@@ -61,6 +61,8 @@ This spec is one of a set captured together to strengthen `/flow-next:flow`: the
 
 Related open work: fn-260 R3 and R4 study moving rarely used work and worker content into references loaded only when their condition holds. The pause and pilot-before-batch guidance added here is rarely reached, so it goes into those conditional references rather than the always-loaded work and worker files.
 
+Delivery order: 10 of 10 in this set (fn-262 → fn-261 → fn-264 → fn-263 → fn-268 → fn-267 → fn-265 → fn-269 → fn-266 → fn-270); independent; lowest priority. Hard dependencies are recorded on the spec, so `flowctl spec chain` refuses a spec whose dependency is not done. Route: direct, `/flow-next:work fn-270-resume-and-review-hygiene --no-plan`.
+
 ## Strategy Alignment
 
 Serves **Self-improving through normal work**: review-bot patterns accrete from resolve-pr runs and are read back without a separate ceremony.
