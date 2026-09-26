@@ -6,6 +6,10 @@ Flow-Next changed shape with 5.0.0. One command, `/flow-next:flow`, reads whatev
 
 ## Unreleased
 
+## [flow-next 6.1.1] - 2026-09-26
+
+The Flow-Next block that setup writes into CLAUDE.md and AGENTS.md now points agents at the prose skill they can actually call, and plan dispatches its scouts one step faster.
+
 **What changes when you upgrade.** Re-run `/flow-next:setup` once in each repository that has a Flow-Next block in its CLAUDE.md or AGENTS.md. The block's version moves to 3, and setup offers the refresh. The refreshed block tells the agent to apply the prose contract through the skill id (`flow-next:flow-next-prose`); the old block's `/flow-next:prose` line stopped working in 6.1.0, when commands became typed-only.
 
 ### Fixed
