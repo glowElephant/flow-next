@@ -14,7 +14,7 @@ Target user: anyone refining a spec or settling a design fork through flow.
 <!-- scope: technical -->
 
 - **Refine taxonomy.** The shared question taxonomy gains a fourth category, experiment-answerable: behaviour, timing, layout, output, performance, and whether an evaluation separates two options. Before asking the user, refine classifies the question; an experiment-answerable question runs a throwaway experiment and records the outcome instead of asking. Genuine product and preference calls still go to the user. [paraphrase]
-- **Safety.** The existing rule stays: an experiment runs only when it is read-only or fully disposable. Anything stateful, destructive or external becomes a user question. Experiments run in a gitignored scratch location under the flow directory and are discarded or folded into the spec as evidence, never shipped. [paraphrase]
+- **Safety.** The existing rule stays: an experiment runs only when it is read-only or fully disposable. Anything stateful, destructive or external becomes a user question. Experiments run in `.flow/tmp/experiments/` (gitignored) and are discarded or folded into the spec as evidence, never shipped. [paraphrase]
 - **Audit trail.** A new auxiliary section, `## Resolved via Experiment`, records each resolution: the question, what was run, what was observed, and the decision it settled. It joins the other refine-written auxiliary sections in the template's list, the repository's own spec template override, and refine's preserve-byte-for-byte rule, so later passes keep it. [inferred]
 - **Flow's prototype step.** When a fork is observable, the prototype builds the competing variants behind one switcher (a toggle, flag or keypress that swaps between them, each labelled) so they are compared in one place; when the design space is open, it first gathers references and prior art and lets the user pick a direction before building. A prototype stays evidence, never a deliverable. Chart's single-artefact rule still holds: variants behind one switcher are one artefact. [paraphrase]
 - **Autonomy.** Unattended runs do not dispatch refine; under `flow --auto` a preference fork still stops with `NEEDS_HUMAN`, and a cheap reversible prototype may still run as today. [inferred]
@@ -22,6 +22,11 @@ Target user: anyone refining a spec or settling a design fork through flow.
 ### Worked example
 
 Refining a spec for a new search box, three questions come up. "Should results update on every keystroke or after a pause?" The agent classifies it as experiment-answerable: it builds a throwaway page with both behaviours behind a toggle, types a 12-character query against the local index, and measures that per-keystroke search takes 180 ms per update and visibly stutters, while a 150 ms pause feels immediate. It records the question, the experiment and the numbers under Resolved via Experiment, and writes "update after a 150 ms pause" into the spec. "Does the existing tokenizer handle accented names?" It runs the tokenizer on five sample names, observes two are split wrongly, and records that as a constraint. "Should search include archived projects?" That is a product call, so it asks the user.
+
+**Resolved details for implementers.**
+
+- fn-260 R8's refine study has not drawn a baseline, so this spec lands first and that study measures the result as current state.
+- Docs changes land in the flow-next.dev site repository (content under `src/content/docs/`) as a separate change in the same work run, per the project rule that flow-next.dev is the canonical user documentation.
 
 ## Edge Cases & Constraints
 <!-- scope: technical -->
@@ -61,7 +66,7 @@ This spec is one of a set captured together to strengthen `/flow-next:flow`: the
 
 Related open work: fn-260 R8 studies refine's question count against a sealed answer key. This spec changes refine's question categories, so sequence the two: land this spec before that study's baseline is drawn, or after its result, never between its draws.
 
-Delivery order: 9 of 10 in this set (fn-262 → fn-261 → fn-264 → fn-263 → fn-268 → fn-267 → fn-265 → fn-269 → fn-266 → fn-270); independent; sequence around fn-260 R8's refine study. Hard dependencies are recorded on the spec, so `flowctl spec chain` refuses a spec whose dependency is not done. Route: direct, `/flow-next:work fn-266-answer-questions-by-experiment-in --no-plan`.
+Delivery order: 6 of 10 in this set (fn-262 → fn-261 → fn-264 → fn-263 → fn-265 → fn-266 → fn-267 → fn-268 → fn-269 → fn-270, which is the order `flow --auto` picks them once ready); independent. Hard dependencies are recorded on the spec, so `flowctl spec chain` refuses a spec whose dependency is not done. Route: direct, `/flow-next:work fn-266-answer-questions-by-experiment-in --no-plan`.
 
 ## Strategy Alignment
 

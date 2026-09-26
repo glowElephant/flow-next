@@ -26,6 +26,12 @@ Work's rolling route fails the same task twice. Attempt one added a retry around
 
 The PR for a schema change shows under blast radius: "Safe because: the new `archived_at` column is nullable and no existing query filters on it. Proof: ran it (the migration applied to a copy of production-shaped data and the full query suite passed)." Another PR shows "Safe because: only the CSV exporter calls `format_row`. Proof: pointed at the code (single call site)", which tells the reviewer exactly how much weight that claim can bear.
 
+**Resolved details for implementers.**
+
+- The briefing field is `safetyBasis`: `{"fact": string (at most 400 characters), "proof": one of "stated" | "pointed" | "walked" | "ran" | "reproduced" | "unproven", "reason": string (required when proof is "unproven"), "sourceRefs": optional, same grounding rules as proof cells}`. Rendered under blast radius as "Safe because: <fact>. Proof: <level label>." This is the only briefing schema change in the fn-261..fn-270 set.
+- The escalation lines use the labels `Shared assumption:` and `Alternative:` in the worker's blocked format.
+- Docs changes land in the flow-next.dev site repository (content under `src/content/docs/`) as a separate change in the same work run, per the project rule that flow-next.dev is the canonical user documentation.
+
 ## Edge Cases & Constraints
 <!-- scope: technical -->
 
@@ -43,7 +49,7 @@ The PR for a schema change shows under blast radius: "Safe because: the new `arc
 - **R3:** No review-round cap, transport-failure cap, strike count, reset rule or refund changes, and no trend heuristic is introduced. No error surface. [inferred]
 - **R4:** The PR briefing accepts an optional safety-fact field with a proof level from stated, pointed at the code, walked through, ran it, reproduced in the app, or unproven, renders it under blast radius, and keeps older briefings valid with the same schema version and unknown-field rejection. Errors: a proof level outside the list → rejected by the validator. [paraphrase]
 - **R5:** make-pr fills the safety fact on every briefing it authors, choosing the proof level from the evidence it has, and writes unproven with a reason when it has none. No error surface beyond R4. [paraphrase]
-- **R6:** The make-pr, pilot, land, resolve-pr and troubleshooting pages on flow-next.dev and the briefing reference doc describe both additions with examples like the ones in this spec. No error surface. [inferred]
+- **R6:** The make-pr, flow --auto (autonomy), land, resolve-pr and troubleshooting pages on flow-next.dev and the briefing reference doc describe both additions with examples like the ones in this spec. No error surface. [inferred]
 
 ## Boundaries
 <!-- scope: business -->
@@ -64,7 +70,7 @@ This spec is one of a set captured together to strengthen `/flow-next:flow`: the
 
 Related open work: fn-260 R3 and R4 study moving rarely used work and worker content into references loaded only when their condition holds. The escalation-format lines added here belong to the always-reached escalation path, so they stay where the escalation format lives; nothing here adds to the rare branches those studies move.
 
-Delivery order: 6 of 10 in this set (fn-262 → fn-261 → fn-264 → fn-263 → fn-268 → fn-267 → fn-265 → fn-269 → fn-266 → fn-270); independent and small. Hard dependencies are recorded on the spec, so `flowctl spec chain` refuses a spec whose dependency is not done. Route: direct, `/flow-next:work fn-267-sharper-handovers-shared-assumption-and --no-plan`.
+Delivery order: 7 of 10 in this set (fn-262 → fn-261 → fn-264 → fn-263 → fn-265 → fn-266 → fn-267 → fn-268 → fn-269 → fn-270, which is the order `flow --auto` picks them once ready); independent and small; the only spec that changes the PR briefing schema. Hard dependencies are recorded on the spec, so `flowctl spec chain` refuses a spec whose dependency is not done. Route: direct, `/flow-next:work fn-267-sharper-handovers-shared-assumption-and --no-plan`.
 
 ## Strategy Alignment
 

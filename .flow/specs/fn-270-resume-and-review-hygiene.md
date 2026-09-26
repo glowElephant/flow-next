@@ -24,6 +24,15 @@ A long rolling run is halfway through a task when the user says "pause, I need t
 
 Two weeks of PRs later, resolve-pr has seen the same bot flag "possible null dereference" on guarded optional chains nine times, all noise, and "missing await" four times, all valid. Its memory now says so, with examples. On the next PR it triages both kinds in one pass and still reads each comment before dismissing it.
 
+**Resolved details for implementers.**
+
+- Mid-task pause with workers running: the conductor waits for each running worker's handover (bounded by the worker's normal completion), never kills one, then commits and writes the note; a worker that cannot hand over is named in the note as unfinished.
+- The resume note path is `.flow/tmp/<spec-id>-resume.md`.
+- Review-bot patterns are memory entries on track `knowledge`, category `workflow`, tag `review-bot-pattern`, title `bot-pattern: <bot> <pattern>` (the title is the upsert identity).
+- Pause and pilot-before-batch guidance goes into a new work reference, `flow-next-work/references/pause-and-batch.md`; why-scout and resolve-pr changes stay in their own files.
+- fn-260's studies have not drawn baselines yet, so this spec lands first; its always-reached text goes where the behaviour lives, and rarely reached text goes into the new reference file named here, which fn-260's studies then measure as the current state.
+- Docs changes land in the flow-next.dev site repository (content under `src/content/docs/`) as a separate change in the same work run, per the project rule that flow-next.dev is the canonical user documentation.
+
 ## Edge Cases & Constraints
 <!-- scope: technical -->
 
@@ -61,7 +70,7 @@ This spec is one of a set captured together to strengthen `/flow-next:flow`: the
 
 Related open work: fn-260 R3 and R4 study moving rarely used work and worker content into references loaded only when their condition holds. The pause and pilot-before-batch guidance added here is rarely reached, so it goes into those conditional references rather than the always-loaded work and worker files.
 
-Delivery order: 10 of 10 in this set (fn-262 → fn-261 → fn-264 → fn-263 → fn-268 → fn-267 → fn-265 → fn-269 → fn-266 → fn-270); independent; lowest priority. Hard dependencies are recorded on the spec, so `flowctl spec chain` refuses a spec whose dependency is not done. Route: direct, `/flow-next:work fn-270-resume-and-review-hygiene --no-plan`.
+Delivery order: 10 of 10 in this set (fn-262 → fn-261 → fn-264 → fn-263 → fn-265 → fn-266 → fn-267 → fn-268 → fn-269 → fn-270, which is the order `flow --auto` picks them once ready); independent; lowest priority. Hard dependencies are recorded on the spec, so `flowctl spec chain` refuses a spec whose dependency is not done. Route: direct, `/flow-next:work fn-270-resume-and-review-hygiene --no-plan`.
 
 ## Strategy Alignment
 

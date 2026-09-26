@@ -36,6 +36,14 @@ Bisect: the report says it worked last week, so the reproduction script drives a
 
 Prove: the failing test (3 rows in, 3 rows out) is committed first and fails on base. The fix closes the writer inside the handle's context. On head the test passes and the live export in the app downloads 3 rows. The PR shows the eliminated causes, the bisected commit, and the base and head observations.
 
+**Resolved details for implementers.**
+
+- The defect route's step detail lives in a new work reference, `flow-next-work/references/defect-route.md`, loaded when the spec's route is the defect route; the routing row names the four steps in one cell.
+- PR briefing: this spec adds no briefing schema field (only fn-267 does); its content goes into the existing authored prose fields and proof cells within their current limits, with the full record in task evidence. The PR briefing carries a short diagnosis summary (cause, bisected commit, base and head observations); the full diagnosis record stays in task evidence.
+- Changing a routing-row cell updates the judge's matching literals and their pin tests in the same change, and the maintainer's routing-accuracy check (agent-evals `studies/routing-accuracy-2026-09`) is rerun for the affected kinds before shipping; a regression there blocks the change.
+- fn-260's studies have not drawn baselines yet, so this spec lands first; its always-reached text goes where the behaviour lives, and rarely reached text goes into the new reference file named here, which fn-260's studies then measure as the current state.
+- Docs changes land in the flow-next.dev site repository (content under `src/content/docs/`) as a separate change in the same work run, per the project rule that flow-next.dev is the canonical user documentation.
+
 ## Edge Cases & Constraints
 <!-- scope: technical -->
 
@@ -80,7 +88,7 @@ This spec is one of a set captured together to strengthen `/flow-next:flow`: kee
 
 Related open work: fn-260 R2 studies splitting what `flow --auto` loads per hop, including intake-only routing content. The defect route's step detail lives with work and the worker, and any routing-row wording stays within the row so auto's per-hop load does not grow; worker additions follow fn-260 R4's conditional-reference placement.
 
-Delivery order: 3 of 10 in this set (fn-262 → fn-261 → fn-264 → fn-263 → fn-268 → fn-267 → fn-265 → fn-269 → fn-266 → fn-270); needs fn-261; both change the defect route's reproduction step. Hard dependencies are recorded on the spec, so `flowctl spec chain` refuses a spec whose dependency is not done. Route: direct, `/flow-next:work fn-264-defect-route-v2-prior-fixes-diagnosis --no-plan`.
+Delivery order: 3 of 10 in this set (fn-262 → fn-261 → fn-264 → fn-263 → fn-265 → fn-266 → fn-267 → fn-268 → fn-269 → fn-270, which is the order `flow --auto` picks them once ready); needs fn-261; both change the defect route's reproduction step. Hard dependencies are recorded on the spec, so `flowctl spec chain` refuses a spec whose dependency is not done. Route: direct, `/flow-next:work fn-264-defect-route-v2-prior-fixes-diagnosis --no-plan`.
 
 ## Strategy Alignment
 

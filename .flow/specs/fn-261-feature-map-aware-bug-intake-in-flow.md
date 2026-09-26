@@ -8,7 +8,7 @@ When `/flow-next:flow` receives a reported defect (a pasted bug report, console 
 
 This spec makes flow's bug intake use the map, as a speed and efficiency improvement. The maintainer's direction is to lean into `/flow-next:flow` as the product's strongest surface, and this is the first piece of that: capture it as is, and add further flow improvements later if they are pursued.
 
-The evidence for the speed claim comes from a controlled study run in this conversation (`feature-map-2026-09` in the agent-evals repo, 84 draws on a real app, one model held constant). A strong model reproduced every report with or without a map. The map changed how fast it got there. On reports that name a place the agent must find, above all a screenshot with no page title, the map roughly halved the turns to reach the reported state (12.3 to 5.3 turns on the screenshot report, 15.0 to 7.3 on a vague "get this out of my list" report). It never changed whether the agent succeeded. The claim is therefore speed and efficiency, not success.
+The evidence for the speed claim comes from the feature-map study in the maintainer's evaluation repository (agent-evals, branch `study/feature-map-2026-09`, `studies/feature-map-2026-09/REPORT-v2.md`, which also holds the reusable fixture harness: isolated T3 Code v0.0.42 instances and a live-state scorer): 84 draws on a real app, one model held constant. A strong model reproduced every report with or without a map. The map changed how fast it got there. On reports that name a place the agent must find, above all a screenshot with no page title, the map roughly halved the turns to reach the reported state (12.3 to 5.3 turns on the screenshot report, 15.0 to 7.3 on a vague "get this out of my list" report). It never changed whether the agent succeeded. The claim is therefore speed and efficiency, not success.
 
 Target user: anyone who hands flow a bug report or screenshot in a repo that has run `/flow-next:features`.
 
@@ -21,6 +21,12 @@ Target user: anyone who hands flow a bug report or screenshot in a repo that has
 - The resolution result (the chosen `Surface` and sub-feature ID, or `unmapped`) travels with the reproduction evidence as a resolved-feature record, so the fix, the review and the PR reuse it. This is the shared carrier the "feature map across live-app routes" spec extends to its routes. [inferred]
 - The map stays owned by `/flow-next:features`, the only seeder and maintainer. Bug intake reads it and never writes it; a route that no longer matches the live app files the existing `feature-map-drift` memory note that QA already uses. The one other writer, work's update of entries its own change altered, is defined by the "feature map stays current" spec. [inferred]
 - Discovery is by existence check only, the same as QA and drive: no config key, no registration. [paraphrase]
+
+**Resolved details for implementers.**
+
+- The resolved-feature record is a `resolved_feature` object in the task's done evidence: `{surface, sub_feature, file, last_proven, stage}` where `last_proven` is the feature file's last-proven line or null and `stage` names the stage that resolved it, or the literal `unmapped`. It lives for the spec: later stages on the same spec (review, QA, make-pr) read the newest record from the spec's task evidence. fn-263 reuses exactly this shape.
+- The measurement in R5 reuses the fixture harness from the feature-map study (isolated app instances, live-state scoring) with defect-intake tasks, preregistered in a new agent-evals study directory.
+- PR briefing: this spec adds no briefing schema field (only fn-267 does); its content goes into the existing authored prose fields and proof cells within their current limits, with the full record in task evidence.
 
 ## Edge Cases & Constraints
 <!-- scope: technical -->
@@ -39,7 +45,7 @@ Target user: anyone who hands flow a bug report or screenshot in a repo that has
 - **R2:** A report that arrives with a screenshot is matched on the screenshot's visible content as well as its text, so a screenshot with no page title or URL can still resolve to a mapped feature. Errors: an unreadable or unmatched image falls back to text-only matching, then to `unmapped`. [paraphrase]
 - **R3:** In a repo with no feature map, the defect route behaves exactly as it does today, with no added reads beyond one existence check. No error surface beyond that check. [paraphrase]
 - **R4:** The resolved feature (or `unmapped`) is recorded with the reproduction evidence and is visible to the later stages of the same run (fix, review, PR), so none of them re-derives navigation to the defect. No error surface beyond R1's `unmapped` value. [inferred]
-- **R5:** The change is measured as a speed improvement: on a fixture app with a feature map, a pre-registered comparison of flow's defect intake with and without the map shows fewer turns (or less wall time) to a reproduced defect, with the reproduction success rate no lower. The measurement and its result are published with the change, whichever way it falls. [paraphrase]
+- **R5:** The change is measured as a speed improvement: on a fixture app with a feature map, a pre-registered comparison of flow's defect intake with and without the map shows fewer turns (or less wall time) to a reproduced defect, with the reproduction success rate no lower. The study, its fixture and every draw live in the maintainer's evaluation repository (agent-evals), whichever way the result falls; the public docs and changelog state only the conclusion. [paraphrase]
 
 ## Boundaries
 <!-- scope: business -->
@@ -60,7 +66,7 @@ The maintainer sees `/flow-next:flow` as the product's strongest surface and wan
 
 This spec is one of a set captured together to strengthen `/flow-next:flow`: the feature map stays current, the feature map across live-app routes, a hardened defect route, the hill-climb loop, answering questions by experiment, sharper handovers, a read-only PR status answer, diagnosing a captured profile, and resume and review hygiene. It depends on "the feature map stays current", which must land first so intake reads a map that is kept true; the live-app-routes spec and the defect route spec depend on this one.
 
-Delivery order: 2 of 10 in this set (fn-262 → fn-261 → fn-264 → fn-263 → fn-268 → fn-267 → fn-265 → fn-269 → fn-266 → fn-270); needs fn-262. Hard dependencies are recorded on the spec, so `flowctl spec chain` refuses a spec whose dependency is not done. Route: direct, `/flow-next:work fn-261-feature-map-aware-bug-intake-in-flow --no-plan`.
+Delivery order: 2 of 10 in this set (fn-262 → fn-261 → fn-264 → fn-263 → fn-265 → fn-266 → fn-267 → fn-268 → fn-269 → fn-270, which is the order `flow --auto` picks them once ready); needs fn-262. Hard dependencies are recorded on the spec, so `flowctl spec chain` refuses a spec whose dependency is not done. Route: direct, `/flow-next:work fn-261-feature-map-aware-bug-intake-in-flow --no-plan`.
 
 ## Strategy Alignment
 

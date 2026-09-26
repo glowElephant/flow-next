@@ -22,6 +22,12 @@ Target user: anyone checking on a PR through flow without wanting it moved.
 
 "Is 470 green?" Flow answers: "PR #470 (fn-255, unattended-run correctness fixes): 11 of 12 checks passed, `windows-tests` failed on `test_rolling_notes_pointer` (log linked); 2 review threads unresolved, both from the reviewer bot, both on the scheduler file; mergeable, no conflicts; the spec is done. Next if you want it moved: fix the Windows failure, then land." No landing question follows. If the user then says "land it", the normal landing path runs with its usual consent.
 
+**Resolved details for implementers.**
+
+- Telling a status question from an action is host judgment in attended flow's tail: a question that asks about state and names no action gets the report; anything that asks for an action keeps today's path. No new judge kind; the read-only question row's wording gains PR state.
+- Changing a routing-row cell updates the judge's matching literals and their pin tests in the same change, and the maintainer's routing-accuracy check (agent-evals `studies/routing-accuracy-2026-09`) is rerun for the affected kinds before shipping; a regression there blocks the change.
+- Docs changes land in the flow-next.dev site repository (content under `src/content/docs/`) as a separate change in the same work run, per the project rule that flow-next.dev is the canonical user documentation.
+
 ## Edge Cases & Constraints
 <!-- scope: technical -->
 
@@ -35,7 +41,7 @@ Target user: anyone checking on a PR through flow without wanting it moved.
 
 - **R1:** In attended flow, a status question about a pull request produces one read-only report (checks, unresolved threads, mergeability, linked spec state, next step) and no landing offer or other question. Errors: unreadable PR → the report names what could not be read; ambiguous reference → candidates listed. [paraphrase]
 - **R2:** A spec id or PR given as work, `--until=merge`, and current explicit landing authority keep today's behaviour, including the landing offer where it applies today. Errors: a mixed status-and-action request → status answered read-only, then today's consent asked once for the action. [paraphrase]
-- **R3:** `flow --auto` and `--tick` behaviour, their open-PR handling, deferral to land and verdict lines are unchanged, and the existing tests that pin them pass unmodified. No error surface. [paraphrase]
+- **R3:** `flow --auto` and `--tick` behaviour, their open-PR handling, deferral to land and verdict lines are unchanged, and the auto-specific tests (the flow-auto verdict grammar, merge-destination and backlog mirror-safety suites) pass unmodified; routing-row pin tests change only as JUDGE below describes. No error surface. [paraphrase]
 - **R4:** The status report never writes state: no comments, labels, pushes, reruns, tracker updates or flow state changes. No error surface. [inferred]
 - **R5:** The flow skill page and the route guide on flow-next.dev describe the status answer with an example. No error surface. [inferred]
 
@@ -56,7 +62,7 @@ The maintainer confirmed the scope condition directly ("will 7 : read-only pr st
 
 This spec is one of a set captured together to strengthen `/flow-next:flow`: the feature map stays current, feature-map-aware bug intake (fn-261), the feature map across live-app routes, a hardened defect route, the hill-climb loop, answering questions by experiment, sharper handovers, diagnosing a captured profile, and resume and review hygiene. It stands alone.
 
-Delivery order: 5 of 10 in this set (fn-262 → fn-261 → fn-264 → fn-263 → fn-268 → fn-267 → fn-265 → fn-269 → fn-266 → fn-270); independent and small. Hard dependencies are recorded on the spec, so `flowctl spec chain` refuses a spec whose dependency is not done. Route: direct, `/flow-next:work fn-268-read-only-pr-status-in-attended-flow --no-plan`.
+Delivery order: 8 of 10 in this set (fn-262 → fn-261 → fn-264 → fn-263 → fn-265 → fn-266 → fn-267 → fn-268 → fn-269 → fn-270, which is the order `flow --auto` picks them once ready); independent and small. Hard dependencies are recorded on the spec, so `flowctl spec chain` refuses a spec whose dependency is not done. Route: direct, `/flow-next:work fn-268-read-only-pr-status-in-attended-flow --no-plan`.
 
 ## Strategy Alignment
 

@@ -27,6 +27,13 @@ The agent loads the profile into sortable rows of self time and total time per f
 
 Findings: *observed*, 36% of startup is the plugin directory walk; *observed*, 24% is parsing the settings cache; *inferred*, the walk scans far more files than it loads plugins from, because the profile shows per-file stat calls but only a handful of plugin loads. Nothing is *confirmed*. Recommended next: the hill-climb route with first-window time as the metric, starting from the plugin-scan hypothesis, or the measured-slowness route for a single targeted fix.
 
+**Resolved details for implementers.**
+
+- The new row is a new judge kind (`profile`) with its criteria and presentation in the judge tables; because it adds a kind, the routing-accuracy re-evaluation in the JUDGE rule is required, not optional.
+- Placement rule, independent of fn-260: the row sits with the other intake rows; `flow --auto` never selects it because auto takes no raw intent.
+- Changing a routing-row cell updates the judge's matching literals and their pin tests in the same change, and the maintainer's routing-accuracy check (agent-evals `studies/routing-accuracy-2026-09`) is rerun for the affected kinds before shipping; a regression there blocks the change.
+- Docs changes land in the flow-next.dev site repository (content under `src/content/docs/`) as a separate change in the same work run, per the project rule that flow-next.dev is the canonical user documentation.
+
 ## Edge Cases & Constraints
 <!-- scope: technical -->
 
@@ -68,7 +75,7 @@ This spec is one of a set captured together to strengthen `/flow-next:flow`: kee
 
 Related open work: fn-260 R2 studies splitting what `flow --auto` loads per hop, including intake-only routing rows. The new captured-profile row is intake-only (auto never takes raw intent) and is placed so it joins whatever intake-only split that study keeps.
 
-Delivery order: 8 of 10 in this set (fn-262 → fn-261 → fn-264 → fn-263 → fn-268 → fn-267 → fn-265 → fn-269 → fn-266 → fn-270); independent; its recommended next routes point at fn-265 and fn-264, so it reads best after them. Hard dependencies are recorded on the spec, so `flowctl spec chain` refuses a spec whose dependency is not done. Route: direct, `/flow-next:work fn-269-diagnose-a-captured-profile-trace-or --no-plan`.
+Delivery order: 9 of 10 in this set (fn-262 → fn-261 → fn-264 → fn-263 → fn-265 → fn-266 → fn-267 → fn-268 → fn-269 → fn-270, which is the order `flow --auto` picks them once ready); independent; its recommended next routes point at fn-265 and fn-264, which precede it. Hard dependencies are recorded on the spec, so `flowctl spec chain` refuses a spec whose dependency is not done. Route: direct, `/flow-next:work fn-269-diagnose-a-captured-profile-trace-or --no-plan`.
 
 ## Strategy Alignment
 

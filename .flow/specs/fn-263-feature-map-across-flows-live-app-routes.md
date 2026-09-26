@@ -6,7 +6,7 @@
 
 fn-261 makes flow's bug intake resolve a report to a mapped feature and reproduce along the map's route. The same navigation cost appears wherever flow touches a running app: capturing a performance baseline on a real surface, QA, the defect route's live proof on base and head, and the evidence a PR carries. Today QA and the drive skill read the map, each re-selecting the feature from scratch; the performance-baseline route has no map use at all; and nothing passes a resolved feature from one stage to the next, so every stage re-derives where it is going.
 
-This spec spreads map use to every flow route that drives a running app, makes it cheap, and carries the resolution forward so it is paid once per run. The study in this conversation measured the effect that justifies it and its limits: with a strong model the map roughly halved turns on locate-heavy work and cut median wall time from 17 to 12 seconds, while token cost per run stayed flat, and it added turns where it prescribed extra verification. So the target is wall-clock and turns, reading the map must be cheap, and each route must earn its place by measurement.
+This spec spreads map use to every flow route that drives a running app, makes it cheap, and carries the resolution forward so it is paid once per run. The feature-map study in the maintainer's evaluation repository (agent-evals, branch `study/feature-map-2026-09`, `studies/feature-map-2026-09/REPORT-v2.md`, which also holds the reusable fixture harness: isolated T3 Code v0.0.42 instances and a live-state scorer) measured the effect that justifies it and its limits: with a strong model the map roughly halved turns on locate-heavy work and cut median wall time from 17 to 12 seconds, while token cost per run stayed flat, and it added turns where it prescribed extra verification. So the target is wall-clock and turns, reading the map must be cheap, and each route must earn its place by measurement.
 
 Target user: anyone whose repository has a feature map and whose flow runs touch the live app.
 
@@ -23,6 +23,15 @@ Target user: anyone whose repository has a feature map and whose flow runs touch
 
 A user reports that the checkout page got slow. Flow routes it to the measured-slowness route. The baseline step checks the map, reads the index, matches "checkout page" to the checkout feature, reads only that file, and follows its route to the page to capture the baseline. It writes the resolved-feature record (surface web, sub-feature `checkout.review`, the file, last proven eight days ago). After the fix, the post-change measurement reads the record and goes straight to the page without touching the index. When QA runs on the same spec it reads the same record, drives the checkout flow, and finds the "Place order" button renamed; it files a drift note and continues on live discovery for that one step. The PR shows the resolved feature, the baseline and post-change numbers, and the drift note.
 
+**Resolved details for implementers.**
+
+- Scope of the resolved-feature record is the spec, not a session: QA, work and make-pr often run as separate invocations, so the record lives in the spec's task evidence and is valid until the spec's PR merges.
+- Measurement (R5) runs in the maintainer's evaluation repository (agent-evals, following its METHODOLOGY.md and reusing the feature-map study's fixture harness), one preregistered comparison per route, sonnet-class model held constant, about 20 to 40 draws per route; the implementing run proposes each study and the maintainer approves the spend.
+- Shipping order inside this spec: the carrier and the measurement studies first, then map use enabled route by route as each study reports a gain; the PR states which routes shipped with map use and why.
+- PR briefing: this spec adds no briefing schema field (only fn-267 does); its content goes into the existing authored prose fields and proof cells within their current limits, with the full record in task evidence.
+- fn-260's studies have not drawn baselines yet, so this spec lands first; its always-reached text goes where the behaviour lives, and rarely reached text goes into the new reference file named here, which fn-260's studies then measure as the current state. New drive text goes into drive's existing references.
+- Docs changes land in the flow-next.dev site repository (content under `src/content/docs/`) as a separate change in the same work run, per the project rule that flow-next.dev is the canonical user documentation.
+
 ## Edge Cases & Constraints
 <!-- scope: technical -->
 
@@ -36,11 +45,11 @@ A user reports that the checkout page got slow. Flow routes it to the measured-s
 ## Acceptance Criteria
 <!-- scope: both -->
 
-- **R1:** The measured-slowness route's live baseline and post-change measurement, QA, the defect route's live proof, and the PR's live-check evidence each resolve their target through the map when one exists, reading only the index and the matched feature file. Errors: no map → today's behaviour after one existence check; no match → live discovery recorded as `unmapped`; ambiguous → candidates read and tried in order of specificity. [paraphrase]
-- **R2:** The first stage in a run to resolve a target writes a resolved-feature record (surface, sub-feature ID, feature file, last-proven line or none), and every later stage in the same run reads it instead of re-selecting; the record is the same carrier fn-261 uses. Errors: a record from another run is ignored. [paraphrase]
+- **R1:** Each candidate route (the measured-slowness route's live baseline and post-change measurement, QA, the defect route's live proof, and the PR's live-check evidence) gains map use only when its R5 measurement shows a gain; a route that gains resolves its target through the map when one exists, reading only the index and the matched feature file. Errors: no map → today's behaviour after one existence check; no match → live discovery recorded as `unmapped`; ambiguous → candidates read and tried in order of specificity. [paraphrase]
+- **R2:** The first stage on a spec to resolve a target writes the resolved-feature record fn-261 defines (the `resolved_feature` object in task evidence), and every later stage on the same spec reads the newest record instead of re-selecting. Errors: a record from another spec is never read; a record whose feature file changed since it was written is re-resolved. [paraphrase]
 - **R3:** The PR briefing shows the resolved feature (or `unmapped`) for any live check it reports. No error surface beyond R2's `unmapped`. [inferred]
 - **R4:** Routes without a running app (questions, refactors, capture, plan, refine) do not read the map. No error surface. [paraphrase]
-- **R5:** Each route's map use is measured before it ships: a pre-registered comparison on a fixture app, same route with and without the map, reports turns and wall time to the route's goal with success no lower; a route without a gain ships without map use, and the result is published either way. [paraphrase]
+- **R5:** Each route's map use is measured before it ships: a pre-registered comparison on a fixture app, same route with and without the map, reports turns and wall time to the route's goal with success no lower; a route without a gain ships without map use; the studies live in agent-evals and the public docs state only which routes use the map. [paraphrase]
 - **R6:** The flow-next.dev route pages and the feature-map page describe which routes read the map and what the resolved-feature record carries. No error surface. [inferred]
 
 ## Boundaries
@@ -63,7 +72,7 @@ This spec is one of a set captured together to strengthen `/flow-next:flow`: the
 
 Related open work: fn-260 R5 studies trimming the drive skill's main file to save tokens. New drive text from this spec goes into drive's existing references, not its always-loaded file.
 
-Delivery order: 4 of 10 in this set (fn-262 → fn-261 → fn-264 → fn-263 → fn-268 → fn-267 → fn-265 → fn-269 → fn-266 → fn-270); needs fn-262 and fn-261; extends fn-261's resolved-feature record. Hard dependencies are recorded on the spec, so `flowctl spec chain` refuses a spec whose dependency is not done. Route: direct, `/flow-next:work fn-263-feature-map-across-flows-live-app-routes --no-plan`.
+Delivery order: 4 of 10 in this set (fn-262 → fn-261 → fn-264 → fn-263 → fn-265 → fn-266 → fn-267 → fn-268 → fn-269 → fn-270, which is the order `flow --auto` picks them once ready); needs fn-262, fn-261 and fn-264; extends fn-261's resolved-feature record. Hard dependencies are recorded on the spec, so `flowctl spec chain` refuses a spec whose dependency is not done. Route: direct, `/flow-next:work fn-263-feature-map-across-flows-live-app-routes --no-plan`.
 
 ## Strategy Alignment
 
