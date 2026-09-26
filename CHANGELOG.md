@@ -6,11 +6,33 @@ Flow-Next changed shape with 5.0.0. One command, `/flow-next:flow`, reads whatev
 
 ## Unreleased
 
+## [flow-next 6.1.0] - 2026-09-26
+
+Unattended runs now stop where they used to guess. `flow --auto` keeps the spec you
+named, honours per-task review routing, stops on blocked work instead of retrying it,
+and refuses a review receipt whose verdict contradicts the review it records. Every
+guard it runs fails closed when its evidence is missing. A typo in `.flow/config.json`
+no longer resets your settings to defaults.
+
+Agents load less and hand-assemble less. A worker's anchor bundle drops from about
+160 KB to about 60 KB per task with no loss on the comprehension eval (7 of 7 on three
+task sets, both bundles). Every session's skill listing shows each skill once instead
+of twice. Receipts, prompts, tracker bodies, QA and prospect artifacts are rendered by
+flowctl, so skills write only the judgment.
+
+**What changes when you upgrade.** The `/flow-next:pilot` and `/flow-next:interview`
+command shims are removed; use `/flow-next:flow --auto --tick` and
+`/flow-next:refine`. Command shims are now typed-only, so an agent invokes skills by id
+(`flow-next:flow-next-<name>`). `flowctl show <spec> --json` no longer includes the
+`review_attempts` and `tracker` ledgers; read them with `flowctl review-rounds attempts`
+and `flowctl sync get-state`. A body-writing tracker push refuses to overwrite a
+tracker body someone edited since the last sync: an attended run asks whether to
+reconcile or overwrite, and an unattended run defers the decision.
+
 ### Changed
 
 - **Skills hand flowctl their judgments and receive rendered artifacts.** New helpers write prospect artifacts and QA receipts, apply memory audit plans, render host review prompts and tracker bodies, and prepare tracker snapshots. Bulk task creation reports all invalid items together and accepts per-task source files and Touches. Existing explicit inputs remain supported.
 - **Workflow state takes fewer calls.** Pilot, planning and setup snapshots gather their mechanical checks together. Rolling admission reports capacity, dependency and file-overlap holds; contiguous task completion derives commit evidence from a range. Setup remembers declined optional questions. Make-pr and map run their shell plumbing from bundled scripts.
-
 - **Workers and skills read less output.** The worker anchor bundle carries the text memory index, only the glossary entries its task names, and short git status, cutting a typical bundle from about 160 KB to about 60 KB with no comprehension loss on the fn-83 eval. `flowctl show <spec> --json` no longer includes the `review_attempts` and `tracker` ledgers; read them with `flowctl review-rounds attempts` and `flowctl sync get-state`. `flowctl glossary list --match "<text>"` returns only the entries that text names. Review workflows print only the recorded fields they use, and the tracker-sync references drop steps the tracker facade already performs.
 - **Command shims are user-only.** Every `/flow-next:*` command carries `disable-model-invocation: true`, so the agent's skill listing shows each skill once; skills and agents invoke each other by skill id (`flow-next:flow-next-<name>`). Typed slash commands work as before.
 
@@ -19,7 +41,7 @@ Flow-Next changed shape with 5.0.0. One command, `/flow-next:flow`, reads whatev
 - **Unattended runs preserve their scope and stop on blocked work.** Tracker-key specs resolve through the same lookup as other commands, review overrides stay explicit, and branch setup uses the resolved default base and stops on git failures.
 - **Review receipts agree with the recorded review.** Contradictory verdicts and counts are refused, open reviews survive trivial-diff triage, concurrent spec updates retain review rounds, and interrupted fan-out can recover completed draws.
 - **Worker handovers stay separate across concurrent tasks.** The conductor supplies task-unique paths and integrated review bases, captures lessons after a NEEDS_WORK-to-SHIP recovery, and passes readable inputs to plan-sync.
-- **Invalid configuration and tracker co-edits remain intact.** Configuration writes refuse unreadable or malformed files; body-writing tracker pushes return `tracker_diverged` until reconcile handles remote edits. Ralph checks shell commands and redirect targets without blocking harmless mentions, and keeps worker completion evidence mandatory.
+- **Invalid configuration and tracker co-edits remain intact.** Configuration writes refuse unreadable or malformed files; a body-writing tracker push that finds the tracker body edited since the last sync returns `tracker_diverged`; an attended run asks whether to reconcile or overwrite (`--overwrite-diverged`), and an unattended run defers the decision with `flowctl sync defer`. Ralph checks shell commands and redirect targets without blocking harmless mentions, and keeps worker completion evidence mandatory.
 - **Review commands need fewer arguments.** Plan review runs without a `--files` list, impl review resolves an omitted `--base` to the repository's default branch, and plan and completion receipts default to the checkout's `.flow/tmp/` so two repos never share one. Host impl review also runs a standalone review with no task id.
 - **`flowctl done` checks its evidence and records the plan-sync skip itself.** Evidence without `commits`, `tests` or `prs` is refused, unknown keys print a warning, `done` and `block` check status under the task lock, and with plan-sync off the receipt carries its `stage: plan-sync - skipped(...)` line without a hand edit. Error hints name `flowctl start <id>` before `--force`, and output piped into `head` no longer ends in a traceback.
 - **Skills read what flowctl actually writes.** Capture writes a spec in one atomic call and checks duplicates against open specs only; plan seeds new specs from the template; prospect's snippets run without PyYAML or `CLAUDE_PLUGIN_ROOT`; memory-migrate reads `entry_id`; audit stamps keep fields outside the schema; setup stays within the question tool's limits; prime keys scout findings to its criterion IDs; and shipped links resolve in an installed plugin.
