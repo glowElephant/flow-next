@@ -227,11 +227,24 @@ a schema/type name, or an internal artifact name.
 
 **Rules:**
 - **Heading is `### X.Y.Z - title`** (h3). This is what makes the TOC a version index and gives visual breaks. Never use a bare bullet.
-- **Bold one-liner is mandatory** - it's the scannable summary. Keep it to one sentence.
+- **Bold summary is mandatory** - it's the scannable summary. One or two short sentences; never a chain of clauses joined by semicolons.
 - **`<details>` only for verbose releases** (multi-paragraph behavior changes). Trivial patches (a one-liner fix) can skip the disclosure and just carry the bold summary + a sentence or two of plain prose.
 - **Newest at the top of `## Latest`.** When `## Latest` grows past ~10 entries, migrate the oldest ones down to `## Earlier releases` (same format; collapse their detail or trim to the one-liner). The threshold is deliberately generous - the release cadence is part of the story the page tells (raised from ~4-5, 2026-08-09).
-- **Don't duplicate the whole repo CHANGELOG.** The docs-site page is the public story, not every commit. The repo `CHANGELOG.md` stays canonical (linked at the top of the page). Translating repo-changelog substance into the customer register above is the actual work of this step - budget for it; a copy-paste-and-trim is the failure mode.
+- **Don't duplicate the whole repo CHANGELOG.** The docs-site page is the public story, not every commit. The repo `CHANGELOG.md` stays canonical; link to it from an entry when a reader needs detail the entry leaves out. Translating repo-changelog substance into the customer register above is the actual work of this step - budget for it; a copy-paste-and-trim is the failure mode.
 - **Bump the docs-site version refs** in the same commit: `src/lib/site.ts` `FLOW_NEXT_VERSION` + `package.json` `version` → `X.Y.Z`.
 - **Gate:** `cd ~/work/flow-next.dev && pnpm build` must pass (MDX `<details>` + mermaid render). Commit separately in the `flow-next.dev` repo.
+
+### Writing an entry readers can use
+
+These rules apply to the docs-site entry, and rules 4 to 7 to the repo `CHANGELOG.md` release section too. They come from the 2026-09-27 rewrite of every `## Latest` entry.
+
+1. **Write for the person deciding whether to upgrade.** That is a developer or team lead running flow-next in Claude Code, Codex, Cursor or OpenCode. They know specs, pull requests and reviews. They do not know spec ids, fence names, receipt schemas, judge presets or internal ledgers, so none of those appear unless the reader acts on them.
+2. **The title and bold summary answer three questions:** what can I do now or what got better, by how much, and do I have to do anything. State an upgrade action in the bold summary only when one exists. Never end entries with a boilerplate tail such as "no upgrade steps".
+3. **The detail walks the reader's changed workflow:** what they type, what they see, where a run stops, and what they decide. Then "What you keep.", then "Under the hood." limited to what a script author acts on (a flag, a config key, a verdict string).
+4. **Check every claim and number against its source** (the repo `CHANGELOG.md` entry, the spec, the study report) before writing it. When a later release retires or changes a behaviour an older entry describes in the present tense, correct the older entry.
+5. **A number carries its bound beside it:** the sample, the app and the model it came from. When one case drives a pooled result, state the result per case. For example, 6.2.0 says the hardest untitled screenshot went from 38 turns to about 12 and the other did not change, never "roughly halved".
+6. **No development story.** What was tried, reversed or measured worse first belongs in the pull request, the study record or the vault, not in release notes.
+7. **Apply the prose contract** ([`plugins/flow-next/docs/prose.md`](../plugins/flow-next/docs/prose.md)). The failures seen most in these entries are colon splices, em dashes, "not X but Y", and slogans that would fit any project's changelog.
+8. **Read the bold summaries of the whole `## Latest` section in a row before publishing.** Each should stand on its own, and no two should share the same sentence shape or tail.
 
 The `## Maintaining this page (for contributors)` disclosure at the bottom of `changelog.mdx` documents this same format inline for editors working in the file.
