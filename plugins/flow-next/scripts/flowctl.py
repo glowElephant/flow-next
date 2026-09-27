@@ -26396,6 +26396,9 @@ def cmd_qa_receipt(args: argparse.Namespace) -> None:
     for key in ("blocked_reason", "na_reason"):
         if key in data and not isinstance(data[key], str):
             errors.append(f"{key}: expected a string")
+    has_resolved = "resolved_feature" in data
+    if has_resolved and (problem := resolved_feature_error(data["resolved_feature"])):
+        errors.append(f"resolved_feature: {problem}")
     items = data.get("findings", [])
     current = {}
     if not isinstance(items, list):
@@ -26444,6 +26447,8 @@ def cmd_qa_receipt(args: argparse.Namespace) -> None:
     reason_key = "blocked_reason" if outcome == "BLOCKED" else "na_reason" if outcome == "NA" else None
     if reason_key and data.get(reason_key):
         receipt[reason_key] = data[reason_key]
+    if has_resolved:
+        receipt["resolved_feature"] = data["resolved_feature"]
     with cross_process_lock(_review_receipt_lock_path(path)):
         prior = _load_prior_receipt_findings(path, review_type="qa_verdict", review_id=review_id, backend=mode)
         lines = []
