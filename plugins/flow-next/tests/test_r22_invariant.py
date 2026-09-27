@@ -332,6 +332,7 @@ class TestR23_SectionMergeContract(unittest.TestCase):
         "Conversation Evidence",
         "Resolved via Codebase",
         "Resolved via Project Docs",
+        "Resolved via Experiment",
         "Parked unknowns",
     )
 
@@ -539,6 +540,7 @@ class TestR23_FixtureMergeByteForByte(unittest.TestCase):
         "Conversation Evidence",
         "Resolved via Codebase",
         "Resolved via Project Docs",
+        "Resolved via Experiment",
         "Parked unknowns",
     }
 
@@ -713,11 +715,12 @@ class TestR23_AuxiliarySectionEnumerationCompleteness(unittest.TestCase):
     """R23 section-merge contract: auxiliary sections preserved. The full
     auxiliary-section enumeration must be Strategy Alignment + Strategy
     Conflicts + Glossary Conflicts + Conversation Evidence + Resolved via
-    Codebase + Resolved via Project Docs (per fn-44.2 review fix) + Parked
+    Codebase + Resolved via Project Docs (per fn-44.2 review fix) +
+    Resolved via Experiment (fn-266) + Parked
     unknowns (the optional fog slot — preserved like the others, and the
     only aux section a pass may delete a resolved bullet from).
 
-    SKILL.md preservation lists must enumerate all 7 — fn-44.2's bug was
+    SKILL.md preservation lists must enumerate all of them — fn-44.2's bug was
     that an earlier draft omitted `Strategy Conflicts` from four of the
     preservation lists.
     """
@@ -725,7 +728,7 @@ class TestR23_AuxiliarySectionEnumerationCompleteness(unittest.TestCase):
     def setUp(self) -> None:
         self.skill_body = (INTERVIEW_DIR / "SKILL.md").read_text(encoding="utf-8")
 
-    def test_all_seven_auxiliary_sections_named_in_skill(self) -> None:
+    def test_all_auxiliary_sections_named_in_skill(self) -> None:
         for aux in (
             "Strategy Alignment",
             "Strategy Conflicts",
@@ -733,6 +736,7 @@ class TestR23_AuxiliarySectionEnumerationCompleteness(unittest.TestCase):
             "Conversation Evidence",
             "Resolved via Codebase",
             "Resolved via Project Docs",
+            "Resolved via Experiment",
             "Parked unknowns",
         ):
             self.assertIn(
