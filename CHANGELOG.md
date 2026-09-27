@@ -8,16 +8,16 @@ Flow-Next changed shape with 5.0.0. One command, `/flow-next:flow`, reads whatev
 
 ## [flow-next 6.3.0] - 2026-09-27
 
-Bug fixes now come with their cause and their proof, and every stage that drives your running app starts from the feature map. Before writing a fix, flow checks whether someone already fixed or is fixing the bug, confirms the cause with runtime evidence, and bisects to the change that introduced it when a known-good revision exists. The fix is proven by the same reproduction failing on the base and passing on the head. Performance baselines, QA, bug-fix proofs and PR live checks read the map before driving: on a fixture app, tasks that did not say where their target was took about 40% fewer turns and a third to half less wall time, with success no lower.
+Bug fixes now come with their cause and their proof, and every stage that drives your running app starts from the feature map. Before writing a fix, flow checks whether someone already fixed or is fixing the bug, confirms the cause with runtime evidence, and bisects to the change that introduced it when a known-good revision exists. The fix is proven by the same reproduction failing on the base and passing on the head. Performance baselines, QA, bug-fix proofs and PR live checks read the map before driving. On one fixture app with one model, tasks that did not say where their target was took about 40% fewer turns and a third to half less wall time, with success no lower.
 
-The pull request a reviewer opens now shows why the bug happened and how the fix was proven, not only the diff: the prior-fix findings, the confirmed cause, the introducing commit, the base and head results, and the feature the live checks used. Any step that did not happen says so.
+The pull request briefing now lists the prior-fix findings, the confirmed cause, the introducing commit, the base and head results, and the feature the live checks used. A step that did not run is listed as not done, with its reason.
 
 What you keep: bug intake keeps the map rule it shipped with in 6.2.0, routes that never drive an app never read the map, and a repository without a map pays one existence check. No setup re-run is needed.
 
 ### Changed
 
 - **Bug fixes check for prior work, confirm the cause with runtime evidence, bisect when they can, and prove the fix on base and head.** An existing fix is verified instead of duplicated, and a fix someone else owns is handed back. The same reproduction must fail on the base and pass on the head, on the live app when there is one. The task record and the PR briefing carry the findings, including any step that was not done.
-- **Every flow stage that drives your running app now starts from the feature map.** Performance baselines and post-change measurements, bug-fix proofs on base and head, QA, and live checks reported in PRs read the index and the one matching feature file, including its notes on controls that misbehave. Later stages reuse the matched feature, and the PR briefing shows it or `unmapped`. Measured on a fixture app (66 runs, same model): about 40% fewer turns on targets the task did not locate, and 0 to 3 extra turns when it named the page.
+- **Every flow stage that drives your running app now starts from the feature map.** Performance baselines and post-change measurements, bug-fix proofs on base and head, QA, and live checks reported in PRs read the index and the one matching feature file, including its notes on controls that misbehave. Later stages reuse the matched feature, and the PR briefing shows it or `unmapped`. On a fixture app (66 runs, same model), tasks that did not locate their target took about 40% fewer turns, and a task that named the page paid 0 to 3 extra turns.
 
 ### Under the hood
 
