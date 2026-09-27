@@ -6,6 +6,10 @@ Flow-Next changed shape with 5.0.0. One command, `/flow-next:flow`, reads whatev
 
 ## Unreleased
 
+### Changed
+
+- **Bug fixes check for prior work, confirm the cause with runtime evidence, bisect when they can, and prove the fix on base and head.** An existing fix is verified instead of duplicated, and a fix someone else owns is handed back. The same reproduction must fail on the base and pass on the head, on the live app when there is one. The task record and the PR briefing carry the findings, including any step that was not done.
+
 ## [flow-next 6.2.0] - 2026-09-27
 
 Your feature map now keeps itself current, and bug reports that don't say where the problem is start from it. A spec that renames a button or moves a page updates the map in the same pull request, so the map no longer goes stale between manual refreshes. Hand flow an untitled screenshot or a vague "this thing in my list" and it goes straight to the matching feature instead of searching the app. On a fixture app it ended the long searches on the hardest report, an untitled screenshot, cutting its turns from 38 to about 12 (48 runs, same model), with every defect reproduced and cost unchanged.
