@@ -1,0 +1,24 @@
+{
+  "branch_name": "fn-274-agent-first-sweep-defect-route-stops",
+  "created_at": "2026-09-28T08:22:33.582560Z",
+  "depends_on_epics": [],
+  "id": "fn-274-agent-first-sweep-defect-route-stops",
+  "next_task": 1,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-274-agent-first-sweep-defect-route-stops.md",
+  "status": "open",
+  "title": "Agent-first sweep: defect route stops and feature-map plumbing",
+  "tracker": {
+    "baseHashFlow": null,
+    "baseHashTracker": null,
+    "depRelations": [],
+    "id": null,
+    "identifier": null,
+    "lastSyncedAt": null,
+    "mergeBaseFlow": null,
+    "mergeBaseTracker": null,
+    "url": null
+  },
+  "updated_at": "2026-09-28T08:22:33.585548Z"
+}
