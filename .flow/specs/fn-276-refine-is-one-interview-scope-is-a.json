@@ -1,11 +1,22 @@
 {
   "branch_name": "fn-276-refine-is-one-interview-scope-is-a",
+  "completion_review_status": "unknown",
+  "completion_reviewed_at": null,
   "created_at": "2026-09-28T08:51:02.500046Z",
-  "depends_on_epics": [],
+  "default_impl": null,
+  "default_review": null,
+  "default_sync": null,
+  "depends_on_epics": [
+    "fn-275-lighter-refine-ask-only-what-would"
+  ],
   "id": "fn-276-refine-is-one-interview-scope-is-a",
+  "impl_review_rounds": {},
   "next_task": 1,
+  "no_plan": true,
+  "plan_review_rounds": 0,
   "plan_review_status": "unknown",
   "plan_reviewed_at": null,
+  "ready": true,
   "spec_path": ".flow/specs/fn-276-refine-is-one-interview-scope-is-a.md",
   "status": "open",
   "title": "Refine is one interview; scope is a filter",
@@ -20,5 +31,5 @@
     "mergeBaseTracker": null,
     "url": null
   },
-  "updated_at": "2026-09-28T08:51:02.502767Z"
+  "updated_at": "2026-09-28T08:51:22.718170Z"
 }
