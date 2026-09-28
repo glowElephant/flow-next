@@ -63,7 +63,7 @@ Nothing from this study is public until a verdict supports it. [user]
 **Order of work.**
 
 1. Build the harness (Claude Agent SDK sessions, simulated person, logging, judge), then run the R9 validation on a throwaway case until every check passes.
-2. Case selection (R8): a candidate shortlist per slot, scored against the R8 criteria, goes to the maintainer; the maintainer confirms the five cases before any preparation or preregistration. Record rejected candidates and reasons.
+2. Case selection (R8): done; see "Cases confirmed" below. A later wave can draw from the recorded alternatives.
 3. Prepare each chosen repository for arm (c) and measure the preparation cost.
 4. Write and commit the preregistration (R1), including the simulated person's briefs, the hidden tests, the judge rubric and the decision bars.
 5. Stage 1 draws, then stage 2 leave-one-out ablations, then the verdict (R7).
@@ -79,7 +79,9 @@ Nothing from this study is public until a verdict supports it. [user]
 
 **Decided.** The implementing model is Opus 5.5 in both arms. The judge is a different model family (gpt-6-astra through the codex CLI unless the preregistration says otherwise) and never sees which arm produced an output. Draws run on whichever subscription has usage left. The verdict and any public claim follow R7.
 
-**Still open, decided in the preregistration.** The five cases (from the shortlist), draw counts (from the R9 run-to-run spread), the follow-up limit for the simulated person, and the decision bars.
+**Cases confirmed (2026-09-28).** Simple bug: gno #187 (HTTP reranker shows "Failed: rerank"). Hard bug: flow-swarm fn-211 (connect-bench gate fails at 500 sessions). Small feature: gno #216 (`gno mcp install --tool-profile`). Large feature: gno #233 (configurable index chunking; R1 and R3-R5 as the sub-goal, R2 and full docs as stretch). Hill climb: flowctl startup time from a cleaned snapshot of flow-next's `scripts/` and `tests/` in a fresh private repo (the live repo gives the answer away). Bases, references, rough requests, hidden briefs, hidden-check designs, setup notes, the alternatives for later waves and the rejected candidates are in agent-evals `studies/flow-vs-vanilla-2026-09/candidates.md`. Hidden checks for the gno features are black-box CLI and database checks, because the shipped tests import internals that do not exist at the base.
+
+**Still open, decided in the preregistration.** Draw counts (from the R9 run-to-run spread), the follow-up limit for the simulated person, and the decision bars.
 
 ## Strategy Alignment
 
