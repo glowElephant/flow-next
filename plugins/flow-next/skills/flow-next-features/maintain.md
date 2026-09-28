@@ -71,7 +71,7 @@ Empty → no memos, continue. Fold every listed memo into this pass's targets (f
 
 Contract-broken files (missing `**Surface:**`, H2s out of order or missing) stay in the live-pass queue and are marked doc drift for Phase 5.
 
-**Provenance facts.** Record the map's last-proven state before any edit:
+**Provenance facts.** Record the map's last-proven state before any edit. In a home-base workspace, where sibling repos hold the product code, add `--repo <path>` to this command for each one the project instructions name, so their commits age the map:
 
 ```bash
 "$FLOWCTL" features status --json > "$RUN_DIR/features-status.json"
