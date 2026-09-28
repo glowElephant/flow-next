@@ -4,7 +4,11 @@ All notable changes to the flow-next.
 
 Flow-Next changed shape with 5.0.0. One command, `/flow-next:flow`, reads whatever you have and picks the route, and `flow --auto` runs the same route unattended. If you are arriving from 4.x, start with [the 5.0.0 entry](#flow-next-500---2026-09-12) and [the flow skill](plugins/flow-next/skills/flow-next-flow/SKILL.md) before reading the items below.
 
-## Unreleased
+## [flow-next 6.5.0] - 2026-09-28
+
+Flow now does less before the agent starts and keeps every check after it. Refine asks only the questions whose answers would change what gets built, often none in a codebase whose patterns already answer them, and flow, capture and plan send you there only when such a decision is open. A preference you state stays guidance instead of turning into a hard requirement such as "must load in 20 ms". Refine is also one interview now: name an audience with `--scope=qa`, `--biz` or plain words like "run a business interview", or name none. A hill climb starts from the target you stated, with the agent choosing and recording how it measures. A bug fix no longer stops because other pull requests touch the same files, and live-app stages read the feature map directly. Current models settle most of what these steps used to pin down up front, so the time goes into building and verifying. Implementation review, QA and the evidence in the pull request work exactly as before.
+
+**What changes when you upgrade.** Scripts that call `flowctl scope` (`resolve`, `bank`, `write-policy`) or pass `flowctl done --resolved-feature` need updating, because both are removed. Refine no longer asks which interview to run. Pass a scope or say which audience you want when you want a lens. A repo-root `SPEC.md` copied from an older template keeps working, with its `<!-- scope: ... -->` comments ignored; re-copy the bundled template and re-apply your edits to pick up the cleaner version. You don't need to re-run setup.
 
 ### Changed
 
