@@ -163,7 +163,7 @@ All user-facing skills ship `allow_implicit_invocation: true`, so prose like "pl
 ### What works
 
 - Planning, work execution, interviews, reviews - full workflow.
-- Multi-agent roles: 20 agents as `.toml` files with subagent optimizations (`sandbox_mode`, `nickname_candidates`).
+- Multi-agent roles: 21 agents as `.toml` files with subagent optimizations (`sandbox_mode`, `nickname_candidates`).
 - Cross-model reviews (Codex as review backend).
 - flowctl CLI (`${CODEX_HOME:-$HOME/.codex}/scripts/flowctl`).
 - Setup skill (`$flow-next-setup`) - detects Codex platform, copies agents/flowctl to project; Ralph hooks only if the Ralph ceremony answers yes.
