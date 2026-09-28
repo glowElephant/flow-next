@@ -4,7 +4,11 @@ All notable changes to the flow-next.
 
 Flow-Next changed shape with 5.0.0. One command, `/flow-next:flow`, reads whatever you have and picks the route, and `flow --auto` runs the same route unattended. If you are arriving from 4.x, start with [the 5.0.0 entry](#flow-next-500---2026-09-12) and [the flow skill](plugins/flow-next/skills/flow-next-flow/SKILL.md) before reading the items below.
 
-## Unreleased
+## [flow-next 6.4.0] - 2026-09-28
+
+Asking flow to move one number toward a target now runs a measured loop: each idea is benchmarked against the noise, kept as its own commit only when it wins and your tests stay green, and reverted otherwise, and the pull request shows every attempt. On a fixture CLI, five attempts cut `--version` cold start from 124 ms to 8 ms. Refine now settles factual questions, such as how long something takes, whether a layout fits or whether a parser accepts an input, by running a throwaway experiment and recording what it saw, so fewer questions reach you. Flow's prototypes put competing ideas behind one switcher, and Codex reviews keep the model they started with through every re-review.
+
+**What changes when you upgrade.** The bundled scouts run on Opus instead of Haiku and Sonnet, so scout-heavy steps such as plan and prime cost more per run; name a cheaper model on the `fast scout` and `thinking scout` lines of your routing block to trade that back. The generated Codex agents move to the gpt-6 models. No setup re-run is needed.
 
 ### Added
 
