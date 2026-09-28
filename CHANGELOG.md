@@ -4,7 +4,11 @@ All notable changes to the flow-next.
 
 Flow-Next changed shape with 5.0.0. One command, `/flow-next:flow`, reads whatever you have and picks the route, and `flow --auto` runs the same route unattended. If you are arriving from 4.x, start with [the 5.0.0 entry](#flow-next-500---2026-09-12) and [the flow skill](plugins/flow-next/skills/flow-next-flow/SKILL.md) before reading the items below.
 
-## Unreleased
+## [flow-next 6.6.0] - 2026-09-28
+
+Plan, prime and the other scout-heavy steps get faster and cheaper: the bundled scouts now run on Sonnet 5.5, which Anthropic reports at more than 30% faster than Sonnet 5 and lower cost than Opus 5.5, scoring within about three points of Opus 5.5 on its published agentic-coding and knowledge-work benchmarks. Teams that keep `.flow/` in a planning repo and their product code in sibling clones get the full gates whenever that code changes, and the feature map ages from product commits instead of planning edits. A feature-map maintain pass now finishes on repos whose branch and commit names need a ticket key or whose host is not GitHub, and a failed push keeps the proven corrections instead of discarding them. make-pr opens its pull request from zsh as well as bash.
+
+**What changes when you upgrade.** Update Claude Code to 2.1.284 or later so the `sonnet` alias means Sonnet 5.5; an older Claude Code runs the scouts on Sonnet 5. In a home-base workspace, name the sibling code repos in your project instructions so work and the feature-map commands find them. No setup re-run is needed.
 
 ### Changed
 
