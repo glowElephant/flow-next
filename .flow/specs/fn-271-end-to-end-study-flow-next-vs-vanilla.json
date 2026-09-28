@@ -1,0 +1,31 @@
+{
+  "branch_name": "fn-271-end-to-end-study-flow-next-vs-vanilla",
+  "completion_review_status": "unknown",
+  "completion_reviewed_at": null,
+  "created_at": "2026-09-27T19:51:43.914272Z",
+  "default_impl": null,
+  "default_review": null,
+  "default_sync": null,
+  "depends_on_epics": [],
+  "id": "fn-271-end-to-end-study-flow-next-vs-vanilla",
+  "impl_review_rounds": {},
+  "next_task": 1,
+  "plan_review_rounds": 0,
+  "plan_review_status": "unknown",
+  "plan_reviewed_at": null,
+  "spec_path": ".flow/specs/fn-271-end-to-end-study-flow-next-vs-vanilla.md",
+  "status": "open",
+  "title": "End-to-end study: flow-next vs vanilla Claude Code across routes",
+  "tracker": {
+    "baseHashFlow": null,
+    "baseHashTracker": null,
+    "depRelations": [],
+    "id": null,
+    "identifier": null,
+    "lastSyncedAt": null,
+    "mergeBaseFlow": null,
+    "mergeBaseTracker": null,
+    "url": null
+  },
+  "updated_at": "2026-09-28T11:18:47.539845Z"
+}
