@@ -13,11 +13,17 @@ unless the user or the repository's instructions ask for it.
   if they do, they are not yours.
 - Files a test run or tool writes into the repository are not part of your change: remove them
   from the diff before handing back, and mention them; do not chase their cause.
+- When asked whether to widen the scope, "no" is a fine answer; say why in one line.
+- A refactor that does not make the code easier to follow is reverted.
 
 ## Design
 
 Before writing logic for a feature, name the data it touches and what owns each piece of state
 (which record a value belongs to, what is shared). Most wrong designs are wrong ownership.
+
+Build in small steps, each checked before the next, and commit them in an order that shows the
+work is right (the failing test, then the fix). When two fixes built on the same idea have
+failed, question the idea before trying a third.
 
 ## Tests
 
@@ -43,7 +49,9 @@ Before writing logic for a feature, name the data it touches and what owns each 
   the person decides what to pick up.
 - **Unattended** (`--auto`): nobody is waiting. Never ask; decide from evidence, and stop only
   for a call only a human can make or an irreversible action. Fix a discovery only when it
-  blocks the goal, as its own commit; list the rest as follow-ups in the final report.
+  blocks the goal, as its own commit; list the rest as follow-ups in the final report. Keep a
+  Decisions list in the final report and the pull request body: each default you chose, finding
+  you declined and review you skipped, with the evidence behind it.
 
 ## Review
 
@@ -78,3 +86,9 @@ person decides later which become specs.
 
 Short: what changed, how you know it works (the commands you ran and what they showed), and
 anything left open. No stage-by-stage narration.
+
+- Mark each claim as measured (you ran it and saw the result), inferred (it follows from what you
+  read) or a guess.
+- Name the run done the way a user would (the command, the request, the page) and what it
+  showed, or `not run: <reason>`.
+- Never hand the person a check you could have run yourself.
