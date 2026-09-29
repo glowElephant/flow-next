@@ -35,7 +35,7 @@ _Relates to_: Task, R-ID, Chart
 
 ## Task
 
-An execution unit under a spec (`fn-N.M`), sized to one `/flow-next:work` iteration (~100k tokens of fresh context). Declares `requires:` dependencies and optionally the R-IDs it `satisfies:`. Implemented by a worker subagent, never by the conductor directly.
+An execution unit under a spec (`fn-N.M`), sized to one `/flow-next:work` iteration (~100k tokens of fresh context). Declares `requires:` dependencies and optionally the R-IDs it `satisfies:`. Implemented by a worker subagent; a run with a single task to implement and no parallel work is implemented inline by the conductor, following the same worker phases.
 
 
 

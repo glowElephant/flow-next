@@ -115,7 +115,8 @@ path-ban `FORBIDDEN:` for this task has broken this.
 
 Append the license below to the minted task's 3c dispatch prompt as extra prose.
 worker.md itself gains no subagent prose, and plan-full workers get no such
-license — judgment governs there (spec Decision Context).
+license — judgment governs there (spec Decision Context). When the conductor implements the minted task inline
+(phases.md 3c), the conductor is the owner and holds this license itself.
 
 The worker prompt for the minted task carries a broad license: parallel implementation
 of independent surfaces, background research, scouting — the SHAPE is chosen by the

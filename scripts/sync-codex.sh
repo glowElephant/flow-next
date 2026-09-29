@@ -560,6 +560,8 @@ Before spawning, apply [references/judge-tier.md](references/judge-tier.md) once
 
 **When the implementer tier resolves to a model this harness reaches only over a CLI bridge, the worker bridges and the conductor never does.** The dispatch below is unchanged: the worker resolves the tier itself (worker Phase 1b), hands the task to the bridged child with the usage guide's brief, and reviews the child's commit range before its own review dispatch. The bridged child owns the task and its own delegation; a conductor that composed a brief, ran a bridge call, or fanned out on the implementer's behalf has broken this.
 
+**One task, no parallel work: the conductor implements it inline.** When this run implements exactly one task (a one-task plan, a task-id run, or the direct route's implicit owner task) and nothing else runs beside it, do not spawn a worker. After the judge-tier step above, read [worker.toml](../../agents/worker.toml) and follow its phases yourself in this context, Phase 1 (re-anchor) through Phase 5 (`flowctl done`), using its default `.flow/tmp/<TASK_ID>-summary.md` / `-evidence.json` handover paths. Review, `flowctl done`, receipts, and the done summary follow that file exactly; 3d's verification and failure handling then apply unchanged. Dispatch the worker below instead when the user or config asks for one (an explicit implementer model or tier, or a judge result that names a non-session spawn model or an `IMPLEMENTER`, a bridge included), when this task's review mode resolves to `host` (the writer never dispatches its own host review), or when your own context is too full to implement well; say which in one line.
+
 Use the **worker** agent role to implement each selected task. For a multi-task
 wave, create one isolated mutable workspace and task-unique summary/evidence
 paths per worker, then dispatch the selected workers concurrently. For a
@@ -677,7 +679,8 @@ SECTION3C
     "TIMEBOX: <cap> - on expiry write the handover with partial findings and return, never run on" \
     "Implementation is the **implementer** tier" \
     "IMPLEMENTER: <model> at <effort>" \
-    "the worker bridges and the conductor never does"; do
+    "the worker bridges and the conductor never does" \
+    "the conductor implements it inline"; do
     if ! grep -qF "$dispatch_field" "$phases"; then
       echo "SYNC-FAIL: mirror phases.md 3c lost dispatch field: $dispatch_field (update SECTION3C in sync-codex.sh)" >&2
       exit 1
