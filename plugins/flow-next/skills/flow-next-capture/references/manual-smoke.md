@@ -3,14 +3,14 @@
 > Maintainer-facing. A capture session never needs this file; it is the manual validation
 > description for prose changes to the skill.
 
-## Manual smoke (acceptance R3, R4, R5, R6, R7, R8, R24)
+## Manual smoke
 
 The skill itself is markdown — there's no unit-test surface. The validation is invoking `/flow-next:capture` in a real session. Expected behavior:
 
 - Phase 0 walks `.flow/specs/`, runs memory search if memory is initialized, detects compaction, applies idempotency. Branches into duplicate-detection question if ≥2 strong matches; exits cleanly on `abort`.
 - Phase 1 emits a `## Conversation Evidence` block with verbatim user quotes (≤30 lines).
 - Template decides the sections: with the bundled template the saved spec carries `## Conversation Evidence`; with a repo-root `SPEC.md` whose `auxiliary_sections` list omits it, the saved spec does not, and untagged lines are still checked against the Phase 1 evidence.
-- Phase 2 tags only what capture authored: user-verbatim criteria stay untagged (and are findable in the evidence), rewording is `[paraphrase]`, fill-in is `[inferred]`. Stated business context (R24) lands in its owning section as the user's words or `[paraphrase]`; with no business signal nothing is added.
+- Phase 2 tags only what capture authored: user-verbatim criteria stay untagged (and are findable in the evidence), rewording is `[paraphrase]`, fill-in is `[inferred]`. Stated business context lands in its owning section as the user's words or `[paraphrase]`; with no business signal nothing is added.
 - Phase 3 fires must-ask cases only when (a) title is genuinely ambiguous, (b) acceptance is untestable, (c) scope-conflict persists. Optional ambiguities are deferred to Phase 4.
 - Phase 4 materializes the body once and checks source-tag findability. An N>1 split gets one explicit choice, never a second body-approval question. Pre-rewrite readiness is observed before the write; no readiness question runs yet. Autofix retains its draft-only result without `--yes`.
 - After Phase 5 writes the body, the saved-spec summary and editor offer run. The editor opens the actual spec and its changes are reread before follow-ups; a correction shows only its diff and never asks for generic re-approval. Stopping review preserves the saved file. Separate glossary and readiness questions keep their conditions and honor answers already supplied by the user. Capture-only intent never dispatches implementation.

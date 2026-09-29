@@ -1,12 +1,12 @@
-# capture — optional codebase verification (R12) (loaded on demand)
+# capture — optional codebase verification (loaded on demand)
 
 > Loaded ONLY when the conversation references repo files or modules whose state matters for the
 > spec. A clean conversation with no file references — or with only 1-2, investigated on the main
 > thread — never reads this file.
 
-## 1.2 — Optional codebase verification (subagent dispatch — R12)
+## 1.2 — Optional codebase verification (subagent dispatch)
 
-When the conversation references repo files or modules whose state matters for the spec ("the auth module needs X", "we already have a rate limiter at..."), spawn a **read-only investigation subagent** via the `Task` tool with `subagent_type: Explore` (or `general-purpose` when Explore is unavailable; on hosts with neither builtin — e.g. Cursor — the host's generic subagent dispatch with Edit/Write disallowed). For clean conversations with no file references, skip this step. ( per repo cross-platform convention.)
+When the conversation references repo files or modules whose state matters for the spec ("the auth module needs X", "we already have a rate limiter at..."), spawn a **read-only investigation subagent** via the `Task` tool with `subagent_type: Explore` (or `general-purpose` when Explore is unavailable; on hosts with neither builtin — e.g. Cursor — the host's generic subagent dispatch with Edit/Write disallowed). For clean conversations with no file references, skip this step.
 
 Investigation subagents are **read-only**. They must not Edit, Write, Bash beyond Read / Grep / Glob, or git-mutate. Pass `disallowedTools: Edit, Write, Task` when dispatching. Each returns:
 

@@ -25,7 +25,7 @@ pass must still complete without it.
 > also granted. The permission split, the AX-tree loop, and the MCP tool surface
 > below are from that live run. Command/MCP detail drifts — **verify at build**
 > (see the drift section). Driver-ladder + degradation structure adapted from Ray
-> Fernando's `running-bug-review-board` skill (Apache-2.0) — see CHANGELOG.
+> Fernando's `running-bug-review-board` skill (Apache-2.0).
 
 ## Scope — what belongs on this rung, and what does NOT
 
@@ -236,8 +236,8 @@ as Computer Use:
 
 Unlike the web ladder's pure availability ordering, the Native rung mixes an
 *availability* probe with a *quality* preference (background beats screen-takeover)
-and a *path* split (attended vs headless). The order, stated explicitly so R4
-(prefer background when attended) and R5 (sandbox for CI) compose without conflict:
+and a *path* split (attended vs headless). The order, stated explicitly so "prefer background when attended" and
+"sandbox for CI" compose without conflict:
 
 - **Attended path** (a real display + an operator present):
   1. **Cua Driver background** — provider-agnostic, no focus steal, macOS/Windows (Linux pre-release/experimental — fall to sandbox/limitation there).
@@ -507,7 +507,7 @@ seconds.)
   rule for `clawpatch`. Document which extras are MIT-safe vs AGPL/CC-BY; let the
   operator install with their own consent.
 
-## Evidence tuple (R6) — slots into QA with no schema change
+## Evidence tuple — slots into QA with no schema change
 
 QA's per-scenario evidence tuple `{driver_rung, target_url, viewport,
 screenshot_path, console_path}` accepts both **`cua-driver`** (local) and

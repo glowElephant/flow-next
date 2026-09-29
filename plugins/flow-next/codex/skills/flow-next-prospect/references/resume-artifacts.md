@@ -129,7 +129,7 @@ If `RESUMABLE_COUNT == 0` (only corrupt artifacts), skip to Phase 1 — nothing 
 
 Present the resumable list in a deterministic numbered format and ask the user to choose a path. Use `plain-text numbered prompt`.
 
-Frozen option strings (R19 anchor — must match exactly across backends):
+Frozen option strings (anchor — must match exactly across backends):
 
 ```
 fresh         — start a new prospect artifact (Phase 1)

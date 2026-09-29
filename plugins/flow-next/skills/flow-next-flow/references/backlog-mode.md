@@ -114,7 +114,7 @@ facts only** - `{id, ready, noPlan, readySignal, blockedBy, hasSpec}`:
   fine - after the 1a pull the flag is simply `local`.
 - `blockedBy` - the unsatisfied `depends_on_epics` (the flow dep edges, 1d). A
   **chain parent** (an open dependency with every task done and its branch on
-  origin, fn-152) is already excluded here: flowctl's admission gate treats it as
+  origin) is already excluded here: flowctl's admission gate treats it as
   satisfied, so a chained spec sorts as ready-now in 1e.
 - `hasSpec` - whether a spec file exists.
 

@@ -91,8 +91,8 @@ maintainer decides direction, the review verifies the plan executes it.
 
 {confidence_rubric_block}
 Any finding that drives NEEDS_WORK must name the concrete bad downstream outcome.
-Worked examples: a task made impossible by the plan blocks (fn-153); a true
-self-contradiction with no downstream consequence is FYI, not blocking (fn-156).
+Worked examples: a task made impossible by the plan blocks; a true
+self-contradiction with no downstream consequence is FYI, not blocking.
 
 {plan_quality_block}{protected_artifacts_block}
 ## Output Format

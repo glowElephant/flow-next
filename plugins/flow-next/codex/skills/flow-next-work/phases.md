@@ -31,7 +31,7 @@ Detect input type in this order (first match wins):
 4. **Spec file** `.md` path that exists on disk → **SPEC_MODE**
 5. **Idea text** everything else → **SPEC_MODE**
 
-**Handle-recognition rule (R16):** **every single-token arg goes through `$FLOWCTL show <arg> --json` before it can be treated as idea text.** If it resolves (rc 0) it is an existing spec/task — use the canonical id from the JSON. Only a non-resolving token that isn't an `.md` path falls through to idea text. A run that gated on a "starts with `fn-`" check, or that re-created `wor-17` / `wor-17.1` as a new spec, has broken this.
+**Handle-recognition rule:** **every single-token arg goes through `$FLOWCTL show <arg> --json` before it can be treated as idea text.** If it resolves (rc 0) it is an existing spec/task — use the canonical id from the JSON. Only a non-resolving token that isn't an `.md` path falls through to idea text. A run that gated on a "starts with `fn-`" check, or that re-created `wor-17` / `wor-17.1` as a new spec, has broken this.
 
 **Track the mode** — it controls looping in Phase 3.
 
@@ -121,7 +121,7 @@ Before any scout dispatch apply [references/judge-tier.md](references/judge-tier
 
 ## Phase 2: Apply Branch Choice
 
-**Chain check first (fn-152 R4).** Before any branch is created or any task starts, ask flowctl whether the spec is chain-eligible; the predicate lives in one place and this skill never re-derives it. A dependent spec whose parent is open with every task done and its branch on origin is **chained**: the spec branch is created from the parent's fetched remote-tracking ref, and that ref is the base for the spec base, gate classification, and the quality auditor's diff range. Work never creates a local branch named after the parent and never deletes or resets an existing parent branch. An `eligible: false` answer (an unfinished parent, two open parents, an unpushed parent, a sibling already chained, a failed remote query) stops the run with `BLOCKED: <reason from the command>` before any task starts; the same reason parked the spec at selection under `flow --auto`.
+**Chain check first.** Before any branch is created or any task starts, ask flowctl whether the spec is chain-eligible; the predicate lives in one place and this skill never re-derives it. A dependent spec whose parent is open with every task done and its branch on origin is **chained**: the spec branch is created from the parent's fetched remote-tracking ref, and that ref is the base for the spec base, gate classification, and the quality auditor's diff range. Work never creates a local branch named after the parent and never deletes or resets an existing parent branch. An `eligible: false` answer (an unfinished parent, two open parents, an unpushed parent, a sibling already chained, a failed remote query) stops the run with `BLOCKED: <reason from the command>` before any task starts; the same reason parked the spec at selection under `flow --auto`.
 
 ```bash
 # fence:work-branch — inputs: FLOWCTL, SPEC_ID, BRANCH_NAME, BRANCH_MODE (new|current), DEFAULT_BASE (optional; defaults to origin/HEAD); origin reachable
@@ -391,7 +391,7 @@ Recording the configured preference as if it were an observation has broken this
 
 **A skipped stage is an event with a reason, never an absence** — review treats a
 stage with no line as failed (that inversion is the point: "no record" can never
-again masquerade as "nothing to do", the #293 class). A stage this run reached
+again masquerade as "nothing to do"). A stage this run reached
 that left no line has broken this. Timestamps ride the line only where this
 orchestrator knows them; there is no separate timing store. Token/cost telemetry
 is out of scope — it is host-side data flowctl cannot observe (a future host

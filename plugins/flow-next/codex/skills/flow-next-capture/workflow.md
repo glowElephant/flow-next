@@ -27,7 +27,7 @@ CAPTURE_CFG="${TMPDIR:-/tmp}/flow-capture-config-<suffix>.json"   # literal path
 
 ---
 
-## Phase 0: Pre-flight (R5, R6, R8)
+## Phase 0: Pre-flight
 
 Catch what makes capture unsafe before drafting: a duplicate spec, relevant evidence lost to compaction, an overwrite conflict.
 
@@ -54,7 +54,7 @@ fi   # default branch: bare no-op — NO link, NO read path
 
 On the sentinel, read [references/strategy-alignment.md](references/strategy-alignment.md) and take its snapshot; it also owns the §5.0 contradiction check. Silent: no `[strategy:*]` tags and no §5.0.
 
-### 0.4 — Compaction detection (R6)
+### 0.4 — Compaction detection
 
 Look for compaction signals: `[compacted]` markers, truncated tool output, system-summary blocks, or later turns relying on a result that is not visible. A signal alone is not a refusal. The question is whether evidence **relevant to this capture** is gone: proceed when the feature is fully stated in visible user turns (note `Prior compaction detected; relevant capture evidence remains visible.` in the summary warnings); treat it as incomplete when a relevant requirement is summary-only, truncated, or missing, or when the draft would have to guess. When unsure, treat it as incomplete.
 
@@ -62,20 +62,20 @@ If relevant evidence is incomplete AND `FROM_COMPACTED_OK` is `0`, refuse: name 
 
 ### 0.5 — Duplicate branch
 
-Silent overwrite is never an option (R8). With ≥2 strong matches and no `REWRITE_TARGET`: GATE ACTIVE — STOP. Read [references/duplicate-branch.md](references/duplicate-branch.md) and run its §0.5 branch (`extend` / `supersede` / `proceed-anyway` / `abort`; autofix exits 2) before drafting. When unsure whether matches are strong, treat the gate as active.
+Silent overwrite is never an option. With ≥2 strong matches and no `REWRITE_TARGET`: GATE ACTIVE — STOP. Read [references/duplicate-branch.md](references/duplicate-branch.md) and run its §0.5 branch (`extend` / `supersede` / `proceed-anyway` / `abort`; autofix exits 2) before drafting. When unsure whether matches are strong, treat the gate as active.
 
 ### 0.5b — Chart briefing gate
 
 When the conversation or `$ARGUMENTS` names a chart briefing (a `.flow/charts/*-briefing*.md` path, a B-ID, or a chart id whose sidecar lists briefings): GATE ACTIVE — STOP and Read [references/chart-briefing.md](references/chart-briefing.md) before drafting. It owns admission (draft/stale fail closed; the risk override names the unresolved D-IDs), evidence extraction, the provenance-separation rule, and the `chart link-spec` handoff and its retry rules for Phase 5. Otherwise read nothing.
 
-### 0.6 — Idempotency (R8)
+### 0.6 — Idempotency
 
 - **`REWRITE_TARGET` set** → GATE ACTIVE — STOP. Read [references/rewrite-mode.md](references/rewrite-mode.md) and validate the target (an existing spec, not a task; otherwise exit 2). It also governs Phases 4-6 for the rewrite.
 - **Otherwise**, if an earlier turn shows a prior capture (`Spec captured at .flow/specs/<id>.md`), run §0.6 in `references/duplicate-branch.md` (rewrite / proceed / abort; autofix exits 2).
 
 ---
 
-## Phase 1: Extract conversation evidence (R3)
+## Phase 1: Extract conversation evidence
 
 Build the evidence first; the draft cites it, not memory. It is always collected; whether it is written into the spec is the resolved template's call (§2.2).
 
@@ -83,7 +83,7 @@ Build the evidence first; the draft cites it, not memory. It is always collected
 
 For each user turn with spec content (goals, requirements, constraints, scope, rejected options, examples), emit `> user (turn <N>): "<verbatim text>"`, splitting long turns into verbatim parts. A chosen question option is `> user (turn <N>, selected): "<option label verbatim>"`. Only what the user typed counts: never agent narration, tool output, or capture's own process conclusions (a fabricated "This is a NEW spec. Do NOT mark ready." turn has broken this). Skip greetings and noise. Cap at ~30 lines; when older turns must go, open the block with `> [truncated: N earlier turns]`.
 
-### 1.2 — Codebase verification (R12)
+### 1.2 — Codebase verification
 
 When the conversation references repo files or modules whose state matters for the spec (beyond one or two checked on the main thread): GATE ACTIVE — STOP. Read [references/codebase-verification.md](references/codebase-verification.md) and run its read-only investigation before drafting. A verified user-named component can be `[paraphrase]`; unverified ones stay `[inferred]`.
 
@@ -93,7 +93,7 @@ Draft the shortest noun phrase that names the goal (≤60 chars). A title the us
 
 ---
 
-## Phase 2: Source-tagged synthesis (R4, R14, R15)
+## Phase 2: Source-tagged synthesis
 
 Spec prose follows [docs/prose.md](../../docs/flow-next/prose.md) when present.
 
@@ -103,7 +103,7 @@ Tag only what capture authored: `[paraphrase]`, `[inferred]`, `[strategy:<track>
 
 ### 2.2 — Apply the resolved template
 
-The section structure comes from the canonical [`plugins/flow-next/templates/spec.md`](../../templates/spec.md) (R17: cross-link, never re-embed the list), resolved first-match from `<repo_root>/SPEC.md` → `<repo_root>/spec.md` → the bundled file. **The resolved template decides what goes in the spec:** write the sections it names as headings or in `auxiliary_sections`, in its order and positions, follow its instructions, and add no section it leaves out (the bundled entries put `Conversation Evidence` at the top and `Requirement coverage` at the end). A section with no conversation signal stays absent; empty beats fabricated.
+The section structure comes from the canonical [the bundled `templates/spec.md`](../../templates/spec.md) (cross-link, never re-embed the list), resolved first-match from `<repo_root>/SPEC.md` → `<repo_root>/spec.md` → the bundled file. **The resolved template decides what goes in the spec:** write the sections it names as headings or in `auxiliary_sections`, in its order and positions, follow its instructions, and add no section it leaves out (the bundled entries put `Conversation Evidence` at the top and `Requirement coverage` at the end). A section with no conversation signal stays absent; empty beats fabricated.
 
 - **`## Acceptance Criteria`** — `- **R1:** ...` prose bullets, allocated from R1 (fresh spec, no renumber concern). When `.flow/criteria.md` exists, never restate a G-ID as an R-ID; reference it in prose and write an R only for what this spec adds.
 - **`## Requirement coverage`** — only when the template names it and the route is planned (`NO_PLAN_OPT=0`, and under `from:flow` §2.8 resolved to plan): each R-ID mapped to `fn-N.M (TBD - populate via /flow-next:plan)`. Omitted on the direct route, where work's single implicit task is the coverage. Capture writes no tasks.
@@ -113,11 +113,11 @@ The section structure comes from the canonical [`plugins/flow-next/templates/spe
 
 Each criterion must let a reviewer point at behavior and say met or not. One that fails ("make it fast") triggers Phase 3 case (b). Count `[inferred]` lines for the summary.
 
-### 2.5 — Spec-count gate (R11)
+### 2.5 — Spec-count gate
 
 At 8+ criteria, or criteria serving more than one independently shippable outcome: GATE ACTIVE — STOP. Read [references/split-proposal.md](references/split-proposal.md) and decide 1 vs N specs (it owns the Phase 4 `split-as-proposed` choice, §5.2b, and the split close). Capture never auto-splits.
 
-### 2.6 — Business context (R24)
+### 2.6 — Business context
 
 Business context the user stated goes into the section that owns it: audience, problem and why-now, UX expectations, and framing constraints or risks into `Goal & Context`; MVP scope and non-goals into `Boundaries`; success measures into outcome criteria. Success measures, prioritization rationale, and constraints or risks that drive a trade-off also go under a `### Motivation` H3 in `## Decision Context`; without them Decision Context stays one flat body, and capture never writes `### Implementation Tradeoffs`. Routed content is the user's words or `[paraphrase]`, never `[inferred]`; a conversation with no business signal gains no business content.
 
@@ -143,7 +143,7 @@ Once criteria are drafted, judge the spec once against [`plan-vs-no-plan.md`](..
 
 ---
 
-## Phase 3: Must-ask cases (R9)
+## Phase 3: Must-ask cases
 
 | Case | Trigger | Interactive | Autofix |
 |------|---------|-------------|---------|
@@ -189,7 +189,7 @@ Autofix follows [references/autofix-mode.md](references/autofix-mode.md): print 
 
 ---
 
-## Phase 5: Write via flowctl (R14, R15, R16)
+## Phase 5: Write via flowctl
 
 ### 5.0 — Strategy contradiction check
 
@@ -296,7 +296,7 @@ On the sentinel, follow [references/html-lens.md](references/html-lens.md). Sile
 
 ---
 
-## Phase 6: Close (R16)
+## Phase 6: Close
 
 **Tracker-sync check first** (read-only, independent of §5.7, so a skipped touchpoint is still caught):
 

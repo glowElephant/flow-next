@@ -19,7 +19,7 @@ Templates for fixing agent readiness gaps. Focus on what helps agents work effec
 
 **Pick the right file, and detect the existing convention first:**
 - If the repo already has a real (non-symlink) `AGENTS.md` OR `CLAUDE.md`, **augment that one** — do NOT create a second competing file. (Many repos standardize on `AGENTS.md` + a `CLAUDE.md` symlink; respect it.)
-- If neither exists, create the host platform's file: **`CLAUDE.md`** on Claude Code / Droid, **`AGENTS.md`** on Codex. (The Codex mirror rewrites this section accordingly.)
+- If neither exists, create the host platform's file: **`CLAUDE.md`** on Claude Code / Droid, **`AGENTS.md`** on Codex.
 
 **Create vs. augment - this is the common case.** Most repos now HAVE an agent file; few have a *good* one. When agents-md-scout reports a low coverage score (a stub like "Be careful, write tests"), the fix is **augment**: add ONLY the sections it flagged missing (Quick Commands, Project Structure, Conventions, …) via the existing-file consent path - never overwrite the user's content, and never offer a no-op "create" when a file already exists. DC2 passes only when the file exists AND clears the coverage bar on the single published scale **X/8** (pass ~5/8 - the 8-row agents-md-scout rubric; there is no /10 variant); a thin stub is a ⚠️ that this fix targets.
 
@@ -498,7 +498,7 @@ evidence; omit a field rather than guess it:
 **This kit is written to the PARENT directory, outside the assessed repo ROOT - explicit-consent-only,
 NEVER `--fix-all`, regardless of tier.** Offered only for the full home-base constellation variant
 (service composition detected - playbooks.md selector); the light product-family variant gets the
-R15 "Repo context" block + a docs-update-as-DoD line instead, not this kit. The manifest is the
+"Repo context" block + a docs-update-as-DoD line instead, not this kit. The manifest is the
 single source of truth - the parent instruction file POINTS at it, never duplicates the repo list.
 
 Parent `CLAUDE.md` / `AGENTS.md` (LEAN - workspace map + workflow, not a repo catalogue):

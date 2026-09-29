@@ -365,7 +365,7 @@ stage: plan-sync - ran [<start>..<end>] | skipped(empty: no downstream todo task
 ```
 
 **A skipped stage is an event with a reason, never an absence.** `DOWNSTREAM=EXTRACT_FAILED`
-yields a `failed(EXTRACT_FAILED...)` line (the #293 class becomes visible on
+yields a `failed(EXTRACT_FAILED...)` line (a broken extraction becomes visible on
 first occurrence) and "no downstream tasks" yields `skipped(empty...)`, which is
 distinguishable from a broken extraction; a run that recorded a broken extraction as
 "nothing to do", or omitted the line entirely, has broken this. Include start..end

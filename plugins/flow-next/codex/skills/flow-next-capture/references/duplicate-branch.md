@@ -45,14 +45,14 @@ Options:
 
 Exit 2.
 
-## 0.6 — Prior-capture artifact detected (R8, `REWRITE_TARGET` empty)
+## 0.6 — Prior-capture artifact detected (`REWRITE_TARGET` empty)
 
 When the visible conversation carries prior-capture artifact references — patterns like `Spec captured at .flow/specs/<id>.md` from earlier turns:
 
 - **Interactive:** ask via `plain-text numbered prompt` whether the user wants to (a) `--rewrite <id>` (re-run with the flag), (b) `proceed` (create a new spec anyway, accepting that two specs result), (c) `abort`.
 - **Autofix:** exit 2 with: `Error: prior capture artifact <id> detected in conversation. Re-run with --rewrite <id> to overwrite, or interactively to choose. Pass --yes only after picking a path.`
 
-Silent overwrite is never an option on either branch — idempotency requires `--rewrite <spec-id>` (R8).
+Silent overwrite is never an option on either branch — idempotency requires `--rewrite <spec-id>`.
 
 ## Downstream consequence — Phase 3 must-ask case (c)
 

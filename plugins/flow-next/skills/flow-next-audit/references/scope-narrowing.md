@@ -15,7 +15,7 @@ When `SCOPE_HINT` is non-empty, narrow the candidate set in this order — first
 
 1. **Track match** — `bug` or `knowledge` as a literal token. Filter to that track.
 2. **Category match** — exact match against `MEMORY_CATEGORIES` enum (e.g. `runtime-errors`, `architecture-patterns`, `tooling-decisions`). Filter to that category across both tracks.
-3. **Module match** — substring match against `frontmatter.module`. Useful when the user types `auth` or `plugins/flow-next/scripts/flowctl.py`.
+3. **Module match** — substring match against `frontmatter.module`. Useful when the user types `auth` or `src/auth/session.py`.
 4. **Tag match** — exact match against any value in `frontmatter.tags`.
 5. **Title / body keyword** — case-insensitive substring search across `title` and `body`. Last resort because it can be noisy.
 

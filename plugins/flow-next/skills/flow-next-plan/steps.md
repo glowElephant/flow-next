@@ -85,7 +85,7 @@ SHOW_JSON=$($FLOWCTL show <id> --json)   # ONE fetch — request context AND rea
 echo "$SHOW_JSON"                        # command substitution hides stdout — bring it into view once
 ```
 
-**Handle-recognition rule (R16):** do NOT gate the Flow-ID branch on a hard "must start with `fn-`" check. Before treating a single-token arg as a freeform idea, route it through `$FLOWCTL show <arg> --json` - flowctl's widened resolver maps a tracker key (`wor-17` / `wor-17.M`) to its linked spec/task. If it resolves (rc 0), use the canonical id from the JSON and take the existing-Flow-ID path (Route A in Step 5); only a non-resolving token becomes a new idea (Route B). So `plan wor-17` refines the linked spec, never creating a duplicate.
+**Handle-recognition rule:** do NOT gate the Flow-ID branch on a hard "must start with `fn-`" check. Before treating a single-token arg as a freeform idea, route it through `$FLOWCTL show <arg> --json` - flowctl's widened resolver maps a tracker key (`wor-17` / `wor-17.M`) to its linked spec/task. If it resolves (rc 0), use the canonical id from the JSON and take the existing-Flow-ID path (Route A in Step 5); only a non-resolving token becomes a new idea (Route B). So `plan wor-17` refines the linked spec, never creating a duplicate.
 
 **Unshaped oversized freeform:** if Route B input is one large idea with unclear boundaries and several consequential unknowns, stop and recommend `/flow-next:chart` (or `/flow-next:flow --explain`) instead of planning through the fog. Ready specs stay on Route A.
 
@@ -128,7 +128,7 @@ When `READINESS_WARN=false`: continue silently — zero behavior change for read
 When the sentinel prints (`READINESS_WARN=true`), STOP and Read
 [`references/readiness-warn.md`](references/readiness-warn.md) before any
 further step — it owns the non-interactive stderr line and the two frozen
-interactive option sets. Never a hard block (R6).
+interactive option sets. Never a hard block.
 
 **Check if memory and github-scout are enabled** (from the Step 0 root snapshot — no config get calls):
 ```bash
@@ -373,7 +373,7 @@ below (they bind on both routes). Route B sessions skip that file entirely.
    cost. When it does not print, the unconditional post-check above is the whole
    creation path.
 
-   This returns the spec ID (e.g., `wor-17-slug` under tracker-first, or `fn-1-add-oauth` under flow-first). `branch_name` defaults to the spec ID at create time — no follow-up `spec set-branch` call on the create path. Only when the user specified a custom branch, pass it at create: `$FLOWCTL spec create --title "<Short title>" --branch "<custom-branch>" --plan-file "$PLAN_FILE" --json` (`spec set-branch` remains the tool for renaming an existing spec's branch later). Do **not** add a runtime advisory/nag about the id scheme at this mint site (withdrawn R10) — setup owns the one-time question.
+   This returns the spec ID (e.g., `wor-17-slug` under tracker-first, or `fn-1-add-oauth` under flow-first). `branch_name` defaults to the spec ID at create time — no follow-up `spec set-branch` call on the create path. Only when the user specified a custom branch, pass it at create: `$FLOWCTL spec create --title "<Short title>" --branch "<custom-branch>" --plan-file "$PLAN_FILE" --json` (`spec set-branch` remains the tool for renaming an existing spec's branch later). Do **not** add a runtime advisory/nag about the id scheme at this mint site — setup owns the one-time question.
 
 2. The plan content. Seed it from the resolved template: run `$FLOWCTL spec skeleton` once (it renders the template through the `SPEC.md` → `spec.md` → bundled cascade of [`spec-template-discovery.md`](../../references/spec-template-discovery.md), frontmatter stripped) and Write step 1's `$PLAN_FILE` from its output. The template owns the section names, their order and the per-section guidance; never duplicate its section list inline. Replace its `# <spec-id> <Title>` heading with `# <Title>`, fill the sections Step 4 chose for the depth, and replace the guidance prose and comments with plan content. Acceptance criteria use the `- **R1:** <testable criterion>. Errors: <enumerated cases, or "no error surface beyond X">` shape (R-ID rule below). `spec set-plan` is the Route A / editing path, not part of Route B creation.
 
@@ -549,10 +549,8 @@ below (they bind on both routes). Route B sessions skip that file entirely.
      path it will modify.
    - **Why this is worth the line:** wave dispatch is fail-closed on it, so a
      spec whose tasks omit it can never run concurrently no matter how
-     independent the tasks are. Measured 2026-08-14: zero of 37 tasks across
-     eleven consecutive specs carried the line, so no wave had ever been
-     dispatched; a probe wave with the line present ran two tasks in 96s against
-     187s serial. A wrong declaration is cheap by construction — workers write
+     independent the tasks are; with the line present, a two-task wave can
+     finish in about half the serial time. A wrong declaration is cheap by construction — workers write
      in isolated workspaces, so an overlap surfaces as a merge conflict at the
      join and costs one serial re-run, never correctness.
    - Inert metadata to flowctl — models read it; no deterministic parsing.

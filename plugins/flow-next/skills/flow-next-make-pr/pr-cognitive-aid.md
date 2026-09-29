@@ -12,17 +12,17 @@ CURRENT_AID=$("$FLOWCTL" pr-cognitive-aid current "$SPEC_ID" --base-sha "$MERGE_
 Reuse `current` exactly; otherwise author a private 0600 `AID_INPUT` tempfile outside the repository.
 Replace skeleton identities, paths and evidence with export values; declare every R-ID, even uncovered:
 ```json
-{"schemaVersion":1,"artifactId":"aid-001","specId":"fn-136-cognitive-aid","specIds":["fn-136-cognitive-aid"],"baseSha":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","headSha":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","generatedAt":"2026-09-21T12:00:00Z",
- "sources":[{"id":"spec","kind":"spec","ref":"fn-136-cognitive-aid"},{"id":"task","kind":"task","ref":"fn-136-cognitive-aid.1"},{"id":"rid","kind":"rid","ref":"R6"},{"id":"row-rid","kind":"rid","ref":"R7"},{"id":"review","kind":"review_receipt","ref":".flow/receipts/review.json"},{"id":"qa","kind":"qa_receipt","ref":".flow/receipts/qa.json"},{"id":"diff","kind":"diff_metadata","ref":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa..bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},{"id":"commit","kind":"commit","ref":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}],
+{"schemaVersion":1,"artifactId":"aid-001","specId":"fn-7-rate-limit","specIds":["fn-7-rate-limit"],"baseSha":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","headSha":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","generatedAt":"2026-09-21T12:00:00Z",
+ "sources":[{"id":"spec","kind":"spec","ref":"fn-7-rate-limit"},{"id":"task","kind":"task","ref":"fn-7-rate-limit.1"},{"id":"rid","kind":"rid","ref":"R6"},{"id":"row-rid","kind":"rid","ref":"R7"},{"id":"review","kind":"review_receipt","ref":".flow/receipts/review.json"},{"id":"qa","kind":"qa_receipt","ref":".flow/receipts/qa.json"},{"id":"diff","kind":"diff_metadata","ref":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa..bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},{"id":"commit","kind":"commit","ref":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}],
  "changeWalkthrough":{"thesis":"Keep review grounded in the changed files.","userImpact":"Reviewers get a reading order.","blastRadius":"Read the validator first.","tradeoffs":"Keep provenance in the artifact.","openItems":"Live verification remains unverified.",
- "groups":[{"ordinal":1,"kind":"problem","title":"Review context","summary":"Check the intended review boundary.","sourceRefs":["spec"],"rIds":[],"taskIds":[],"files":[]},{"ordinal":2,"kind":"step","title":"Validate and render","summary":"Check validation before reviewing output.","sourceRefs":["spec","task","rid","row-rid","diff"],"rIds":["R6"],"taskIds":["fn-136-cognitive-aid.1"],"files":[{"path":"src/change_0.py","summary":"Validates the briefing.","attentionClass":"canonical","rIds":["R7"]}]}],
+ "groups":[{"ordinal":1,"kind":"problem","title":"Review context","summary":"Check the intended review boundary.","sourceRefs":["spec"],"rIds":[],"taskIds":[],"files":[]},{"ordinal":2,"kind":"step","title":"Validate and render","summary":"Check validation before reviewing output.","sourceRefs":["spec","task","rid","row-rid","diff"],"rIds":["R6"],"taskIds":["fn-7-rate-limit.1"],"files":[{"path":"src/change_0.py","summary":"Validates the briefing.","attentionClass":"canonical","rIds":["R7"]}]}],
  "proof":[{"label":"Review","value":"Passed at the bound head","sourceRefs":["review"],"outcome":"pass"},{"label":"Render time","value":"12 ms","sourceRefs":["task"]}]}}
 ```
 Use a unique portable `artifactId`; optional `supersedesArtifactId` names `latestArtifactId`.
 Export `tasks[].evidence.commits` are SHORT SHAs: expand with `git rev-parse` before citing full 40-hex commit refs.
 
 - When export has `specs`, set `specIds` to their IDs in export order; keep `specId` as host. Declare every
-  spec's requirements with qualified refs and `rIds` (`fn-250:R4`). At least one group per spec in review order
+  spec's requirements with qualified refs and `rIds` (`fn-8:R4`). At least one group per spec in review order
   (two allowed above ten must-read files), short ID in each title, using its task/evidence summary; no-spec commits get a group.
   Past the seven-step cap, merge the smallest specs into one group whose title names each short ID.
 - `changeWalkthrough.thesis`: intent and approach. Optional authored strings:

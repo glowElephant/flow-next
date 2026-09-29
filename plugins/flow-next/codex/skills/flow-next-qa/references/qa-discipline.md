@@ -8,8 +8,7 @@ the 18-reference port.
 
 > The session-hygiene rules, persona-suffix discipline, write-path-first /
 > one-tab-per-shard caution, and the YES/NO verdict + paste-ready-handoff discipline are
-> adapted from Ray Fernando's `running-bug-review-board` skill (Apache-2.0) — see
-> CHANGELOG. The **P0/P1/P2 taxonomy, evidence rules, reproduce-twice, and the
+> adapted from Ray Fernando's `running-bug-review-board` skill (Apache-2.0). The **P0/P1/P2 taxonomy, evidence rules, reproduce-twice, and the
 > never-downgrade-a-P0 rule** are the *other* half of the same borrow — they live in
 > **[bug-filing.md](bug-filing.md)** (do not duplicate them here; cross-link).
 
@@ -148,7 +147,7 @@ UI's optimistic render. That write-side-effect check is part of the evidence dis
 ## The verdict — YES/NO + paste-ready handoff
 
 Every pass ends with **one** decision a human can act on, grounded in captured evidence —
-never in agent narration, never in reading the diff (R1: PASS is forbidden from source
+never in agent narration, never in reading the diff (PASS is forbidden from source
 inspection). The mechanics (the four-outcome `qa_outcome` matrix, the projection to the
 review `verdict` enum, and the receipt JSON write) live in **`workflow.md` §6**; this
 reference carries the *discipline* that the verdict must obey.

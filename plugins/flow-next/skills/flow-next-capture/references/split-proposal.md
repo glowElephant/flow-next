@@ -1,4 +1,4 @@
-# capture - split proposal machinery (R11) (loaded on demand)
+# capture - split proposal machinery (loaded on demand)
 
 > Loaded ONLY when the §2.5 tripwire trips. The rule itself (tripwire, counting rule,
 > independence partition, what a proposal contains) lives in the shared routing reference

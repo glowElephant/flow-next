@@ -25,7 +25,7 @@ FLOWCTL="${DROID_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/flowctl"
 [ -x "$FLOWCTL" ] || FLOWCTL=".flow/bin/flowctl"
 ```
 
-**Inline skill (no `context: fork`)** - keeps `AskUserQuestion` available for read-back consent and attended routes. Subagents cannot call blocking question tools. For read-only scouts use `Task` with `subagent_type: Explore` (or the host's generic read-only dispatch with Edit/Write disallowed when Explore is unavailable). On portable hosts without `AskUserQuestion`, fall back to a plain-text numbered prompt with a final `Other - type your own answer` option. (sync-codex.sh rewrites AskUserQuestion to a plain-text numbered prompt in the Codex mirror.)
+**Inline skill (no `context: fork`)** - keeps `AskUserQuestion` available for read-back consent and attended routes. Subagents cannot call blocking question tools. For read-only scouts use `Task` with `subagent_type: Explore` (or the host's generic read-only dispatch with Edit/Write disallowed when Explore is unavailable). On portable hosts without `AskUserQuestion`, fall back to a plain-text numbered prompt with a final `Other - type your own answer` option.
 
 ## Prompt-first contract
 
@@ -48,7 +48,7 @@ On every invocation:
 | `<chart-id> --status` / "what's left to decide" | **status** | Render map + frontier + remaining attended cost; **resolve nothing** |
 | stored tracker URL / locator | **re-enter** | Probe `chart locate` (local ledger only); degrade if unavailable - see workflow |
 
-Plain-language equivalents reach the same modes (R17).
+Plain-language equivalents reach the same modes.
 
 ## Verdict grammar (exact)
 

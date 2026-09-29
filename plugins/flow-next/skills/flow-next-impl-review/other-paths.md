@@ -135,7 +135,7 @@ VALIDATE=false
 DEEP=false
 DEEP_PASSES=""  # optional CSV: "adversarial,security"
 INTERACTIVE=false
-for arg in $(printf '%s\n' "$ARGUMENTS"); do   # command substitution word-splits under bash AND zsh; an unquoted $ARGUMENTS does not split under zsh (dogfood E1: --validate silently dropped)
+for arg in $(printf '%s\n' "$ARGUMENTS"); do   # command substitution word-splits under bash AND zsh; an unquoted $ARGUMENTS does not split under zsh (otherwise flags such as --validate are silently dropped)
   case "$arg" in
     --validate) VALIDATE=true ;;
     --deep) DEEP=true ;;
@@ -152,7 +152,7 @@ if [[ "${FLOW_REVIEW_DEEP:-}" == "1" ]]; then
   DEEP=true
 fi
 
-# Optional-phase COUNT (PR #392): sizes the scope-ownership lease the backend
+# Optional-phase COUNT: sizes the scope-ownership lease the backend
 # workflows hold through the post-finalize phases (one exec allowance per
 # pass). --deep counts one per selected pass (3 when unrestricted: adversarial
 # + the auto-gated security/performance passes), --validate one,

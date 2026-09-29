@@ -17,7 +17,7 @@ Contents:
 1. The worker skips its in-worker review dispatch in Phase 4 (never self-certifies SHIP) **and defers Phase 5's `flowctl done`**: it implements, commits, writes its summary + evidence files to the handover paths, and returns WITHOUT calling `flowctl done` (the task stays `in_progress`).
 2. The conductor then runs `$flow-next-impl-review <task-id> --review=host` itself — this is the mandatory gate.
 3. On `SHIP`: the conductor runs `flowctl done <task-id> --summary-file <worker summary> --evidence-json <worker evidence>` (add the review receipt path and reviewer model to the summary). On terminal `NEEDS_WORK`: escalate; impl-review already exhausted its bounded fix loop. Never re-invoke it or call `done`.
-4. Mirror this exact contract on the Codex mirror path (`$flow-next-work` / `spawn_agent` worker): host-deferred defers `done` there too.
+4. The same contract holds on Codex (`$flow-next-work` / `spawn_agent` worker): host-deferred defers `done` there too.
 
 ## 3d.0 gate
 

@@ -44,7 +44,7 @@ fi
 The shared tracker gate must hold, then the branch-specific gate applies:
 
 - `READY_STATE` empty — `tracker.readyState` is NOT configured. Readiness is a one-way tracker→local pull when the tracker is authoritative; never invite a local edit the next sync would silently revert.
-- **New capture:** offer only when `READY_ADOPTED >= 1`. Readiness is adopted in this repo (≥1 spec already marked ready). First adoption enters via `flowctl spec ready`, the tracker ceremony, or prime — never via this prompt. Non-adopters see no question anywhere (R7-style invisibility).
+- **New capture:** offer only when `READY_ADOPTED >= 1`. Readiness is adopted in this repo (≥1 spec already marked ready). First adoption enters via `flowctl spec ready`, the tracker ceremony, or prime — never via this prompt. Non-adopters see no question anywhere.
 - **Rewrite:** offer only when `REWRITE_WAS_READY` is `true`. For a rewrite, an unrelated ready spec never triggers this question. The question is consent to restore the target's own readiness after §5.3 resets it; a draft target remains a draft without another interruption.
 
 **Ask the user via plain text.** Render the options below as a numbered list `1.` … `N.`, followed by a final option `N+1. Other — type your own answer`. Print the question, then the numbered list, then **stop and wait for the user's next message before continuing**. Parse the reply as: a bare number `1`–`N+1` → that option; the literal text of an option label → that option; free text after `Other` → custom answer.

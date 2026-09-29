@@ -15,7 +15,7 @@ Contents:
 
 ## 5.2 — Tracker-first mint
 
-**Tracker-first is the recommended team default** when a tracker is configured (`tracker.specIds=tracker`): the tracker is the distributed allocator, so parallel captures stop colliding on `fn-N`. Route from the preamble root config snapshot — **no new `config get`**. Explicit user override in the invocation always wins. Do **not** nag about the id scheme at this mint site (withdrawn R10).
+**Tracker-first is the recommended team default** when a tracker is configured (`tracker.specIds=tracker`): the tracker is the distributed allocator, so parallel captures stop colliding on `fn-N`. Route from the preamble root config snapshot — **no new `config get`**. Explicit user override in the invocation always wins. Do **not** nag about the id scheme at this mint site.
 
 ```bash
 FLOWCTL="${DROID_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/flowctl"
@@ -51,7 +51,7 @@ The flow-first `spec create` in workflow.md §5.2 is the **silent degrade** post
 
 ## 5.7 — Tracker sync (opt-in) — spec push/pull + merge
 
-**Optional. Runs only when the tracker bridge is active AND `capture` is opted in. With no tracker configured this is a no-op — capture behaves exactly as today.** After the spec is on disk, project the captured/enriched body to the linked (or freshly linked) tracker issue and reconcile two-way (R6): a flow-first capture pushes the body out; a tracker-first spec (one already linked) reconciles the new capture content against the issue via the agentic 3-way merge.
+**Optional. Runs only when the tracker bridge is active AND `capture` is opted in. With no tracker configured this is a no-op — capture behaves exactly as today.** After the spec is on disk, project the captured/enriched body to the linked (or freshly linked) tracker issue and reconcile two-way: a flow-first capture pushes the body out; a tracker-first spec (one already linked) reconciles the new capture content against the issue via the agentic 3-way merge.
 
 ```bash
 LEAF="$("$FLOWCTL" config get tracker.perEvent.capture --json | jq -r '.value')"

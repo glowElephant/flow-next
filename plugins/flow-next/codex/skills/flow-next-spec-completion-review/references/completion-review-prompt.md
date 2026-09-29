@@ -94,7 +94,7 @@ Report untraced changes but do NOT auto-reject. `UNDOCUMENTED_ADDITION` is a fla
 
 **Settled decisions:** A finding that re-litigates a recorded Decision Context
 decision or matching `knowledge/decisions` entry is FYI, never blocking. Process-compliance
-observations (checklist ceremony, dogfood records, handoff paperwork) are likewise
+observations (checklist ceremony, run logs, handoff paperwork) are likewise
 FYI, never blocking — the maintainer decides when a change lands.
 
 {r_id_coverage_block}

@@ -29,7 +29,7 @@ FLOWCTL="${DROID_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/flowctl"
 [ -x "$FLOWCTL" ] || FLOWCTL=".flow/bin/flowctl"
 ```
 
-**Inline skill (no `context: fork`)** — keeps `AskUserQuestion` available throughout. Subagents can't call blocking question tools (Claude Code issues #12890, #34592), and Phases 0 + 6 both require user choice. (sync-codex.sh rewrites this to a plain-text numbered prompt in the Codex mirror.)
+**Inline skill (no `context: fork`)** — keeps `AskUserQuestion` available throughout. Subagents can't call blocking question tools (Claude Code issues #12890, #34592), and Phases 0 + 6 both require user choice.
 
 ## Input
 
@@ -38,13 +38,13 @@ Arguments: `$ARGUMENTS`
 Format: `[focus hint]` — freeform single string. Optional. May be:
 
 - **Concept** — `DX improvements`, `review-skill polish`, `test-suite health`
-- **Path** — `plugins/flow-next/skills/` (ideate inside a subtree)
+- **Path** — `src/billing/` (ideate inside a subtree)
 - **Constraint** — `quick wins under 200 LOC`, `minor-bump only`, `no new deps`
 - **Volume hint** — `top 3` (exactly 3 survivors), `50 ideas` (generate ≥50), `raise the bar` (60-70% rejection target)
 
 If empty, the skill picks its own coverage targets (15-25 candidates → 5-8 survivors).
 
-## Autonomy block (R8)
+## Autonomy block
 
 `/flow-next:prospect` is exploratory and human-in-the-loop. Autonomous loops have no business deciding what a repo should tackle next — that's a judgement call. Hard-error with exit 2 when running autonomously.
 

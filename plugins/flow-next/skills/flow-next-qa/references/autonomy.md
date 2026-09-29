@@ -1,7 +1,6 @@
 # Autonomy — detect-once routing + opt-in tracker post + graceful degradation
 
-This reference carries the full Phase A contract for `/flow-next:qa` (R9 +
-R11 + R13): detect-once autonomous routing, the opt-in `tracker.perEvent.qa` verdict
+This reference carries the full Phase A contract for `/flow-next:qa`: detect-once autonomous routing, the opt-in `tracker.perEvent.qa` verdict
 post, and the graceful-degradation matrix when no live deploy / driver is present.
 `workflow.md` Phase A is the entry point; this is the detail it folds.
 
@@ -27,7 +26,7 @@ the limitation as a **BLOCKED `qa_verdict`** (§6.3) + clean exit:
 | Test accounts (3.2) | `AskUserQuestion` (info) | use a documented playbook; undocumented → **BLOCKED** + clean exit |
 | No reachable local app (3.1/4) | carries to BLOCKED verdict | **BLOCKED** + clean exit |
 
-## 1. Detect-once routing (R11)
+## 1. Detect-once routing
 
 Detect at the top of the run and route downstream — never re-detect. `NO_PROMPT` is
 computed **once**, in `workflow.md`'s "Autonomous-mode gate" preamble block; every step
@@ -68,7 +67,7 @@ guarantee a **valid receipt is always written** — autonomous-pass (SHIP), auto
 (NEEDS_WORK), no-driveable-UI (NA→SHIP), or can't-verify (BLOCKED→NEEDS_WORK). It never
 exits without a receipt in an autonomous run except the genuine spec-id error.
 
-## 3. Graceful degradation (R13)
+## 3. Graceful degradation
 
 No live deploy reachable, OR no driver available (including flow-next-drive degraded to its
 **terminal manual rung**), → surface a **BLOCKED** verdict and add **nothing** to the
@@ -84,10 +83,10 @@ degradation (all surfaces)":
 - **BLOCKED ≠ FAIL.** "No ship *claim* on a QA basis," never "the app is broken."
 
 The BLOCKED routing (no live target) is `workflow.md` §4.2; the verdict BLOCKED is
-`workflow.md` §6.1 / §6.3 with `blocked_reason` set. **SHIP is forbidden without captured live-app evidence (R1)** —
+`workflow.md` §6.1 / §6.3 with `blocked_reason` set. **SHIP is forbidden without captured live-app evidence** —
 absent evidence, the outcome is BLOCKED, never SHIP.
 
-## 4. Opt-in tracker verdict post (`tracker.perEvent.qa`, R9)
+## 4. Opt-in tracker verdict post (`tracker.perEvent.qa`)
 
 A **new, additive** `perEvent` leaf (`get_default_tracker_config()`, default `off`).
 When opted in AND the bridge is active, post the Phase 6 verdict as a structured

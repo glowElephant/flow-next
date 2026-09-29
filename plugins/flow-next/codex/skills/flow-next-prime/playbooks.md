@@ -43,7 +43,7 @@ An empty or scaffold-only repo does NOT get the 48-criterion scorecard - a score
 8. **First spec = the first vertical slice** with explicit non-goals (`/flow-next:plan`). No big-bang scaffolding; no heavyweight spec ceremony on an empty repo.
 9. **Recorded-deferral N/A lines** for every premature pillar (observability, security scanning, containers, E2E), each naming the trigger that un-defers it.
 
-**Anti-pattern rules (hard).** Prime NEVER emits a stub artifact that would pass its own checks unexercised - anything scaffolded in the bootstrap plan is exercised in the same pass (the command runs, the hook fires) or is explicitly marked unverified. No big-bang scaffolding, no full generated instruction file. Under `--fix-all`, greenfield remediation applies ONLY to exercised hygiene files (resolution 5) - never structural or generated artifacts.
+**Anti-pattern rules (hard).** Prime NEVER emits a stub artifact that would pass its own checks unexercised - anything scaffolded in the bootstrap plan is exercised in the same pass (the command runs, the hook fires) or is explicitly marked unverified. No big-bang scaffolding, no full generated instruction file. Under `--fix-all`, greenfield remediation applies ONLY to exercised hygiene files - never structural or generated artifacts.
 
 ---
 
@@ -61,7 +61,7 @@ The current scored report, upgraded with the verdict headline (classification + 
 
 Usually already legible - the build graph IS the map. The block is additive on top of the standard scored report:
 
-1. **Per-package command verification** - verify each package's commands work from its own package dir and are file-scoped (`pnpm --filter <pkg> test`, affected-only where Nx/Turbo exists). Per-member operability tiers, NOT one repo tier. Execution is SAMPLED, not exhaustive (resolution 18: deployable members first, then entry members, ~5 member executions and a global wall-clock cap per run; unsampled members are listed NOT ASSESSED, never silently skipped; graph-native `affected` commands may substitute).
+1. **Per-package command verification** - verify each package's commands work from its own package dir and are file-scoped (`pnpm --filter <pkg> test`, affected-only where Nx/Turbo exists). Per-member operability tiers, NOT one repo tier. Execution is SAMPLED, not exhaustive (deployable members first, then entry members, ~5 member executions and a global wall-clock cap per run; unsampled members are listed NOT ASSESSED, never silently skipped; graph-native `affected` commands may substitute).
 2. **Nested per-package instruction files** when >2-3 distinct subsystems or the root instruction file exceeds ~200 lines (nearest-wins per the AGENTS.md spec; reference point: OpenAI's Codex repo carries 88). This is ranked-action catalog item 11.
 3. **Scoping config** - read-deny for `dist/` / generated dirs, sparse worktrees for subagents, launch-from-package-dir guidance.
 4. **Build-graph agent wiring** when Nx / Turbo / Bazel present - recommend the graph + affected-only run as the feedback loop.
@@ -117,7 +117,7 @@ Home-base contents to recommend:
 
 ### Lightweight product-family variant (prose/docs coupling only)
 
-A 2-3 repo family (a code repo + a docs site + a sister product) whose coordination need is **docs currency, not service composition**, must NOT receive the home-base / compose / ports boilerplate - the microservice-shaped playbook is oversized there. The right emission is the R15 "Repo context" block naming the siblings plus a **docs-update-as-DoD** line in the agent file.
+A 2-3 repo family (a code repo + a docs site + a sister product) whose coordination need is **docs currency, not service composition**, must NOT receive the home-base / compose / ports boilerplate - the microservice-shaped playbook is oversized there. The right emission is the "Repo context" block naming the siblings plus a **docs-update-as-DoD** line in the agent file.
 
 ### Variant selector
 
@@ -130,9 +130,9 @@ A 2-3 repo family (a code repo + a docs site + a sister product) whose coordinat
 
 ## Ranked-actions catalog
 
-The verdict headline leads with the **top-5 ranked next-actions** drawn from this catalog (leverage order, from research). Each carries a **tier** (Critical / High / Medium / Bonus) that maps to the existing `--fix-all` semantics (resolution 5) and mirrors the remediation.md priority order, plus a **consent boundary**.
+The verdict headline leads with the **top-5 ranked next-actions** drawn from this catalog (leverage order, from research). Each carries a **tier** (Critical / High / Medium / Bonus) that maps to the existing `--fix-all` semantics and mirrors the remediation.md priority order, plus a **consent boundary**.
 
-**Consent boundaries (resolution 5).** `--fix-all` auto-applies only in-ROOT, non-structural, non-harness fixes at Critical/High/Medium tier - the Pillars 1-5 fixes plus scored-group agent-file content where an item's consent column says so (the consent column is authoritative). Catalog item 6's `--fix-all` eligibility covers editing EXISTING CI/verify config only; creating a new workflow stays Bonus/explicit-consent. **Explicit-consent-only regardless of tier:** anything outside the repo ROOT (the home-base kit), any harness settings/hook file (deny/ask/hook scaffolds), and ALL structural/playbook artifacts (a generated map, nested instruction files, the home base, the bootstrap plan). On greenfield, `--fix-all` applies only to exercised hygiene files. **Re-run (resolution 6):** Phase 7 re-assessment reuses the session's Phase 0.5 classification and R15 answers; only affected criteria/gates re-verify, so the catalog is re-ranked, not re-derived.
+**Consent boundaries.** `--fix-all` auto-applies only in-ROOT, non-structural, non-harness fixes at Critical/High/Medium tier - the Pillars 1-5 fixes plus scored-group agent-file content where an item's consent column says so (the consent column is authoritative). Catalog item 6's `--fix-all` eligibility covers editing EXISTING CI/verify config only; creating a new workflow stays Bonus/explicit-consent. **Explicit-consent-only regardless of tier:** anything outside the repo ROOT (the home-base kit), any harness settings/hook file (deny/ask/hook scaffolds), and ALL structural/playbook artifacts (a generated map, nested instruction files, the home base, the bootstrap plan). On greenfield, `--fix-all` applies only to exercised hygiene files. **Re-run:** Phase 7 re-assessment reuses the session's Phase 0.5 classification and Phase 0.6 answers; only affected criteria/gates re-verify, so the catalog is re-ranked, not re-derived.
 
 | # | Action | Tier | Consent |
 |---|---|---|---|
@@ -169,4 +169,4 @@ The report headline is uniform across shapes: **classification line + operabilit
 | **Constellation-member** | Per-repo scored report UNCHANGED + the additive constellation block (full home base OR light variant per the selector). |
 | **Constellation home-base** | Constellation-layer assessment IN PLACE OF the per-repo scorecard. |
 
-**Compression rule (resolution 13).** Failing and ⚠️ criteria render in DETAIL (the finding, the quoted evidence, the ranked fix). **Passing rows compress to one line per pillar** (e.g. "Pillar 1 Style & Validation: 5/6 pass"). The report spends its budget on what needs action, never on a wall of green checkmarks. Group pass-count lines (AO / DR / TO / HP) follow the same rule - one line each unless a member fails.
+**Compression rule.** Failing and ⚠️ criteria render in DETAIL (the finding, the quoted evidence, the ranked fix). **Passing rows compress to one line per pillar** (e.g. "Pillar 1 Style & Validation: 5/6 pass"). The report spends its budget on what needs action, never on a wall of green checkmarks. Group pass-count lines (AO / DR / TO / HP) follow the same rule - one line each unless a member fails.

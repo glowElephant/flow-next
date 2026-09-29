@@ -32,7 +32,7 @@ appear. If neither, all primary findings appear.
 Before the walkthrough loop, the skill must have access to a **blocking
 question tool** (a tool that pauses the agent until the user answers):
 
-Use `AskUserQuestion`. It's a deferred tool — call `ToolSearch select:AskUserQuestion` first to load its schema if it isn't already in scope. (sync-codex.sh rewrites this to a plain-text numbered prompt in the Codex mirror.)
+Use `AskUserQuestion`. It's a deferred tool — call `ToolSearch select:AskUserQuestion` first to load its schema if it isn't already in scope.
 
 If the tool is unreachable, fall through to a chat-prompt fallback (print
 the question, wait for the user's next message). The fallback is less
@@ -214,13 +214,6 @@ and ignore the new `walkthrough` key.
 Walkthrough never flips the verdict itself. The verdict was set by the
 primary review (or validator); walkthrough only sorts findings into buckets
 and records decisions.
-
-## Acceptance criteria coverage
-
-- **R8:** Per-finding blocking question with five options ✓ (§ "Per-finding flow")
-- **R10:** `.flow/review-deferred/<branch-slug>.md` as a durable record ✓ (§ "Branch slug + defer sink")
-- **R11:** Apply list dispatches fixer; Skip/Acknowledge logged no-op ✓ (§ "After walkthrough")
-- **R12:** Receipt extensions additive ✓ (§ "Update receipt")
 
 ## Anti-patterns
 

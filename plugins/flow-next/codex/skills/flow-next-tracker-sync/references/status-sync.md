@@ -1,4 +1,4 @@
-# Status / metadata reconciliation — per-field who-wins (R7)
+# Status / metadata reconciliation — per-field who-wins
 
 The status-sync reconcile body behind the [../steps.md](../steps.md) `push` /
 `pull` / `reconcile` hooks (`setStatus` / `readStatus`). It reconciles **status,
@@ -12,22 +12,13 @@ the reconciliation.
 > a fixed, mechanical per-field policy — that part *is* deterministic (a status
 > field has a small, enumerable vocabulary, unlike free-form body prose). The
 > agentic judgment lives in the **deadlock fallback** (a `tracker-done × flow-in-
-> progress` collision routes through the R1 tiebreak, which in `always-ask` mode is
+> progress` collision routes through the `conflictTiebreak` default, which in `always-ask` mode is
 > a human/queue decision) and in the **unmapped-state** path (warn + surface, never
 > guess a meaning). The facade applies the policy and owns the status write,
 > `lastSyncedAt`, and the receipt; the agent queues a human decision with
 > `sync defer`. This file owns the policy + the deadlock judgment.
 
-> **Live-verification status (this environment).** Calling Linear's `setStatus`
-> against a real workspace (resolving a normalized status → the team's concrete
-> `stateId`) needs live credentials — unavailable in the build environment. The
-> **strictly-live `setStatus` round-trip is deferred to the post-PR smoke-testing
-> phase** the maintainer drives (same posture as the
-> [linear-ladder.md](linear-ladder.md) round-trip spike and
-> [body-merge.md](body-merge.md)). Everything else here — the who-wins table, the
-> deadlock fallback, the `state.type` ↔ flow-status mapping, the unmapped-state
-> warn-and-surface — is a complete, runnable procedure with worked fixtures and
-> explicit oracles below, exercisable without a live tracker.
+> The worked fixtures and explicit oracles below are exercisable without a live tracker.
 
 ## The two normalized vocabularies this file reconciles between
 
@@ -43,10 +34,10 @@ vocabulary in the adapter ([linear-ladder.md](linear-ladder.md) status table). T
 ### flow → normalized (what the spec's status *means* on the tracker)
 
 The spec's tracker-facing status is derived from the spec + its tasks (one spec ↔
-one issue, R3 — there are no per-task sub-issues) **and a merge-evidence probe**.
+one issue — there are no per-task sub-issues) **and a merge-evidence probe**.
 The signature is **`flowToNormalized(spec, prEvidence)`** — it takes PR-merge
 evidence as a second input, NOT spec state alone. **Local completion is necessary,
-not sufficient, for a terminal status (R1).** A spec that is locally `done` with a
+not sufficient, for a terminal status.** A spec that is locally `done` with a
 shipped completion review is still only `in-review` on the tracker until a
 `MERGED`-state PR for its branch is observed; `done`/`verified` are reserved for
 merge-confirmed work.
@@ -56,7 +47,7 @@ spec branch. Its buckets:
 
 - `merged` — ≥1 MERGED PR whose changed files include a path outside
   `.flow/specs/` and `.flow/tasks/` (a spec-text-only merge is the spec landing,
-  not shipped work, #391).
+  not shipped work).
 - `open` — ≥1 OPEN, 0 MERGED.
 - `closed-unmerged` — ≥1 CLOSED, 0 MERGED/OPEN.
 - `none` — no PR for the branch (probe succeeded, empty result).
@@ -92,9 +83,9 @@ terminal Done (not stay `in-review`). The merge-evidence INVARIANT is intact: te
 | 1 | spec `done`, no completion-review configured | `merged` | **`done`** | terminal, no review gate, **merge-confirmed** — a merge is a merge |
 | 2 | spec `done`, `completion_review_status` in the satisfying set (`ship` · `not_required`) | `merged` | **`verified`** (`ship`) / **`done`** (`not_required`) | requirement satisfied **and** PR merged — terminal. The verified-vs-done label selector stays `ship`-only: only a review that ran can claim `verified`; policy-excused `not_required` is terminal `done` |
 | 3 | spec `done`, `completion_review_status` outside the satisfying set (`unknown` · `needs_work` · `needs_human` · absent/unrecognized) | `merged` | `in-review` | PR merged but a configured completion review is neither shipped nor excused — stay in review until satisfied |
-| 4 | spec at any local status (incl. all-tasks-done OPEN, or spec `done`) | `open` | `in-review` | open PR awaiting merge — the In Review rung, drives `setStatus(in-review)` (R2). The open-PR signal wins over the local task rows |
-| 5 | spec `done` | `none` | **`in-review`** projection (NOT terminal); the facade **preserves** an existing non-terminal state | no PR exists — no merge evidence, no open-PR signal → never terminal, never a forced advance (R1) |
-| 6 | spec `done` | `closed-unmerged` / `ambiguous` / `probe-error` | **`in-review`** (NOT terminal) **+ surface NEEDS_HUMAN** | locally shipped but the probe is not a clean MERGED — never terminal; the conflict goes to a human (R6) |
+| 4 | spec at any local status (incl. all-tasks-done OPEN, or spec `done`) | `open` | `in-review` | open PR awaiting merge — the In Review rung, drives `setStatus(in-review)`. The open-PR signal wins over the local task rows |
+| 5 | spec `done` | `none` | **`in-review`** projection (NOT terminal); the facade **preserves** an existing non-terminal state | no PR exists — no merge evidence, no open-PR signal → never terminal, never a forced advance |
+| 6 | spec `done` | `closed-unmerged` / `ambiguous` / `probe-error` | **`in-review`** (NOT terminal) **+ surface NEEDS_HUMAN** | locally shipped but the probe is not a clean MERGED — never terminal; the conflict goes to a human |
 | 7 | spec `open`, **any** task `in_progress` or some `done` | `none` / `closed-unmerged` / `ambiguous` / `probe-error` | `in-progress` | work underway, no open/merged PR signal |
 | 8 | spec `open`, **no** task `in_progress`/`done` yet (all `todo`) | `none` / `closed-unmerged` / `ambiguous` / `probe-error` | `planned` (or `backlog` if no tasks exist) | authored, not started |
 
@@ -121,7 +112,7 @@ no review → done` with NO merge check, so a locally-completed spec auto-closed
 tracker issue before the PR merged. The merge-evidence gate fixes that at the root,
 upstream of the who-wins ladder (which is unchanged). A `closed-unmerged` /
 missing-branch / ambiguous probe NEVER yields terminal — it stays `in-review` (a
-non-terminal rung) and surfaces NEEDS_HUMAN for the closed-unmerged case (R6).
+non-terminal rung) and surfaces NEEDS_HUMAN for the closed-unmerged case.
 
 `deferred` / `wontfix` have no native flow status — they only ever arrive **from**
 the tracker side and are **surfaced, never auto-applied** (see the who-wins table).
@@ -129,9 +120,9 @@ the tracker side and are **surfaced, never auto-applied** (see the who-wins tabl
 `in-progress`); a blocked note can ride along as a comment (see
 [comments-sync.md](comments-sync.md)), not a status change.
 
-## The who-wins table — per field, NOT one global rule (R7)
+## The who-wins table — per field, NOT one global rule
 
-This is the heart of R7. Each row is independent. The reconcile applies them
+This is the heart of status sync. Each row is independent. The reconcile applies them
 field-by-field; there is no single winner.
 
 | Field | When flow & tracker disagree | Who wins | Why |
@@ -145,7 +136,7 @@ field-by-field; there is no single winner.
 **"Surface to the user"** means: interactive → show the divergence and ask via
 `plain-text numbered prompt`; autonomous → `sync defer` (queue, never block). It does
 **not** mean "pick a side" — the field is left as-is on both sides until a human
-decides. This is the R7 "priority + `deferred`/`wontfix` surface to the user, never
+decides. This is the "priority + `deferred`/`wontfix` surface to the user, never
 auto-changed" guarantee, made mechanical.
 
 ### Applying the table (evaluation order)
@@ -175,7 +166,7 @@ rather than silently closing a spec whose agent loop is still live; teams that
 *want* the tracker's closure to win automatically set `tracker.conflictTiebreak:
 tracker-wins`.
 
-## Status deadlock → R1 `conflictTiebreak` fallback (R7)
+## Status deadlock → `conflictTiebreak` fallback
 
 A **status deadlock** is the one case the per-field table can't resolve cleanly:
 the two sides assert *incompatible terminal-vs-active* states at the same sync point
@@ -194,7 +185,7 @@ field), so it reads only the two current normalized statuses. The clean
 tracker-wins-terminal path applies only when flow is NOT `in-progress`
 (flow at `planned`/`backlog`/`done` — no live work to contradict the closure).
 
-Resolution falls back to the **R1 `conflictTiebreak` default**
+Resolution falls back to the **`conflictTiebreak` default**
 (`tracker.conflictTiebreak` ∈ `flow-wins | tracker-wins | always-ask`, default
 `always-ask` — `flowctl config get tracker.conflictTiebreak`):
 
@@ -202,7 +193,7 @@ Resolution falls back to the **R1 `conflictTiebreak` default**
 |---|---|---|
 | `tracker-wins` | if the tracker is terminal, fold `done` into the spec through the existing local-status path (no provider write; `pulled` receipt). The mirror — merged Flow terminal while the tracker is active — is not durably representable by raw `spec.status`, so return the candidate-bearing `status-deadlock-unrepresentable` conflict with no mutation | same deterministic result |
 | `flow-wins` | push Flow's normalized state through the existing provider-neutral `setStatus` path; terminal projection still requires clean merged-PR evidence | same — confident, proceeds |
-| `always-ask` (default) | **ask via `plain-text numbered prompt`** — show both states, let the human pick | **`sync defer`** — queue the deadlock, never block (R11) |
+| `always-ask` (default) | **ask via `plain-text numbered prompt`** — show both states, let the human pick | **`sync defer`** — queue the deadlock, never block |
 
 "Ask the human" resolves to "**queue** for the human" in autonomous mode (the
 deferred-decisions sink) — same policy, surface-dependent delivery, mirroring
@@ -220,7 +211,7 @@ The facade applies supported `flow-wins` / `tracker-wins` resolutions itself. On
 the unrepresentable `tracker-wins` mirror and `always-ask` reach the agent, as a
 `conflict` with no provider or local write.
 
-## Linear `workflowState.type` ↔ flow status mapping (R7) — with unmapped fallback
+## Linear `workflowState.type` ↔ flow status mapping — with unmapped fallback
 
 The adapter maps Linear's **fixed `state.type` taxonomy** (`triage | backlog |
 unstarted | started | completed | canceled`) into the normalized vocabulary; this
@@ -291,7 +282,7 @@ question, steps.md Phase 1 step 5), every operation that reads the issue (`pull`
 flag — after the status normalization above, independent of the who-wins rules
 (readiness is **orthogonal to status**; it never feeds the status policy and never
 drives a `setStatus`). `readyState: null` (the default) ⇒ this whole section is
-skipped — no calls, no receipts, no flag writes (R7 invisibility).
+skipped — no calls, no receipts, no flag writes.
 
 **Derive the desired flag** from the normalized `issue`:
 
@@ -341,10 +332,10 @@ readiness change only when the flag actually changed.
 ## Worked fixtures (runnable without a live tracker)
 
 Each fixture is a flow state + a tracker `status` struct + the expected reconcile
-outcome — the oracles for R7, exercisable by the host agent reading them (no live
-Linear; the live `setStatus` is the smoke phase).
+outcome — the oracles for this file, exercisable by the host agent reading them (no live
+Linear needed).
 
-### Fixture S-C — priority surfaced, never auto-changed (R7)
+### Fixture S-C — priority surfaced, never auto-changed
 
 **Flow:** the spec has no notion of priority (flow priority is `null`).
 **Tracker:** `issue.priority = "Urgent"`, and on a later sync a human lowered it to
@@ -356,7 +347,7 @@ Linear; the live `setStatus` is the smoke phase).
 **Oracle:** zero priority writes; one surfaced/queued entry naming the priority
 change. PASS iff priority is never auto-changed.
 
-### Fixture S-D — `wontfix`/`deferred` surfaced, never auto-applied (R7)
+### Fixture S-D — `wontfix`/`deferred` surfaced, never auto-applied
 
 **Flow:** spec `open`, task `in_progress` → `in-progress`.
 **Tracker:** `status.normalized = "wontfix"` (a `canceled`-type state — the PM
@@ -369,7 +360,7 @@ Surface (ask / queue); reconcile the rest of the fields normally.
 **Oracle:** the spec is **not** auto-closed; one surfaced/queued entry. PASS iff the
 cancel intent reaches a human instead of silently killing the spec.
 
-### Fixture S-E — status deadlock → `conflictTiebreak` (R7)
+### Fixture S-E — status deadlock → `conflictTiebreak`
 
 **Flow:** spec `open` with a task `in_progress` → `in-progress` (live agent loop
 running).
@@ -387,7 +378,7 @@ NOT auto-closed by the tracker-wins-terminal rule — it resolves via
   closes.
 - `flow-wins` → the facade pushes `in-progress`. PASS iff the board reopens.
 
-### Fixture S-F — unmapped custom state, warn + surface (R7)
+### Fixture S-F — unmapped custom state, warn + surface
 
 **Tracker:** a custom workflow state named `"Pending Legal"` with a `state.type`
 the config `statusMap` has no override for and that isn't in the default name map.
@@ -400,7 +391,7 @@ reconciles** — the run does **not** crash or abort.
 comments reconcile proceeds, and no `setStatus` is driven from the unmapped status.
 PASS iff no crash and the rest of the sync completes.
 
-### Fixture S-J — closed-unmerged PR → non-terminal + NEEDS_HUMAN (R6)
+### Fixture S-J — closed-unmerged PR → non-terminal + NEEDS_HUMAN
 
 **Flow:** spec `done`, `completion_review_status == ship`.
 **`prEvidence`:** `closed-unmerged` (a PR for the branch is `CLOSED` with 0 `MERGED`
@@ -436,8 +427,8 @@ the conflict reaches a human.
   `status` struct and applies the per-field policy.
 - **Per-field who-wins — never one global rule.** Terminal → tracker; in-progress →
   flow; priority + `deferred`/`wontfix` + unmapped → surface, never auto-change.
-- **Status is never silently overwritten on a deadlock** — it falls back to the R1
-  `conflictTiebreak`; `always-ask` queues in autonomous mode, prompts interactively.
+- **Status is never silently overwritten on a deadlock** — it falls back to the
+  `conflictTiebreak` default; `always-ask` queues in autonomous mode, prompts interactively.
 - **State advances only on a successful reconcile.** A `setStatus` error, an
   unmapped state surfaced, or a queued deadlock does NOT advance `lastSyncedAt`.
 - **Native open records a manual reopen.** On GitHub and GitLab, a lone stale

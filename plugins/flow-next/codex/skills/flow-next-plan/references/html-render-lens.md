@@ -3,7 +3,7 @@
 Load this reference only after Step 8.5 derives
 `artifacts.html.enabled == true` from the Step 0 config snapshot.
 
-1. **Load the disclosure reference** [`plugins/flow-next/references/html-artifacts.md`](../../../references/html-artifacts.md). It owns all design and generation rules: hard rules, design contract, spec-lens content, DAG discipline, Lavish flow, and the pre-publish checklist. Follow it top to bottom.
+1. **Load the disclosure reference** [`references/html-artifacts.md`](../../../references/html-artifacts.md). It owns all design and generation rules: hard rules, design contract, spec-lens content, DAG discipline, Lavish flow, and the pre-publish checklist. Follow it top to bottom.
 2. **Regenerate the artifact** at the same fixed path Capture uses (disclosure reference §1.3). Tasks now exist, so render the plan layer too: dependency DAG with critical path, R-ID → task coverage matrix, and plan dials.
 
    ```bash

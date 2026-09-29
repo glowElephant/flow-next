@@ -50,7 +50,7 @@ On every invocation:
 | `<chart-id> --status` / "what's left to decide" | **status** | Render map + frontier + remaining attended cost; **resolve nothing** |
 | stored tracker URL / locator | **re-enter** | Probe `chart locate` (local ledger only); degrade if unavailable - see workflow |
 
-Plain-language equivalents reach the same modes (R17).
+Plain-language equivalents reach the same modes.
 
 ## Verdict grammar (exact)
 

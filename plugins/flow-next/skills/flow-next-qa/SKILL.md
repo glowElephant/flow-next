@@ -35,7 +35,7 @@ FLOWCTL="${DROID_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/flowctl"
 [ -x "$FLOWCTL" ] || FLOWCTL=".flow/bin/flowctl"
 ```
 
-**Inline skill (no `context: fork`)** — runs on the host agent, not a forked subagent, because the **prepare** phase must ask the user for undocumented facts (target URL / test account — info-only, never a confirm gate) and a forked subagent cannot ask the user back (Claude Code issues #12890, #34592). The host asks via `AskUserQuestion`. (sync-codex.sh rewrites any `AskUserQuestion` to a plain-text numbered prompt in the Codex mirror.)
+**Inline skill (no `context: fork`)** — runs on the host agent, not a forked subagent, because the **prepare** phase must ask the user for undocumented facts (target URL / test account — info-only, never a confirm gate) and a forked subagent cannot ask the user back (Claude Code issues #12890, #34592). The host asks via `AskUserQuestion`.
 
 ## Mode Detection
 
@@ -48,7 +48,7 @@ SPEC_ID=""
 # The loop handles both `--flag=value` and space-separated `--flag value`
 # forms via a PREV token holder. No bash positional parameters here — the
 # host's argument interpolation rewrites positional tokens inside skill code
-# blocks (pilot dogfood finding, 1.13.0).
+# blocks.
 PREV=""
 for ARG in $RAW_ARGS; do
   case "$PREV" in

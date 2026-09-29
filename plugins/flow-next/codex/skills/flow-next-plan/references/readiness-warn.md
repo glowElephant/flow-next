@@ -21,6 +21,6 @@ freeform ideas (Route B), and non-adopting repos never reach this file.
     - **body**: `<spec-id> is not marked ready; readiness projects from the tracker (state: <readyState>). Recommended: proceed — planning is non-destructive. Confidence: [high].`
     - **options** (frozen): `proceed` (default — continue to research), `abort` (exit 0 — no spec or task changes made), `update-tracker-state-then-rerun` (exit 0 with guidance: move the linked issue to "<readyState>" on the board, pull via /flow-next:tracker-sync, re-run /flow-next:plan)
 
-Never a hard block — `abort` / `update-tracker-state-then-rerun` are user choices, not skill-imposed stops (R6).
+Never a hard block — `abort` / `update-tracker-state-then-rerun` are user choices, not skill-imposed stops.
 
 After the chosen option continues, return to Step 1 and run the scout fan-out.

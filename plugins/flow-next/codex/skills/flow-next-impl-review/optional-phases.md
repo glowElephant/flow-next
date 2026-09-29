@@ -377,7 +377,7 @@ echo "Validator: dropped=$DROPPED kept=$KEPT verdict=$NEW_VERDICT"
 if [[ "$NEW_VERDICT" == "SHIP" ]]; then
   # All findings dropped — verdict upgraded. Done, no fix loop. This exit
   # never reaches the backend workflow's final release step, so release the
-  # optional-phase lease here (PR #392): OWNING_RID is restated as a LITERAL
+  # optional-phase lease here: OWNING_RID is restated as a LITERAL
   # — the fan-out rid from the codex phase-one JSON, or the host reservation
   # id. 0 phases means nothing was held.
   OWNING_RID="<owning rid>"
@@ -472,7 +472,7 @@ Write per-bucket JSONL files for downstream helpers:
 "LFG the rest" auto-classifies: P0/P1 @ confidence ≥ 75 → Apply;
 otherwise → Defer.
 
-**Lease renewal while waiting on a human (PR #392).** A walkthrough has no
+**Lease renewal while waiting on a human.** A walkthrough has no
 time bound — it blocks once per finding on a reply — but the optional-phase
 lease expires on the liveness bound, and a reply can arrive after it did.
 When the lease is held (an optional flag is enabled), run the RENEW block

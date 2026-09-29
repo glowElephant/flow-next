@@ -63,7 +63,7 @@ Best-effort: a tracker failure must never block the worker. The skill emits its 
 
 ## Task done
 
-multi-task.md **3d.1 — task done → status comment + evidence.** Optional. Runs only when the tracker bridge is active AND `work.done` is opted in, and only when the task reached `done` (multi-task.md 3d). Posts a structured status comment + evidence (tests / PR links from the task's evidence) to the linked issue; appends-only (R8), deduped by marker — never a conflict.
+multi-task.md **3d.1 — task done → status comment + evidence.** Optional. Runs only when the tracker bridge is active AND `work.done` is opted in, and only when the task reached `done` (multi-task.md 3d). Posts a structured status comment + evidence (tests / PR links from the task's evidence) to the linked issue; appends-only, deduped by marker — never a conflict.
 
 ```bash
 OP="$(jq -r '.ops["work.done"] // "off"' <run-sync-active.json>)"

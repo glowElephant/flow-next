@@ -77,7 +77,7 @@ You MAY mention these as "FYI" observations without affecting the verdict.
 
 **Settled plan:** A finding that re-litigates a recorded Decision Context decision
 or matching `knowledge/decisions` entry is FYI, never blocking. Process-compliance
-observations (checklist ceremony, dogfood records, handoff paperwork) are likewise
+observations (checklist ceremony, run logs, handoff paperwork) are likewise
 FYI, never blocking — the maintainer decides when a change lands.
 
 **Comment-as-alibi:** A comment that exists to justify a workaround or narrate

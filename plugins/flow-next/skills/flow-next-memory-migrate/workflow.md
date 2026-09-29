@@ -184,7 +184,7 @@ For each entry:
 
 **Interactive mode:**
 
-Use `AskUserQuestion` (sync-codex.sh rewrites this to a plain-text numbered prompt in the Codex mirror.). Lead with the mechanical default as the recommendation:
+Use `AskUserQuestion`. Lead with the mechanical default as the recommendation:
 
 ```
 Entry: "Auth token refresh race during logout" (from pitfalls.md)
@@ -423,7 +423,7 @@ Created: .flow/memory/_migrated/.gitignore (self-ignoring; first run only)
 
 ---
 
-## Manual smoke (acceptance R1, R3, R4, R5, R10, R11)
+## Manual smoke
 
 The skill itself is markdown — there's no unit-test surface. The validation is invoking `/flow-next:memory-migrate` in a real session. Expected behavior:
 

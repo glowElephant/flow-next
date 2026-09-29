@@ -45,7 +45,7 @@ fi   # default branch: bare no-op — NO link, NO read path
 
 When the sentinel prints, STOP and Read [references/autonomy.md](references/autonomy.md) (§0, the per-fact routing table) before any further step. When the gate is silent (`NO_PROMPT=0`, interactive), continue — every prompt path below asks the user as written.
 
-`QA_AUTONOMOUS` gates **question suppression only**. The `flow --auto` QA stage passes it so the build loop never hangs on a prompt; the BLOCKED-and-advance contract (R6) keeps an environment without a local app from wedging the pipeline.
+`QA_AUTONOMOUS` gates **question suppression only**. The `flow --auto` QA stage passes it so the build loop never hangs on a prompt; the BLOCKED-and-advance contract keeps an environment without a local app from wedging the pipeline.
 
 ---
 
@@ -134,7 +134,7 @@ if [[ -z "$DEFAULT_BRANCH" ]]; then
   else
     # Interactive: ask for the base ref via plain-text numbered prompt (info prompt — no frozen
     # options; accept a typed ref). Validate the answer with rev-parse below; on
-    # abort, exit 1. (sync-codex.sh rewrites plain-text numbered prompt to a numbered prompt.)
+    # abort, exit 1.
     : "ask user for DEFAULT_BRANCH via plain-text numbered prompt; on abort exit 1"
   fi
 fi
@@ -233,7 +233,7 @@ Then, per R-ID in the coverage spine, decide subtract-vs-live with **all three**
 
 **Never subtract on:**
 - `files_touched` / `commits` / `prs` — these prove code *changed*, never that the criterion *holds*. They never subtract.
-- Any prose "I verified X" — a worker's or a bridged child's **self-report** is never the gate. Narration is never QA-grade captured evidence; the hard rule (§Preamble, R5) forbids honoring it.
+- Any prose "I verified X" — a worker's or a bridged child's **self-report** is never the gate. Narration is never QA-grade captured evidence; the hard rule (§Preamble) forbids honoring it.
 
 Record, per R-ID, a `coverage_source ∈ {live, subtracted:<task-id>:<test-cmd>}` and **carry it into the §2.2 coverage table** (a `subtracted` row is a deliberate non-live row backed by a named re-runnable command, distinct from a `⚠️ no live scenario` gap). When in doubt, **keep the live scenario** — conservative subtraction never trades a live pass for a narrated claim. With zero recorded work-evidence (no `tasks[]`, empty `tests[]`), nothing subtracts — every UI-observable AC stays live (the safe default).
 
@@ -293,7 +293,7 @@ Scenarios carry forward to Phase 3 (prepare) and Phase 4 (execute). At least one
 
 ## Phase 3: prepare
 
-**Goal:** make the live app driveable before Phase 4 touches it — resolve the **target URL / app**, **test accounts**, **session hygiene**, and the **device matrix** (one desktop + one mobile viewport). The QA discipline this phase applies (the five hygiene rules, persona suffixing, the write-path-first / one-tab-per-shard caution) is the lean BRB borrow in **[references/qa-discipline.md](references/qa-discipline.md)** — read it before preparing. When `NO_PROMPT=0`, ask the user (`plain-text numbered prompt`, info-only — never a confirm gate) when the URL or accounts are undocumented (R7). When `NO_PROMPT=1` (autonomous — the Autonomous-mode gate), an undocumented URL / accounts is a hard limitation → BLOCKED (§6.3) + clean exit, never a prompt.
+**Goal:** make the live app driveable before Phase 4 touches it — resolve the **target URL / app**, **test accounts**, **session hygiene**, and the **device matrix** (one desktop + one mobile viewport). The QA discipline this phase applies (the five hygiene rules, persona suffixing, the write-path-first / one-tab-per-shard caution) is the lean BRB borrow in **[references/qa-discipline.md](references/qa-discipline.md)** — read it before preparing. When `NO_PROMPT=0`, ask the user (`plain-text numbered prompt`, info-only — never a confirm gate) when the URL or accounts are undocumented. When `NO_PROMPT=1` (autonomous — the Autonomous-mode gate), an undocumented URL / accounts is a hard limitation → BLOCKED (§6.3) + clean exit, never a prompt.
 
 **Driving stays flow-next-drive's job.** This phase resolves *what to drive and as whom*; the concrete commands (set viewport, clear storage, save/load auth state) live in flow-next-drive's references — point at them, never duplicate the prose:
 
@@ -310,7 +310,7 @@ Find the live target a real user would hit, in this priority order. Stop at the 
 3. **Repo signal** — a deploy URL in `README`, `.env.example`, or a deploy config (Vercel / Netlify / Cloudflare); or a documented dev-server URL + start command for a localhost run.
 4. **Ask the user** (`plain-text numbered prompt`, info prompt — *"What URL should I QA — a live deploy or a local dev server?"*) when `NO_PROMPT=0`. When `NO_PROMPT=1` (autonomous) this is a hard limitation → BLOCKED + clean exit, never a prompt.
 
-A target the driver cannot reach (no live deploy, no localhost app started) is **not** a Phase 3 failure — it carries forward to the Phase 6 **BLOCKED** outcome (R13 graceful surface), never a fabricated PASS.
+A target the driver cannot reach (no live deploy, no localhost app started) is **not** a Phase 3 failure — it carries forward to the Phase 6 **BLOCKED** outcome (graceful surface), never a fabricated PASS.
 
 ### 3.2 — Resolve test accounts (ask when undocumented)
 
@@ -350,17 +350,17 @@ After Phase 3, each scenario carries: its persona (+ suffix), its viewport(s), i
 Execute the contract per scenario:
 
 1. **Read flow-next-drive's driving flow** — [`skills/flow-next-drive/SKILL.md`](../flow-next-drive/SKILL.md) (surface detection + universal flow + ladder) and the relevant rung reference under `skills/flow-next-drive/references/`. **That prose stays there.** A copy of CDP / agent-browser / Computer-Use actuation detail written into this file has broken this.
-2. **Resolve a target.** A live deploy URL or a localhost app. If none is reachable, jump to the BLOCKED routing (§4.2) — the R13 graceful-surface path.
+2. **Resolve a target.** A live deploy URL or a localhost app. If none is reachable, jump to the BLOCKED routing (§4.2) — the graceful-surface path.
 3. **Drive the scenario** via flow-next-drive's universal flow (`observe → snapshot fresh refs → act → verify → capture`), using whatever driver rung the environment resolves (agent-browser is the only assumed-present driver; everything else is probe-and-degrade).
 4. **Capture evidence.** Screenshot + console at the moment of interest to `.flow/tmp/qa-<spec-id>/`, and record the evidence tuple.
 
-### 4.2 — BLOCKED routing (R13 path — no live target)
+### 4.2 — BLOCKED routing (no live target)
 
 When no live deploy + driver is reachable, **set `QA_OUTCOME=BLOCKED` and fall through to §6.3 to write the committed `qa_verdict`** — do **not** stop here:
 
 ```bash
-# Route to §6.3 - the committed qa_verdict is what the flow --auto QA stage advances on (R6
-# BLOCKED→advance). Writing no .flow/review-receipts/qa-<spec>.json leaves the
+# Route to §6.3 - the committed qa_verdict is what the flow --auto QA stage advances on
+# (BLOCKED→advance). Writing no .flow/review-receipts/qa-<spec>.json leaves the
 # driver with no fresh receipt → it strikes/unreadies the spec instead of
 # moving on to make-pr. NEVER stop here.
 QA_OUTCOME="BLOCKED"
@@ -416,7 +416,7 @@ On a confirmed FAIL — and only then; a run with zero findings never reaches th
 
 Track every finding (including P2) in `QA_FINDINGS`, with id, severity, discrete confidence
 (`0|25|50|75|100`), classification (`introduced|pre_existing`), reason, and
-surface/file in a running list for Phase 6. **A PASS asserted from reading source has broken R1** — but reading source to *explain* an already-evidenced failure (root-cause hint for the fix) is fine; the PASS gate is what's evidence-locked, not the post-hoc explanation.
+surface/file in a running list for Phase 6. **A PASS asserted from reading source has broken the evidence rule** — but reading source to *explain* an already-evidenced failure (root-cause hint for the fix) is fine; the PASS gate is what's evidence-locked, not the post-hoc explanation.
 
 ### 5.5 - Stale mapped routes
 
@@ -486,7 +486,7 @@ QA has **four** distinct outcomes. Pick exactly one, in this precedence order:
 **Honesty rules (load-bearing):**
 - A **single open P0 = NEEDS_WORK.** Do not downgrade a P0 to P1 to avoid stopping (Phase 5.2 tie-break).
 - **Incomplete R-ID coverage = NEEDS_WORK**, not SHIP — a `⚠️ no live scenario` row on a UI-observable R-ID is an uncovered gap. A `subtracted` row is **not** a gap (it is covered by a re-runnable check); but never relabel a runtime/UI gap as `subtracted` to manufacture coverage (§2.0).
-- **SHIP is forbidden without captured live-app evidence (R1).** If you cannot point to a screenshot/console/observed-state artifact per passing scenario, the outcome is BLOCKED, never SHIP.
+- **SHIP is forbidden without captured live-app evidence.** If you cannot point to a screenshot/console/observed-state artifact per passing scenario, the outcome is BLOCKED, never SHIP.
 
 ### 6.1b — Evidence enforcement (the hard rule made deterministic)
 
@@ -497,7 +497,7 @@ if [[ "$QA_OUTCOME" == "SHIP" ]]; then
   EVIDENCE_COUNT="$(find ".flow/tmp/qa-${SPEC_ID}" -maxdepth 1 -type f \( -name '*.png' -o -name '*.log' \) 2>/dev/null | wc -l | tr -d ' ')"
   if [[ "${EVIDENCE_COUNT:-0}" -eq 0 ]]; then
     QA_OUTCOME="BLOCKED"
-    BLOCKED_REASON="SHIP claimed without captured live-app evidence — no screenshot/console artifact under .flow/tmp/qa-${SPEC_ID}/ (R1: PASS rests on evidence, never narration)"
+    BLOCKED_REASON="SHIP claimed without captured live-app evidence — no screenshot/console artifact under .flow/tmp/qa-${SPEC_ID}/ (PASS rests on evidence, never narration)"
   fi
 fi
 ```
@@ -587,20 +587,20 @@ Print the YES/NO call, the `qa_outcome`, the open P0/P1 list (with finding ids +
 
 ## Phase A: autonomy
 
-**Goal:** route deterministically on the no-prompt flag (R11) — autonomous when the target URL + test accounts are configured (emits the verdict receipt, no prompts); asks the user (info-only) when they are undocumented. Phase A also owns the opt-in tracker verdict post (`tracker.perEvent.qa`) and the graceful-degradation contract when no live deploy / driver is present. The full routing table, gating predicate, and degradation matrix live in **[references/autonomy.md](references/autonomy.md)** — read it before any autonomous or tracker step.
+**Goal:** route deterministically on the no-prompt flag — autonomous when the target URL + test accounts are configured (emits the verdict receipt, no prompts); asks the user (info-only) when they are undocumented. Phase A also owns the opt-in tracker verdict post (`tracker.perEvent.qa`) and the graceful-degradation contract when no live deploy / driver is present. The full routing table, gating predicate, and degradation matrix live in **[references/autonomy.md](references/autonomy.md)** — read it before any autonomous or tracker step.
 
-### A.1 — Route deterministically (R11)
+### A.1 — Route deterministically
 
 `NO_PROMPT` was already computed **once** in the Autonomous-mode gate above (the make-pr Phase 0 pattern — detect at the top of the run, then route downstream; never re-probe per phase). Reuse that value here; do not recompute it.
 
 - **`plain-text numbered prompt` is info-only, never a confirm gate.** It resolves *undocumented* facts (target URL, test accounts — Phases 1.1, 3.1, 3.2), never "shall I run QA? / ship?". Interactive asks; an autonomous run cannot ask, so an undocumented URL/accounts there is a **hard limitation → BLOCKED** (Phase 6, `blocked_reason`), not a prompt and not an exit.
 - **Autonomous path:** target URL + test accounts configured (spec / config / env) → derive → drive → file → emit the `qa_verdict` receipt to the caller-supplied `--receipt` / `REVIEW_RECEIPT_PATH` (Phase 6.3), zero prompts. The verdict path is identical to interactive; only the prompt-vs-BLOCKED branch on *undocumented* inputs differs.
 
-### A.2 — Graceful degradation (R13)
+### A.2 — Graceful degradation
 
 No live deploy reachable, OR no driver available (incl. flow-next-drive degraded to its terminal manual rung per [flow-next-drive/SKILL.md](../flow-next-drive/SKILL.md) "Driver detection & graceful degradation") → surface the limitation as a **BLOCKED** verdict (Phase 6.1 / the §4.2 BLOCKED routing), add **nothing** to the base flow, exit clean. Inherit flow-next-drive's degradation table — do not re-derive it. BLOCKED ≠ FAIL: it is "no ship *claim* on a QA basis," never a fabricated PASS and never a hard error.
 
-### A.3 — Opt-in tracker verdict post (`tracker.perEvent.qa`, R9)
+### A.3 — Opt-in tracker verdict post (`tracker.perEvent.qa`)
 
 After the Phase 6 verdict is written, optionally post it as a structured tracker comment — gated identically to every other lifecycle touchpoint (see [flow-next-work/SKILL.md](../flow-next-work/SKILL.md) "Shared gating predicate"). Runs ONLY when the leaf is opted in AND the bridge is active; **default `off`**, so on the default path this is a silent no-op. **Best-effort** — a tracker failure never blocks the verdict (which is already written at §6.3 and is never rolled back):
 

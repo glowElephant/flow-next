@@ -29,7 +29,7 @@ FLOWCTL="${DROID_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/flowctl"
 [ -x "$FLOWCTL" ] || FLOWCTL=".flow/bin/flowctl"
 ```
 
-**Inline skill (no `context: fork`)** - `AskUserQuestion` must stay reachable for the few facts seed cannot observe. Subagents cannot call blocking question tools (Claude Code issues #12890, #34592). On portable hosts without `AskUserQuestion`, fall back to a plain-text numbered prompt with a final `Other - type your own answer` option. (sync-codex.sh rewrites AskUserQuestion to a plain-text numbered prompt in the Codex mirror.) For read-only scouts use `Task` with `subagent_type: Explore` (or the host's generic read-only dispatch with Edit/Write disallowed when Explore is unavailable).
+**Inline skill (no `context: fork`)** - `AskUserQuestion` must stay reachable for the few facts seed cannot observe. Subagents cannot call blocking question tools (Claude Code issues #12890, #34592). On portable hosts without `AskUserQuestion`, fall back to a plain-text numbered prompt with a final `Other - type your own answer` option. For read-only scouts use `Task` with `subagent_type: Explore` (or the host's generic read-only dispatch with Edit/Write disallowed when Explore is unavailable).
 
 ## Autonomy refusal
 

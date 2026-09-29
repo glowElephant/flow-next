@@ -212,13 +212,6 @@ Walkthrough never flips the verdict itself. The verdict was set by the
 primary review (or validator); walkthrough only sorts findings into buckets
 and records decisions.
 
-## Acceptance criteria coverage
-
-- **R8:** Per-finding plain-text numbered prompt with five options ✓ (§ "Per-finding flow")
-- **R10:** `.flow/review-deferred/<branch-slug>.md` as a durable record ✓ (§ "Branch slug + defer sink")
-- **R11:** Apply list dispatches fixer; Skip/Acknowledge logged no-op ✓ (§ "After walkthrough")
-- **R12:** Receipt extensions additive ✓ (§ "Update receipt")
-
 ## Anti-patterns
 
 - **Rewriting the defer file** — append-only. Users may have added manual

@@ -716,7 +716,7 @@ If step 6.4 produced an instruction-file edit AND Phase 5 already committed audi
 
 ---
 
-## Manual smoke (acceptance R3, R4, R5, R6, R11)
+## Manual smoke
 
 The skill itself is markdown — there's no unit-test surface. The validation is invoking `/flow-next:audit` in a real session. Expected behavior:
 

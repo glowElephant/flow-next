@@ -13,7 +13,7 @@ Contents:
 
 ---
 
-## 0.6 — Target validation (R8)
+## 0.6 — Target validation
 
 - Validate the target exists **and is a spec** (not a task — `flowctl show` accepts both, but capture only writes specs to spec IDs):
 
@@ -58,7 +58,7 @@ SPEC_ID="$REWRITE_TARGET"
 "$FLOWCTL" spec set-plan "$SPEC_ID" --file "${TMPDIR:-/tmp}/flow-capture-draft-<working-title-slug>-<suffix>.md" --json
 
 # Readiness reset — runs AFTER set-plan: a failed rewrite must not downgrade a
-# blessed spec (Codex review, PR #170 P2). A rewrite is a full re-authoring; any
+# blessed spec. A rewrite is a full re-authoring; any
 # prior blessing no longer applies once the new body lands. Unconditional call:
 # the toggle is idempotent — a never-ready spec is a silent no-op (no
 # write, no updated_at bump), so this does NOT turn every rewritten draft into a
@@ -69,7 +69,7 @@ READY_RESET=$("$FLOWCTL" spec unready "$SPEC_ID" --json | jq -r '.changed // fal
 # Run anchor for Phase 6's sync check — REQUIRED on the rewrite path: created_at
 # is the spec's ORIGINAL creation time here (an earlier run), so an old
 # `event: capture` receipt would false-OK the check and the retro-fire would
-# never fire (Codex review, PR #169 P2).
+# never fire.
 date -u +%Y-%m-%dT%H:%M:%SZ > "${TMPDIR:-/tmp}/flow-capture-anchor-${SPEC_ID}"
 ```
 

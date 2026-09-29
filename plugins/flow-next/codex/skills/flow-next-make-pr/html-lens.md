@@ -11,7 +11,7 @@ immediately stale its own authoritative input. A create that closed the spec als
 close as the last commit. Other legacy fallback paths may still use the narrow committed-artifact mode because it makes no v1 currentness
 claim.
 
-1. **Load the disclosure reference** [`plugins/flow-next/references/html-artifacts.md`](../../references/html-artifacts.md) (relative cross-link — resolves from this skill dir in every install layout). It owns ALL design and generation rules; §5 is the PR-lens contract (read-only review instrument: masthead + dials, sticky review-progress bar, 90-second read, churn map by review intent, R-ID → evidence table, where-to-look checklist, risk register). Never duplicate its rules here; follow it top to bottom.
+1. **Load the disclosure reference** [`references/html-artifacts.md`](../../references/html-artifacts.md) (relative cross-link — resolves from this skill dir in every install layout). It owns ALL design and generation rules; §5 is the PR-lens contract (read-only review instrument: masthead + dials, sticky review-progress bar, 90-second read, churn map by review intent, R-ID → evidence table, where-to-look checklist, risk register). Never duplicate its rules here; follow it top to bottom.
 2. **Resolve structured input, then generate the artifact.** Before generation,
    query `flowctl pr-cognitive-aid current` with the export-time base/head
    identity. A supported `current` v1 object is the authoritative semantic input

@@ -119,7 +119,7 @@ When the sentinel prints, STOP and **read [`references/doc-aware.md`](references
 
 ## Detect Input Type
 
-**Handle-recognition rule (R16):** do NOT gate on a hard "must start with `fn-`" check. Before treating a single-token arg as a file path or freeform, route it through `$FLOWCTL show <arg> --json` — flowctl's widened resolver maps a tracker key (`wor-17` / `wor-17.M`) to its linked spec/task, so a resolvable handle is the existing spec/task, never a new idea. Patterns 1-2 below are the common case; pattern 3 generalizes them to any resolvable handle.
+**Handle-recognition rule:** do NOT gate on a hard "must start with `fn-`" check. Before treating a single-token arg as a file path or freeform, route it through `$FLOWCTL show <arg> --json` — flowctl's widened resolver maps a tracker key (`wor-17` / `wor-17.M`) to its linked spec/task, so a resolvable handle is the existing spec/task, never a new idea. Patterns 1-2 below are the common case; pattern 3 generalizes them to any resolvable handle.
 
 1. **Flow spec ID pattern**: matches `fn-\d+(-[a-z0-9-]+)?` (e.g., fn-1-add-oauth, fn-12, fn-2-fix-login-bug)
    - Fetch: `$FLOWCTL show <id> --json`

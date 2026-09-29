@@ -1,7 +1,7 @@
 # Plan Route A — refine an existing Flow ID
 
 Load this reference only when Step 5 took Route A: the input resolved to an
-existing spec or task id (including a tracker handle resolved via R16). Route B
+existing spec or task id (including a tracker handle resolved by the handle-recognition rule). Route B
 (new idea) never reaches this file.
 
 The Step 5 efficiency note still binds: author with **Write**, revise with

@@ -186,8 +186,7 @@ conductor's checkout does not exist inside it — and a freshly planned spec is
 uncommitted by default. A worker dispatched into such a workspace cannot
 re-anchor at all: `$FLOWCTL show <task-id>` finds no task there, and the failure
 looks like a broken worker rather than a missing commit. Commit `.flow/` first
-(`git add -- .flow/`), then create the workspaces from that commit. Verified 2026-08-14
-on the first live wave dispatch. Single-worker runs are unaffected — they share
+(`git add -- .flow/`), then create the workspaces from that commit. Single-worker runs are unaffected — they share
 the conductor's checkout.
 
 The worker gets fresh context and handles:
@@ -376,7 +375,7 @@ stage: plan-sync - ran [<start>..<end>] | skipped(empty: no downstream todo task
 ```
 
 **A skipped stage is an event with a reason, never an absence.** `DOWNSTREAM=EXTRACT_FAILED`
-yields a `failed(EXTRACT_FAILED...)` line (the #293 class becomes visible on
+yields a `failed(EXTRACT_FAILED...)` line (a broken extraction becomes visible on
 first occurrence) and "no downstream tasks" yields `skipped(empty...)`, which is
 distinguishable from a broken extraction; a run that recorded a broken extraction as
 "nothing to do", or omitted the line entirely, has broken this. Include start..end

@@ -82,7 +82,7 @@ When the sentinel prints, STOP and Read [references/tracker-projection.md](refer
 
 ### 0.3 - Human pairings
 
-Every human-facing list of decisions pairs **title + D-ID + record link**. Never dump bare identifiers alone (R36).
+Every human-facing list of decisions pairs **title + D-ID + record link**. Never dump bare identifiers alone.
 
 ---
 

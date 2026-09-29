@@ -28,7 +28,7 @@ FLOWCTL="${DROID_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/flowctl"
 
 ## Interaction Method
 
-Default to `AskUserQuestion` (call `ToolSearch` with `select:AskUserQuestion` first if its schema isn't loaded). Fall back to numbered options in chat only when the tool is unreachable in the harness or the call errors — never silently skip the question. (sync-codex.sh rewrites this to a plain-text numbered prompt in the Codex mirror.)
+Default to `AskUserQuestion` (call `ToolSearch` with `select:AskUserQuestion` first if its schema isn't loaded). Fall back to numbered options in chat only when the tool is unreachable in the harness or the call errors — never silently skip the question.
 
 **Free-form responses for the substantive sections** (Target problem / Our approach / Who it's for / Key metrics / Tracks). **Single-select with lead-with-recommendation only for routing decisions** (which section to revisit, include this optional section, foreign-file resolution).
 
@@ -44,7 +44,7 @@ Interpret any argument as an optional focus: a section name to revisit (`metrics
 2. **Rigor in the questions, not the headings.** The section headers are plain English. The interview questions enforce strategy discipline (`references/interview.md`).
 3. **Short is a feature.** The template is constrained. Adding sections costs more than it looks like. Push back on expansion.
 4. **Durable across runs.** This skill is rerunnable. On a second run it updates in place, preserves what is working, and only challenges sections that look stale or weak.
-5. **Survives `.flow/` wipe.** `STRATEGY.md` lives at repo root, never under `.flow/`. The project's strategy belongs to the project, not flow-next (R18 invariant from the 0.39.0 glossary epic).
+5. **Survives `.flow/` wipe.** `STRATEGY.md` lives at repo root, never under `.flow/`. The project's strategy belongs to the project, not flow-next.
 
 ## Execution Flow
 
@@ -97,7 +97,7 @@ JSON fields (frozen by Task 1):
 - `generator` (str|null) — frontmatter `generator` value
 - `generator_match` (bool) — `generator == "flow-next-strategy"`
 
-**0.2 — Subdirectory walk-up surfacing (R16)**
+**0.2 — Subdirectory walk-up surfacing**
 
 If `file_path` is set and differs from `${PWD}/STRATEGY.md`, surface one line in chat before any question fires:
 
@@ -107,7 +107,7 @@ Using repo-root STRATEGY.md at <file_path>.
 
 This is the only line printed before routing — keep the noise floor low.
 
-**0.3 — Foreign-file resolution (R15)**
+**0.3 — Foreign-file resolution**
 
 If `exists: true` AND `generator_match: false`, do not write. Fire `AskUserQuestion`:
 
@@ -162,12 +162,12 @@ One paragraph max. No follow-up questions.
 - Does not compute metric values. It records *which* metrics matter and where they live, not what they read today.
 - Does not create per-subdirectory STRATEGY.md files. Strategy is repo-wide by Rumelt's definition; cascading strategies re-introduce the "is for everyone, is for no one" problem.
 - Does not migrate hand-written or CE-format STRATEGY.md files. v1 ships sentinel-based foreign-file refusal; multi-format migration is a v2 problem.
-- Does not delete the file when all sections are removed. Last-section deletion leaves a husk (`# <name> Strategy` H1 + frontmatter) on disk — file never deleted (R23 invariant, mirrors `render_glossary_file`).
+- Does not delete the file when all sections are removed. Last-section deletion leaves a husk (`# <name> Strategy` H1 + frontmatter) on disk — file never deleted.
 
 ## Forbidden
 
 - **Setting `context: fork`** — `AskUserQuestion` must stay reachable across phases.
-- **Inline cross-platform tool tables** in prose (multi-platform listings naming the tool primitive on each harness). Canonical files use Claude-native names only; sync-codex.sh handles the Codex rewrite.
+- **Inline cross-platform tool tables** in prose (multi-platform listings naming the tool primitive on each harness).
 - **Lead-with-recommendation on substance questions** — problem / approach / persona / metrics / tracks get free-form, no recommendation, no menu. Recommendation primes the user out of their own language. Routing questions only.
 - **Leaking anti-pattern names** to the user. `vanity` / `fluff` / `feature-list` / `goal-stated-as-problem` are internal labels for formulating sharper follow-ups.
 - **Auto-overwriting a foreign-file STRATEGY.md** — Phase 0.3 always asks. v1's stance is refusal; user can rename or delete to bootstrap.

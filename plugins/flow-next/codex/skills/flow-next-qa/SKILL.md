@@ -50,7 +50,7 @@ SPEC_ID=""
 # The loop handles both `--flag=value` and space-separated `--flag value`
 # forms via a PREV token holder. No bash positional parameters here — the
 # host's argument interpolation rewrites positional tokens inside skill code
-# blocks (pilot dogfood finding, 1.13.0).
+# blocks.
 PREV=""
 for ARG in $RAW_ARGS; do
   case "$PREV" in

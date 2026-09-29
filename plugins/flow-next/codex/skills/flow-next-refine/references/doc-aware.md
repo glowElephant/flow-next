@@ -70,7 +70,7 @@ The `--scope` lens is orthogonal to this matrix: any lens combines with any doc/
 
 ## Why counts, not file presence
 
-**Why `total_terms > 0` and `sections_filled >= 1` rather than `[[ -f <file> ]]`:** `flowctl glossary remove` leaves a `# Glossary` H1 husk after the last term is removed; `flowctl strategy` leaves a frontmatter-plus-H1 husk under the same R18 invariant. Both files are project state, intentionally retained. A presence-only check would false-positive on an empty husk and surface phantom doc-aware questions when no canonical vocabulary / strategic intent is actually defined. `glossary list --json` and `strategy status --json` walk the file and count populated entries; both report zero for a husk.
+**Why `total_terms > 0` and `sections_filled >= 1` rather than `[[ -f <file> ]]`:** `flowctl glossary remove` leaves a `# Glossary` H1 husk after the last term is removed; `flowctl strategy` leaves a frontmatter-plus-H1 husk the same way. Both files are project state, intentionally retained. A presence-only check would false-positive on an empty husk and surface phantom doc-aware questions when no canonical vocabulary / strategic intent is actually defined. `glossary list --json` and `strategy status --json` walk the file and count populated entries; both report zero for a husk.
 
 ## Doc-aware behaviors
 
@@ -186,7 +186,7 @@ When all three hold:
 
    Entry title and body prose follows the artifact prose contract in [docs/prose.md](../../../docs/flow-next/prose.md); proceed without it when the doc is absent.
 
-2. **Print-then-ask before writing** — same print-then-ask contract as `/flow-next:capture` Phase 4 (R13):
+2. **Print-then-ask before writing** — same print-then-ask contract as `/flow-next:capture` Phase 4:
    - **Print first:** emit the FULL decision-entry draft (title, body markdown, optional module/tags, optional Considered Options / Consequences blocks) as an ordinary assistant markdown message. Never embed the multi-paragraph body in the ask.
    - **Then short ask** via `plain-text numbered prompt`:
      - **header**: `Write decision?`
@@ -209,7 +209,7 @@ When all three hold:
    EOF
    ```
 
-   The `decisions` category is registered in flowctl's memory schema (Task 1 of the original decisions epic). Optional fields `--decision-status` (default `accepted`), `--superseded-by`, and `--alternatives-considered` are available; pass them when the conversation supplies them and skip otherwise.
+   The `decisions` category is registered in flowctl's memory schema. Optional fields `--decision-status` (default `accepted`), `--superseded-by`, and `--alternatives-considered` are available; pass them when the conversation supplies them and skip otherwise.
 
 4. **On `edit`**, ask one follow-up `plain-text numbered prompt` for which field changes (title / body / module / tags), capture the revision, **reprint the full revised draft as ordinary markdown**, then re-issue the short approval ask; loop. Hard cap at 2 edit cycles before defaulting to `approve` / `skip`.
 

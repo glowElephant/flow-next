@@ -59,7 +59,7 @@ coordinator resuming this scope mid-fix-loop (context lost between a
 `NEEDS_WORK` verdict and its fix pass) must not re-enter the three-draw shape:
 
 ```bash
-# ROUTE (PR #392): ONE deterministic verb owns canonicalization, the
+# ROUTE: ONE deterministic verb owns canonicalization, the
 # repo/scope-keyed receipt path (the same default Step 3 uses; explicit
 # REVIEW_RECEIPT_PATH always wins), receipt identity + verdict routing,
 # stale-receipt rotation, and the task-mode ledger fences (in-flight round,
@@ -137,7 +137,7 @@ if [[ "$REVIEW_BASE_SHA" != "$REVIEW_HEAD_SHA" ]]; then
   [[ "$DIFF_RC" -eq 1 ]] || { echo "git diff failed; not reserving a round" >&2; exit 1; }
 fi
 
-# --exclusive (PR #392 r22): the no-pending pre-check above is fast-fail UX
+# --exclusive: the no-pending pre-check above is fast-fail UX
 # only — this flag makes the refusal ATOMIC inside the reservation lock, so
 # two concurrent coordinators cannot both reserve between the check and here.
 ROUND_JSON="$("$FLOWCTL" review-rounds increment "${TASK_ID%.*}" --kind impl \
@@ -384,7 +384,7 @@ if [[ -z "$TASK_ID" ]]; then
   fi
   exit 0
 fi
-# Scope ownership through the optional phases (PR #392, sol round 3): hold
+# Scope ownership through the optional phases: hold
 # the lease BEFORE the record — while the exclusive reservation still stands,
 # so no other dispatch can enter between consumption and lease. Acquisition
 # failure is terminal; Step 4 releases it after the phases.

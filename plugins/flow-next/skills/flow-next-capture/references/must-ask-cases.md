@@ -1,4 +1,4 @@
-# capture — must-ask cases (R9), with examples (loaded on demand)
+# capture — must-ask cases, with examples (loaded on demand)
 
 > Loaded ONLY when at least one of the three Phase-3 must-ask conditions actually fires. A capture
 > with an unambiguous title, testable criteria, and no scope conflict never reads this file.

@@ -241,12 +241,10 @@ workers keep running.
 **Blocking-dispatch hosts degrade honestly (fail-closed - scheduling/join
 only).** On a host whose ordinary subagent dispatch BLOCKS until completion
 and offers no background dispatch with completion notifications, dispatching
-multiple workers silently recreates the wave barrier. **The 3.0 probe already
-measured this** - by the host's ACTUAL dispatch behaviour, never by host
-name: the original host list here was an assumption, and both named hosts
-fell to a five-minute probe (measured non-blocking and rolling end-to-end
-2026-08-27: Cursor on macOS, and Grok Build 1.0.5 via `spawn_subagent`
-background mode; Claude Code's background Task dispatch remains the canonical
+multiple workers silently recreates the wave barrier. **The 3.0 probe decides
+this** - by the host's ACTUAL dispatch behaviour, never by host name
+(Cursor on macOS and Grok Build's `spawn_subagent` background mode both
+roll end-to-end; Claude Code's background Task dispatch is the canonical
 example). On a genuinely blocking host the failure shape is: the
 conductor cannot observe the first return until all return, and the run is
 wave scheduling wearing a rolling label. Do not pretend otherwise - but
@@ -405,7 +403,7 @@ A quality or ship failure is not a clean completion, and its diagnostic
 notes must still exist. On an interrupted or escalated run leave the directory
 in place (inert prose, removable by hand).
 
-**The run is not over at the last `done` (field receipt #1, 2026-08-22).** The
+**The run is not over at the last `done`.** The
 final integration is the moment this failure happens: the frontier is empty,
 every task reads `done`, and ending the turn feels complete - but quiesce has
 not run. **Detect quiesce and continue IN THE SAME TURN**: after ANY 3d

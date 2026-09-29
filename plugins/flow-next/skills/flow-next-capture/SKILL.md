@@ -27,7 +27,7 @@ FLOWCTL="${DROID_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/flowctl"
 [ -x "$FLOWCTL" ] || FLOWCTL=".flow/bin/flowctl"
 ```
 
-**Inline skill (no `context: fork`)** — `AskUserQuestion` must stay reachable across phases; subagents cannot call blocking question tools. (sync-codex.sh rewrites this to a plain-text numbered prompt in the Codex mirror.)
+**Inline skill (no `context: fork`)** — `AskUserQuestion` must stay reachable across phases; subagents cannot call blocking question tools.
 
 ## Mode Detection
 
@@ -103,7 +103,7 @@ Interactive capture follows the working rules' attended contract, plus:
 - Plain language: one sentence of stakes, everyday words, a short gloss for any needed term (`R-ID`, `[inferred]`).
 - Never ask for facts the conversation already gave. Phase 3 asks only its must-ask cases; other `[inferred]` content surfaces in the summary instead.
 
-## Forbidden behaviors (R10)
+## Forbidden behaviors
 
 These protect spec trust:
 

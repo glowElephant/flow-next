@@ -36,4 +36,4 @@ Then return to steps.md Step 5: the unconditional post-check there is the only
 flow-first creation site, and its orphan GUARD (create-first recorded an issue
 but the mint failed → surface identifier + url + retryKey and STOP) still binds.
 Do **not** add a runtime advisory/nag about the id scheme at this mint site
-(withdrawn R10) — setup owns the one-time question.
+— setup owns the one-time question.

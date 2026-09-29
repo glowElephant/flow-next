@@ -94,7 +94,7 @@ two passes:
    shipped. Rewrite the SHAs to the integrated ones before step 5, not after.
    **Failure signature:** `flowctl validate` warning
    "evidence commit &lt;sha&gt; is not reachable from HEAD" on a task this wave just
-   completed. Observed 2026-08-14 on the first live wave dispatch;
+   completed.
 3. when its resolved `REVIEW_MODE` is not `none` and the working-rules.md risk rule
    selects the task's change, run
    `flow-next:flow-next-impl-review <task-id> --base <task-normalized-integrated-base> --review=<backend>`

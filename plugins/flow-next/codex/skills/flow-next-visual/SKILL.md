@@ -29,8 +29,8 @@ FLOWCTL="${CODEX_HOME:-$HOME/.codex}/scripts/flowctl"
 
 Arguments: `$ARGUMENTS` — optional. One of:
 
-- **Spec id** (`fn-189-human-first-visual-digest-skill`) → spec digest
-- **Task id** (`fn-189-human-first-visual-digest-skill.1`) → task digest
+- **Spec id** (`fn-12-add-oauth`) → spec digest
+- **Task id** (`fn-12-add-oauth.1`) → task digest
 - **Git range** (`main..HEAD`, `abc123..def456`, or the bare word `diff`) → diff digest
 - **Nothing, or free-form text** → ad-hoc restate of the current topic (or of the text pointed at)
 

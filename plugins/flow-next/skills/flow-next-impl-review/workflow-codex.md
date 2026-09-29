@@ -37,7 +37,7 @@ invocations with your merge between them; this is the first.
 ```bash
 # FOREGROUND RULE: run this as ONE blocking foreground Bash call (timeout 600s).
 # NEVER run_in_background + monitor - a background completion does not resume a subagent context.
-# ROUTE (PR #392): ONE deterministic verb owns canonicalization (fn-N.M ->
+# ROUTE: ONE deterministic verb owns canonicalization (fn-N.M ->
 # fn-N-slug.M), the repo/scope-keyed receipt path (explicit REVIEW_RECEIPT_PATH
 # always wins), receipt identity + verdict routing, stale-receipt rotation, and
 # the task-mode ledger fences (in-flight round, unjournaled reservation, lost
@@ -175,7 +175,7 @@ repairing unparseable draw output. Keep these judgment rules:
 # NEVER run_in_background + monitor - a background completion does not resume a subagent context.
 # The reservation metadata derives task, base and receipt; use literal paths.
 args=(--rid "<rid from phase-one JSON>" --merge-plan "<merge-plan JSON path>" --json)
-# Scope ownership through the optional phases (PR #392): when --deep,
+# Scope ownership through the optional phases: when --deep,
 # --validate, or --interactive is enabled, hold the lease at the finalize —
 # review-route and the reservation gate refuse any other dispatch on this
 # scope until you release it after the phases (Step 4 tail below). Expires
@@ -240,7 +240,7 @@ document.
 
 See [optional-phases.md](optional-phases.md) "Phase ordering & flag-combination matrix" for the order when multiple flags are set.
 
-**Scope ownership spans the optional phases (PR #392):** the same-scope
+**Scope ownership spans the optional phases:** the same-scope
 single-driver rule does not end at the finalize — this coordinator owns the
 scope until its post-finalize optional phases complete, because a deep or
 validator pass may still overturn the finalized verdict. That ownership is

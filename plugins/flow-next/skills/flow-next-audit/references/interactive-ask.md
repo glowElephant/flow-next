@@ -25,7 +25,7 @@ Bundle the easy ones, isolate the hard ones:
 
 ### 3.2 — Question style
 
-Use `AskUserQuestion` (deferred — load via `ToolSearch select:AskUserQuestion` if its schema isn't yet in scope). If the tool is unreachable, fall back to printing a numbered list and reading a typed reply. (sync-codex.sh rewrites this to a plain-text numbered prompt in the Codex mirror.)
+Use `AskUserQuestion` (deferred — load via `ToolSearch select:AskUserQuestion` if its schema isn't yet in scope). If the tool is unreachable, fall back to printing a numbered list and reading a typed reply.
 
 Rules:
 
@@ -57,7 +57,7 @@ One question per candidate, via the same blocking-question tool. Show the propos
 Entry: knowledge/conventions/timestamps-utc-2026-03-04
 Lesson: always stamp timestamps UTC ISO-8601; naive datetime.now() broke receipt comparisons
 Evidence:
-  - 2 `## Update` headings (re-taught in fn-97 and fn-104)
+  - 2 `## Update` headings (re-taught in fn-12 and fn-19)
   - 4 commits on the entry file
   - mechanizable: naive-datetime use is lint-detectable
   - duplication guard: no `DTZ` rule found in pyproject.toml

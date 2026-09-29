@@ -10,7 +10,7 @@ Contents:
 
 ## Tracker sync
 
-**Optional. Runs only when the tracker bridge is active AND `interview` is opted in. With no tracker configured this is a no-op — the interview behaves exactly as today.** After the refined spec is written back (`## Write Refined Spec`), project the enrichment to the linked tracker issue and reconcile two-way (R6): interview enrichment done in flow flows back to the tracker; tracker-side edits fold into the right flow sections. (Skip for the file-input case — there is no flow spec yet.)
+**Optional. Runs only when the tracker bridge is active AND `interview` is opted in. With no tracker configured this is a no-op — the interview behaves exactly as today.** After the refined spec is written back (`## Write Refined Spec`), project the enrichment to the linked tracker issue and reconcile two-way: interview enrichment done in flow flows back to the tracker; tracker-side edits fold into the right flow sections. (Skip for the file-input case — there is no flow spec yet.)
 
 `LEAF` was read by the gate probe in SKILL.md (shared gating predicate — work SKILL.md); bash variables do not survive across tool calls, so re-read the leaf ONCE at the top of this block and map it to the operation:
 

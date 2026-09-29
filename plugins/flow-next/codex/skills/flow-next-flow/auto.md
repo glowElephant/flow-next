@@ -288,7 +288,7 @@ SELECTED_SUBJECTS="${SUBJECT_ID:-}"
 SELECTED_COUNT="$(printf '%s\n' "$SELECTED_SUBJECTS" | grep -c . )"
 if [ "$SELECTED_COUNT" -gt 1 ]; then
   echo "Evidence: backlog selection yielded $SELECTED_COUNT subjects — single-tick contract violated"
-  echo 'PILOT_VERDICT=NEEDS_HUMAN spec=- stage=- reason="backlog single-tick — selection must pick exactly one item (R6 invariant #3)"'
+  echo 'PILOT_VERDICT=NEEDS_HUMAN spec=- stage=- reason="backlog single-tick — selection must pick exactly one item"'
   exit 1
 fi
 ```
@@ -635,7 +635,7 @@ Done when: every dispatched stage's before/after evidence block and `stage:` out
 # the tracker.
 if [ "${HAS_SPEC:-0}" = "1" ] && { [ -z "$SPEC_PATH" ] || [ ! -f "$SPEC_PATH" ]; }; then
   echo "Evidence: backlog mode attempted to author a spec for a specless item ($SUBJECT_ID)"
-  echo 'PILOT_VERDICT=NEEDS_HUMAN spec=- stage=ask reason="backlog mode never authors specs — surfaced as needs capture/interview gap (R3/R4)"'
+  echo 'PILOT_VERDICT=NEEDS_HUMAN spec=- stage=ask reason="backlog mode never authors specs — surfaced as needs capture/interview gap"'
   exit 1
 fi
 ```
@@ -662,7 +662,7 @@ On `ADVANCED`, if the snapshot has a strike for the selected spec, clear it with
 
 Then apply the continuation rule in "The hop loop" above.
 
-When the run ends, print the terminal line. `stage=` names every dispatched stage in order joined by `+`; the reason names the last hop's outcome. For a **chained** spec (SELECT's `CHAIN_PARENT` non-empty) the reason starts with `chained on <parent-id>; ` followed by the existing reason text; a non-chained run prints byte-identical lines (fn-152 R9). A chained dispatch's backlog decision-log row carries the same string through `pilot-log append --reason` (passed only when `CHAIN_PARENT` is set), so that row begins with the same prefix while non-chained rows keep their shape.
+When the run ends, print the terminal line. `stage=` names every dispatched stage in order joined by `+`; the reason names the last hop's outcome. For a **chained** spec (SELECT's `CHAIN_PARENT` non-empty) the reason starts with `chained on <parent-id>; ` followed by the existing reason text; a non-chained run prints byte-identical lines. A chained dispatch's backlog decision-log row carries the same string through `pilot-log append --reason` (passed only when `CHAIN_PARENT` is set), so that row begins with the same prefix while non-chained rows keep their shape.
 
 ```bash
 # fence:verdict-reason — inputs: CHAIN_PARENT (SELECT's `spec chain` .parent, empty when not chained), REASON (the existing reason text)

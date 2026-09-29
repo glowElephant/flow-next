@@ -2,7 +2,7 @@
 
 The calibration companion to [workflow.md](workflow.md): how drafted lines are tagged, and how question bodies state confidence.
 
-## Source-tag taxonomy (R4)
+## Source-tag taxonomy
 
 Tags mark what capture authored. Content the user said verbatim carries **no tag**: an untagged acceptance criterion, decision-context line, or boundary line claims to be the user's own words and must be findable in the Phase 1 `Conversation Evidence` (quote-level fidelity; trimming and ellipsis are fine, rewording is not), whether or not the resolved template writes that block into the spec. Anything capture reworded, filled in, or imported carries one trailing tag:
 

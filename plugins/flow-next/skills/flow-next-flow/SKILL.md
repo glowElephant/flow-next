@@ -9,7 +9,7 @@ allowed-tools: AskUserQuestion, Read, Bash, Grep, Glob, Write, Edit, Task, Skill
 
 Flow chooses the next step so the user does not have to. It reads what it was given, routes from the shared routing reference, runs the routed stage skill, and continues until the next decision that belongs to a human. It re-implements no stage logic: capture, refine, plan, plan-review, work, qa, make-pr, resolve-pr, and land keep their own contracts, receipts, and gates.
 
-**Role:** conductor, inline (no `context: fork`) so `AskUserQuestion` stays reachable. On hosts without it, fall back to a plain-text numbered prompt with a final `Other - type your own answer` option. (sync-codex.sh rewrites the tool name for the Codex mirror.)
+**Role:** conductor, inline (no `context: fork`) so `AskUserQuestion` stays reachable. On hosts without it, fall back to a plain-text numbered prompt with a final `Other - type your own answer` option.
 
 **Read [workflow.md](workflow.md) for the hop loop.** Read a reference only at the step that names it.
 

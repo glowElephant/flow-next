@@ -423,7 +423,7 @@ Created: .flow/memory/_migrated/.gitignore (self-ignoring; first run only)
 
 ---
 
-## Manual smoke (acceptance R1, R3, R4, R5, R10, R11)
+## Manual smoke
 
 The skill itself is markdown — there's no unit-test surface. The validation is invoking `/flow-next:memory-migrate` in a real session. Expected behavior:
 

@@ -2,7 +2,7 @@
 
 A finding is only useful if engineering can act on it. **File immediately on FAIL** (not batched), with a complete repro and real captured evidence, into the bug memory track. Findings carry the R-ID(s) they trace back to, closing the **spec-AC ↔ scenario ↔ finding ↔ R-ID** loop.
 
-> The P0/P1/P2 taxonomy, the evidence rules, the reproduce-before-file discipline, and the "never downgrade a P0" rule are a lean borrow from Ray Fernando's `running-bug-review-board` skill (Apache-2.0). flow-next adapts them to its own storage — the **bug memory track** (`track: bug`) and the **`qa_verdict` receipt** — rather than BRB's `BUG-NNN.md` files + HTML dashboard. (Full credit lives in the skill's CHANGELOG + the R8 lean-borrow reference.)
+> The P0/P1/P2 taxonomy, the evidence rules, the reproduce-before-file discipline, and the "never downgrade a P0" rule are a lean borrow from Ray Fernando's `running-bug-review-board` skill (Apache-2.0). flow-next adapts them to its own storage — the **bug memory track** (`track: bug`) and the **`qa_verdict` receipt** — rather than BRB's `BUG-NNN.md` files + HTML dashboard.
 
 **Contents:** reproduce-twice · severity (P0/P1/P2) + tie-break · steps to reproduce ·
 expected vs actual · evidence · title style · filing to bug memory (body template, **host
@@ -172,7 +172,7 @@ When ambiguous, pick the most specific that fits. `--root-cause` for a live find
 
 A finding worth fixing is **promoted to a flow spec/task** — compose from `flowctl spec create` + `spec set-plan`, or `/flow-next:capture` from the finding body. That closes the loop: the QA finding becomes the intent for the fix, traceable back through its R-ID to the original spec. QA itself **does not fix product code** — it files, surfaces, and hands off (BRB's "test, document, file, hand off; don't fix unless asked").
 
-**Spec-id routing gate:** when promoting via `/flow-next:capture`, the mint gate is **owned by capture** (capture/workflow.md Phase 5.2) — do not re-implement it here. When composing with `flowctl spec create` directly, apply the same gate: read `tracker.specIds` from ONE root config snapshot (no per-leaf get), and when value is `tracker` AND the bridge is active, read the named issue (or run create-first for a fresh one) to get `{id, identifier, url}`, then mint linked with `spec create --tracker-first --tracker-identifier <key> --tracker-id <id> --tracker-url <url>` and seed the merge base (tracker-sync steps.md §2 Identity and linking); bridge inactive / no transport degrades **silently** to flow-first; explicit override wins. Network cost is conditional (reorder when `tracker.perEvent.qa` / capture is on; earlier remote write when off). No runtime nag (withdrawn R10).
+**Spec-id routing gate:** when promoting via `/flow-next:capture`, the mint gate is **owned by capture** (capture/workflow.md Phase 5.2) — do not re-implement it here. When composing with `flowctl spec create` directly, apply the same gate: read `tracker.specIds` from ONE root config snapshot (no per-leaf get), and when value is `tracker` AND the bridge is active, read the named issue (or run create-first for a fresh one) to get `{id, identifier, url}`, then mint linked with `spec create --tracker-first --tracker-identifier <key> --tracker-id <id> --tracker-url <url>` and seed the merge base (tracker-sync steps.md §2 Identity and linking); bridge inactive / no transport degrades **silently** to flow-first; explicit override wins. Network cost is conditional (reorder when `tracker.perEvent.qa` / capture is on; earlier remote write when off). No runtime nag.
 
 ## Anti-patterns
 
@@ -185,4 +185,4 @@ A finding worth fixing is **promoted to a flow spec/task** — compose from `flo
 | File N separate findings for one root cause | File the highest-impact one; the overlap check links the rest |
 | Mark a P0 as P1 to "not stop the pass" | Hides severity; the verdict reads green when it isn't |
 | Pass `--no-overlap-check` | Blanks match signal; re-files the same finding every pass without awareness |
-| Assert PASS by reading source | Forbidden (R1) — PASS rests on captured live-app evidence only |
+| Assert PASS by reading source | Forbidden — PASS rests on captured live-app evidence only |
