@@ -102,7 +102,7 @@ Position follows the template as well. An auxiliary section you place as a headi
 
 To stop a section from landing in your specs, delete its entry from that list in your `SPEC.md`. Two entries are worth knowing about:
 
-- **`Conversation Evidence`** is the block of verbatim user quotes capture puts at the top of a spec. No tool reads it. Capture still collects the quotes during the run and still checks every `[user]` tag against them before it writes. Dropping the entry costs one thing. A reviewer who later doubts a `[user]` tag can no longer look the quote up in the spec.
+- **`Conversation Evidence`** is the block of verbatim user quotes capture puts at the top of a spec. No tool reads it. Capture still collects the quotes during the run and still checks every untagged criterion against them before it writes. Dropping the entry costs one thing. A reviewer who later doubts an untagged criterion can no longer look the quote up in the spec.
 - **`Requirement coverage`** is the placeholder table capture adds on a planned route. `/flow-next:plan` writes its own coverage table, so dropping the entry only means the table arrives with the plan.
 
 A `SPEC.md` written from scratch, with no `auxiliary_sections` list, gets no auxiliary sections from capture. A `SPEC.md` copied from the bundled file keeps the list and behaves as before.
@@ -232,17 +232,17 @@ The rules mirror R-IDs where they apply:
 
 ### Source tags: what you said vs what the agent inferred
 
-`/flow-next:capture` **and** `/flow-next:refine` tag every acceptance criterion they write at source: `[user]` (the words of the human answering in that session), `[paraphrase]` (that meaning, tightened), `[inferred]` (the agent's own inference), plus `[strategy:<track>]` when a criterion traces to a STRATEGY.md track. The tag is a trailing token on the bullet:
+`/flow-next:capture` **and** `/flow-next:refine` mark the provenance of every acceptance criterion they write: `[paraphrase]` (the user's meaning, tightened), `[inferred]` (the agent's own inference), and `[strategy:<track>]` when a criterion traces to a STRATEGY.md track. For the user's own words, capture writes no tag (it checks each untagged criterion against the quotes it collected); refine tags them `[user]` (the human answering in that session). The tag is a trailing token on the bullet:
 
 ```markdown
-- **R1:** Root marketplace manifest exists and imports cleanly. [user]
+- **R1:** Root marketplace manifest exists and imports cleanly.
 - **R3:** Host detection switches to a positive signal. [inferred]
 ```
 
 Three rules matter when reading a tagged spec:
 
 - **A session tags only the criteria it authors**, and never retags an existing bullet - provenance is frozen exactly like the R-ID number. So on a spec a product owner refined and then a tech lead refined, each criterion's tag reflects the session that wrote it.
-- **Untagged means unknown provenance, never `[user]`.** Criteria written before this shipped, or by hand, carry no tag. Defaulting them to "a human said this" is wrong in the dangerous direction.
+- **Untagged is never an agent guess you cannot see.** In a captured criterion it means the user's own words; in one written by hand or before tags shipped it means unknown provenance. Either way, only a tagged line tells you the agent authored it, and `[inferred]` is the one to scrutinize.
 - **The tags distinguish source evidence from assumptions**: capture exposes the tally in its saved-spec summary and editor follow-up. Refine retains pre-write ratification and refuses to recommend `approve and write` for `[inferred]` criteria no question covered, since an answered question has already done the verifying. Both use [`read-back.md`](read-back.md); saving a capture never upgrades its source tags.
 
 They are also the cheapest review filter available, because reading them is a grep rather than a model judgment. Tally which criteria are grounded and which are guesswork:
@@ -253,11 +253,12 @@ flowctl cat fn-14 \
   | sed -E 's/^\*\*(R[0-9]+[a-z]?):.*\[([^]]+)\]$/\2\t\1/' \
   | sort | awk -F'\t' '{c[$1]=c[$1]" "$2; n[$1]++} END {for (t in c) printf "%-26s %2d %s\n", t, n[t], c[t]}'
 
-user                        6  R1 R13 R5 R6 R7 R8
 paraphrase                  3  R10 R12 R2
 inferred                    4  R11 R3 R4 R9
 strategy:Cross-platform parity  1  R14
 ```
+
+Untagged criteria do not appear; on a captured spec they are the user's own words.
 
 Two details in that pipeline are load-bearing, and both exist because a track name is **not** a lowercase slug - it keeps its literal casing and may contain spaces or hyphens (`[strategy:Cross-platform parity]`):
 
@@ -268,7 +269,7 @@ Then refine only the uncertainty instead of re-litigating settled requirements:
 
 ```text
 /flow-next:refine fn-14 - focus only on the [inferred] acceptance criteria
-(R3, R4, R9, R11); the [user] and [paraphrase] ones are settled, leave them alone
+(R3, R4, R9, R11); the rest are settled, leave them alone
 ```
 
 Append-only R-ID numbering is what makes that targeting safe - a later session cannot renumber or rewrite the criteria you already blessed, and it will not retag them either.

@@ -23,8 +23,8 @@ The Step 5 efficiency note still binds: author with **Write**, revise with
    $FLOWCTL task set-spec <id> --description "${TMPDIR:-/tmp}/flow-plan-desc-<task-id>.md" --acceptance "${TMPDIR:-/tmp}/flow-plan-acc-<task-id>.md" --json
    ```
 
-**Source-tag consumption (Route A refine of a capture-authored spec):** `/flow-next:capture` tags each acceptance criterion with its provenance — `[user]` (verbatim), `[paraphrase]` (user-grounded), `[inferred]` (the agent filled a gap), `[strategy:<track>]`. capture invests real machinery in these *so plan can scrutinize them* — do not plan an `[inferred]` criterion as established fact. When the spec carries source tags:
-- `[user]` / `[paraphrase]` / `[strategy:*]` → user- or strategy-grounded; plan normally.
+**Source-tag consumption (Route A refine of a capture-authored spec):** `/flow-next:capture` marks each acceptance criterion's provenance — untagged (the user's verbatim words), `[paraphrase]` (user-grounded), `[inferred]` (the agent filled a gap), `[strategy:<track>]`; refine-authored criteria may carry `[user]`. capture invests real machinery in these *so plan can scrutinize them* — do not plan an `[inferred]` criterion as established fact. When the spec carries source tags:
+- Untagged / `[user]` / `[paraphrase]` / `[strategy:*]` → user- or strategy-grounded; plan normally.
 - `[inferred]` → **unconfirmed**. Route it through the Step-1 scouts (does the codebase actually support/need it?). A scout-confirmed inference becomes a normal criterion (drop the tag); an **unconfirmed** one moves to `## Open Questions` (or renders as a `⚠️ unconfirmed inference` coverage-table row) rather than being silently planned as a requirement. This closes capture→plan: the provenance capture records is otherwise dropped at the one consumer built to read it.
 
 Then return to Step 5 and apply the plan-content rules (template sections, R-ID rule

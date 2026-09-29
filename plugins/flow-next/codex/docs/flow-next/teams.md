@@ -127,7 +127,7 @@ When an effort is too large and unclear for a single capture session, `/flow-nex
 
 **One attended decision per session.** Resolving more than one attended decision in a session reintroduces context collapse. Parallel unattended fan-out is allowed only as separate invocations - never a batch tick that aggregates mixed outcomes.
 
-**Capture is the handoff.** Chart never writes under `.flow/specs/` and never sets `ready`. Capture ingests the briefing as attributable evidence (chart id, B-ID, cluster, D-ID links, assets), applies criterion source tags only to newly authored acceptance criteria, and records `chart link-spec`. D-ID/evidence provenance stays structural and distinct from `[user]` / `[paraphrase]` / `[inferred]` author tags.
+**Capture is the handoff.** Chart never writes under `.flow/specs/` and never sets `ready`. Capture ingests the briefing as attributable evidence (chart id, B-ID, cluster, D-ID links, assets), applies criterion source tags only to newly authored acceptance criteria, and records `chart link-spec`. D-ID/evidence provenance stays structural and distinct from the `[paraphrase]` / `[inferred]` author tags.
 
 Example journeys (research-led, prototype-led reversal with supersession, multi-spec split, skip-chart) are **illustrative**, not a canonical checklist - chart has no fixed discovery phase order.
 
@@ -167,7 +167,7 @@ Both produce a spec at `.flow/specs/<id>.md`. Survives `rm -rf .flow/` only if `
 
 ### [2] Spec, business-layer complete: Handover #1
 
-`/flow-next:capture` source-tags every acceptance criterion as `[user]` (verbatim from the user), `[paraphrase]` (rephrased), or `[inferred]` (the agent inferred it). Capture writes the spec, then shows a compact summary (title, criteria count, source tally, recommended route) and offers the saved file in the editor, per the [read-back contract](read-back.md). The full body prints on request. The `[inferred]` count identifies assumptions the user can edit or reject. Saving alone does not mark the spec ready or authorize implementation.
+`/flow-next:capture` leaves the user's verbatim words untagged and tags only what it authored: `[paraphrase]` (rephrased) or `[inferred]` (the agent inferred it). Capture writes the spec, then shows a compact summary (title, criteria count, source tally, recommended route) and offers the saved file in the editor, per the [read-back contract](read-back.md). The full body prints on request. The `[inferred]` count identifies assumptions the user can edit or reject. Saving alone does not mark the spec ready or authorize implementation.
 
 For specs that emerge from a longer back-and-forth, run `/flow-next:refine <spec-id> --biz` instead. The business lens focuses the interview on the product decisions that would change what gets built and that the spec leaves unclear - who it is for, what done looks like, what is explicitly out, a constraint the domain implies. Asking nothing is a valid outcome. The codebase is read-only context, not the subject of questions.
 

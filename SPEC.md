@@ -2,7 +2,7 @@
 # Repo-root override (tier 1 of the template cascade) for the flow-next repo itself.
 # A copy of plugins/flow-next/templates/spec.md with ONE change: `Conversation Evidence`
 # is removed from auxiliary_sections, so specs captured here omit the evidence block
-# (capture still collects the quotes and checks every [user] tag against them).
+# (capture still collects the quotes and checks every untagged criterion against them).
 # Re-copy when the bundled template changes; tests/test_repo_spec_scaffold.py guards drift.
 # REPO RULE - AGENT FIRST (STRATEGY.md "Agent first", .flow/criteria.md G4): specify what the
 # agent decides and what it records afterwards, never a form it must fill before acting. No required
