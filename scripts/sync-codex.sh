@@ -573,8 +573,7 @@ conductor's checkout does not exist inside it — and a freshly planned spec is
 uncommitted by default. A worker dispatched into such a workspace cannot
 re-anchor at all: `$FLOWCTL show <task-id>` finds no task there, and the failure
 looks like a broken worker rather than a missing commit. Commit `.flow/` first
-(`git add -- .flow/`), then create the workspaces from that commit. Verified 2026-08-14
-on the first live wave dispatch. Single-worker runs are unaffected — they share
+(`git add -- .flow/`), then create the workspaces from that commit. Single-worker runs are unaffected — they share
 the conductor's checkout.
 
 The worker gets fresh context and handles:
@@ -642,7 +641,7 @@ host-deferred shape is independent of `REVIEW_MODE`; the conductor preserves
 the resolved backend and applies it after integration. The prompt fields are an
 internal handoff, not a public CLI or stored schema.
 
-**Host review routes OUTSIDE the worker (fn-123 R5) — and gates BEFORE done.** On the wave route's single-worker path only, when the resolved review mode is \`host\`, pass \`REVIEW_MODE: host-deferred\`: the worker skips review dispatch AND defers \`flowctl done\` (returns with the task still in_progress + summary/evidence files written). The conductor then runs \`$flow-next-impl-review <task-id> --review=host\` as the mandatory gate and only on SHIP runs \`flowctl done\` with the worker-prepared summary/evidence plus the review receipt; terminal NEEDS_WORK escalates after impl-review's internal bounded fix loop; never re-invoke it. Read references/host-deferred-review.md for the task-base and memory auto-capture gates.
+**Host review routes OUTSIDE the worker — and gates BEFORE done.** On the wave route's single-worker path only, when the resolved review mode is \`host\`, pass \`REVIEW_MODE: host-deferred\`: the worker skips review dispatch AND defers \`flowctl done\` (returns with the task still in_progress + summary/evidence files written). The conductor then runs \`$flow-next-impl-review <task-id> --review=host\` as the mandatory gate and only on SHIP runs \`flowctl done\` with the worker-prepared summary/evidence plus the review receipt; terminal NEEDS_WORK escalates after impl-review's internal bounded fix loop; never re-invoke it. Read references/host-deferred-review.md for the task-base and memory auto-capture gates.
 
 **Worker returns** (both paths): task id, terminal status, commit range, `actual_model` when evidenced, and the
 summary/evidence paths (plus the review receipt path when the single-worker path
