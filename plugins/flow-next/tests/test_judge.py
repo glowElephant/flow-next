@@ -129,7 +129,7 @@ class JudgeTests(unittest.TestCase):
                          lambda p: p["answers"]["kind"]["probabilities"].pop("tiny"),
                          lambda p: p["answers"]["kind"].update(confidence=float("nan")),
                          lambda p: p["answers"]["kind"].update(choice="imaginary"),
-                         lambda p: p["answers"]["reports_defect"].update(noul=True),
+                         lambda p: p["answers"]["defect_has_repro"].update(noul=True),
                          lambda p: p.update(model=None)):
             payload = payload_for("route")
             mutation(payload)
@@ -168,10 +168,13 @@ class JudgeTests(unittest.TestCase):
             self.assertEqual(decision["value"], expected)
             self.assertEqual(decision.get("reason"), reason)
 
-    def test_fork_gate_none_and_host_residue(self):
-        for gate, choice, confidence, expected in [(.49, "observable", 1, "none"), (.5, "observable", .5, "observable"), (.9, "product_or_preference", .8, "product_or_preference"), (.9, "observable", .49, "host"), (.9, "none_of_the_above", 1, "host")]:
-            decision = f.judge_decide("fork-gate", {}, {"fork_present": {"noul": gate}, "fork_kind": {"choice": choice, "confidence": confidence}})
+    def test_fork_gate_is_a_kind_hint_and_never_cancels_a_fork(self):
+        self.assertEqual(list(f.judge_questions("fork-gate", state_for("fork-gate"))), ["fork_kind"])
+        for choice, confidence, expected in [("observable", .5, "observable"), ("product_or_preference", .8, "product_or_preference"),
+                                             ("observable", .49, "host"), ("none_of_the_above", 1, "host")]:
+            decision = f.judge_decide("fork-gate", {}, {"fork_kind": {"choice": choice, "confidence": confidence}})
             self.assertEqual(decision["value"], expected)
+            self.assertNotEqual(decision["value"], "none")
 
     def test_tier_only_extremes_act(self):
         for tier, confidence, expected in [("mechanical", .8, "mechanical"), ("long_running", .8, "long_running"), ("mechanical", .79, "session"), ("moderate", 1, "session"), ("intelligent", 1, "session")]:
@@ -179,13 +182,14 @@ class JudgeTests(unittest.TestCase):
             answers["tier"].update(choice=tier, confidence=confidence)
             self.assertEqual(f.judge_decide("tier", {}, answers)["value"], expected)
 
-    def test_memory_stable_order_floor_cap_and_empty(self):
+    def test_memory_reorders_every_entry_stably_and_empty(self):
         state = state_for("memory-rerank")
         answers = payload_for("memory-rerank")["answers"]
-        answers["entry_0"]["score"] = .99
+        answers["entry_0"]["score"] = .1
         answers["entry_5"]["score"] = 2
         ranked = f.judge_decide("memory-rerank", state, answers)["value"]
-        self.assertEqual([p[0] for p in ranked], ["5", "1", "2", "3", "4", "6", "7", "8", "9", "10"])
+        # Reorder only: a low score moves an entry down, never out of the host's list.
+        self.assertEqual([p[0] for p in ranked], ["5"] + [str(i) for i in range(1, 15) if i != 5] + ["0"])
         result = f.judge_evaluate("memory-rerank", {"query": "auth", "entries": []})
         self.assertEqual(result["decision"]["value"], [])
         self.connection.request.assert_not_called()
@@ -198,6 +202,41 @@ class JudgeTests(unittest.TestCase):
         for kind, indices_for_kind in indices.items():
             self.assertEqual(actual[kind], "; ".join(rows[i][0] + ". " + rows[i][2] for i in indices_for_kind))
         self.assertEqual(set(actual), set(indices) | {"none_of_the_above"})
+
+    def test_live_route_asks_only_what_its_lifecycle_reads(self):
+        live = {"view": "live", "view_meaning": "An existing spec", "spec_title": "Feature", "spec_body": "Build it",
+                "status": "open", "ready": True, "no_plan": False, "tasks_total": 0, "tasks_done": 0,
+                "pr_exists": False, "pr_ref": None, "startable_target_fact": "npm run dev"}
+        cases = [({"pr_exists": True}, "existing_pr_tail", set()),
+                 ({"tasks_total": 2}, "work_planned", set()),
+                 ({"ready": False}, "host", set()),
+                 ({"tasks_total": 2, "tasks_done": 2}, "all_done_make_pr", {"ui_observable_criteria"}),
+                 ({}, "work_no_plan_default", {"names_unfamiliar_library_or_api"})]
+        for overrides, value, asked in cases:
+            with self.subTest(value=value):
+                state = {**live, **overrides}
+                self.connection.reset_mock()
+                result = self.request("route", state)
+                self.assertTrue(result["available"])
+                self.assertEqual(result["decision"]["value"], value)
+                self.assertNotIn("fork", result["decision"])
+                if asked:
+                    sent = json.loads(self.connection.request.call_args.kwargs["body"])
+                    self.assertEqual(set(sent["questions"]), asked)
+                    self.assertNotIn("repo", sent["state"])
+                else:
+                    self.connection.request.assert_not_called()
+        with patch.dict(os.environ, {"TYPESAFE_API_KEY": ""}):
+            result = f.judge_evaluate("route", {**live, "tasks_total": 2})
+        self.assertEqual((result["available"], result["reason"]), (False, "no_key"))
+        self.assertEqual(result["decision"]["value"], "work_planned")
+
+    def test_intake_route_signal_nouls_only_under_explain(self):
+        plain = set(f.judge_questions("route", state_for("route")))
+        self.assertEqual(plain, {"kind", "defect_has_repro"})
+        explained = set(f.judge_questions("route", state_for("route"), explain=True))
+        self.assertEqual(explained - plain, set(f.JUDGE_ROUTE_SIGNAL_IDS) | {"names_unfamiliar_library_or_api"})
+        self.assertNotIn("ui_observable_criteria", explained)
 
     def test_route_qa_off_sends_no_qa_question(self):
         with patch.object(f, "get_config", side_effect=lambda key, default=None: "off" if key == "pipeline.qa" else True):
@@ -231,9 +270,15 @@ class JudgeTests(unittest.TestCase):
                 payload["answers"][f"entry_{i}"]["score"] = score
             self.connection.getresponse.return_value = Mock(status=200, read=lambda: json.dumps(payload).encode())
             ranked = run()
-            self.assertEqual([m["entry_id"] for m in ranked["matches"]], ["2", "1"])
-            self.assertEqual([m["jev_rank"] for m in ranked["matches"]], [1, 2])
-            self.assertEqual(ranked["stage_line"], "memory: reranked (jev, 3 -> 2)")
+            self.assertEqual([m["entry_id"] for m in ranked["matches"]], ["2", "1", "0"])
+            self.assertEqual([m["jev_rank"] for m in ranked["matches"]], [1, 2, 3])
+            self.assertEqual(ranked["stage_line"], "memory: reranked (jev, 3 entries)")
+            sent = json.loads(self.connection.request.call_args.kwargs["body"])["state"]["entries"]
+            self.assertTrue(all("path" not in e and "score" not in e for e in sent))
+            self.assertTrue(all("path" in m and "score" in m for m in ranked["matches"]))
+            args.limit = 2
+            self.assertEqual([m["entry_id"] for m in run()["matches"]], ["2", "1"])
+            args.limit = None
             args.json = False
             self.assertIn("| Track | Category | Entry | Why relevant |", run())
             with patch.object(f, "_memory_iter_entries", return_value=[]):

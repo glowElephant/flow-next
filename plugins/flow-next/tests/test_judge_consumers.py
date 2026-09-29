@@ -2,10 +2,15 @@
 import argparse
 import importlib.util
 import json
+import os
 from pathlib import Path
 import re
+import shutil
+import subprocess
 import sys
+import tempfile
 import unittest
+from unittest.mock import patch
 
 PLUGIN = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PLUGIN / "scripts"))
@@ -13,6 +18,12 @@ spec = importlib.util.spec_from_file_location("flowctl_judge_consumers_test", PL
 f = importlib.util.module_from_spec(spec)
 sys.modules[spec.name] = f
 spec.loader.exec_module(f)
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # sibling test helpers
+from flowctl_test_support import FLOWCTL_CMD  # noqa: E402
+
+FLOWCTL = PLUGIN / "scripts" / "flowctl"
+WORKFLOW = "skills/flow-next-flow/workflow.md"
+SHELL = os.name != "nt" and shutil.which("bash") and shutil.which("jq")
 
 
 def fence(path, marker):
@@ -30,22 +41,85 @@ def execute(path, marker, **inputs):
     return inputs
 
 
+def live_state(**overrides):
+    state = {"view": "live", "view_meaning": "An existing spec", "spec_title": "Feature", "spec_body": "Build it",
+             "status": "open", "ready": True, "no_plan": False, "tasks_total": 0, "tasks_done": 0,
+             "pr_exists": False, "pr_ref": None, "startable_target_fact": "npm run dev"}
+    state.update(overrides)
+    return state
+
+
+def keep(judge_output):
+    """Project a judge result through workflow.md's shipped KEEP filter."""
+    program = re.search(r"KEEP='(.*?)'", fence(WORKFLOW, "KEEP="), re.S).group(1)
+    out = subprocess.run(["jq", "-c", program], input=json.dumps(judge_output), capture_output=True,
+                         text=True, check=True)
+    return json.loads(out.stdout)
+
+
 class JudgeConsumerTests(unittest.TestCase):
-    def test_route_applies_decision_and_projects_only_candidates_on_fallback(self):
-        path = "skills/flow-next-flow/workflow.md"
-        for value, met, expected in [("defect", True, "defect"), ("host", False, "host")]:
-            answer = {"available": True, "answers": {"kind": {"confidence": 0.91}, "reports_defect": {"noul": 0.99}},
-                      "decision": {"value": value, "met": met, "candidates": [["defect", 0.52], ["build", 0.31], ["tiny", 0.1]]}}
-            out = execute(path, "fence:judge-route-consumer", result=answer)
-            self.assertEqual(out["route_value"], expected)
-            self.assertNotIn("answers", out["host_route"])
-            self.assertNotIn("reports_defect", json.dumps(out["host_route"]))
-            if not met:
-                self.assertEqual(out["host_route"]["candidates"], answer["decision"]["candidates"])
-                self.assertIn("jev below floor", out["host_route"]["line"])
-        out = execute(path, "fence:judge-route-consumer", result={"available": False, "reason": "timeout"})
-        self.assertEqual(out["route_value"], "host")
-        self.assertEqual(out["host_route"]["line"], "Route: host (jev-unavailable(timeout))")
+    @unittest.skipUnless(SHELL, "POSIX shell and jq")
+    def test_judge_check_runs_once_and_never_prints_the_key(self):
+        check = fence(WORKFLOW, "JUDGE=on")
+        with tempfile.TemporaryDirectory() as tmp:
+            subprocess.run([*FLOWCTL_CMD, "init", "--json"], cwd=tmp, check=True, capture_output=True)
+            for key, enabled, expected in (("secret-never-printed", "true", "on"), ("", "true", "off"),
+                                           (None, "true", "off"), ("secret-never-printed", "false", "off")):
+                with self.subTest(key=bool(key), enabled=enabled):
+                    subprocess.run([*FLOWCTL_CMD, "config", "set", "judge.enabled", enabled, "--json"],
+                                   cwd=tmp, check=True, capture_output=True)
+                    env = {k: v for k, v in os.environ.items() if k != "TYPESAFE_API_KEY"}
+                    if key is not None:
+                        env["TYPESAFE_API_KEY"] = key
+                    env["FLOWCTL"] = str(FLOWCTL)
+                    run = subprocess.run(["bash", "-c", check + '\necho "state=$JUDGE"'], cwd=tmp, env=env,
+                                         capture_output=True, text=True)
+                    self.assertIn(f"state={expected}", run.stdout)
+                    self.assertEqual(run.stdout.count("judge: off"), int(expected == "off"))
+                    self.assertNotIn("secret-never-printed", run.stdout + run.stderr)
+
+    @unittest.skipUnless(SHELL, "jq")
+    def test_route_keep_projects_decisions_and_drops_raw_answers(self):
+        intake = {"view": "intent", "view_meaning": "An intent at intake", "intent": "Fix the crash",
+                  "status": None, "ready": False, "no_plan": False, "tasks_total": 0, "tasks_done": 0,
+                  "pr_exists": False, "pr_ref": None, "startable_target_fact": None}
+        answers = {"kind": {"type": "choice", "choice": "defect", "confidence": 0.91,
+                            "probabilities": {"defect": 0.91, "build": 0.06, "tiny": 0.03}},
+                   "defect_has_repro": {"type": "noul", "noul": 0.2}}
+        out = keep({"success": True, "available": True, "answers": answers,
+                    "decision": f.judge_decide("route", intake, answers)})
+        self.assertEqual(set(out), {"available", "reason", "pr_probe_failed", "decision", "kind", "ui_observable_criteria"})
+        self.assertEqual(out["kind"], {"choice": "defect", "confidence": 0.91})
+        self.assertEqual((out["decision"]["value"], out["decision"]["met"], out["decision"]["defect_repro"]),
+                         ("defect", True, "needed"))
+        self.assertNotIn("defect_has_repro", json.dumps(out))
+        self.assertNotIn("fork", json.dumps(out))
+        # Below the floor only the candidates reach the host.
+        answers["kind"]["confidence"] = 0.52
+        out = keep({"available": True, "answers": answers, "decision": f.judge_decide("route", intake, answers)})
+        self.assertEqual((out["decision"]["value"], out["decision"]["met"]), ("host", False))
+        self.assertEqual(out["decision"]["candidates"][0], ["defect", 0.91])
+        # A keyed live all-done hop carries the QA half the gate reads.
+        done = live_state(tasks_total=2, tasks_done=2)
+        ui = {"ui_observable_criteria": {"type": "noul", "noul": 0.84}}
+        out = keep({"available": True, "answers": ui, "decision": f.judge_decide("route", done, ui)})
+        self.assertEqual(out["ui_observable_criteria"]["noul"], 0.84)
+        self.assertEqual((out["decision"]["value"], out["decision"]["qa"]["value"]), ("all_done_make_pr", "qa_runs"))
+
+    @unittest.skipUnless(SHELL, "jq")
+    def test_no_key_live_route_keeps_code_lifecycle(self):
+        with patch.dict(os.environ, {"TYPESAFE_API_KEY": ""}), patch.object(f, "get_config", return_value=True):
+            for overrides, value in (({"pr_exists": True}, "existing_pr_tail"), ({"tasks_total": 2}, "work_planned"),
+                                     ({"tasks_total": 2, "tasks_done": 2}, "all_done_make_pr"),
+                                     ({}, "work_no_plan_default"), ({"ready": False}, "host")):
+                with self.subTest(value=value):
+                    out = keep(f.judge_evaluate("route", live_state(**overrides)))
+                    self.assertEqual((out["available"], out["reason"]), (False, "no_key"))
+                    self.assertEqual(out["decision"]["value"], value)
+                    self.assertEqual(out["decision"]["met"], value != "host")
+            out = keep(f.judge_evaluate("route", live_state(pr_exists=None)))
+        self.assertTrue(out["pr_probe_failed"])
+        self.assertIsNone(out["decision"])
 
     def test_qa_enabled_and_unavailable_apply_stage(self):
         path = "skills/flow-next-flow/references/gate-selection.md"
@@ -63,69 +137,34 @@ class JudgeConsumerTests(unittest.TestCase):
             self.assertEqual(out["qa_runs"], prior)
             self.assertIn("jev-unavailable(timeout)", out["qa_line"])
 
-    def test_fork_enabled_and_unavailable_apply_action(self):
-        path = "skills/flow-next-flow/references/prototype-before-ask.md"
-        for gate, kind, confidence, action in [(0.08, "observable", 0.9, "none"),
-                                              (0.9, "observable", 0.77, "observable"),
-                                              (0.9, "product_or_preference", 0.71, "product_or_preference"),
-                                              (0.9, "observable", 0.49, "host"),
-                                              (0.9, "none_of_the_above", 0.99, "host")]:
-            answer = result("fork-gate", {"fork_present": {"noul": gate}, "fork_kind": {"choice": kind, "confidence": confidence}})
-            out = execute(path, "fence:judge-fork-consumer", result=answer)
-            self.assertEqual(out["fork_action"], action)
-            self.assertTrue(out["fork_line"].startswith("fork-gate: "))
-        out = execute(path, "fence:judge-fork-consumer", result={"available": False, "reason": "no_key"})
-        self.assertEqual(out["fork_action"], "host")
-        self.assertEqual(out["fork_line"], "fork-gate: host (jev-unavailable(no_key))")
-
-    def test_memory_applies_returned_order_and_spawn_fallback(self):
-        path = "skills/flow-next-plan/references/judge-memory.md"
-        matches = [{"entry_id": "b", "jev_score": 2, "jev_rank": 1},
-                   {"entry_id": "a", "jev_score": 1, "jev_rank": 2}]
-        out = execute(path, "fence:judge-memory-consumer", result={"matches": matches, "rerank": "jev", "stage_line": "memory: reranked (jev, 3 -> 2)"})
-        self.assertEqual([m["entry_id"] for m in out["memory_matches"]], ["b", "a"])
-        self.assertFalse(out["spawn_memory_scout"])
-        fallback = {"matches": list(reversed(matches)), "rerank": "bm25", "stage_line": "memory: bm25 (jev-unavailable(no_key))"}
-        out = execute(path, "fence:judge-memory-consumer", result=fallback)
-        self.assertTrue(out["spawn_memory_scout"])
-        self.assertEqual([m["entry_id"] for m in out["memory_matches"]], ["a", "b"])
-        self.assertIn("jev-unavailable(no_key)", out["memory_line"])
-        # An empty first search on an unavailable judge still gets the scout's refinement.
-        fallback["matches"] = []
-        out = execute(path, "fence:judge-memory-consumer", result=fallback)
-        self.assertTrue(out["spawn_memory_scout"])
-        self.assertEqual(out["memory_matches"], [])
-        empty = {"matches": [], "rerank": "jev", "stage_line": "memory: reranked (jev, 0 -> 0)"}
-        self.assertFalse(execute(path, "fence:judge-memory-consumer", result=empty)["spawn_memory_scout"])
-
-    def test_shared_route_gate_decisions_are_consumed(self):
-        answers = {"ui_observable_criteria": {"noul": 0.84}, "fork_present": {"noul": 0.8},
-                   "fork_kind": {"choice": "observable", "confidence": 0.77}}
-        route = {"available": True, "answers": answers, "decision": {
-            "value": "build", "qa": f.judge_decide("qa-gate", {"startable_target_fact": "dev"}, answers),
-            "fork": f.judge_decide("fork-gate", {}, answers)}}
+    def test_route_qa_decision_is_consumed_by_the_gate(self):
+        state = live_state(tasks_total=2, tasks_done=2, startable_target_fact="dev")
+        answers = {"ui_observable_criteria": {"type": "noul", "noul": 0.84}}
+        route = {"available": True, "answers": answers, "decision": f.judge_decide("route", state, answers)}
         qa = execute("skills/flow-next-flow/references/gate-selection.md", "fence:judge-qa-consumer", result=route, target="dev")
-        fork = execute("skills/flow-next-flow/references/prototype-before-ask.md", "fence:judge-fork-consumer", result=route)
         self.assertTrue(qa["qa_runs"])
-        self.assertEqual(fork["fork_action"], "observable")
+        self.assertIn("jev ui 0.84, target: dev", qa["qa_line"])
 
-    def test_unavailable_judge_keeps_code_lifecycle(self):
-        for value in ('existing_pr_tail', 'work_planned', 'all_done_make_pr'):
-            answer = {'available': False, 'reason': 'no_key',
-                      'decision': {'value': value, 'met': True, 'candidates': []}}
-            output = execute('skills/flow-next-flow/workflow.md', 'fence:judge-route-consumer', result=answer)
-            self.assertEqual(output['route_value'], value)
-            self.assertIn('(code)', output['host_route']['line'])
-        output = execute('skills/flow-next-flow/workflow.md', 'fence:judge-route-consumer',
-                         result={'available': False, 'reason': 'transport', 'pr_probe_failed': True})
-        self.assertTrue(output['host_route']['pr_probe_failed'])
-        # No key and an unmet code decision: name the reason, never an empty list.
-        output = execute('skills/flow-next-flow/workflow.md', 'fence:judge-route-consumer',
-                         result={'available': False, 'reason': 'no_key',
-                                 'decision': {'value': 'host', 'met': False, 'candidates': []}})
-        self.assertEqual(output['route_value'], 'host')
-        self.assertEqual(output['host_route']['line'], 'Route: host (jev-unavailable(no_key))')
-
+    def test_memory_fence_is_one_search_that_runs_without_a_key(self):
+        command = fence("skills/flow-next-plan/references/judge-memory.md", "memory search")
+        argv = command.strip().replace('"<task sentence>"', "").split()
+        self.assertEqual(argv[:3], ["$FLOWCTL", "memory", "search"])
+        with tempfile.TemporaryDirectory() as tmp:
+            for args in (["init"], ["config", "set", "memory.enabled", "true"], ["memory", "init"]):
+                subprocess.run([*FLOWCTL_CMD, *args, "--json"], cwd=tmp, check=True, capture_output=True)
+            body = Path(tmp) / "body.md"
+            for i in range(17):
+                body.write_text(f"Saving a unicode file name crashes the settings page, case {i}.\n")
+                subprocess.run([*FLOWCTL_CMD, "memory", "add", "--track", "bug", "--category", "runtime-errors",
+                                "--title", f"Unicode save crash {i}", "--body-file", str(body),
+                                "--no-overlap-check", "--json"], cwd=tmp, check=True, capture_output=True)
+            env = {k: v for k, v in os.environ.items() if k != "TYPESAFE_API_KEY"}
+            run = subprocess.run([*FLOWCTL_CMD, "memory", "search", "unicode save crash", *argv[3:]], cwd=tmp,
+                                 env=env, check=True, capture_output=True, text=True)
+        out = json.loads(run.stdout)
+        self.assertEqual((out["rerank"], out["stage_line"]), ("bm25", "memory: bm25 (jev-unavailable(no_key))"))
+        self.assertEqual(out["count"], 15)
+        self.assertTrue(all(m["title"] and "snippet" in m for m in out["matches"]))
 
     def tier(self, choice="mechanical", confidence=0.88, **overrides):
         args = dict(result=result("tier", {"tier": {"choice": choice, "confidence": confidence, "probabilities": {choice: confidence}}}),
