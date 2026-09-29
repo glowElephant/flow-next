@@ -53,7 +53,9 @@ take a value (as `--flag value` or `--flag=value`). `mode:autonomous` turns on a
 ```bash
 SPEC_ID=""; PREV=""
 # No positional parameters: the host rewrites them inside skill code blocks.
-for ARG in $ARGUMENTS; do
+# Quote the pasted arguments once so a URL's `&` or `;` stays data.
+RAW_ARGS="$ARGUMENTS"
+for ARG in $RAW_ARGS; do
   case "$PREV" in
     --target)  QA_TARGET_URL="$ARG"; PREV=""; continue ;;
     --receipt) QA_RECEIPT_OVERRIDE="$ARG"; PREV=""; continue ;;

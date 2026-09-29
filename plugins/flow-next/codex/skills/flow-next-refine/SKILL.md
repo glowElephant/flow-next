@@ -49,18 +49,18 @@ Empty: ask "What should I refine? Give me a Flow ID (e.g. fn-1-add-oauth) or a f
 
 ```bash
 REFINE_PREFLIGHT="${TMPDIR:-/tmp}/flow-refine-preflight-<suffix>.json"   # literal path; reused after the write-back
+# One preflight bundle per interview. A failed, missing or empty probe counts as signal (fail open).
 "$FLOWCTL" preflight --json > "$REFINE_PREFLIGHT" 2>/dev/null || printf '{}' > "$REFINE_PREFLIGHT"
-DOC_AWARE_FORCE=""; STRATEGY_AWARE_FORCE=""   # "on" / "off" when doc-aware.md § Flag parsing set them
-# A failed or missing probe counts as signal (fail open).
-GATES="$(jq -r '
+# DOC_AWARE_FORCE / STRATEGY_AWARE_FORCE keep the "on" / "off" that doc-aware.md § Flag parsing set; unset = autodetect.
+GATES="$(jq -er '
   def v(p): if p.status == "ok" then p.value else null end;
   [ (if v(.probes.glossary) == null or v(.probes.decisions) == null
         or (v(.probes.glossary).total_terms // 0) > 0 or (v(.probes.decisions).entry_count // 0) > 0 then 1 else 0 end),
     (if v(.probes.strategy) == null or (v(.probes.strategy).sections_filled // 0) >= 1 then 1 else 0 end)
   ] | join(" ")' "$REFINE_PREFLIGHT" 2>/dev/null)" || GATES="1 1"
 DOC_AWARE="${GATES% *}"; STRATEGY_AWARE="${GATES#* }"
-case "$DOC_AWARE_FORCE" in on) DOC_AWARE=1 ;; off) DOC_AWARE=0 ;; esac
-case "$STRATEGY_AWARE_FORCE" in on) STRATEGY_AWARE=1 ;; off) STRATEGY_AWARE=0 ;; esac
+case "${DOC_AWARE_FORCE:-}" in on) DOC_AWARE=1 ;; off) DOC_AWARE=0 ;; esac
+case "${STRATEGY_AWARE_FORCE:-}" in on) STRATEGY_AWARE=1 ;; off) STRATEGY_AWARE=0 ;; esac
 if [ "$DOC_AWARE$STRATEGY_AWARE" != "00" ]; then
   echo "DOC-AWARE GATE ACTIVE (DOC_AWARE=$DOC_AWARE STRATEGY_AWARE=$STRATEGY_AWARE) — STOP. Read references/doc-aware.md before drafting the first question."
 fi
@@ -116,7 +116,7 @@ Treat the open decisions as a tree: each decision opens the ones that hang off i
 5. Go at most 4 rounds down any one branch.
 6. If part of a round was never asked (tool error, interruption), ask it before moving on.
 
-Standalone checkpoints (the skipped-items checkpoint, the mark-ready offer, doc-aware prompts that have their own per-round budget in doc-aware.md) sit outside rounds and are never labelled "Round N". A doc-aware prompt deferred by that budget is pending for a later round, not dropped.
+Standalone checkpoints (the code-mismatch question, the skipped-items checkpoint, the mark-ready offer, doc-aware prompts that have their own per-round budget in doc-aware.md) sit outside rounds, are never labelled "Round N" and never count against round depth. A doc-aware prompt deferred by that budget is pending for a later round, not dropped.
 
 The interview is done when every decision the tree opened is answered, delegated, parked under `## Open Questions`, or pruned with its branch named.
 
@@ -179,15 +179,15 @@ For a spec or task input (not a file path), probe the two optional offers:
 ```bash
 REFINE_PREFLIGHT="${TMPDIR:-/tmp}/flow-refine-preflight-<suffix>.json"   # the same literal path as Setup
 # Tracker sync: bridge active and tracker.perEvent.interview set to anything but off. Fails open.
-TRACKER="$(jq -r '
+TRACKER="$(jq -er '
   def v(p): if p.status == "ok" then p.value else null end;
-  if v(.probes.config) == null or v(.probes.tracker) == null
+  if .probes.config.status != "ok" or v(.probes.tracker) == null
      or (v(.probes.tracker).active == true and ((.value.tracker.perEvent.interview // "off") != "off"))
   then "open" else "closed" end' "$REFINE_PREFLIGHT" 2>/dev/null)" || TRACKER=open
 [ "$TRACKER" = open ] && echo "TRACKER-SYNC GATE ACTIVE — STOP. Read references/post-write-back.md#tracker-sync before continuing."
 # Mark-ready: readiness adopted (a spec is already ready) and tracker.readyState unset. Fails open.
-READY_ADOPTED="$("$FLOWCTL" specs --json 2>/dev/null | jq '[.specs[] | select(.ready == true)] | length' 2>/dev/null)"
-READY_STATE="$(jq -r 'if .probes.config.status == "ok" then (.value.tracker.readyState // "") else error("config probe") end' "$REFINE_PREFLIGHT" 2>/dev/null)" || READY_STATE="?"
+SPECS_RAW="$("$FLOWCTL" specs --json 2>/dev/null)" && READY_ADOPTED="$(printf '%s' "$SPECS_RAW" | jq '[.specs[] | select(.ready == true)] | length' 2>/dev/null)" || READY_ADOPTED=""
+READY_STATE="$(jq -er 'if .probes.config.status == "ok" then (.value.tracker.readyState // "") else error("config probe") end' "$REFINE_PREFLIGHT" 2>/dev/null)" || READY_STATE="?"
 if [ -z "$READY_ADOPTED" ] || [ "$READY_STATE" = "?" ] || { [ "$READY_ADOPTED" -ge 1 ] && [ -z "$READY_STATE" ]; }; then
   echo "MARK-READY GATE ACTIVE — STOP. Read references/post-write-back.md#mark-ready-offer before continuing."
 fi

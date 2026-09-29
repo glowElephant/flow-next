@@ -57,7 +57,9 @@ A ready or captured spec is plan input. An unshaped, oversized idea with several
 
 **Research.** Always `repo-scout`; `--research=grep` is a no-op and any other value is ignored.
 
-**Review.** `--review=codex` ("review with codex", "use codex"), `--review=rp` ("rp chat", "repoprompt review"), `--review=host` ("host review": the host-native fresh-context reviewer), `--review=export` ("export review", "external llm"), `--review=none` or `--no-review` ("skip review").
+**Review.** `--review=codex` ("review with codex", "codex review", "use codex"), `--review=rp` ("rp chat", "repoprompt review"), `--review=host` ("host review", "use host": the host-native fresh-context reviewer), `--review=export` ("export review", "external llm"), `--review=none` or `--no-review` ("no review", "skip review").
+
+An option found in the arguments, as a flag or in these words, skips its setup question.
 
 Initialize and capture one preflight snapshot before routing or scouting (also under autonomy). Every later config read uses this literal path:
 

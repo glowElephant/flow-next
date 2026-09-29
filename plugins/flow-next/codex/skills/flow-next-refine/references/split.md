@@ -14,4 +14,4 @@ On `split-as-proposed`:
 - Remove the moved criteria from the source spec's write-back.
 - Record the edges with `$FLOWCTL spec add-dep <spec-id> <depends-on-id> --json`.
 
-Criteria a review has already judged are never moved or renumbered: keep them in place and record the proposal in `## Decision Context` instead. An unattended run never splits; it records the proposal in `## Decision Context` as `### Split proposal (unactioned)`.
+Criteria a review has already judged are never moved or renumbered: keep them in place and record the proposal in `## Decision Context` instead. An unattended or receipt-driven run never splits; it records the proposal in `## Decision Context` as `### Split proposal (unactioned)`.

@@ -76,7 +76,8 @@ done
 if [[ -z "$DEFAULT_BRANCH" ]]; then   # a default branch not named main/master
   git -C "$REPO_ROOT" symbolic-ref --quiet refs/remotes/origin/HEAD >/dev/null 2>&1 \
     || git -C "$REPO_ROOT" remote set-head origin -a >/dev/null 2>&1 || true
-  DEFAULT_BRANCH="$(git -C "$REPO_ROOT" symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null || true)"
+  ORIGIN_HEAD="$(git -C "$REPO_ROOT" symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null || true)"
+  if git -C "$REPO_ROOT" rev-parse --verify --quiet "$ORIGIN_HEAD" >/dev/null 2>&1; then DEFAULT_BRANCH="$ORIGIN_HEAD"; fi
 fi
 ```
 
@@ -227,7 +228,8 @@ driver command detail into QA notes or findings.
 
 For each scenario, save a screenshot and the console output at the moment that matters under
 `.flow/tmp/qa-<spec-id>/`, and record `{driver_rung, target_url, viewport, screenshot_path,
-console_path}`. For a write path, confirm the persisted result (server or DB row, API response),
+console_path}`. Evidence is referenced by path, never inlined wholesale into the receipt or a
+memory body. For a write path, confirm the persisted result (server or DB row, API response),
 not the optimistic UI.
 
 No reachable target, or no driver beyond flow-next-drive's manual last rung: set
@@ -333,13 +335,15 @@ Write the JSON payload with the Write tool to `$QA_RECEIPT_INPUT` (shape:
 `$FLOWCTL qa receipt --skeleton`): `id`, `qa_outcome`, every Phase 5 finding under `findings`,
 `rid_coverage.rids` (`[{id, coverage}]`, coverage one of `live`, `subtracted`,
 `no_live_scenario`, `backend_cli`), and `blocked_reason` or `na_reason` for those outcomes only.
+Set `mode` to `rp` when the caller passed `--receipt` or set `REVIEW_RECEIPT_PATH`, otherwise
+`interactive`; left out, it becomes `rp`, because the call below always passes `--receipt`.
 
 ```bash
 RECEIPT_PATH="${QA_RECEIPT_OVERRIDE:-${REVIEW_RECEIPT_PATH:-$REPO_ROOT/.flow/review-receipts/qa-$SPEC_ID.json}}"
 $FLOWCTL qa receipt --from-json "$QA_RECEIPT_INPUT" --receipt "$RECEIPT_PATH" --json
 ```
 
-The verb adds `type: qa_verdict`, `mode`, the projected `verdict` (SHIP and NA become `SHIP`;
+The verb adds `type: qa_verdict`, the projected `verdict` (SHIP and NA become `SHIP`;
 NEEDS_WORK and BLOCKED become `NEEDS_WORK`), `head_sha`, `branch`, coverage counts, `open_p0p1`,
 the timestamp and prior-finding status. On a validation error it lists every problem and leaves
 the old receipt in place: fix the payload and rerun; never drop findings. A later pass overwrites

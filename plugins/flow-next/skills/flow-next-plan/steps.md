@@ -12,8 +12,8 @@ Every task fits one `/flow-next:work` iteration. Size by what you can observe, n
 | M | 3-5 | 3-5 | adapts an existing one | the target |
 | L | 5+ | 5+ | new subsystem or architecture | split into M tasks |
 
-- Combine sequential S tasks that touch related code. Seven or more tasks is a signal to combine, and finalization (docs, changelog, release notes, CI wiring) is one task, never one per artifact.
-- Each task ends in a state its acceptance can check. Put the task that proves the approach first in dependency order (the early proof point, Step 5), so later tasks build on checked ground.
+- Combine sequential S tasks that touch related code. Seven or more tasks is a ceiling, not a floor: combine trivial sequential S tasks even below it. Finalization (docs, changelog, release notes, CI wiring) is one task, never one per artifact.
+- Each task ends in a state its acceptance can check. The task that proves the approach (the early proof point, Step 5) usually comes first in dependency order, so later tasks build on checked ground.
 - Keep cohesive work intact. Among equally good splits, prefer disjoint file ownership, and add a dependency only for real ordering. Disjoint files are evidence of independence, not proof: generated outputs, lockfiles, migrations, fixtures and shared services still couple tasks, and that coupling is a dependency. Never split cohesive work to manufacture parallelism.
 
 ## Step 0: Initialize
@@ -34,7 +34,10 @@ echo "$SHOW_JSON"
 # use readiness (any spec marked ready, or tracker.readyState configured).
 SPEC_READY=$(jq -r '.ready // false' <<< "$SHOW_JSON")
 READINESS_WARN=false
-if [[ "$SPEC_READY" != "true" ]]; then
+# The owner-reconciliation stop (Planning choice, below) comes before any readiness prompt.
+OWNER_STOP=$(jq -r 'if .no_plan == true and ((.tasks // []) | length) == 1 and .tasks[0].implicit_owner == true then 1 else 0 end' <<< "$SHOW_JSON" 2>/dev/null)
+[[ "$OWNER_STOP" == "1" ]] && echo "OWNER RECONCILIATION — STOP. Apply Planning choice below; skip the readiness check."
+if [[ "$SPEC_READY" != "true" && "$OWNER_STOP" != "1" ]]; then
   READY_STATE=$(jq -r '.value.tracker.readyState // empty' "${TMPDIR:-/tmp}/flow-plan-config-<suffix>.json" 2>/dev/null)
   READY_ADOPTED=$($FLOWCTL specs --json 2>/dev/null | jq '[.specs[] | select(.ready == true)] | length' 2>/dev/null || echo 0)
   if [[ -n "$READY_STATE" || "$READY_ADOPTED" -ge 1 ]]; then
@@ -109,8 +112,10 @@ Dispatch `flow-next:flow-gap-analyst` with the request and the research findings
 Depth decides which template sections Step 5 fills; a section with nothing to say stays absent.
 
 - **SHORT:** Goal & Context, Acceptance Criteria, Boundaries, plus any other section only where there is content for it.
-- **STANDARD:** SHORT plus Architecture & Data Models (a mermaid diagram of 5-10 nodes when the data model or data flow changes), Edge Cases & Constraints, Decision Context, and API Contracts when an interface changes.
-- **DEEP:** every template section, adding phases, alternatives considered, non-functional targets, rollout and rollback, and risks with mitigations in the sections that own them.
+- **STANDARD:** SHORT plus Architecture & Data Models, Edge Cases & Constraints, Decision Context, and API Contracts when an interface changes.
+- **DEEP:** every template section, adding phases, alternatives considered, non-functional targets, an architecture/data-flow diagram, rollout and rollback, docs and metrics, and risks with mitigations in the sections that own them.
+
+At every depth, new tables or schema changes, new services or significant architecture changes, and complex data flow between components get a mermaid diagram of 5-10 nodes in Architecture & Data Models.
 
 ## Step 5: Write to .flow
 
@@ -231,7 +236,7 @@ Per object: `title` is required; `description` and `acceptance` are markdown (or
 
 - **Touches** goes on every task, as a body line beside `**Files:**` (the batch call renders frontmatter from `satisfies` only): the repo-relative paths or globs the task will modify. When unsure, declare wider rather than omit it: work runs tasks concurrently only when their declared Touches are disjoint, a missing line always runs serially, and a too-wide one costs at most a serial run. Omit it only when a task truly cannot name a path it will modify.
 - **satisfies** lists the R-IDs a task obviously advances. Infrastructure, refactoring, plumbing or docs-only tasks may have none.
-- **Investigation targets:** at most 5-7, exact paths from repo-scout with optional line ranges, split into Required and Optional.
+- **Investigation targets:** at most 5-7, exact paths from repo-scout with optional line ranges, checked to exist at plan time, split into Required and Optional.
 - **Design context:** when DESIGN.md exists and a task changes UI (components, pages, styles, layout, theme), add `## Design context` with the DESIGN.md tokens, components and do's and don'ts it needs, and a pointer to `DESIGN.md`. Skip backend-only tasks; when in doubt, include it.
 - **Refactors:** a task that restructures without changing behavior names its equivalence harness in the body: a script diffing old and new outputs, or a recorded baseline replayed against the new code. "Existing tests pass" is not a pin when those tests never covered the moved behavior.
 
@@ -243,7 +248,7 @@ After writing, do not re-fetch the spec with `show` or `cat`; you authored this 
 $FLOWCTL validate --spec <spec-id> --coverage --json
 ```
 
-Fix validation errors. Replace the spec's `## Requirement coverage` table with the returned `requirement_coverage` markdown (derived from the tasks' `satisfies`); keep any gap justification you wrote for an uncovered row, since the renderer labels it `Uncovered` until you supply one.
+Fix validation errors. Every requirement maps to at least one task or carries a gap justification. Replace the spec's `## Requirement coverage` table with the returned `requirement_coverage` markdown (derived from the tasks' `satisfies`); keep any gap justification you wrote for an uncovered row, since the renderer labels it `Uncovered` until you supply one.
 
 Derive execution waves from the task DAG: wave 1 holds tasks without dependencies, and each later wave holds tasks whose dependencies are all in earlier waves. Tasks in one wave are parallel candidates, not a promise; `/flow-next:work` still judges shared resources and capacity. If review or Step 8 changes tasks or dependencies, re-run this step.
 
