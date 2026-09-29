@@ -53,6 +53,12 @@ FLOWCTL_PY = PLUGIN / "scripts" / "flowctl.py"
 
 CANONICAL_WORKER = PLUGIN / "agents" / "worker.md"
 MIRROR_WORKER = PLUGIN / "codex" / "agents" / "worker.toml"
+# The handover-route evidence template moved verbatim into the worker's gated
+# handover reference (read only on the parallel-wave / host-deferred routes).
+CANONICAL_HANDOVER = PLUGIN / "skills" / "flow-next-work" / "references" / "worker-handover.md"
+MIRROR_HANDOVER = (
+    PLUGIN / "codex" / "skills" / "flow-next-work" / "references" / "worker-handover.md"
+)
 CANONICAL_PHASES = PLUGIN / "skills" / "flow-next-work" / "phases.md"
 MIRROR_PHASES = PLUGIN / "codex" / "skills" / "flow-next-work" / "phases.md"
 # The branch-disclosure refactor moved the 3e downstream-extraction /
@@ -108,30 +114,31 @@ class WorkerAnchorCallProse(unittest.TestCase):
         # re-read where used, else Phase-5 evidence records a blank base.
         self.assertIn("> .flow/tmp/base_commit", text, path)
 
-    def _assert_evidence_contract(self, path: pathlib.Path) -> None:
-        text = _read(path)
-        # Full commit list, oldest first, from the Phase-1 base commit.
-        self.assertIn('git rev-list --reverse "$BASE_COMMIT"..HEAD', text, path)
-        # Each evidence block re-reads BASE_COMMIT from the persisted file
+    def _assert_evidence_contract(self, path: pathlib.Path, handover: pathlib.Path) -> None:
+        # Each later block re-reads BASE_COMMIT from the persisted file
         # (self-contained — no cross-tool-call variable dependency).
-        self.assertEqual(
-            text.count("BASE_COMMIT=$(cat .flow/tmp/base_commit)") >= 2, True, path
+        self.assertGreaterEqual(
+            _read(path).count("BASE_COMMIT=$(cat .flow/tmp/base_commit)"), 2, path
         )
+        text = _read(handover)
+        self.assertIn("BASE_COMMIT=$(cat .flow/tmp/base_commit)", text, handover)
+        # Full commit list, oldest first, from the Phase-1 base commit.
+        self.assertIn('git rev-list --reverse "$BASE_COMMIT"..HEAD', text, handover)
         # base_commit provenance in the evidence template — retained per fn-83
         # R4 (only the removed probe's CONSUMPTION of it is gone). flow-98
         # deleted the second (delegation) template with the packaged path.
         self.assertEqual(
-            text.count('"base_commit": "$BASE_COMMIT"'), 1, path
+            text.count('"base_commit": "$BASE_COMMIT"'), 1, handover
         )
-        self.assertEqual(text.count('"commits": $COMMITS_JSON'), 1, path)
+        self.assertEqual(text.count('"commits": $COMMITS_JSON'), 1, handover)
 
     def test_canonical_worker(self) -> None:
         self._assert_anchor_contract(CANONICAL_WORKER)
-        self._assert_evidence_contract(CANONICAL_WORKER)
+        self._assert_evidence_contract(CANONICAL_WORKER, CANONICAL_HANDOVER)
 
     def test_mirror_worker(self) -> None:
         self._assert_anchor_contract(MIRROR_WORKER)
-        self._assert_evidence_contract(MIRROR_WORKER)
+        self._assert_evidence_contract(MIRROR_WORKER, MIRROR_HANDOVER)
 
 
 class PhasesCrossSpecProse(unittest.TestCase):

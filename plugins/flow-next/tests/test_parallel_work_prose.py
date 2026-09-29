@@ -10,6 +10,7 @@ Prose-quality pins removed 2026-08-07 - judged via .flow/criteria.md G1, not gre
 from __future__ import annotations
 
 import pathlib
+import re
 import unittest
 
 
@@ -36,6 +37,14 @@ MIRROR_WAVE_JOIN = (
 )
 CANONICAL_WORKER = PLUGIN / "agents" / "worker.md"
 MIRROR_WORKER = PLUGIN / "codex" / "agents" / "worker.toml"
+# The parallel-wave / host-deferred handover contract moved verbatim out of the
+# worker into a gated reference the worker reads at Phase 0 on those routes.
+CANONICAL_HANDOVER = (
+    PLUGIN / "skills" / "flow-next-work" / "references" / "worker-handover.md"
+)
+MIRROR_HANDOVER = (
+    PLUGIN / "codex" / "skills" / "flow-next-work" / "references" / "worker-handover.md"
+)
 
 
 def _read(path: pathlib.Path) -> str:
@@ -108,34 +117,41 @@ class ParallelWorkConductorProse(unittest.TestCase):
 
 
 class ParallelWorkerHandoverProse(unittest.TestCase):
-    def _assert_contract(self, path: pathlib.Path) -> None:
+    def _assert_contract(self, path: pathlib.Path, handover: pathlib.Path) -> None:
         text = _read(path)
+        handover_text = _read(handover)
         # Prose-quality pins removed 2026-08-07 - judged via .flow/criteria.md
         # G1, not grep. Tokens, executable fragments, and ordering only below.
         self.assertIn("PARALLEL_WAVE", text)
         self.assertIn("task-unique", text)
         self.assertIn("HANDOVER_SUMMARY", text)
         self.assertIn("HANDOVER_EVIDENCE", text)
-        self.assertIn("Phase 0: Enter the assigned workspace (FIRST)", text)
-        self.assertIn('EXPECTED_WORKSPACE="$(cd -- "<WORKSPACE>" && pwd -P)"', text)
-        workspace_pos = text.index("Phase 0: Enter the assigned workspace (FIRST)")
+        # The worker reads the handover reference before its anchor call, and
+        # the link resolves in both layouts.
+        links = [m for m in re.findall(r"\]\(([^)]+)\)", text) if m.endswith("worker-handover.md")]
+        self.assertTrue(links, path)
+        for rel in links:
+            self.assertTrue((path.parent / rel).resolve().is_file(), rel)
+        link_pos = text.index("worker-handover.md")
         anchor_pos = text.index("<FLOWCTL> anchor <TASK_ID> --md")
-        self.assertLess(workspace_pos, anchor_pos)
+        self.assertLess(link_pos, anchor_pos)
+        self.assertIn("Phase 0: Enter the assigned workspace (FIRST)", handover_text)
+        self.assertIn('EXPECTED_WORKSPACE="$(cd -- "<WORKSPACE>" && pwd -P)"', handover_text)
         # Parallel-wave terminal guard: worker never completes the task itself.
-        self.assertIn("DO NOT run `flowctl done`", text)
-        self.assertIn("`in_progress`", text)
-        # Standard-branch completion keeps its executable evidence fragments.
+        self.assertIn("DO NOT run `flowctl done`", handover_text)
+        self.assertIn("`in_progress`", handover_text)
+        self.assertIn('EVIDENCE_FILE="<resolved task-unique HANDOVER_EVIDENCE path>"', handover_text)
+        # Standard-branch completion keeps its executable fragments.
         self.assertIn('SUMMARY_FILE="<resolved task-unique HANDOVER_SUMMARY path>"', text)
-        self.assertIn('EVIDENCE_FILE="<resolved task-unique HANDOVER_EVIDENCE path>"', text)
         self.assertIn(
             '--range "$BASE_COMMIT..HEAD"', text
         )
 
     def test_canonical(self) -> None:
-        self._assert_contract(CANONICAL_WORKER)
+        self._assert_contract(CANONICAL_WORKER, CANONICAL_HANDOVER)
 
     def test_codex_mirror(self) -> None:
-        self._assert_contract(MIRROR_WORKER)
+        self._assert_contract(MIRROR_WORKER, MIRROR_HANDOVER)
 
 
 if __name__ == "__main__":
