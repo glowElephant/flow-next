@@ -289,55 +289,55 @@ jobs:
           cd "$RUNNER_TEMP"
           bash "$GITHUB_WORKSPACE/plugins/flow-next/scripts/ci_test.sh"
 
-      - name: resolve-pr_smoke_test.sh (58 cases, ~1s)
+      - name: resolve-pr_smoke_test.sh
         if: always()
         run: |
           cd "$RUNNER_TEMP"
           bash "$GITHUB_WORKSPACE/plugins/flow-next/scripts/resolve-pr_smoke_test.sh"
 
-      - name: strategy_smoke_test.sh (62 cases, ~5s)
+      - name: strategy_smoke_test.sh
         if: always()
         run: |
           cd "$RUNNER_TEMP"
           bash "$GITHUB_WORKSPACE/plugins/flow-next/scripts/strategy_smoke_test.sh"
 
-      - name: audit_smoke_test.sh (41 cases, ~6s)
+      - name: audit_smoke_test.sh
         if: always()
         run: |
           cd "$RUNNER_TEMP"
           bash "$GITHUB_WORKSPACE/plugins/flow-next/scripts/audit_smoke_test.sh"
 
-      - name: glossary_smoke_test.sh (80 cases, ~7s)
+      - name: glossary_smoke_test.sh
         if: always()
         run: |
           cd "$RUNNER_TEMP"
           bash "$GITHUB_WORKSPACE/plugins/flow-next/scripts/glossary_smoke_test.sh"
 
-      - name: prospect_smoke_test.sh (94 cases, ~60s)
+      - name: prospect_smoke_test.sh
         if: always()
         run: |
           cd "$RUNNER_TEMP"
           bash "$GITHUB_WORKSPACE/plugins/flow-next/scripts/prospect_smoke_test.sh"
 
-      - name: make-pr_smoke_test.sh (67 cases, ~7s)
+      - name: make-pr_smoke_test.sh
         if: always()
         run: |
           cd "$RUNNER_TEMP"
           bash "$GITHUB_WORKSPACE/plugins/flow-next/scripts/make-pr_smoke_test.sh"
 
-      - name: map_smoke_test.sh (75 cases, fn-50.1 + fn-50.6 directory-level ignore + config-state --json guards)
+      - name: map_smoke_test.sh
         if: always()
         run: |
           cd "$RUNNER_TEMP"
           bash "$GITHUB_WORKSPACE/plugins/flow-next/scripts/map_smoke_test.sh"
 
-      - name: impl-review_smoke_test.sh (71 cases, ~70s)
+      - name: impl-review_smoke_test.sh
         if: always()
         run: |
           cd "$RUNNER_TEMP"
           bash "$GITHUB_WORKSPACE/plugins/flow-next/scripts/impl-review_smoke_test.sh"
 
-      - name: smoke_test.sh (130 cases, ~100s)
+      - name: smoke_test.sh
         if: always()
         run: |
           cd "$RUNNER_TEMP"
