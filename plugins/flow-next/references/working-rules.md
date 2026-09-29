@@ -10,7 +10,10 @@ unless the user or the repository's instructions ask for it.
   renames, wording changes or docs edits. Matching the surrounding code is required; improving it is not.
 - Problems you find that the request does not depend on (a flaky test, junk a test run leaves
   behind, a nearby bug) are reported, not fixed. Check whether they exist before your change;
-  if they do, they are not yours.
+  if they do, they are not yours. The exception is behaviour the request asks for: if it names a
+  clear error, a working command or a passing check, and that fails for a reason that predates
+  your change, fixing that reason is part of the change. So is anything your change breaks,
+  such as the repository's own checks on what you added.
 - Files a test run or tool writes into the repository are not part of your change: remove them
   from the diff before handing back, and mention them; do not chase their cause.
 - When asked whether to widen the scope, "no" is a fine answer; say why in one line.
