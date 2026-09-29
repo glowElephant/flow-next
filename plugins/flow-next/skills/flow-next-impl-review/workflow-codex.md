@@ -294,7 +294,7 @@ $FLOWCTL codex impl-review "${args[@]}"
    author the other axes' findings, so the FULL merged prior-finding container
    is injected into the dispatch prompt (every merged ordinal present).
    Automatic — no flag.
-5. Repeat until SHIP — bounded by the backend-agnostic fix-loop cap in [SKILL.md](SKILL.md) (`MAX_REVIEW_ITERATIONS`, default 8): a merged fan-out round counts as ONE round; count each fix+re-review cycle; at the cap, surface surviving findings and stop instead of looping
+5. The re-review's verdict is terminal ([SKILL.md](SKILL.md) § Fix Loop): never start a second fix pass; surface surviving findings to the caller.
 
 **Output includes `VERDICT=SHIP|NEEDS_WORK|MAJOR_RETHINK|NEEDS_HUMAN`.**
 

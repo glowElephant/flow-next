@@ -526,11 +526,11 @@ See [optional-phases.md](optional-phases.md) "Phase ordering & flag-combination 
 
 **Committed code changes land before every re-review.** A re-review dispatched with no change since the last verdict has broken this — the reviewer just returns NEEDS_WORK again.
 
-**MAX ITERATIONS**: Limit fix+re-review cycles to **${MAX_REVIEW_ITERATIONS:-8}** iterations (default 8). If still NEEDS_WORK after max rounds, output `<promise>RETRY</promise>` and stop. The `review-rounds increment` gate (step 6 below and Phase 3) enforces this deterministically across fresh invocations: at the cap it refuses with an `ESCALATE:` marker + exit 4, which is NOT retryable — surface it and stop.
+**One fix pass, one re-review** (SKILL.md § Fix Loop); the re-review's verdict is terminal. **MAX ITERATIONS** (**${MAX_REVIEW_ITERATIONS:-8}**, default 8) stays as a safety net: the `review-rounds increment` gate (step 6 below and Phase 3) enforces this deterministically across fresh invocations: at the cap it refuses with an `ESCALATE:` marker + exit 4, which is NOT retryable — surface it and stop.
 
 If verdict is NEEDS_WORK:
 
-1. **Parse issues** - Extract ALL issues by severity (Critical → Major → Minor) from the response-file Read
+1. **Parse issues** - Extract the issues by severity (Critical → Major → Minor) from the response-file Read; fix those SKILL.md's Fix Loop says to fix
 2. **Snapshot the pre-fix state** (BEFORE touching any file — literal paths per the path-persistence rule):
    ```bash
    git status --porcelain > "${TMPDIR:-/tmp}/flow-impl-review-snap-pre-<task-id-or-branch-slug>-<suffix>.txt"
@@ -660,9 +660,9 @@ If verdict is NEEDS_WORK:
    pass them to the same task-scoped
    `review-rounds record ... --review-type impl` command with the captured
    `rp chat-send` exit code, capture and check `RECORD_EXIT`, and publish by
-   reservation id. Then Read the file once for the next round's findings.
+   reservation id. Then Read the file once for the re-review's verdict and findings.
    A nonzero recorder exit stops the round before any verdict/control path.
-7. **Repeat** until Ship
+7. **Stop.** The re-review's verdict is terminal; surface surviving findings to the caller
 
 **Anti-pattern**: Re-adding already-selected files before re-review. RP auto-refreshes; re-adding can cause issues.
 

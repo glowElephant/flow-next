@@ -80,7 +80,7 @@ model family and fail closed when no cross-family pin is available.
 **Hard invariants:**
 - **The coordinator never authors a verdict.** A SHIP with no backend response behind it has broken this.
 - **One backend per review.** A transcript that dispatches a second backend after the first answered has broken this.
-- **Review is never skipped without consent.** A `none` backend that ends the run without the user's consent has broken this.
+- **Review is never skipped without consent.** A `none` backend that ends the run without the user's consent has broken this. A caller that skips a change under the working-rules.md risk rule records a `stage:` line instead of invoking this skill; that skip needs no consent.
 
 ## Input
 
@@ -243,6 +243,8 @@ Follow the phases in the per-backend file end-to-end. Each file owns its own Ide
 
 **The fix loop never pauses for user confirmation**; never use plain-text numbered prompt in it. Which findings it fixes, and which it lists as follow-ups, follows the Review section of [working-rules.md](../../references/working-rules.md).
 
+**One fix pass, one re-review.** Fix those findings, commit, then re-review once with a single reviewer. That re-review's verdict is terminal: never start a second fix pass. The round cap below stays as a safety net.
+
 **MAJOR_RETHINK is NOT a fix-loop input.** Every backend can emit `MAJOR_RETHINK` (a valid verdict tag), but it means the *design/approach* is wrong — not something to patch finding-by-finding. Do NOT enter the fix loop on it. Escalate immediately: surface the reviewer's rationale to the caller and stop with a typed **`BLOCKED: DESIGN_CONFLICT`**. A re-approach is a human/worker decision, never an ad-hoc patch. Only `NEEDS_WORK` drives the loop below.
 
 **MAX ITERATIONS (backend-agnostic — rp, codex, copilot, cursor, claude, host):**
@@ -268,12 +270,12 @@ deliberate `--force` dispatch.
    `VERDICT=SHIP|NEEDS_WORK|MAJOR_RETHINK|NEEDS_HUMAN`, the round is consumed and the
    attempt is recorded; transport classification is unreachable past that
    point. Do not re-dispatch, re-frame a `NEEDS_WORK` as a backend/sandbox
-   problem, or claim a refund for it. `NEEDS_WORK` is fix-loop input, full
-   stop.
+   problem, or claim a refund for it. `NEEDS_WORK` is fix-loop input (terminal
+   after the re-review), full stop.
 2. **Never widen the reviewer sandbox.** Reviewers are read-only by contract
    (Unix default `read-only`). A sandbox-blocked reviewer means something
    asked it to mutate the workspace: fix that, do not pass
    `--sandbox workspace-write` / `danger-full-access` or set `CODEX_SANDBOX`.
    The one exception is Windows, where `auto` already resolves for you.
 
-**On `NEEDS_WORK` — STOP and Read [references/fix-loop.md](references/fix-loop.md)** before any further step: it owns the ordered loop (optional deep / validator / walkthrough hooks, parse issues, fix code, run tests and lints, commit fixes, per-backend re-review command, repeat until `<verdict>SHIP</verdict>` or the cap above). Do not improvise the loop from memory. On `SHIP` the review is complete and nothing further is read.
+**On `NEEDS_WORK` — STOP and Read [references/fix-loop.md](references/fix-loop.md)** before any further step: it owns the ordered loop (optional deep / validator / walkthrough hooks, parse issues, fix code, run tests and lints, commit fixes, the single per-backend re-review). Do not improvise the loop from memory. On `SHIP` the review is complete and nothing further is read.

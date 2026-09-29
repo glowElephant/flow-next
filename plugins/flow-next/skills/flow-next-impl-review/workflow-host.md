@@ -447,11 +447,12 @@ run.
 - `SHIP`: complete the review contract.
 - `MAJOR_RETHINK`: continue into the shared `BLOCKED: DESIGN_CONFLICT`
   terminal; do not patch the design.
-- `NEEDS_WORK`: parse every valid finding, fix the code, run the relevant
-  tests/lints, and commit the fixes before re-review. Then repeat Steps 1–4
-  with **one new** read-only subagent (never a second fan-out — the fan-out is
+- `NEEDS_WORK`: fix the findings SKILL.md's Fix Loop says to fix, run the
+  relevant tests/lints, and commit the fixes before re-review. Then repeat Steps 1–4
+  once with **one new** read-only subagent (never a second fan-out — the fan-out is
   first-round only), the same cross-family rules, and the full merged
-  prior findings in its prompt. Continue until `SHIP` or the deterministic round cap.
+  prior findings in its prompt. That re-review's verdict is terminal; the
+  deterministic round cap stays a safety net.
 - Dispatch, malformed-verdict, or receipt failure: output
   `<promise>RETRY</promise>` and stop. Never self-issue a verdict or switch
   backends.

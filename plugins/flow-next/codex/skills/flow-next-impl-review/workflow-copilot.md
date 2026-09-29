@@ -60,7 +60,7 @@ If `VERDICT=NEEDS_WORK`:
 2. Fix code and run tests
 3. Commit fixes
 4. Re-run step 2 (receipt enables session continuity when `mode == "copilot"`)
-5. Repeat until SHIP — bounded by the backend-agnostic fix-loop cap in [SKILL.md](SKILL.md) (`MAX_REVIEW_ITERATIONS`, default 8): count each fix+re-review cycle; at the cap, surface surviving findings and stop instead of looping
+5. The re-review's verdict is terminal ([SKILL.md](SKILL.md) § Fix Loop): never start a second fix pass; surface surviving findings to the caller.
 
 ## Step 4: Receipt
 
