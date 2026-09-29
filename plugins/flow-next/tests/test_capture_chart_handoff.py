@@ -93,14 +93,12 @@ class CaptureChartHandoffContract(unittest.TestCase):
         # D-ID evidence never source-tagged
         self.assertIn("never source-tag", combined.lower())
         self.assertIn("D-ID", combined)
-        # Four-tag grammar only on newly authored criteria
-        self.assertIn("[user]", combined)
+        # Source tags only on newly authored criteria
         self.assertIn("[paraphrase]", combined)
         self.assertIn("[inferred]", combined)
         self.assertIn("[strategy:", combined)
         self.assertIn("newly authors", combined.lower())
         self.assertRegex(combined, r"(?i)not\*?\*?\s*automatically")
-        self.assertIn("automatically `[user]`", combined)
         self.assertIn("Never retag", combined)
 
     def test_link_spec_after_create_ordering(self) -> None:

@@ -226,8 +226,8 @@ class TestInstallCodexLegacyCleanup(unittest.TestCase):
             )
             # And the installed prose actually carries the namespaced spelling.
             self.assertIn(
-                "](../../../docs/flow-next/pipeline-variations.md)",
-                (ref_dir / "rewrite-mode.md").read_text(encoding="utf-8"),
+                "](../../../docs/flow-next/prose.md)",
+                (ref_dir / "glossary-terms.md").read_text(encoding="utf-8"),
                 "installed skill prose lost the namespaced docs link",
             )
             # Round 5 (#363 codex P2): the mirrored docs pages' OWN links are

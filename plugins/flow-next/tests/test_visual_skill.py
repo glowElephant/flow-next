@@ -25,8 +25,6 @@ SKILL_DIR = PLUGIN / "skills" / "flow-next-visual"
 SKILL_MD = SKILL_DIR / "SKILL.md"
 SHIM = PLUGIN / "commands" / "visual.md"
 
-CAPTURE_SKILL = PLUGIN / "skills" / "flow-next-capture" / "SKILL.md"
-CAPTURE_WORKFLOW = PLUGIN / "skills" / "flow-next-capture" / "workflow.md"
 PLAN_SKILL = PLUGIN / "skills" / "flow-next-plan" / "SKILL.md"
 PLAN_STEPS = PLUGIN / "skills" / "flow-next-plan" / "steps.md"
 INTERVIEW_SKILL = PLUGIN / "skills" / "flow-next-refine" / "SKILL.md"
@@ -164,11 +162,8 @@ class VisualShapeVocabulary(unittest.TestCase):
 
 
 class VisualCloserOffers(unittest.TestCase):
-    """R4: capture, plan, interview each offer the digest at their read-back."""
-
-    def test_capture_closer_offers_digest_and_is_reachable(self) -> None:
-        self.assertIn("/flow-next:visual", _read(CAPTURE_WORKFLOW))
-        self.assertIn("workflow.md", _read(CAPTURE_SKILL))
+    """R4: plan and interview offer the digest at their read-back. Capture's
+    command menu was retired in 7.0; its close prints only the routed next step."""
 
     def test_plan_closer_offers_digest_and_is_reachable(self) -> None:
         steps = _read(PLAN_STEPS)

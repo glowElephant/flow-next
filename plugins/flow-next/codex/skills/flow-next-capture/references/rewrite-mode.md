@@ -81,26 +81,4 @@ When `READY_RESET=true` (the spec WAS ready), Phase 6's rewrite footer carries a
 
 ## Phase 6 — rewrite footer
 
-If `REWRITE_TARGET` was set, the footer prefix changes (the `Tracker sync:` line stays mandatory):
-
-```text
-Spec rewritten at .flow/specs/<SPEC_ID>.md.
-Readiness: spec rewritten — readiness reset to draft (re-bless when ready)
-Tracker sync: <same four states>
-
-Recommended next: $flow-next-<stage> <SPEC_ID> — <one-clause reason>; <named alternative when it applies>
-
-Next:
-  $flow-next-plan <SPEC_ID>      → re-plan tasks (existing tasks under the spec
-                                    may need $flow-next-sync to align)
-  $flow-next-refine <SPEC_ID> → refine via Q&A
-  $flow-next-visual <SPEC_ID>    → compact visual digest — review the spec at a glance
-```
-
-The `Recommended next:` line follows workflow.md Phase 6 and is mandatory here
-too: the §2.8 judgment from [`plan-vs-no-plan.md`](../../flow-next-flow/references/plan-vs-no-plan.md) applied to the rewritten spec, or `$flow-next-flow --explain <SPEC_ID>` when signals conflict (the human-facing narrative is [pipeline variations](../../../docs/flow-next/pipeline-variations.md)).
-This remains informational, never a readiness write or permission to execute.
-
-**Host command form:** print every copy-pasteable flow-next command here in the spelling this host invokes — the flat `/flow-next-<name>` form when the resolved plugin root carries `.flow-next-opencode-manifest` (an OpenCode install — the same signal setup's host detection uses); on any other or indeterminate host, exactly as spelled here.
-
-The `Readiness:` announcement line appears ONLY when §5.3's reset actually changed the flag (`READY_RESET=true`). Never-ready specs print no readiness line — an announcement is not a confirmation prompt, and it must not claim a reset that didn't happen.
+The close's first line becomes `Spec rewritten at .flow/specs/<SPEC_ID>.md.`, followed by `Readiness: spec rewritten — readiness reset to draft (re-bless when ready)` ONLY when §5.3's reset changed the flag (`READY_RESET=true`); never announce a reset that did not happen. `Tracker sync:` and `Recommended next:` follow workflow.md Phase 6, judged on the rewritten spec. When the spec already has tasks, add that they may need $flow-next-sync to align after a re-plan.

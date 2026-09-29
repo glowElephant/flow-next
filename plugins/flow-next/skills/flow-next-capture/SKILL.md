@@ -7,17 +7,13 @@ allowed-tools: AskUserQuestion, Read, Bash, Grep, Glob, Write, Edit, Task
 
 # /flow-next:capture — agent-native conversation → spec
 
-A free-form discussion (or a `/flow-next:prospect` survivor) frequently produces enough material for a complete spec, but stops short of the formal `flowctl spec create` + `spec set-plan` heredoc documented in `CLAUDE.md`. Without an explicit synthesis step, that context decays — the next session loses the conversation, the spec never lands, and the user re-explains the same idea to `/flow-next:plan`.
+A discussion (or a `/flow-next:prospect` survivor) often holds a complete spec that never gets written down, and the next session loses it. Capture is the synthesis step: the host agent extracts the user's turns, drafts a spec against the resolved template, **tags only what it paraphrased or inferred** (`[paraphrase]` / `[inferred]` / `[strategy:<track>]`; the user's verbatim words stay untagged), writes it through flowctl, prints a compact summary, and offers the saved file in the editor ([docs/read-back.md](../../docs/read-back.md)). The capture request authorizes the write; substantive choices still get short questions. No Python synthesizer, no model subprocess.
 
-This skill IS the synthesis. The host agent (Claude Code / Codex / Droid) extracts the recent user turns, drafts a CLAUDE.md-shaped spec with **per-line source tags** (`[user]` / `[paraphrase]` / `[inferred]` / `[strategy:<track>]`), **writes the spec through existing flowctl plumbing, prints a compact summary, and offers to open it in the editor** (capture's saved-spec review in [docs/read-back.md](../../docs/read-back.md)). The capture request authorizes the write; there is no approve-and-write checkpoint. Substantive choices still use short questions. There is no Python synthesizer, no codex / copilot subprocess, no fast-model classifier. The host agent is already an LLM and does the work directly.
+flowctl supplies thin plumbing (`spec create`, `spec set-plan`, `spec set-branch`, `memory search`) plus the `chart link-spec` callback after a chart-briefing capture. Capture never writes chart files or a chart's `ready` flag; chart never writes `.flow/specs`.
 
-flowctl provides thin spec plumbing (`spec create`, `spec set-plan`, optional `spec set-branch`, `memory search` for duplicate detection) plus the chart handoff callback (`chart link-spec`) after a successful chart-briefing capture. Capture never writes chart files and never mutates a chart's `ready` flag; chart never writes `.flow/specs`.
+Clear ideas and finished chart briefings route here; capture never manufactures a chart for clear work. Unsure: `/flow-next:flow --explain`.
 
-### Routing boundary (route matrix)
-
-Clear meaningful ideas and finished chart briefings route **here** - to capture (or direct spec authoring). Capture does **not** manufacture a chart for clear work. When intent and boundaries are already stateable, skip chart (`signal absent`). After a structured brief lands, narrow or skip interview only once the source-grounded synthesis proves no material gaps - never pre-skip interview on hope. Unsure: `/flow-next:flow --explain`.
-
-**Read [workflow.md](workflow.md) for the full phase-by-phase execution. Read [phases.md](phases.md) for the source-tag taxonomy and confidence tiers.** Path-specific machinery lives in `references/*.md`, loaded only when the gate at its branch point fires — a run that never takes a branch never pays for it.
+**Read [workflow.md](workflow.md) for the phases and [phases.md](phases.md) for the source tags and confidence tiers.** Branch-specific machinery lives in `references/*.md`, loaded only when its gate fires.
 
 ## Preamble
 
@@ -29,11 +25,11 @@ FLOWCTL="${DROID_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/flowctl"
 [ -x "$FLOWCTL" ] || FLOWCTL=".flow/bin/flowctl"
 ```
 
-**Inline skill (no `context: fork`)** — `AskUserQuestion` must stay reachable across phases. Subagents can't call blocking question tools (Claude Code issues #12890, #34592). Duplicate detection, material ambiguities, split selection, and the editor follow-up still need user choice in interactive mode. (sync-codex.sh rewrites this to a plain-text numbered prompt in the Codex mirror.)
+**Inline skill (no `context: fork`)** — `AskUserQuestion` must stay reachable across phases; subagents cannot call blocking question tools. (sync-codex.sh rewrites this to a plain-text numbered prompt in the Codex mirror.)
 
 ## Mode Detection
 
-Parse `$ARGUMENTS` for the literal tokens `mode:autofix` and `from:flow` and the flags `--rewrite <spec-id>`, `--from-compacted-ok`, `--yes`, `--override-strategy`, `--no-plan`. Strip recognized tokens; whatever remains is treated as freeform context (ignored - the conversation is the input, not `$ARGUMENTS`).
+Parse `$ARGUMENTS` for the literal tokens `mode:autofix` and `from:flow` and the flags `--rewrite <spec-id>`, `--from-compacted-ok`, `--yes`, `--override-strategy`, `--no-plan`. Strip recognized tokens; the remainder is ignored (the conversation is the input).
 
 ```bash
 RAW_ARGS="$ARGUMENTS"
@@ -43,43 +39,33 @@ FROM_COMPACTED_OK=0
 COMMIT_YES=0
 OVERRIDE_STRATEGY=0
 
-# Mode token
 if [[ "$RAW_ARGS" == *"mode:autofix"* ]]; then
   MODE="autofix"
   RAW_ARGS="${RAW_ARGS//mode:autofix/}"
 fi
 
-# --rewrite <id>
 if [[ "$RAW_ARGS" =~ --rewrite[[:space:]]+([^[:space:]]+) ]]; then
   REWRITE_TARGET="${BASH_REMATCH[1]}"
   RAW_ARGS="${RAW_ARGS//--rewrite ${REWRITE_TARGET}/}"
 fi
 
-# --from-compacted-ok
 if [[ "$RAW_ARGS" == *"--from-compacted-ok"* ]]; then
   FROM_COMPACTED_OK=1
   RAW_ARGS="${RAW_ARGS//--from-compacted-ok/}"
 fi
 
-# --yes (autofix write gate)
-if [[ "$RAW_ARGS" == *"--yes"* ]]; then
+if [[ "$RAW_ARGS" == *"--yes"* ]]; then   # autofix write gate
   COMMIT_YES=1
   RAW_ARGS="${RAW_ARGS//--yes/}"
 fi
 
-# --override-strategy (Phase 5.0 strategy-contradiction override)
 if [[ "$RAW_ARGS" == *"--override-strategy"* ]]; then
   OVERRIDE_STRATEGY=1
   RAW_ARGS="${RAW_ARGS//--override-strategy/}"
 fi
 
-# --no-plan (explicit opt-in to set the spec-level no_plan field
-# in §5.9b after the spec write; on a user invocation the field is never set
-# without it) and from:flow (the run was dispatched by
-# /flow-next:flow, so §5.9b sets the field when the plan-versus-no-plan rule
-# resolves to direct). Both are EXACT-token matches, not substring tests:
-# durable state must not be set by lookalikes ("--no-planning",
-# "--no-plan=false", "from:flowchart") - those stay in the freeform remainder.
+# --no-plan and from:flow set durable state (§5.9b), so they are EXACT-token
+# matches: lookalikes ("--no-planning", "from:flowchart") stay in the remainder.
 NO_PLAN_OPT=0
 FROM_FLOW=0
 CLEANED_ARGS=""
@@ -101,58 +87,43 @@ fi   # default branch: bare no-op — NO link, NO read path
 
 | Mode | When | Behavior |
 |------|------|----------|
-| **Interactive** (default) | User is at the terminal | Phase 0 asks on duplicate detection; Phase 3 asks on must-ask ambiguities; After substantive choices are resolved, write the spec, show its summary, and offer the editor; no generic write approval |
-| **Autofix** (`mode:autofix`) | Batch usage from another skill / scripted invocation | No user questions; every "ask" branch becomes exit 2; Phase 4 Writes the draft once and requires `--yes` to reach the `.flow/` write |
+| **Interactive** (default) | User is at the terminal | Asks on duplicates and must-ask cases; writes the spec, shows its summary, offers the editor; no generic write approval |
+| **Autofix** (`mode:autofix`) | Batch or scripted invocation | No questions; every ask becomes exit 2; writes only with `--yes` |
 
-When the sentinel above prints, read [references/autofix-mode.md](references/autofix-mode.md) before Phase 0 — it owns the per-phase autofix rules (Phase 0 hard-errors, Phase 3 exits, §4.4 write gate, split / glossary / readiness behavior). On the default interactive path, read nothing.
+When the sentinel prints, read [references/autofix-mode.md](references/autofix-mode.md) before Phase 0; it owns the per-phase autofix rules. On the interactive path, read nothing.
 
-## Interaction Principles (interactive mode only)
+## Questions (interactive only)
 
-In autofix mode, skip user questions entirely and apply the rules in the autofix reference.
+Interactive capture follows the working rules' attended contract, plus:
 
-In interactive mode:
-
-- Ask **one question at a time** via `AskUserQuestion` (call `ToolSearch` with `select:AskUserQuestion` first if its schema isn't loaded). Fall back to numbered options in plain text only if the tool is unreachable or errors. Never silently skip the question.
-- **Lead with the recommended option** and a one-sentence rationale, followed by a confidence marker — `[high]` / `[judgment-call]` / `[your-call]`. The body carries the recommendation; option labels stay neutral so the user isn't anchored on the option text itself. (See [phases.md](phases.md) §Confidence tiers.) Inferred content stays labeled in the saved spec and summary; saving never makes it user-approved.
-- **Plain language, explained answers** (same contract as the interview skill, eval-validated): open with one sentence of stakes; everyday words; a needed term of art gets a ≤1-clause plain gloss at first use; no unexplained acronyms or tool shorthand (`R-ID`, `[inferred]` get translated when user-facing); option descriptions state their consequence ("Choose this if…"). Priorities, not length caps — trim repetition and background, never required content.
-- Prefer **multiple choice** when natural options exist (duplicate decisions, split selection, and the `open in editor` / `continue` follow-up).
-- **Do not ask the user for facts** they already gave you in conversation — Phase 1 extracts evidence first; Phase 3 asks only on the three hard-error must-ask cases plus genuinely missing context that can't be inferred.
-
-The goal is automated synthesis with human oversight on judgment calls — not a question for every section.
+- Use `AskUserQuestion` (load it with `ToolSearch` `select:AskUserQuestion` if needed); plain-text numbered options only when the tool is unreachable. Never skip a question silently.
+- The body leads with the recommendation, a one-sentence reason, and a confidence tier (`[high]` / `[judgment-call]` / `[your-call]`, [phases.md](phases.md) §Confidence tiers). Option labels stay neutral and state their consequence.
+- Plain language: one sentence of stakes, everyday words, a short gloss for any needed term (`R-ID`, `[inferred]`).
+- Never ask for facts the conversation already gave. Phase 3 asks only its must-ask cases; other `[inferred]` content surfaces in the summary instead.
 
 ## Forbidden behaviors (R10)
 
-- **Tech-stack mentions the user did not state.** "Needs persistence" is fine; "uses PostgreSQL" needs the user to have said PostgreSQL. Defer technology choices to `/flow-next:plan` (spec-kit convention — capture writes intent, plan writes implementation).
-- **Inventing acceptance criteria not in conversation.** Every acceptance criterion must be source-tagged; pure `[inferred]` criteria must surface in the saved-spec summary so the user can edit or reject them.
-- **Process fences are never spec content.** New-vs-rewrite decisions, ready-marking, "do not implement" instructions, and the Phase 0 duplicate-scan outcome are capture's own lifecycle rules; writing them into the spec body or `## Boundaries` (under any tag), or stamping them `[user]`, has broken this. Boundaries carry only product constraints a worker on this spec could get wrong.
-- **Code snippets or specific file paths in the spec body.** Those belong in `/flow-next:plan` task specs after research lands. Capture's output is a high-level spec, not an implementation guide.
-- **Silent overwrite of an existing spec.** Idempotency requires `--rewrite <spec-id>` (R8). Without it, Phase 0 conflict-detection branches into extend / supersede / proceed-anyway.
-- **Auto-splitting a spec that has 8+ acceptance criteria.** Phase 4 surfaces the option to split; the user decides. Never auto-action a split.
-- **Setting `context: fork`** — blocking-question tools must stay reachable.
-- **Treating capture as readiness or execution consent.** Phase 5 writes after pre-flight and substantive choices; marking ready, implementation, and external operations retain their own authority.
-- **Writing glossary terms without consent, or in autofix mode.** Term-adds require the separate `Glossary?` approval; autofix prints suggestions only (`--yes` consents to the spec write, not to vocabulary changes). The gate is husk-aware (`glossary list --json` `total_terms > 0`) — seeding an empty glossary is `/flow-next:prime`'s job, never capture's.
-- **Marking a spec ready without consent, in autofix, or outside the target-aware readiness predicate.** Readiness is the human's gate — capture never infers it.
-- **Treating a forced draft chart briefing as final, or admitting a draft/stale briefing silently.** Fail closed; the override requires named D-IDs + a risk read-back.
-- **Using `git add -A` from this skill.** When committing the new spec, stage only the JSON sidecar (`.flow/specs/<id>.json`) + `.flow/specs/<id>.md` (and `.flow/meta.json` if the next-id counter mutated). Other working-tree changes are not capture's concern.
+These protect spec trust:
+
+- **Unstated technology.** "Needs persistence" is fine; "uses PostgreSQL" needs the user to have said it. Capture writes intent; plan writes implementation.
+- **Unmarked invention.** An untagged line claims to be the user's words and must be findable in the evidence; every paraphrase or fill-in carries its tag, and `[inferred]` criteria surface in the summary for the user to keep, edit, or drop. Saving never upgrades a tag.
+- **Process fences as spec content.** New-vs-rewrite decisions, ready-marking, "do not implement", and the duplicate-scan outcome are capture's lifecycle, never spec body or `## Boundaries` lines, and never evidence lines. Boundaries hold only product constraints a worker could get wrong.
+- **Coordinates in the spec body.** State contracts (types, signatures, behaviors, invariants), not code snippets, file paths, or line numbers, unless the exact location is itself the decision. Paths belong in plan's task specs.
+- **Silent overwrite.** Replacing a spec needs `--rewrite <spec-id>`; otherwise Phase 0's duplicate branch decides.
+- **Acting without its own consent.** Never auto-split (the user picks), never mark ready or add glossary terms without their separate questions (autofix writes neither; seeding an empty glossary is `/flow-next:prime`'s job), never treat a saved spec as implementation consent, and never admit a draft/stale briefing silently or treat a forced draft chart briefing as final (the override names the D-IDs and reads back the risk).
+- **Committing.** Capture never stages or commits; the user owns when `.flow/` changes land.
+- **`context: fork`.** Blocking questions must stay reachable.
 
 ## Workflow
 
-Execute the phases in [workflow.md](workflow.md) in order. Each phase's detail — including which branch gate loads which reference — lives there; this index is navigation only:
+Execute [workflow.md](workflow.md) in order:
 
-0. **Pre-flight** — duplicate detection (spec-title overlap + `flowctl memory search`), compaction relevance check, idempotency (never a silent overwrite), plus the strategy / duplicate-branch / chart-briefing / rewrite gates.
-1. **Extract conversation evidence** — a verbatim `## Conversation Evidence` block FIRST (~30 lines of raw user quotes); spec sections refer to evidence by line, not from agent memory.
-2. **Source-tagged synthesis** — draft each section against the canonical template at [`plugins/flow-next/templates/spec.md`](../../templates/spec.md) (per R17 — cross-link, never re-embed the section list inline) — the resolved template decides which sections are written, capture adds none it leaves out — tagging **only acceptance criteria and prose capture newly authors**; route explicit biz-context signals (nine R24 categories).
-3. **Must-ask cases (R9)** — ambiguous title / untestable acceptance / scope-conflict; interactive asks one at a time, autofix exits 2.
-4. **Prepare the write** - Materialize the body once, verify source tags, resolve any split choice, and snapshot readiness before rewriting. Autofix retains its `--yes` write gate.
-5. **Write via flowctl, then review** - `spec create --plan-file <literal draft path>` → parse `id` (no heredoc re-authoring), then summary and editor offer. Separate glossary/readiness consents remain. R-IDs allocate from R1; §5.9b sets `no_plan` on `--no-plan`, or under `from:flow` when the route resolves to direct.
-6. **Suggested next step** - `Spec captured at .flow/specs/<id>.md.` plus the mandatory `Tracker sync:` slot and the `Recommended next:` line judged from the shared routing reference.
+0. **Pre-flight** — duplicates, compaction, strategy, chart-briefing and rewrite gates.
+1. **Evidence** — verbatim user quotes first; the draft cites them, not memory.
+2. **Synthesis** — the resolved template's sections, tags on paraphrase and inference only, route judgment.
+3. **Must-ask cases** — ambiguous title, untestable criterion, scope conflict.
+4. **Prepare the write** — materialize the body once, verify findability, settle any split, snapshot readiness.
+5. **Write and review** — `spec create --plan-file`, summary, editor offer, then the separately consented follow-ups; §5.9b sets `no_plan` on `--no-plan`, or under `from:flow` when the route resolves to direct.
+6. **Close** — tracker-sync check, then `Recommended next:` unless `/flow-next:flow` dispatched the run.
 
-## Output rules
-
-The new spec is the deliverable — it lives in `.flow/specs/<spec-id>.md` after Phase 5. Standard output also receives:
-
-- Interactive: the saved-spec summary and editor offer (§5.6a); the full body prints only on request and edit cycles show the diff. Autofix: the draft summary before its existing `--yes` gate.
-- The created spec id + spec path (Phase 5).
-- The next-step footer (Phase 6).
-
-Autofix mode without `--yes` produces a draft + the "rerun with --yes" hint and exits 0 — no write happens, no spec is allocated.
+The spec at `.flow/specs/<spec-id>.md` is the deliverable. Autofix without `--yes` prints the draft summary and exits 0 with no spec allocated.

@@ -70,12 +70,6 @@ Idempotent plumbing — re-running is a silent no-op. Best-effort: a failed writ
 
 ## Phase 6 — footer lines
 
-When Phase 5.9 marked the spec ready, append one line after `Tracker sync:`: `Readiness: marked ready`. Omit entirely otherwise — `keep-draft`, predicate-not-met, and every non-consented run print no readiness line.
+When Phase 5.9 marked the spec ready, append one line to the Phase 6 close: `Readiness: marked ready`. Omit entirely otherwise — `keep-draft`, predicate-not-met, and every non-consented run print no readiness line.
 
 Autofix only: when the target-aware predicate yields `READY_OFFER=true` and the spec was written (`--yes`), append `Mark ready when blessed: flowctl spec ready <SPEC_ID>` (suggestion only — autofix never writes readiness).
-
-## Forbidden behavior (readiness row)
-
-| Forbidden | Why |
-|-----------|-----|
-| Marking a spec ready without consent, in autofix, or outside the target-aware predicate | Consent lives in Phase 5.9's `Mark ready?` question (new capture: adopted local readiness; rewrite: target itself was ready; both: no `tracker.readyState`); the write is Phase 5.9, interactive-only. An unrelated ready spec never prompts on a draft rewrite. Readiness is the human's gate — capture never infers it. Autofix prints the footer suggestion only. |

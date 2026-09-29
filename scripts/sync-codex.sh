@@ -2403,12 +2403,6 @@ while IFS="$(printf '\t')" read -r rel pat expect; do
     closer_literal_fails=$((closer_literal_fails + 1))
   fi
 done <<'CLOSER_ROSTER'
-flow-next-capture/workflow.md	  /flow-next:plan <SPEC_ID>	  $flow-next-plan <SPEC_ID>
-flow-next-capture/workflow.md	  /flow-next:refine <SPEC_ID>	  $flow-next-refine <SPEC_ID>
-flow-next-capture/workflow.md	  /flow-next:visual <SPEC_ID>	  $flow-next-visual <SPEC_ID>
-flow-next-capture/references/rewrite-mode.md	  /flow-next:plan <SPEC_ID>	  $flow-next-plan <SPEC_ID>
-flow-next-capture/references/rewrite-mode.md	  /flow-next:refine <SPEC_ID>	  $flow-next-refine <SPEC_ID>
-flow-next-capture/references/rewrite-mode.md	  /flow-next:visual <SPEC_ID>	  $flow-next-visual <SPEC_ID>
 flow-next-capture/references/split-proposal.md	; /flow-next:refine <id> can still split later	; $flow-next-refine <id> can still split later
 flow-next-plan/references/next-steps-menu.md	`/flow-next:work fn-N-slug`	`$flow-next-work fn-N-slug`
 flow-next-plan/references/next-steps-menu.md	`/flow-next:refine fn-N-slug`	`$flow-next-refine fn-N-slug`
@@ -2455,8 +2449,6 @@ flow-next-flow/auto.md	`work`: `/flow-next:work 	`work`: `$flow-next-work
 flow-next-flow/auto.md	`qa`: `/flow-next:qa 	`qa`: `$flow-next-qa
 flow-next-flow/auto.md	`make-pr`: `/flow-next:make-pr 	`make-pr`: `$flow-next-make-pr
 flow-next-refine/SKILL.md	use `/flow-next:plan-review fn-N`	use `$flow-next-plan-review fn-N`
-flow-next-capture/workflow.md	`/flow-next:flow --explain <SPEC_ID>`	`$flow-next-flow --explain <SPEC_ID>`
-flow-next-capture/references/rewrite-mode.md	`/flow-next:flow --explain <SPEC_ID>`	`$flow-next-flow --explain <SPEC_ID>`
 flow-next-plan/references/next-steps-menu.md	`/flow-next:flow --explain fn-N-slug`	`$flow-next-flow --explain fn-N-slug`
 flow-next-refine/SKILL.md	`/flow-next:flow --explain`	`$flow-next-flow --explain`
 flow-next-refine/references/write-back.md	`/flow-next:flow --explain fn-N`	`$flow-next-flow --explain fn-N`

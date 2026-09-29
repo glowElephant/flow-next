@@ -55,10 +55,4 @@ Same call site as interview's behavior (b) — `glossary add` is a case-insensit
 
 ## Phase 6 — footer line
 
-When Phase 5.8 wrote terms, append one line after `Tracker sync:`: `Glossary: added N term(s) (<comma-separated terms>)`. Omit entirely otherwise (including every autofix run).
-
-## Forbidden behavior (glossary row)
-
-| Forbidden | Why |
-|-----------|-----|
-| Glossary term-adds without read-back consent, or in autofix | Consent lives in the separate `Glossary?` question; autofix prints suggestions only. Husk-aware gate (`total_terms > 0`) — seeding an empty glossary is `/flow-next:prime`'s job. |
+When Phase 5.8 wrote terms, append one line to the Phase 6 close: `Glossary: added N term(s) (<comma-separated terms>)`. Omit entirely otherwise (including every autofix run).
