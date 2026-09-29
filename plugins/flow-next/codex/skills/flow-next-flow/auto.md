@@ -640,7 +640,7 @@ Done when: every dispatched stage's before/after evidence block and `stage:` out
 # the tracker.
 if [ "${HAS_SPEC:-0}" = "1" ] && { [ -z "$SPEC_PATH" ] || [ ! -f "$SPEC_PATH" ]; }; then
   echo "Evidence: backlog mode attempted to author a spec for a specless item ($SUBJECT_ID)"
-  echo 'PILOT_VERDICT=NEEDS_HUMAN spec=- stage=ask reason="backlog mode never authors specs — surfaced as needs capture/interview gap"'
+  echo 'PILOT_VERDICT=NEEDS_HUMAN spec=- stage=ask reason="backlog mode never authors specs — surfaced as needs capture/refine gap"'
   exit 1
 fi
 ```

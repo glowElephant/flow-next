@@ -124,7 +124,7 @@ is the agent's read in Phase 2, never a flowctl field.
 ### 1c - Union the tracker side (`list-open`)
 
 Union in the **tracker-only** promoted issues that have no flow spec - tickets a
-human promoted on the board but never `capture`/`interview`'d into a spec, invisible
+human promoted on the board but never `capture`/`refine`'d into a spec, invisible
 to `flowctl specs`. Read this half directly through
 flowctl's deterministic tracker transport:
 
@@ -351,7 +351,7 @@ interactively** - `plain-text numbered prompt` is forbidden on the run path; the
 later, on their own time, via the spec or the tracker.
 
 Backlog mode **does not author specs.** Spec authoring (`capture`,
-conversation→spec; `interview`, interactive Q&A) is human-gated and upstream. A
+conversation→spec; `refine`, interactive Q&A) is human-gated and upstream. A
 ticket without a workable spec is **surfaced as a gap** - "run `$flow-next-capture`
 or `$flow-next-refine`" - **never auto-written**. An agent inventing scope from a
 one-line ticket is exactly the slop the valve exists to prevent.
@@ -390,7 +390,7 @@ Where the question parks depends on whether a spec exists:
   spec stub** (that is the forbidden authoring). Its parked/answered state lives in
   the tracker (the `status=open` anchor + a matching `<!-- flow-next:answer id=… -->`,
   detected by scanning the issue comments) - **no spec import/flip happens until
-  capture/interview later creates a spec.**
+  capture/refine later creates a spec.**
 
 **Idempotent.** Re-triaging the same blocked subject computes the **same**
 anchor `id` (the hash covers stable fields only - `subjectId` + blocked-stage +
@@ -474,7 +474,7 @@ Backlog reads use `$FLOWCTL tracker wire list-open --json`, `comment-list --loca
   control-plane role (scheduler, cloud environments, triggers, multi-agent at
   scale) is mergefoundry / flow-swarm's, not flow-next's. If this file
   ever starts describing a standing process, that is drift - remove it.
-- **Never authors a spec.** `capture`/`interview` are human-gated; a needs-spec gap
+- **Never authors a spec.** `capture`/`refine` are human-gated; a needs-spec gap
   is surfaced, never auto-written (may augment an obvious blank in an *existing*
   spec only - never create one). The span is *workable spec → draft PR*, not
   *ticket → draft PR*.

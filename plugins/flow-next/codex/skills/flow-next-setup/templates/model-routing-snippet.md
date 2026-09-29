@@ -21,7 +21,7 @@
 <!-- thinking scout: <model> - analysis that degrades badly on a
      fast tier. -->
 
-<!-- Unset is the default and the doctrine: planning, capture, interview,
+<!-- Unset is the default and the doctrine: planning, capture, refine,
      requirement analysis, every verdict, and the worker run on the session
      model. Effort strings pass through to the host untranslated. -->
 

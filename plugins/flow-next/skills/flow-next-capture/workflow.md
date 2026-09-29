@@ -331,4 +331,3 @@ A rewrite and a split change the first line and repeat the block per spec; `refe
 
 ---
 
-Maintainer validation (not part of a run): [references/manual-smoke.md](references/manual-smoke.md).

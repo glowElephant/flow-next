@@ -271,10 +271,6 @@ $STRATEGY_BLOCK
 EOF
 ```
 
-### 1.4 — Manual smoke
-
-On a repo with git history and a CHANGELOG: `prospect DX` should produce a readable snapshot listing recently-modified files, open specs, CHANGELOG entries from the last few releases, memory hits if memory is initialised, and `scanned: none (...)` lines for any absent source. The snapshot must fit in roughly 30-50 lines of output and must not contain raw file bodies.
-
 ### Done when
 
 - All six sources have contributed a block or a `scanned: none (<reason>)` line, in the fixed order.
@@ -758,14 +754,14 @@ Empty buckets render `_(none)_`. Empty `## Rejected` renders `_(none)_`.
 
 Use `plain-text numbered prompt`.
 
-If the tool is available, use it with these labelled choices (one per survivor + chart when warranted + skip + interview):
+If the tool is available, use it with these labelled choices (one per survivor + chart when warranted + skip + refine):
 
 - `Promote #1: <title>`
 - `Promote #2: <title>`
 - ... (one per survivor across all buckets)
 - `Chart #N: <title>` (offer **only** when that survivor is still singular, oversized, and unclear - never for clear candidates)
 - `Skip`
-- `Interview instead`
+- `Refine instead`
 
 The tool's free-text `description` field gets the artifact path so the user has it visible while choosing. Chart is optional discovery after selection, not a mandatory hop and not a fixed prospect -> chart -> capture conveyor.
 
@@ -781,7 +777,7 @@ Promote a survivor to a spec?
   2) Promote #2: <title>
   ...
   N) Skip
-  i) Interview (ask $flow-next-refine what to refine)
+  i) Refine (ask $flow-next-refine what to refine)
 
 Enter choice [1-N|i|skip]:
 ```
@@ -797,7 +793,7 @@ Normalize the reply (strip whitespace, lowercase). Route by exact match:
 | `1`, `2`, ..., `N-1` (where `N` is the Skip slot) | Run `flowctl prospect promote <artifact-id> --idea <reply>`. Echo the new spec id and exit. |
 | `N`, `skip`, empty string | Print `Skipped. Artifact saved at .flow/prospects/<artifact-id>.md` and exit. |
 | `c`, `chart` | Print suggestion: `Run $flow-next-chart on the selected survivor only if it is still singular, oversized, and unclear; otherwise capture/promote. Artifact saved at .flow/prospects/<artifact-id>.md`. **Do not auto-invoke.** |
-| `i`, `interview` | Print suggestion: `Run $flow-next-refine <spec-or-task-id> to refine. Artifact saved at .flow/prospects/<artifact-id>.md`. **Do not auto-invoke** - the user picks the target id. |
+| `i`, `refine`, `interview` | Print suggestion: `Run $flow-next-refine <spec-or-task-id> to refine. Artifact saved at .flow/prospects/<artifact-id>.md`. **Do not auto-invoke** - the user picks the target id. |
 | anything else | Reprint the menu once with `Unrecognized choice: <reply>`. On second invalid reply, print `Skipped (no valid choice). Artifact saved at .flow/prospects/<artifact-id>.md` and exit cleanly. |
 
 **Host command form:** print every copy-pasteable flow-next command here in the spelling this host invokes — the flat `/flow-next-<name>` form when the resolved plugin root carries `.flow-next-opencode-manifest` (an OpenCode install — the same signal setup's host detection uses); on any other or indeterminate host, exactly as spelled here.
@@ -809,5 +805,5 @@ The artifact is on disk. Phase 6 does not retry, does not extend, does not delet
 ### Done when
 
 - The user was offered the choice once (blocking tool or the frozen numbered fallback) and the reply was routed per §6.3.
-- Chart and interview were suggested, never auto-invoked.
+- Chart and refine were suggested, never auto-invoked.
 - The artifact path was printed on every exit path.

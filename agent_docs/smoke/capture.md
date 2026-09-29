@@ -1,4 +1,6 @@
-# capture — manual smoke (maintainer validation, not part of a run)
+# capture: manual smoke (maintainer checklist)
+
+Moved out of the shipped skill in 7.0; never loaded at runtime.
 
 > Maintainer-facing. A capture session never needs this file; it is the manual validation
 > description for prose changes to the skill.

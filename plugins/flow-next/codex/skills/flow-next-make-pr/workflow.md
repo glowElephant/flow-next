@@ -63,4 +63,3 @@ The renderer's numbered groups and linked file lists supply the structural sketc
 For dry-run, print `BODY_FILE` and stop. Otherwise read [create-and-finalize.md](create-and-finalize.md) and
 complete it.
 
-[Manual smoke](references/manual-smoke.md) is a maintainer checklist, never loaded at runtime.
