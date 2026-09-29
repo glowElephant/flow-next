@@ -11,7 +11,7 @@ Contents:
 - [Bridge overview](#bridge-overview) — active predicate, perEvent table, shared gating predicate, best-effort rules
 - [First claim](#first-claim) — multi-task.md 3b.1: first task claimed → issue In-Progress (`work.firstClaim`)
 - [Task done](#task-done) — multi-task.md 3d.1: task done → status comment + evidence (`work.done`)
-- [Completion review](#completion-review) — multi-task.md 3g: SHIP → verdict comment, never terminal Done (`completionReview`)
+- [Completion review](#completion-review) — multi-task.md 3g or the inline Phase 3 step 7: SHIP → verdict comment, never terminal Done (`completionReview`)
 - [Unlink / re-link lifecycle](#unlink--re-link-lifecycle) — detaching a spec from its issue (no work-run step)
 
 ## Bridge overview

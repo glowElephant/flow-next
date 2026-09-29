@@ -220,7 +220,8 @@ here, inline.** Print `Scheduling: inline (single task)`.
    `mkdir -p .flow/tmp && git rev-parse HEAD > .flow/tmp/base_commit`.
 2. **Tracker.** Run `$FLOWCTL sync active --json` once. Only when it reports `active: true` (or
    fails) read [references/tracker-touchpoints.md](references/tracker-touchpoints.md) and fire its
-   `First claim` section now and its `Task done` section after step 6; otherwise nothing fires.
+   `First claim` section now, its `Task done` section after step 6, and its `Completion review`
+   section when step 7 ran a completion review that returned SHIP; otherwise nothing fires.
 3. **Implement** to the acceptance criteria, following working-rules.md: a failing test first
    where cheap (on the defect route, [references/defect-route.md](references/defect-route.md); on
    the hill-climb route, [references/hill-climb.md](references/hill-climb.md) replaces this step),
