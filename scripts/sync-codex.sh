@@ -447,9 +447,11 @@ for nf in \
   "$CODEX_DIR/skills/flow-next-audit/SKILL.md" \
   "$CODEX_DIR/skills/flow-next-audit/workflow.md" \
   "$CODEX_DIR/skills/flow-next-flow/references/route-matrix.md" \
+  "$CODEX_DIR/skills/flow-next-flow/references/route-matrix-more.md" \
   "$CODEX_DIR/skills/flow-next-flow/references/plan-vs-no-plan.md" \
   "$CODEX_DIR/skills/flow-next-flow/auto.md" \
   "$CODEX_DIR/skills/flow-next-work/phases.md" \
+  "$CODEX_DIR/skills/flow-next-work/references/multi-task.md" \
   "$CODEX_DIR/skills/flow-next-work/references/no-plan-route.md"; do
   [ -f "$nf" ] || continue
   sed -i.bak \
@@ -542,7 +544,7 @@ FLOW_DISPATCH_TRANSFORM
 
 # --- STRUCTURAL: Task tool → agent invocation ---
 
-phases="$CODEX_DIR/skills/flow-next-work/phases.md"
+phases="$CODEX_DIR/skills/flow-next-work/references/multi-task.md"
 if [ -f "$phases" ]; then
 
   # Replace section 3c with agent invocation
@@ -556,11 +558,9 @@ if [ -f "$phases" ]; then
 
 Implementation is the **implementer** tier: absent any preference, the worker runs on the session model. **Routing precedence, highest first: an explicit argument in the invocation, then the project routing block in the instruction file, then the agent definition's own default, then the session model.** How this harness reaches a non-session model — and what the degradation is when it cannot — lives in its reach page (`plugins/flow-next/docs/reach/`), never here.
 
-Before spawning, apply [references/judge-tier.md](references/judge-tier.md) once for this task. Use its selected model in the host spawn-model parameter as well as the `IMPLEMENTER:` line; an explicit invocation always wins.
+Before spawning, apply [judge-tier.md](judge-tier.md) once for this task. Use its selected model in the host spawn-model parameter as well as the `IMPLEMENTER:` line; an explicit invocation always wins.
 
 **When the implementer tier resolves to a model this harness reaches only over a CLI bridge, the worker bridges and the conductor never does.** The dispatch below is unchanged: the worker resolves the tier itself (worker Phase 1b), hands the task to the bridged child with the usage guide's brief, and reviews the child's commit range before its own review dispatch. The bridged child owns the task and its own delegation; a conductor that composed a brief, ran a bridge call, or fanned out on the implementer's behalf has broken this.
-
-**One task, no parallel work: the conductor implements it inline.** When this run implements exactly one task (a one-task plan, a task-id run, or the direct route's implicit owner task) and nothing else runs beside it, do not spawn a worker. After the judge-tier step above, read [worker.toml](../../agents/worker.toml) and follow its phases yourself in this context, Phase 1 (re-anchor) through Phase 5 (`flowctl done`), using its default `.flow/tmp/<TASK_ID>-summary.md` / `-evidence.json` handover paths. Review, `flowctl done`, receipts, and the done summary follow that file exactly; 3d's verification and failure handling then apply unchanged. Dispatch the worker below instead when the user or config asks for one (an explicit implementer model or tier, or a judge result that names a non-session spawn model or an `IMPLEMENTER`, a bridge included), when this task's review mode resolves to `host` (the writer never dispatches its own host review), or when your own context is too full to implement well; say which in one line.
 
 Use the **worker** agent role to implement each selected task. For a multi-task
 wave, create one isolated mutable workspace and task-unique summary/evidence
@@ -573,7 +573,7 @@ conductor's checkout does not exist inside it — and a freshly planned spec is
 uncommitted by default. A worker dispatched into such a workspace cannot
 re-anchor at all: `$FLOWCTL show <task-id>` finds no task there, and the failure
 looks like a broken worker rather than a missing commit. Commit `.flow/` first
-(`git add -A`), then create the workspaces from that commit. Verified 2026-08-14
+(`git add -- .flow/`), then create the workspaces from that commit. Verified 2026-08-14
 on the first live wave dispatch. Single-worker runs are unaffected — they share
 the conductor's checkout.
 
@@ -667,8 +667,8 @@ SECTION3C
     -e 's|Next: /flow-next:make-pr <spec-id>   # or /flow-next:qa <spec-id> first|Next: $flow-next-make-pr <spec-id>   # or $flow-next-qa <spec-id> first|g' \
     -e 's/spawn worker/run worker agent/g' \
     -e 's/\*\*For each task\*\*, spawn a worker subagent with fresh context/**For each task**, use the worker agent with fresh context/g' \
-    "$phases"
-  rm -f "${phases}.bak"
+    "$phases" "$CODEX_DIR/skills/flow-next-work/phases.md"
+  rm -f "${phases}.bak" "$CODEX_DIR/skills/flow-next-work/phases.md.bak"
 
   # fn-208.2 guard: SECTION3C above is a HARDCODED replacement of canonical 3c,
   # so a canonical dispatch-template field the heredoc misses vanishes silently
@@ -679,10 +679,9 @@ SECTION3C
     "TIMEBOX: <cap> - on expiry write the handover with partial findings and return, never run on" \
     "Implementation is the **implementer** tier" \
     "IMPLEMENTER: <model> at <effort>" \
-    "the worker bridges and the conductor never does" \
-    "the conductor implements it inline"; do
+    "the worker bridges and the conductor never does"; do
     if ! grep -qF "$dispatch_field" "$phases"; then
-      echo "SYNC-FAIL: mirror phases.md 3c lost dispatch field: $dispatch_field (update SECTION3C in sync-codex.sh)" >&2
+      echo "SYNC-FAIL: mirror multi-task.md 3c lost dispatch field: $dispatch_field (update SECTION3C in sync-codex.sh)" >&2
       exit 1
     fi
   done
@@ -2429,7 +2428,7 @@ flow-next-chart/references/chart-mode.md	separate `/flow-next:chart <id>` (or pi
 flow-next-audit/SKILL.md	recommends `/flow-next:memory-migrate` first	recommends `$flow-next-memory-migrate` first
 flow-next-audit/SKILL.md	`/flow-next:memory-migrate` first to make these auditable	`$flow-next-memory-migrate` first to make these auditable
 flow-next-audit/workflow.md	`/flow-next:memory-migrate` first to make these auditable	`$flow-next-memory-migrate` first to make these auditable
-flow-next-flow/references/route-matrix.md	| `/flow-next:strategy`	| `$flow-next-strategy`
+flow-next-flow/references/route-matrix-more.md	| `/flow-next:strategy`	| `$flow-next-strategy`
 flow-next-flow/references/route-matrix.md	| `/flow-next:capture`	| `$flow-next-capture`
 flow-next-flow/references/route-matrix.md	| `/flow-next:work <spec-id> --no-plan`	| `$flow-next-work <spec-id> --no-plan`
 flow-next-flow/references/route-matrix.md	then `/flow-next:make-pr <spec-id>`	then `$flow-next-make-pr <spec-id>`

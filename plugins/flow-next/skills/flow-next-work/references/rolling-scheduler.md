@@ -1,13 +1,13 @@
 # Rolling frontier scheduler (Phase 3, rolling route)
 
-> Read from phases.md Phase 3 when the route decision there selected
+> Read from multi-task.md Phase 3 when the route decision there selected
 > `Scheduling: rolling`. `$FLOWCTL` is already resolved by the SKILL.md
 > preamble. Phases 1, 2, 4, and 5 run unchanged around this file; every
-> pointer below into phases.md or a sibling reference means READ that file and
+> pointer below into multi-task.md, phases.md or a sibling reference means READ that file and
 > execute the named section verbatim - never restate or fork it. The route
 > decision already sent task-id runs, plan-sync-on runs, specs with fewer
 > than two open tasks, and fully sequential dependency chains to the wave
-> route (phases.md 3a-3g); this file runs only when none of those held.
+> route (multi-task.md 3a-3g); this file runs only when none of those held.
 
 Contents:
 
@@ -89,7 +89,7 @@ claim).** Rolling admission needs non-blocking subagent dispatch with
 completion notifications. Judge that by the host's ACTUAL behaviour - a live
 measurement (dispatch two short sleep agents and observe whether control
 returns before completion, with per-completion signals) or a prior
-in-session one - never by host name. Then print the line phases.md Phase 3
+in-session one - never by host name. Then print the line multi-task.md Phase 3
 deferred to this file, exactly once, before entering 3a:
 
 ```text
@@ -194,7 +194,7 @@ recomputed frontier is empty and the local in-flight set is empty, route to
 3a's typed contention outcome (`Rolling run ended: spec contended ...`)
 rather than waiting for an event that cannot arrive.
 
-**Tracker touchpoint:** run phases.md 3b.1 exactly as written there **once per RUN, at the run's
+**Tracker touchpoint:** run multi-task.md 3b.1 exactly as written there **once per RUN, at the run's
 first successful claim only** - the `work.firstClaim` event is a run-lifecycle
 event, not a per-task one (tracker-touchpoints.md scopes it to the spec's
 first claimed task). Track that it fired; later admission events never re-run
@@ -202,7 +202,7 @@ it. A run that dispatched 3b.1 per claimed task has broken this.
 
 ## 3c Spawn Workers
 
-Read phases.md 3c and execute it with these fixed values - everything else
+Read multi-task.md 3c and execute it with these fixed values - everything else
 (implementer-tier routing, the commit-spec-files-first rule, the prompt
 template, per-task `REVIEW_MODE` resolution, `BASELINE_HANDOFF` judgment) is
 as written there:
@@ -272,7 +272,7 @@ Two event kinds drive 3d, and **admission (3a) is recomputed immediately after
 handling EACH event** - never deferred to the end of a task's review tail:
 
 **Worker-return event** (that task only):
-Before accepting the return or integrating, apply [phases.md Phase 3d](../phases.md#3d-join-integrate-and-verify)'s task-status, lane-attributed live-command check (a handover with an attributable live command still waits). If its early-return wait applies, retain the task's slot, recompute admission at 3a and keep handling other events while the command runs; handle the return after it exits through the re-anchoring continuation worker in the same workspace, with Phase 3d's early-return strike exemption and dispatch `TIMEBOX` bound (then its existing TIMEBOX stand-down and 2-strike rules).
+Before accepting the return or integrating, apply [multi-task.md Phase 3d](../multi-task.md#3d-join-integrate-and-verify)'s task-status, lane-attributed live-command check (a handover with an attributable live command still waits). If its early-return wait applies, retain the task's slot, recompute admission at 3a and keep handling other events while the command runs; handle the return after it exits through the re-anchoring continuation worker in the same workspace, with Phase 3d's early-return strike exemption and dispatch `TIMEBOX` bound (then its existing TIMEBOX stand-down and 2-strike rules).
 
 1. Read [wave-join.md](wave-join.md) and execute its handover +
    integration steps: confirm the handover; integrate that task's workspace
@@ -352,7 +352,7 @@ task, never a correctness loss.
 **Worker failure handling (per task).** A worker that returns without a valid
 handover (or whose result is lost) is diagnosed from ground truth INSIDE its
 assigned workspace per wave-join.md's partial-failures rules, then classified
-per phases.md 3d (work complete / continuation worker into the SAME
+per multi-task.md 3d (work complete / continuation worker into the SAME
 workspace / retry). **The retry is bounded by the per-task strike
 counter (2 consecutive failures → typed escalation; a third respawn has broken
 this).** A stall-guard terminal (blocked-with-green-code) or the second
@@ -368,7 +368,7 @@ siblings are live abandons their `in_progress` claims and lets late returns
 arrive after the conductor is gone - no task is ever left silently
 `in_progress`. The run never wedges on one task.
 
-**Tracker touchpoint:** when the task reached `done`, run phases.md 3d.1
+**Tracker touchpoint:** when the task reached `done`, run multi-task.md 3d.1
 exactly as written there.
 
 ## 3f Quiesce
@@ -383,7 +383,7 @@ outcome instead, never here. At quiesce:
 1. Run the full-suite verification once on the final integrated target when the
    repository or the user asks for a full suite (wave-join.md's integrated-target
    verification contract - the full gate runs only here, never per task); fix and commit any failure, then re-check the fix with focused tests. After each green full gate, write `$FLOWCTL gate receipt --gate <gate_id> --command "<exact command>"` at the verified HEAD, using the same gate id and command as Phase 4. Red gates write no receipt. Phase 4 can then honor this receipt at the same HEAD (or after `.flow/`-only commits).
-2. Run phases.md 3g (completion review gate) exactly as written there - only
+2. Run multi-task.md 3g (completion review gate) exactly as written there - only
    its timing shifts to quiesce, never its semantics.
 
 Then continue with Phase 4 (quality) and Phase 5 (ship). **The notes

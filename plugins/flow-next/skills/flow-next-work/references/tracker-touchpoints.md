@@ -1,6 +1,6 @@
 # work tracker touchpoints (gated reference)
 
-> **Loaded only when a phases.md tracker gate prints its active
+> **Loaded only when a work tracker gate (multi-task.md, or the inline path in phases.md) prints its active
 > read/execute/continue sentinel** (bridge active, or the gate's probe/parse
 > errored — fail open). A default (bridge-inactive) run never reads this file. Phase 5's end-of-run
 > `sync check` + retro-fire + the mandatory four-state `Tracker sync:` summary
@@ -9,9 +9,9 @@
 Contents:
 
 - [Bridge overview](#bridge-overview) — active predicate, perEvent table, shared gating predicate, best-effort rules
-- [First claim](#first-claim) — phases.md 3b.1: first task claimed → issue In-Progress (`work.firstClaim`)
-- [Task done](#task-done) — phases.md 3d.1: task done → status comment + evidence (`work.done`)
-- [Completion review](#completion-review) — phases.md 3g: SHIP → verdict comment, never terminal Done (`completionReview`)
+- [First claim](#first-claim) — multi-task.md 3b.1: first task claimed → issue In-Progress (`work.firstClaim`)
+- [Task done](#task-done) — multi-task.md 3d.1: task done → status comment + evidence (`work.done`)
+- [Completion review](#completion-review) — multi-task.md 3g: SHIP → verdict comment, never terminal Done (`completionReview`)
 - [Unlink / re-link lifecycle](#unlink--re-link-lifecycle) — detaching a spec from its issue (no work-run step)
 
 ## Bridge overview
@@ -20,9 +20,9 @@ Contents:
 
 | Lifecycle event | perEvent key | Resolved facade op | Effect when opted in |
 |---|---|---|---|
-| first task claimed (phases.md 3b.1) | `tracker.perEvent.work.firstClaim` | fixed `push --status-only` for `pull`, `push`, `reconcile`, or `comment` | move the linked issue In-Progress without body/relation overwrite |
-| task done (phases.md 3d.1) | `tracker.perEvent.work.done` | fixed `comment` for `pull`, `push`, `reconcile`, or `comment` | post a status comment + evidence (tests / commits / PR) |
-| spec-completion-review SHIP (phases.md 3g) | `tracker.perEvent.completionReview` | fixed `comment` for `pull`, `push`, `reconcile`, or `comment` | post verdict / R-ID coverage as a comment; NEVER terminal Done (Done is reserved for a MERGED PR, driven by land.merged); at most leaves the issue at In Review |
+| first task claimed (multi-task.md 3b.1) | `tracker.perEvent.work.firstClaim` | fixed `push --status-only` for `pull`, `push`, `reconcile`, or `comment` | move the linked issue In-Progress without body/relation overwrite |
+| task done (multi-task.md 3d.1) | `tracker.perEvent.work.done` | fixed `comment` for `pull`, `push`, `reconcile`, or `comment` | post a status comment + evidence (tests / commits / PR) |
+| spec-completion-review SHIP (multi-task.md 3g) | `tracker.perEvent.completionReview` | fixed `comment` for `pull`, `push`, `reconcile`, or `comment` | post verdict / R-ID coverage as a comment; NEVER terminal Done (Done is reserved for a MERGED PR, driven by land.merged); at most leaves the issue at In Review |
 
 (capture / interview / plan / make-pr / resolve-pr carry their own touchpoints in those skills, gated identically on `tracker.perEvent.{capture,interview,plan,makePr,resolvePr}`.)
 
@@ -42,7 +42,7 @@ The actual tracker work (transport, body merge, status who-wins, comment dedup, 
 
 ## First claim
 
-phases.md **3b.1 — first claim → In-Progress.** Optional. Runs only when the tracker bridge is active AND `work.firstClaim` is opted in. Trigger only on the spec's **first** claimed task this run (the issue moves to In-Progress once, not per task).
+multi-task.md **3b.1 — first claim → In-Progress.** Optional. Runs only when the tracker bridge is active AND `work.firstClaim` is opted in. Trigger only on the spec's **first** claimed task this run (the issue moves to In-Progress once, not per task).
 
 ```bash
 OP="$(jq -r '.ops["work.firstClaim"] // "off"' <run-sync-active.json>)"
@@ -63,7 +63,7 @@ Best-effort: a tracker failure must never block the worker. The skill emits its 
 
 ## Task done
 
-phases.md **3d.1 — task done → status comment + evidence.** Optional. Runs only when the tracker bridge is active AND `work.done` is opted in, and only when the task reached `done` (phases.md 3d). Posts a structured status comment + evidence (tests / PR links from the task's evidence) to the linked issue; appends-only (R8), deduped by marker — never a conflict.
+multi-task.md **3d.1 — task done → status comment + evidence.** Optional. Runs only when the tracker bridge is active AND `work.done` is opted in, and only when the task reached `done` (multi-task.md 3d). Posts a structured status comment + evidence (tests / PR links from the task's evidence) to the linked issue; appends-only (R8), deduped by marker — never a conflict.
 
 ```bash
 OP="$(jq -r '.ops["work.done"] // "off"' <run-sync-active.json>)"
@@ -85,7 +85,7 @@ Best-effort — append-only comment sync never blocks the work loop; the skill e
 
 ## Completion review
 
-phases.md **3g — SHIP → verdict comment, NEVER terminal Done.** Runs only when the tracker bridge is active AND `completionReview` is opted in, immediately after the completion-review skill returns with its terminal status already written. The status owner stays inside the review skill; this caller-owned touchpoint exists only to project the verdict evidence. **Local completion review is NOT merge evidence** — `Done` is reserved for a `MERGED` PR (status-sync `flowToNormalized`), so this touchpoint is **comment-shaped only**: it posts the verdict + R-ID coverage and at most leaves the issue at `In Review` (if an open PR exists). It NEVER pushes `Done`/`verified`:
+multi-task.md **3g — SHIP → verdict comment, NEVER terminal Done.** Runs only when the tracker bridge is active AND `completionReview` is opted in, immediately after the completion-review skill returns with its terminal status already written. The status owner stays inside the review skill; this caller-owned touchpoint exists only to project the verdict evidence. **Local completion review is NOT merge evidence** — `Done` is reserved for a `MERGED` PR (status-sync `flowToNormalized`), so this touchpoint is **comment-shaped only**: it posts the verdict + R-ID coverage and at most leaves the issue at `In Review` (if an open PR exists). It NEVER pushes `Done`/`verified`:
 
 ```bash
 OP="$(jq -r '.ops["completionReview"] // "off"' <run-sync-active.json>)"

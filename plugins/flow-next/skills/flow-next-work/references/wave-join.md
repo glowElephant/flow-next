@@ -1,8 +1,8 @@
 # Wave join, integrate, and verify (gated reference)
 
-> **Loaded only when this run dispatched a parallel wave** (phases.md 3a
+> **Loaded only when this run dispatched a parallel wave** (multi-task.md 3a
 > `Dispatch count` > 1) **or a reviewer-overlap one-task wave**. A run whose
-> waves are all single, non-overlapped workers never reads this file — phases.md 3d's
+> waves are all single, non-overlapped workers never reads this file — multi-task.md 3d's
 > inline single-worker verify + failure rules cover it.
 
 Contents:
@@ -121,7 +121,7 @@ and all review-fix commits are integrated:
 
 ## Partial failures
 
-Partial failures use the ground-truth recovery rules in phases.md 3d, but first
+Partial failures use the ground-truth recovery rules in multi-task.md 3d, but first
 diagnose each failed or missing-result worker **inside its assigned workspace**.
 The conductor already knows that workspace plus the task-unique
 `HANDOVER_SUMMARY` and `HANDOVER_EVIDENCE` paths from dispatch; enter and

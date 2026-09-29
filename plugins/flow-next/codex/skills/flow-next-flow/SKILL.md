@@ -11,7 +11,7 @@ Flow chooses the next step so the user does not have to. It reads what it was gi
 
 **Role:** conductor, inline (no `context: fork`) so `plain-text numbered prompt` stays reachable. On hosts without it, fall back to a plain-text numbered prompt with a final `Other - type your own answer` option.
 
-**Read [workflow.md](workflow.md) for the hop loop.** The routing rules live in `references/`, one file per rule, each opening with its decision record. Read a reference only at the step that names it; a step that does not name one reads nothing.
+**Read [workflow.md](workflow.md) for the hop loop.** Read a reference only at the step that names it.
 
 ## Preamble
 
@@ -52,7 +52,7 @@ fi
 export FLOW_UNTIL
 ```
 
-`--until=merge` authorizes landing the selected item in this invocation, independently of `--auto`. Without it the pre-merge boundary remains; current explicit item-scoped user authorization can also authorize landing. Read `references/tail.md` when reaching that boundary. Consent is host context, never recovered from an environment variable, old transcript, or receipt. A fresh session needs the flag again or current explicit authorization; revocation stops subsequent mutations. Consume destination tokens rather than passing them to a build stage. Everything else is the starting point, verbatim - flow adds no input classifier. A tracker issue id or URL is read through the access the session already has (the sync bridge, an MCP, `gh`, `glab`); flow adds no input adapter.
+`--until=merge` authorizes landing the selected item in this invocation; read `references/tail.md` at that boundary. Consent is current host context, never recovered from an environment variable, old transcript or receipt. Consume destination tokens rather than passing them to a build stage; everything else is the starting point, verbatim.
 
 **`AUTO=1`: read [auto.md](auto.md) and follow it.** Attended runs never load it.
 
@@ -68,22 +68,12 @@ With `--auto` there is no marker refusal, because `--auto` sets `FLOW_AUTONOMOUS
 
 ## Invariants (every run)
 
-- **Read [working-rules.md](../../references/working-rules.md) before the first route step and follow it on every route**: scope, tests, attended versus unattended behaviour, handoff.
-- **Route on content and context, never on input kind.** Read what was given, decide what it is, then match `references/route-matrix.md` at the route step.
-- **Ask only on a fork that is material and not observable.** Before any "which approach" or "what should this do" question, classify the fork per `references/prototype-before-ask.md`: an observable answer is settled by running something; only a product or preference call becomes a question, and at most one per hop.
-- **Never fabricate a review, QA, or completion verdict** to pass a gate. Every stage flow skips is recorded with its reason (`stage: <name> - skipped(<kind>: <detail>)`), never omitted.
-- **Land owns merge; make-pr owns spec close.** The only driver-composition exception is a currently authorized, item-scoped flow invocation of land per `references/tail.md`. Never dispatch another flow, pilot, or a loop from inside a run.
-- **`--explain` writes nothing and dispatches nothing.** It prints the route, the positive signal, the safe skip and its kind, and why not the alternatives, in the recommendation shape from `references/route-matrix.md`.
-- **Host command form:** print every copy-pasteable flow-next command in the spelling this host invokes - the flat `/flow-next-<name>` form when the resolved plugin root carries `.flow-next-opencode-manifest` (an OpenCode install), otherwise exactly as spelled here.
-
-## Forbidden
-
-- Running attended under any autonomy marker, or dispatching a second driver beyond the scoped land stage.
-- Executing merge or spec close inline, invoking land without current scoped consent, or force-pushing.
-- Re-implementing a stage's logic inline instead of invoking its skill.
-- A plain-text numbered prompt whose answer a prototype or experiment could have observed.
-- Writing under `.flow/` on an `--explain` run.
-- A stage skipped without a recorded reason.
+- **Read [working-rules.md](../../references/working-rules.md) before the first route step** and follow it on every route.
+- **Route on content and context, never on input kind**, from `references/route-matrix.md` at the route step.
+- **Ask only on a fork that is material and not observable** (`references/prototype-before-ask.md`); at most one question per hop.
+- **Never fabricate a review, QA or completion verdict.** Every stage flow skips is recorded with its reason (`stage: <name> - skipped(<kind>: <detail>)`).
+- **Invoke stage skills; never re-implement their steps inline.** Land owns merge (only with current scoped consent, per `references/tail.md`); make-pr owns spec close. Never dispatch another flow, pilot or loop from inside a run, and never force-push.
+- **`--explain` writes nothing and dispatches nothing** (`references/explain.md`).
 
 ## Report shape (every stop)
 

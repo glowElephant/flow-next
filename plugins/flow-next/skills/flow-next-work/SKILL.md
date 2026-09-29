@@ -115,16 +115,14 @@ configured/overridden backend — codex, copilot, cursor, claude, rp, or host �
 
 **If `AUTONOMOUS=1` (autonomous mode):** ask nothing — apply the autonomous defaults and continue to the workflow.
 
-**Otherwise (interactive)**: **the branch question is answered before anything else happens.** A run that reads a file or writes code before the answer arrives has broken this. Read
-[references/setup-questions.md](references/setup-questions.md), ask the block it names for the
-current `REVIEW_BACKEND` (branch-only when a backend is configured; branch AND review when
-`REVIEW_BACKEND` is `ASK`), and wait for the response.
+**Otherwise (interactive)**: do not ask about the branch. Stay on the current branch when it is
+not the default branch, otherwise create a new one (named for the spec's `branch_name`), and say
+which in one line. Ask only when `REVIEW_BACKEND` is `ASK`: then read
+[references/setup-questions.md](references/setup-questions.md) and ask its review question before
+reading or writing anything else.
 
-**Defaults when empty/ambiguous:**
-- Branch = `new`
-- Review = configured backend if set, else `none` (no auto-detect fallback)
-
-Done when: the branch mode (and, under `REVIEW_BACKEND=ASK`, the review mode) is resolved from arguments, the user's answer, or the autonomous defaults — and no file has been read and no code written before that point.
+Done when: the branch mode (and, under `REVIEW_BACKEND=ASK`, the review mode) is resolved from
+arguments, this default, the user's answer, or the autonomous defaults.
 
 ## Workflow
 
@@ -132,25 +130,21 @@ Read [working-rules.md](../../references/working-rules.md) first; it holds on ev
 
 After setup questions answered, read [phases.md](phases.md) and execute each phase in order.
 
-**Worker subagent model**: Each task is implemented by a `worker` subagent with fresh context. This prevents context bleed between tasks and keeps re-anchor info with the implementation. The main conversation owns the ready frontier. By default it schedules on the rolling frontier (phases.md Phase 3 → `references/rolling-scheduler.md`): a new ready task is admitted at every worker-return event, each worker in an isolated workspace, with review and completion conductor-owned per task. It falls back to the wave loop - concurrent safe subsets joined at wave boundaries, or a single worker in the checkout - for a task-id run, when plan-sync is on, when the spec has fewer than two open tasks, or when its tasks form a sequential chain; the route and reason print once as `Scheduling:`. On the rolling route, and in any concurrent wave (`PARALLEL_WAVE: true`), a worker implements, tests, and commits in its isolated workspace, then returns task-unique handover files without completing shared Flow state; the conductor integrates before review, completion, tracker projection, plan-sync, or the next admission. The wave route's single-worker path shares the conductor's checkout and self-completes. A run with exactly one task to implement and no parallel work skips the worker: the conductor implements it inline by following worker.md's phases (phases.md 3c), unless the user or config asks for a worker or its own context is too full.
-
-If user chose review, pass the resolved review mode to every worker. On the wave route's single-worker path the worker invokes `flow-next:flow-next-impl-review` itself after implementation and loops until SHIP. On the rolling route, and for any concurrent wave (`PARALLEL_WAVE: true`), the worker never reviews or completes: the conductor runs the review after integration and calls `flowctl done` only on SHIP.
-
-**Completion review gate**: Default-on in SPEC_MODE when a review backend is configured. After all tasks are done, phases.md 3g invokes `flow-next:flow-next-spec-completion-review` — except it skips when the spec has exactly one task, that task's per-task impl-review reached SHIP (`REVIEW_MODE` was not `none`), and every spec R-ID is covered by that task's declared `satisfies`. On skip, persist `completion_review_status` `not_required` via the CAS setter (`--if-current unknown`) and record the Phase 5 stage line; a miss that reads `not_required` is an already-excused re-entry (same skip branch), while a verdict-status miss falls through to the normal status check without a skip line — policy outcome, never a SHIP. `flowctl next --require-completion-review` is a flowctl-level gate for driver loops; this skill does not read it. The spec-completion-review skill handles the fix loop internally until SHIP.
+**One task is implemented inline by this conversation** (phases.md Phase 3). Several tasks, or a
+task that goes to a worker, follow [references/multi-task.md](references/multi-task.md), which owns
+scheduling (rolling or wave), workers, review ownership after integration, and the completion
+review gate.
 
 ## Tracker sync (opt-in, off by default)
 
-**The no-tracker path is the documented default and is behaviorally unchanged.** **A tracker touchpoint fires only when the bridge is active *and* its specific event is opted in** (the **shared gating predicate**); otherwise it is a silent no-op — no new steps, no new prerequisites. A run that adds a tracker step with the bridge inactive has broken this. The bridge is active iff `flowctl sync active --json` reports `active: true`. The touchpoint mechanics — the perEvent table, the shared gating predicate, and the three dispatch payloads (phases.md 3b.1 first-claim, 3d.1 done, 3g completion-review) — live in [references/tracker-touchpoints.md](references/tracker-touchpoints.md). **That reference is read only when a phases.md tracker gate prints its active read/execute/continue sentinel** (bridge active, or the gate's probe errored — fail open); a default bridge-inactive run that loaded it has broken this. Phase 5's end-of-run `sync check` + retro-fire + the mandatory four-state `Tracker sync:` summary slot stay inline in phases.md Phase 5 and run on every run (the slot reads `n/a (bridge inactive)` when no tracker is configured).
-
-**Handle recognition (R16):** `/flow-next:work wor-17` / `work wor-17.1` resolve the existing linked spec/task — the Phase 1 input grammar routes any single-token arg through `flowctl show` (which resolves tracker handles) before treating it as idea text, so a tracker key is never re-created as a new spec.
-
-**Spec-id scheme on mint:** with a tracker configured, tracker-first is the recommended team default (`tracker.specIds=tracker`) — it stops parallel `fn-N` collisions. Gate: phases.md Phase 1.
-
-**Unlink / re-link lifecycle:** documented with the touchpoints in [references/tracker-touchpoints.md](references/tracker-touchpoints.md) (`Unlink / re-link lifecycle`) — no work-run step.
+A tracker touchpoint fires only when `flowctl sync active --json` reports `active: true` and its
+event is opted in; otherwise nothing happens and [references/tracker-touchpoints.md](references/tracker-touchpoints.md)
+is never read. A tracker key (`wor-17`, `wor-17.1`) resolves to its linked spec or task through
+`flowctl show`, never a new spec. Phase 5's `Tracker sync:` summary slot runs on every run.
 
 ## Guardrails
 
-- **The branch question is answered before the run starts.** A run that began on an unresolved branch choice has broken this.
+- **The branch is chosen before the run starts.** A run that began on an unresolved branch choice has broken this.
 - **A plan or spec exists before implementation starts.** A run that began with no `.flow/` spec has broken this.
 - **Tests run.** A task marked done before the focused tests for the code it changed ran has broken this.
 - **No task is left half-done.** A run that ends with a task still `in_progress` and no `NEEDS_HUMAN`/blocked report has broken this.
