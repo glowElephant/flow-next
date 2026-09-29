@@ -477,7 +477,7 @@ for nf in \
     -e 's|Body inspection → /flow-next:make-pr|Body inspection → $flow-next-make-pr|g' \
     -e 's|re-run /flow-next:make-pr (skill detects the existing branch and re-tries)|re-run $flow-next-make-pr (skill detects the existing branch and re-tries)|g' \
     -e 's|Use `/flow-next:plan fn-N`|Use `$flow-next-plan fn-N`|g' \
-    -e 's|→ `/flow-next:work fn-N` (or more interview|→ `$flow-next-work fn-N` (or more interview|g' \
+    -e 's|→ `/flow-next:work fn-N` (or more refine|→ `$flow-next-work fn-N` (or more refine|g' \
     -e 's|→ `/flow-next:work fn-N.M`|→ `$flow-next-work fn-N.M`|g' \
     -e 's|→ `/flow-next:capture` to turn the refined document|→ `$flow-next-capture` to turn the refined document|g' \
     -e 's|`/flow-next:visual fn-N` for a spec input|`$flow-next-visual fn-N` for a spec input|g' \
@@ -2399,7 +2399,7 @@ flow-next-make-pr/create-and-finalize.md	Reviewer feedback → /flow-next:resolv
 flow-next-make-pr/create-and-finalize.md	Body inspection → /flow-next:make-pr	Body inspection → $flow-next-make-pr
 flow-next-make-pr/create-and-finalize.md	re-run /flow-next:make-pr (skill detects	re-run $flow-next-make-pr (skill detects
 flow-next-refine/SKILL.md	Use `/flow-next:plan fn-N`	Use `$flow-next-plan fn-N`
-flow-next-refine/SKILL.md	→ `/flow-next:work fn-N` (or more interview	→ `$flow-next-work fn-N` (or more interview
+flow-next-refine/SKILL.md	→ `/flow-next:work fn-N` (or more refine	→ `$flow-next-work fn-N` (or more refine
 flow-next-refine/SKILL.md	→ `/flow-next:work fn-N.M`	→ `$flow-next-work fn-N.M`
 flow-next-refine/SKILL.md	→ `/flow-next:capture` to turn the refined document	→ `$flow-next-capture` to turn the refined document
 flow-next-refine/SKILL.md	`/flow-next:visual fn-N` for a spec input	`$flow-next-visual fn-N` for a spec input

@@ -213,7 +213,7 @@ The question count and the sections-changed line always appear.
 Next step by input:
 
 - Spec without tasks → recommend `$flow-next-work fn-N --no-plan` for a ready, cohesive spec. Use `$flow-next-plan fn-N` when dependencies, ownership, staged delivery or execution constraints make decomposition useful; use `$flow-next-plan-review fn-N` for an independent design review. Risk or file count alone does not call for decomposition.
-- Spec with tasks → `$flow-next-work fn-N` (or more interview on specific tasks).
+- Spec with tasks → `$flow-next-work fn-N` (or more refine on specific tasks).
 - Task → `$flow-next-work fn-N.M`.
 - File → `$flow-next-capture` to turn the refined document into a spec.
 - Any of these → offer a compact digest of the result: `$flow-next-visual fn-N` for a spec input, `$flow-next-visual fn-N.M` for a task input, `$flow-next-visual <file-path>` for the file input (an option, never run for them).
