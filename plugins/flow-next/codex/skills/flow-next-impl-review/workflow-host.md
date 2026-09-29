@@ -277,6 +277,12 @@ The generated prompt contains:
   `Prior findings: all fixed` may replace the per-finding lines; the two must not be
   mixed, because any per-finding line present wins and disables the aggregate. The `unaddressed` array in the JSON tail is about spec R-ID
   coverage and does **not** vouch for prior findings.
+- **The re-review's scope** (on re-review): only the fix commits since the prior round (pass
+  their range). A new finding blocks only if it is Major or worse and the fixes introduced it;
+  anything else is FYI. A prior finding the author declined (a `Declined #<n>: <reason>` line
+  in a fix commit message) is marked `withdrawn` when the reviewer agrees it does not show the
+  change doing the wrong thing, `not-fixed` when it disagrees. If every prior finding is fixed
+  or withdrawn and nothing new blocks, the verdict is SHIP.
 - Required verdict tags: `SHIP` / `NEEDS_WORK` / `MAJOR_RETHINK` / `NEEDS_HUMAN`
 
 Wait for the subagent result(s) (blocking — do not background).
