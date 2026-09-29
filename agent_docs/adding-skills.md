@@ -148,6 +148,30 @@ Two measured incidents:
 
 **Failure signature.** A remedy paragraph with no command in it — or one whose command is described ("clear the strike", "re-run the gate", "hand-edit the ledger") rather than written. If the invocation does not exist yet, that is the finding: either build the verb or say plainly that no recovery exists and what to do instead.
 
+## Shipped skill text
+
+Skills, agents, references and templates are read by agents working in other people's
+repositories. Write for that reader.
+
+- **No flow-next history or repo facts.** No internal spec or task ids, PR or issue numbers,
+  dated incidents, dogfood anecdotes, or facts about this repository (its Codex mirror, test
+  runner, paths). Why a rule exists belongs in the commit message, the CHANGELOG or
+  `agent_docs/`; the skill keeps only the rule.
+- **Change prose deliberately.** Before editing, know which behaviour the text drives and who
+  reads it (conductor, worker, reviewer; always loaded or behind a gate). Prefer moving or
+  removing text to adding it, and keep one rule in one place: cross-route behaviour lives only
+  in working-rules.md.
+- **Measure behaviour changes.** An edit meant to change what agents do is checked against the
+  skill's conduct checklist and measured in an eval or hill-climb round, with the result
+  recorded. A clean diff is not evidence.
+- **Moved text stays reachable.** Check that the entry point still sends the agent to it on the
+  branch where it applies.
+- **Named commands exist.** Every flowctl verb and flag in prose matches `flowctl <verb> --help`,
+  and executable fences run as written.
+
+These rules replace sentence-level prose pins. Tests cover behaviour: executed fences, flowctl
+output, generated-mirror parity.
+
 ## Prose-contract tests: behavior and reachability
 
 Follow [standing criterion G2](../.flow/criteria.md). Tests exercise observable

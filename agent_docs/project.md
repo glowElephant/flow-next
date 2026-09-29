@@ -48,6 +48,9 @@ fitters and truncators are not a remedy. Genuine transport limits stay explicit.
   [working-rules.md](../plugins/flow-next/references/working-rules.md).
   Skills and agents link it near the top and keep only their own
   instructions; never restate or contradict it elsewhere.
+- Shipped skill, agent and reference text follows
+  [Shipped skill text](adding-skills.md#shipped-skill-text): written for agents in other
+  people's repositories, with no flow-next history or repo facts.
 - Read [setup.md](setup.md) before changing setup, snippets, artifact resolution,
   or their transforms. Setup-block rejects symlink targets deliberately.
 - Avoid feature flags and compatibility scaffolding without a demonstrated
