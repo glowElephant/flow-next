@@ -37,7 +37,9 @@ failed, question the idea before trying a third.
 - A test must be able to fail for a defect: it calls the code the way a user does and checks the
   observed result. One that would still pass if the code returned nothing is rewritten or dropped.
 - Before handing back, run the change the way a user would (the command, the request, the page)
-  and look at the actual result, not only the unit tests.
+  and look at the actual result, not only the unit tests. That includes each error case and
+  boundary the request names: give the bad value or the missing key the way a user would and
+  read the message they would get.
 - Never re-run a suite only to read its output again.
 
 ## Attended and unattended
