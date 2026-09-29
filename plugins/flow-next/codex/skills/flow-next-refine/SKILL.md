@@ -162,7 +162,7 @@ Write each answer into the section it belongs in, whatever the lens: a target us
 - **Precision.** Record an answer at the precision given: a preference ("performance matters here") goes to `## Decision Context` as guidance; a number becomes a criterion only when the person stated it. Your recommended options never become thresholds.
 - **Acceptance criteria** are append-only: never renumber or replace an R-ID; take the next unused number. Leave criteria an earlier session wrote exactly as they are. For the criteria you add, the person's own words stay untagged and anything else carries a tag (write-back.md § Source tags).
 
-When the person declines a feature as product judgment (we could build it and choose not to), read [references/declined-scope.md](references/declined-scope.md) and record it.
+When the person declines a feature as product judgment (we could build it and choose not to), read [declined-scope.md](../../references/declined-scope.md) and record it.
 
 Before the write-back, when the refined criteria reach 8 or more or visibly serve more than one independently shippable outcome, read [references/split.md](references/split.md).
 

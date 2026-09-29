@@ -101,7 +101,7 @@ Collect: file paths with line refs, code to reuse, similar prior work, project c
 - Settle a fork the plan hinges on with a throwaway probe when it can be observed, and read the answer back; never park it as an open question or put it to the user. Only a non-mutating or fully disposable probe runs this way. A fork that needs a stateful or destructive command (a migration, a deployment, a write API, live state) stays an open question or goes to the user.
 - When independent inputs (scouts, reviewers, consulted models) disagree wildly on one question, the question was underspecified: reframe it and re-run, never average or quietly pick one.
 - Every task traces to an R-ID and every R-ID to the request. A capability nobody asked for is one out-of-scope line in `## Boundaries`. Prefer removing a risk structurally (a closed schema, an inert format, a capability not exposed) over machinery that manages it; a rejected bigger design gets one line in `## Decision Context`. Trimming scope never trims rigor: each R-ID's error cases, Boundaries, coverage, and the containment, permission and concurrency guards a feature needs all stay.
-- When a rejection is product judgment (we could build this and choose not to), read [`references/declined-ledger.md`](references/declined-ledger.md) and record it.
+- When a rejection is product judgment (we could build this and choose not to), read [declined-scope.md](../../references/declined-scope.md) and record it.
 
 ## Step 3: Gap analysis
 
