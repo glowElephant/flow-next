@@ -4,7 +4,7 @@ Read before the write-back when the refined criteria reach 8 or more, or visibly
 
 Apply [spec-count.md](../../flow-next-flow/references/spec-count.md): it owns what counts and the independence partition. Propose a split only when its partition yields more than one spec; a large but cohesive set is one spec, and the summary says so.
 
-When it does, print the allocation as ordinary markdown (per-spec titles, allocated criteria, dependency edges), then ask one short `AskUserQuestion`: `keep-single` (the default), `split-as-proposed`, or `adjust`.
+When it does, print the allocation as ordinary markdown (per-spec titles, allocated criteria, dependency edges) and fold the choice into the read-back question rather than asking separately: a one-line note naming the proposal, and `split as proposed` as an extra option beside `approve and write` (which keeps one spec). A free-text answer adjusts the allocation.
 
 On `split-as-proposed`:
 
