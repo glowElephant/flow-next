@@ -102,9 +102,8 @@ Format: `<flow-spec-id> [focus areas] [--review=<mode>]`
 stop with `BLOCKED: DESIGN_CONFLICT`. Only
 `NEEDS_WORK` enters the loop.
 
-Fix+re-review cycles are bounded at `${MAX_REVIEW_ITERATIONS:-8}`. The counter
-is flowctl-owned; never keep an agent-side counter. On cap exhaustion, surface
-surviving findings and stop.
+One fix pass, then one re-review (working-rules.md, Review); the re-review's verdict is
+terminal. The flowctl cap below stays as a safety net; never keep an agent-side counter.
 
 **The cap is enforced deterministically by flowctl:** every dispatch reserves a
 spec-scoped round before launch. SHIP / NEEDS_WORK / MAJOR_RETHINK / NEEDS_HUMAN consume it;
@@ -140,10 +139,12 @@ When the verdict is `NEEDS_WORK`:
 4. Re-enter the SAME selected backend file's re-review step. Never load or mix
    another backend. Codex/Copilot/Cursor/Claude resume only through a same-mode receipt;
    host uses a fresh read-only subagent; rp stays in the same chat.
-5. Repeat until `SHIP`, `MAJOR_RETHINK`, backend failure, or deterministic cap.
+5. Stop after that one re-review: `SHIP` completes; `NEEDS_WORK` surfaces the surviving
+   findings to the caller, never a second fix pass.
 
-**Done when:** the round ends in one of exactly four states — a `SHIP` from the
-backend, a `MAJOR_RETHINK` escalated as `BLOCKED: DESIGN_CONFLICT`, a
+**Done when:** the review ends in one of exactly five states — a `SHIP` from the
+backend, a re-review `NEEDS_WORK` with its surviving findings surfaced, a
+`MAJOR_RETHINK` escalated as `BLOCKED: DESIGN_CONFLICT`, a
 `RETRY: no verdict (backend or transport failure)` from a backend/transport failure, or flowctl's
 `ESCALATE:` cap refusal with the surviving findings surfaced. A round that ends
 with a `NEEDS_WORK` neither fixed in the current spec nor re-entered into the

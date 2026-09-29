@@ -789,7 +789,7 @@ If verdict is NEEDS_WORK:
    the next round's gaps.
    A nonzero recorder exit stops that round immediately; never echo a verdict
    or continue to the shared status owner afterward.
-7. **Repeat** until SHIP
+7. **Stop** after this one re-review: its verdict is terminal (workflow-common.md, Fix Loop)
 
 **Anti-pattern**: Re-adding already-selected files before re-review. RP auto-refreshes; re-adding can cause issues.
 

@@ -47,7 +47,7 @@ If `VERDICT=NEEDS_WORK`:
 2. Fix code and run tests
 3. Commit fixes
 4. Re-run step 2 (receipt enables session continuity when `mode == "cursor"`)
-5. Repeat until SHIP
+5. Stop after this one re-review: its verdict is terminal (workflow-common.md, Fix Loop)
 
 ## Step 4: Receipt
 

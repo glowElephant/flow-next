@@ -471,7 +471,7 @@ $FLOWCTL show <spec-id> --json | jq -r '.completion_review_status'
 1. Invoke `flow-next:flow-next-spec-completion-review <spec-id>` skill
    - Pass `--review=<backend>` matching the work review backend
    - Skill handles rp/codex/copilot/cursor/claude/host backend dispatch
-   - Skill runs its fix loop internally until SHIP and writes terminal
+   - Skill runs one fix pass and one re-review and writes the terminal
      `completion_review_status` through its backend-aware shared owner
 
 2. After skill returns with SHIP:
@@ -503,14 +503,9 @@ comment to the linked tracker issue here. **That comment never flips the
 issue to `Done`/`verified`** (that is gated on a `MERGED` PR and driven
 solely by `land.merged`).
 
-**Fix loop behavior**: Same as impl-review. If reviewer returns NEEDS_WORK:
-1. Skill parses issues
-2. Skill fixes code inline
-3. Skill commits
-4. Skill re-reviews (same chat for rp, same session for codex)
-5. Repeat until SHIP
-
-Only after SHIP does control return here. If skill outputs `RETRY: no verdict (backend or transport failure)`, there was a backend error - retry the skill invocation.
+**Fix loop behavior**: same as impl-review: one fix pass, one re-review, terminal verdict.
+A re-review `NEEDS_WORK` comes back here with its surviving findings: report them and stop
+(attended), or stop with `NEEDS_HUMAN` naming them (unattended). If skill outputs `RETRY: no verdict (backend or transport failure)`, there was a backend error - retry the skill invocation.
 
 Done when: the policy skip recorded its stage line and `completion_review_status` reads `not_required` (written by this run's CAS or already excused by a prior run), or a verdict-status CAS miss fell through to the status check without a skip line, or `completion_review_status` reads `ship` (or the gate did not apply), and the opt-in tracker comment either fired or was a documented no-op.
 
