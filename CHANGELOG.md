@@ -296,7 +296,7 @@ replacement for each.
   authorization without human in-session authorization; human authorization
   waives the wait.
 - Recover a conflicted chain child with the [manual single-layer
-  rebase](plugins/flow-next/docs/troubleshooting.md#land-on-a-chain-chain-broken-a-retarget-conflict-or-a-pending-merge-async-fn-149).
+  rebase](plugins/flow-next/docs/troubleshooting.md#land-on-a-chain-chain-broken-a-retarget-conflict-or-a-pending-merge-async).
   Land uses native stacks when available, merges only the lowest open layer,
   and never deletes a branch an open PR still targets.
 - Create or start a follow-up task to reopen a closed spec. Finishing that task
@@ -439,7 +439,7 @@ The reviewer's journey changes in one place. Instead of one large PR after a ser
 
 - One read-only predicate, `flowctl spec chain <id>`, owns chain eligibility (parent open, all tasks done, branch on origin, linear, one `git ls-remote` at most, a failed remote read never reported as an absent branch); flowctl's spec-level task-admission gate (`ready --spec`, `next`, `ready --all`) treats the chain parent as satisfied, and every skill consumer calls the predicate instead of duplicating it. `pilot-log append` gains an optional `--reason` so the backlog decision-log row carries the `chained on <parent>; ` prefix.
 - Make-pr detects a chain from history, the merge-base of HEAD with the parent's branch tip or merged-PR head, never from a scratch file; a merged parent is rewritten onto the chain base from that boundary on a create run only (`--dry-run` and `--update` never rewrite); stack linking uses the [stacks REST API](https://docs.github.com/en/rest/pulls/stacks) with integer-typed payloads (the [gh-stack extension](https://github.com/github/gh-stack) is never required) and degrades to a plain chain layer with one stderr line on 404, 409, 422, or a transport error.
-- Land's ledger gains one evidence binding per PR (verdict head, base, patch-id, window anchor), a pending merge-async uuid, a top-level `pending_branch_deletes` map swept at the start of every tick, and a `cascade` record that survives a lost lease or a lost write; an unread children count keeps the branch. The Codex mirror and the glossary (`chain`, `stack`, `layer`, `frontier`) are updated; the 2026-08-27 recovery memory now points at the chain rules. Details: [current chain recovery](plugins/flow-next/docs/troubleshooting.md#land-on-a-chain-chain-broken-a-retarget-conflict-or-a-pending-merge-async-fn-149).
+- Land's ledger gains one evidence binding per PR (verdict head, base, patch-id, window anchor), a pending merge-async uuid, a top-level `pending_branch_deletes` map swept at the start of every tick, and a `cascade` record that survives a lost lease or a lost write; an unread children count keeps the branch. The Codex mirror and the glossary (`chain`, `stack`, `layer`, `frontier`) are updated; the 2026-08-27 recovery memory now points at the chain rules. Details: [current chain recovery](plugins/flow-next/docs/troubleshooting.md#land-on-a-chain-chain-broken-a-retarget-conflict-or-a-pending-merge-async).
 - Tests: flowctl chain states and admission gates over a bare origin; fence fixtures for every consumer under `set -e` with a stubbed `gh`; land fixtures for every shape, a three-layer chain with multi-commit squash parents, lease and lost-write resumption, the stale pin, and the janitor across four ticks; the merge-fence shell test now states its children count.
 
 ## [flow-next 5.2.2] - 2026-09-13
