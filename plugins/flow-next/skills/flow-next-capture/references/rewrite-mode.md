@@ -6,7 +6,7 @@
 
 Contents:
 
-- [0.6 — Target validation](#06--target-validation-r8)
+- [0.6 — Target validation](#06--target-validation)
 - [Phase 4 — rewrite read-back additions](#phase-4--rewrite-read-back-additions)
 - [5.3 — Rewrite branch](#53--rewrite-branch)
 - [Phase 6 — rewrite footer](#phase-6--rewrite-footer)

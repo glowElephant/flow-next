@@ -7,7 +7,7 @@
 
 Contents:
 
-- [2.5 - Spec count](#25--spec-count)
+- [2.5 - Spec count](#25---spec-count)
 - [Phase 4 — split option at read-back](#phase-4--split-option-at-read-back)
 - [5.2b — Split branch](#52b--split-branch-interactive-split-as-proposed-only)
 - [Phase 6 — split footer](#phase-6--split-footer)
