@@ -65,8 +65,8 @@ to a pull request.
 Act on findings the way a careful author would: fix a finding only when it shows the change
 itself does the wrong thing in a scenario the request covers. Hardening, extra shutdown or
 error paths, broader refactors, style and problems that existed before the change are
-follow-ups: list them in the handoff and do not ask whether to fold them in; the person asks if
-they want one. When a finding points at unrequested machinery your change added, remove it.
+follow-ups: list them in the handoff as plain facts. Do not ask whether to fold them in, offer
+to, or suggest a command for it; the person asks if they want one. When a finding points at unrequested machinery your change added, remove it.
 After fixing, re-review once with a single reviewer looking at the fixes; do not loop. Fixes
 after that re-review, including ones the person asks for, are verified with focused tests, not
 another review.
