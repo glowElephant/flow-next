@@ -51,6 +51,11 @@ skip and its reason. Read the configuration rather than assuming it, use the con
 and if it cannot run, say so instead of substituting another reviewer. Review is never deferred
 to a pull request.
 
+Act on findings the way a careful author would: fix a finding only when it shows the change
+itself does the wrong thing in a scenario the request covers. Hardening, extra shutdown or
+error paths, broader refactors and style are follow-ups, listed in the handoff, not fixed. After
+fixing, re-review once; do not loop.
+
 Attended: hand the result back first, in its own message, and end the turn; then start the review
 in the background and report its verdict (and any fix) when it lands. Unattended: the verdict
 gates the handoff and any merge.
