@@ -62,6 +62,13 @@ Attended: hand the result back first, in its own message, and end the turn; then
 in the background and report its verdict (and any fix) when it lands. Unattended: the verdict
 gates the handoff and any merge.
 
+## Pull requests and follow-ups
+
+A route that has no spec never creates one just to open a pull request: when a pull request is
+asked for, open it directly (`gh pr create`) with the handoff as its body. Follow-ups are listed
+in the handoff (and the pull request body), not captured as specs, attended or unattended; the
+person decides later which become specs.
+
 ## Handoff
 
 Short: what changed, how you know it works (the commands you ran and what they showed), and
