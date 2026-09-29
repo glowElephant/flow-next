@@ -23727,7 +23727,7 @@ def judge_route_state(state: dict, spec_id: str | None = None) -> dict:
         tasks = TaskInventory.load(flow_dir, use_json=True, spec_id=spec_id).by_spec.get(spec_id, [])
         body = find_spec_md_path(flow_dir, spec_id).read_text(encoding="utf-8")
         state = {
-            "view": "live", "repo": str(repo), "spec_title": spec["title"],
+            "view": "live", "spec_title": spec["title"],
             "spec_body": body, "status": spec["status"],
             "ready": spec.get("ready") is True, "no_plan": spec.get("no_plan") is True,
             "tasks_total": len(tasks), "tasks_done": sum(t["status"] == "done" for t in tasks),
@@ -23771,7 +23771,8 @@ def judge_route_state(state: dict, spec_id: str | None = None) -> dict:
         for key, value in (("status", None), ("ready", False), ("no_plan", False), ("tasks_total", 0),
                            ("tasks_done", 0), ("pr_exists", False), ("pr_ref", None)):
             state.setdefault(key, value)
-    state.setdefault("repo", str(repo))
+    # The repository's absolute path is a local fact the judge never needs.
+    state.pop("repo", None)
     text = state.get("spec_body", state.get("intent", ""))
     # A non-text artifact is validation's error to name, not assembly's crash.
     state["startable_target_fact"] = judge_startable_target(repo, text if isinstance(text, str) else "")
@@ -23865,10 +23866,7 @@ def judge_route_explain(result: dict, state: dict) -> list[str]:
     else:
         route = f"{value} (jev {result['answers']['kind']['confidence']:.2f})"
     answers = result.get("answers", {})
-    fact_ids = set(JUDGE_PRESETS["route"]["questions"]) - {
-        "kind", "fork_present", "fork_kind", "ui_observable_criteria",
-        "tiny_one_context_change", "intent_and_boundaries_stateable",
-    }
+    fact_ids = set(JUDGE_PRESETS["route"]["questions"]) - {"kind", "ui_observable_criteria"}
     facts = [
         (key, answer["noul"]) for key, answer in answers.items()
         if key in fact_ids and answer.get("type") == "noul" and answer.get("noul", 0) >= 0.5
@@ -23906,7 +23904,6 @@ def judge_route_explain(result: dict, state: dict) -> list[str]:
 JUDGE_MODEL = "jev-latest"
 JUDGE_PRESETS = {'route': {'required': ['view',
                         'view_meaning',
-                        'repo',
                         'status',
                         'ready',
                         'no_plan',
@@ -24052,38 +24049,6 @@ JUDGE_PRESETS = {'route': {'required': ['view',
                                                                              'dependency that '
                                                                              'needs reading '
                                                                              'first)?'},
-                         'tiny_one_context_change': {'type': 'noul',
-                                                     'instructions': 'Is the text a tiny, local, '
-                                                                     'low-risk change that fits '
-                                                                     'one implementation context '
-                                                                     '(a one-context fix)?'},
-                         'intent_and_boundaries_stateable': {'type': 'noul',
-                                                             'instructions': 'Can the intent and '
-                                                                             'the boundaries of '
-                                                                             'this effort be '
-                                                                             'stated now (a clear '
-                                                                             'meaningful idea), '
-                                                                             'without further '
-                                                                             'discovery?'},
-                         'fork_present': {'type': 'noul',
-                                          'instructions': 'Does the text pose a design or '
-                                                          'behaviour fork (two named alternatives '
-                                                          'to choose between) that is still open?'},
-                         'fork_kind': {'type': 'choice',
-                                       'instructions': 'Assume an open design or behaviour fork '
-                                                       'exists. Classify what its answer depends '
-                                                       'on.',
-                                       'criteria': {'observable': 'Observable: behaviour, output, '
-                                                                  'timing, layout, a failing case, '
-                                                                  'a measurement',
-                                                    'product_or_preference': 'A product or '
-                                                                             'preference call no '
-                                                                             'experiment can '
-                                                                             'settle: scope, '
-                                                                             'priority, authority, '
-                                                                             'taste, a business '
-                                                                             'rule',
-                                                    'none_of_the_above': None}},
                          'ui_observable_criteria': {'type': 'noul',
                                                     'instructions': "Does the spec's acceptance "
                                                                     'describe UI behaviour a user '
@@ -24105,12 +24070,7 @@ JUDGE_PRESETS = {'route': {'required': ['view',
                                                                       'contents, or library '
                                                                       'behaviour?'}}},
  'fork-gate': {'required': ['text'],
-               'questions': {'fork_present': {'type': 'noul',
-                                              'instructions': 'Does the text pose a design or '
-                                                              'behaviour fork (two named '
-                                                              'alternatives to choose between) '
-                                                              'that is still open?'},
-                             'fork_kind': {'type': 'choice',
+               'questions': {'fork_kind': {'type': 'choice',
                                            'instructions': 'Assume an open design or behaviour '
                                                            'fork exists. Classify what its answer '
                                                            'depends on.',
@@ -24177,23 +24137,44 @@ JUDGE_PRESETS = {'route': {'required': ['view',
                                                                          'rather than one bounded '
                                                                          'turn?'}}}}
 
-def judge_questions(preset: str, state: dict) -> dict:
-    """Every question for one decision point, with no runtime file dependencies."""
+JUDGE_ROUTE_SIGNAL_IDS = (
+    "reports_defect", "structural_change_behaviour_kept", "names_metric_and_surface",
+    "repeated_metric_target", "read_only_question", "theme_no_end_state",
+    "no_written_direction", "large_idea_several_unknowns",
+)
+
+
+def judge_questions(preset: str, state: dict, explain: bool = False) -> dict:
+    """Only the questions some consumer reads for this decision point."""
     if preset == "memory-rerank":
         return {
             f"entry_{i}": {
                 "type": "score",
-                "instructions": f"How relevant is `entries.{i}` to the task in `query`?",
-                "criteria": ["not relevant", "tangential", "directly relevant"],
+                "instructions": f"How does the memory entry `entries.{i}` bear on doing the task in `query`?",
+                "criteria": [
+                    "It concerns a different module, tool, or failure mode; it would not come up while doing this task",
+                    "It shares this task's area or technology, but its lesson would not change how this task is done",
+                    "It applies to this task's files, tools, or failure mode; its lesson changes how this task is done",
+                ],
             }
             for i in range(len(state["entries"]))
         }
     questions = dict(JUDGE_PRESETS[preset]["questions"])
     if preset == "route":
-        if state["view"] == "live":
-            questions.pop("kind")
-        if get_config("pipeline.qa", "off") != "auto":
-            questions.pop("ui_observable_criteria")
+        lifecycle = judge_route_lifecycle(state)
+        if lifecycle:
+            # A live spec is routed by code; ask only what that route still reads.
+            needed = set()
+            if lifecycle["value"] in ("plan", "work_no_plan_default"):
+                needed.add("names_unfamiliar_library_or_api")
+            if lifecycle["value"] == "all_done_make_pr" and get_config("pipeline.qa", "off") == "auto":
+                needed.add("ui_observable_criteria")
+            return {qid: q for qid, q in questions.items() if qid in needed}
+        # Intake: QA is never decided on this hop; signal Nouls feed only --explain.
+        questions.pop("ui_observable_criteria")
+        if not explain:
+            for qid in JUDGE_ROUTE_SIGNAL_IDS + ("names_unfamiliar_library_or_api",):
+                questions.pop(qid)
     return questions
 
 
@@ -24212,7 +24193,7 @@ def judge_validate_state(preset: str, state: dict) -> None:
         raise ValueError("missing required state field: " + ", ".join(missing))
     text_fields = {"qa-gate": ["acceptance"], "fork-gate": ["text"],
                    "memory-rerank": ["query"], "tier": ["task_title", "task_body", "acceptance", "repo"],
-                   "route": ["view_meaning", "repo"] + (["intent"] if state.get("view") == "intent" else ["spec_title", "spec_body"])}
+                   "route": ["view_meaning"] + (["intent"] if state.get("view") == "intent" else ["spec_title", "spec_body"])}
     for key in text_fields[preset]:
         if not isinstance(state[key], str):
             raise ValueError("state field must be a string: " + key)
@@ -24291,15 +24272,16 @@ def judge_decide(preset: str, state: dict, answers: dict, route_decision: dict |
         if value == "qa_skipped":
             decision["reason"] = "no UI-observable criteria" if ui < 0.5 else "no startable target"
     elif preset == "fork-gate":
-        gate, kind = answers["fork_present"]["noul"], answers["fork_kind"]
-        value = "none" if gate < 0.5 else (
-            kind["choice"] if kind["confidence"] >= 0.5 and kind["choice"] != "none_of_the_above" else "host")
-        decision.update(value=value, rule="fork>=0.5 then kind confidence>=0.5", met=value != "host")
+        # A hint on the host's own fork text; the host decides observable versus preference.
+        kind = answers["fork_kind"]
+        value = kind["choice"] if kind["confidence"] >= 0.5 and kind["choice"] != "none_of_the_above" else "host"
+        decision.update(value=value, rule="kind confidence>=0.5", met=value != "host")
     elif preset == "memory-rerank":
+        # Reorder only: every entry stays, so the host picks from the same set with or without a key.
         ranked = [(entry["entry_id"], answers[f"entry_{i}"]["score"]) for i, entry in enumerate(state["entries"])]
         ranked.sort(key=lambda pair: pair[1], reverse=True)
-        decision.update(value=[[entry_id, score] for entry_id, score in ranked if score >= 1][:10],
-                        rule="score>=1.0; descending stable; cap 10", met=True)
+        decision.update(value=[[entry_id, score] for entry_id, score in ranked],
+                        rule="score descending; stable", met=True)
     elif preset == "route" and state["view"] == "live":
         decision = dict(route_decision or judge_route_lifecycle(state))
         decision["candidates"] = []
@@ -24307,10 +24289,9 @@ def judge_decide(preset: str, state: dict, answers: dict, route_decision: dict |
         decision["startable_target_fact"] = state["startable_target_fact"]
         if "ui_observable_criteria" in answers:
             decision["qa"] = judge_decide("qa-gate", state, answers)
-        decision["fork"] = judge_decide("fork-gate", state, answers)
-        decision["research_recommended"] = (decision["value"] in ("plan", "work_no_plan_default")
-            and answers["names_unfamiliar_library_or_api"]["noul"] >= 0.5
-            and not re.search(r"^## Resolved via Research\s*$", state["spec_body"], re.M))
+        if "names_unfamiliar_library_or_api" in answers:
+            decision["research_recommended"] = (answers["names_unfamiliar_library_or_api"]["noul"] >= 0.5
+                and not re.search(r"^## Resolved via Research\s*$", state["spec_body"], re.M))
     else:
         qid, floor = ("kind", 0.7) if preset == "route" else ("tier", 0.8)
         answer = answers[qid]
@@ -24324,13 +24305,10 @@ def judge_decide(preset: str, state: dict, answers: dict, route_decision: dict |
         if preset == "route":
             if value == "defect" and met:
                 decision["defect_repro"] = "provided" if answers["defect_has_repro"]["noul"] >= 0.5 else "needed"
-            if "ui_observable_criteria" in answers:
-                decision["qa"] = judge_decide("qa-gate", state, answers)
-            decision["fork"] = judge_decide("fork-gate", state, answers)
     return decision
 
 
-def judge_evaluate(preset: str, state: dict) -> dict:
+def judge_evaluate(preset: str, state: dict, explain: bool = False) -> dict:
     """One bounded HTTP request, with retry only for documented overload statuses."""
     import http.client
     import socket
@@ -24352,14 +24330,15 @@ def judge_evaluate(preset: str, state: dict) -> dict:
         return {**unavailable, "reason": "disabled"}
     if not key:
         return {**unavailable, "reason": "no_key"}
-    questions = judge_questions(preset, state)
+    questions = judge_questions(preset, state, explain)
     body = json.dumps({"model": JUDGE_MODEL, "state": state, "questions": questions}, ensure_ascii=False)
     if len(body) > 32000 * 4:
         return {**unavailable, "reason": "over_budget"}
     started = time.monotonic()
     if not questions:
+        # Nothing left to ask (a lifecycle route, no memory hits): no request is sent.
         return {"success": True, "available": True, "preset": preset, "model": JUDGE_MODEL,
-                "decision": judge_decide(preset, state, {}), "answers": {}, "latency_ms": 0, "usage": {}}
+                "decision": judge_decide(preset, state, {}, route_decision), "answers": {}, "latency_ms": 0, "usage": {}}
     for attempt in range(3):
         connection = None
         try:
@@ -24464,7 +24443,7 @@ def cmd_judge(args: argparse.Namespace) -> None:
             raise ValueError("--spec applies only to the route and qa-gate presets")
         if args.explain and args.preset != "route":
             raise ValueError("--explain applies only to the route preset")
-        result = judge_evaluate(args.preset, state)
+        result = judge_evaluate(args.preset, state, explain=args.explain)
         if args.preset == "tier":
             result.update(judge_tier_dispatch(result, args))
         # One request serves both the projection and the explain rendering.
@@ -24630,13 +24609,15 @@ def cmd_memory_search(args: argparse.Namespace) -> None:
     combined = results + legacy_results
     rerank_meta = {}
     if getattr(args, "rerank", False):
-        original_count = min(len(combined), 15)
-        judged = judge_evaluate("memory-rerank", {"query": query, "entries": combined[:15]})
+        judged_count = min(len(combined), 15)
+        # The judge sees what the entry says, not where it lives or how BM25 scored it.
+        sent = [{k: v for k, v in entry.items() if k not in ("path", "score")} for entry in combined[:15]]
+        judged = judge_evaluate("memory-rerank", {"query": query, "entries": sent})
         if judged["available"]:
             by_id = {entry["entry_id"]: entry for entry in combined[:15]}
             combined = [{**by_id[entry_id], "jev_score": score, "jev_rank": rank}
-                        for rank, (entry_id, score) in enumerate(judged["decision"]["value"], 1)]
-            rerank_meta = {"rerank": "jev", "stage_line": f"memory: reranked (jev, {original_count} -> {len(combined)})"}
+                        for rank, (entry_id, score) in enumerate(judged["decision"]["value"], 1)] + combined[15:]
+            rerank_meta = {"rerank": "jev", "stage_line": f"memory: reranked (jev, {judged_count} entries)"}
         else:
             reason = judged["reason"]
             rerank_meta = {"rerank": "bm25", "rerank_reason": reason,
