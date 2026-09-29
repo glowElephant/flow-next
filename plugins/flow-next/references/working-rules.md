@@ -6,8 +6,8 @@ unless the user or the repository's instructions ask for it.
 ## Scope
 
 - Ship the smallest change the evidence justifies. Every changed line serves the request.
-- No unrequested flags, options, guards, abstractions, refactors, renames, wording changes or
-  docs edits. Matching the surrounding code is required; improving it is not.
+- No unrequested flags, options, config or environment overrides, guards, abstractions, refactors,
+  renames, wording changes or docs edits. Matching the surrounding code is required; improving it is not.
 - Problems you find that the request does not depend on (a flaky test, junk a test run leaves
   behind, a nearby bug) are reported, not fixed. Check whether they exist before your change;
   if they do, they are not yours.
@@ -22,7 +22,8 @@ Before writing logic for a feature, name the data it touches and what owns each 
 ## Tests
 
 - Run the tests for the code you changed. Do not run the full suite unless the repository's
-  instructions require it; CI owns regressions.
+  instructions or the user ask for it; then run it once, at the end, not again after later fixes
+  (re-check those with focused tests). CI owns regressions.
 - A failing test written before the fix, then passing after it, is the proof. Where that test is
   cheap, write it first. No separate lint, typecheck or commit round for it.
 - A test must be able to fail for a defect: it calls the code the way a user does and checks the
@@ -55,7 +56,7 @@ Act on findings the way a careful author would: fix a finding only when it shows
 itself does the wrong thing in a scenario the request covers. Hardening, extra shutdown or
 error paths, broader refactors and style are follow-ups, listed in the handoff, not fixed. When a
 finding points at unrequested machinery your change added, remove it. After
-fixing, re-review once; do not loop.
+fixing, re-review once with a single reviewer looking at the fixes; do not loop.
 
 Attended: hand the result back first, in its own message, and end the turn; then start the review
 in the background and report its verdict (and any fix) when it lands. Unattended: the verdict
