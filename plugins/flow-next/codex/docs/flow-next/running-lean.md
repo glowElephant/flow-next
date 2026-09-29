@@ -32,8 +32,6 @@ Profiles are per run, not per team and not per repo. The same repo can drain a b
 
 ## The optionality caveat: canonical pattern
 
-**Change this pattern here first.** Each optional subsystem's page carries an instance of it at the top, in this repo and on flow-next.dev. Those instances are deliberate copies (a top-of-page caveat cannot be a link), so edit the shape here and propagate; never fix the shape at an instance.
-
 Three variants, one family:
 
 ```text
@@ -159,11 +157,11 @@ No config key - these are skills you invoke or do not. Details: [`../skills/flow
 
 No config key to enable; `pilot.autonomy` (`ready` by default) only widens what `/flow-next:flow --auto` selects. Details: [`../skills/flow-next-flow/auto.md`](../../skills/flow-next-flow/auto.md), [`../skills/flow-next-land/SKILL.md`](../../skills/flow-next-land/SKILL.md).
 
-- **Automates away:** the repetition - `flow --auto` drives one ready spec hop after hop to its draft PR by default; add `--until=merge` to continue through land for that item. `--tick` runs one hop, including at most one landing tick. Land also remains independently invocable. [Destination and consent](pipeline-variations.md#choose-where-flow-stops) bound the continuation.
+- **Automates away:** the repetition - `flow --auto` drives one ready spec hop after hop to its PR by default; add `--until=merge` to continue through land for that item. `--tick` runs one hop, including at most one landing tick. Land also remains independently invocable. [Destination and consent](pipeline-variations.md#choose-where-flow-stops) bound the continuation.
 - **Costs:** this is the autonomous profile itself, so it inherits the profile's gates: the layers above stop being optional in the way they are optional for you at a keyboard, because they are what replace you.
 - **Earns its keep when:** there is a queue of blessed, fully specified work and nobody who wants to sit through it.
 - **Lean invocation:** `/flow-next:work` is the human-driven equivalent and needs no loop primitive at all.
-- **Optional idle removal:** a long-horizon `flow --auto` run removes every driver re-anchor between stages by construction, so `pipeline.chainStages` is deprecated; for this release it still runs `make-pr` in the same tick as a fresh terminal `qa` verdict under `--tick` (and the pilot alias), is ignored with one notice in long-horizon mode, and is removed with the alias next release.
+- **Optional idle removal:** a long-horizon `flow --auto` run removes every driver re-anchor between stages by construction, so `pipeline.chainStages` is deprecated; it still runs `make-pr` in the same tick as a fresh terminal `qa` verdict under `--tick` and is ignored with one notice in long-horizon mode.
 
 ### GitHub scouts
 

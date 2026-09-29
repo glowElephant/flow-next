@@ -2,7 +2,7 @@
 
 The canonical user documentation is [flow-next.dev](https://flow-next.dev). Read it for the introduction, [choosing your route](https://flow-next.dev/choosing-your-route/), [autonomy](https://flow-next.dev/autonomy/going-autonomous/), [teams](https://flow-next.dev/guides/for-teams/), [model routing](https://flow-next.dev/guides/model-routing/), [review backends](https://flow-next.dev/reference/review-backends/), [configuration](https://flow-next.dev/flowctl/configuration/), the [skills catalog](https://flow-next.dev/skills/), and the [changelog](https://flow-next.dev/releases/changelog/). A page that used to live here and is now only on the site is not coming back; a release updates the site.
 
-The files below stay in the repository because something at runtime reads them: a skill, an agent, a template, a hook, the config schema, or a test that pins their content. Every cross-link is a relative repo path so a fork and an offline clone keep working, and `scripts/sync-codex.sh` mirrors this directory into `codex/docs/flow-next/` for Codex installs.
+The files below stay in the repository because something at runtime reads them: a skill, an agent, a template, a hook, the config schema, or a test that pins their content. Every cross-link is a relative repo path so a fork and an offline clone keep working; Codex installs carry a mirrored copy under `docs/flow-next/`.
 
 ## Runtime reference
 
@@ -15,7 +15,7 @@ The files below stay in the repository because something at runtime reads them: 
 | [`read-back.md`](read-back.md) | Capture, plan, and refine read it before the first `.flow/` write |
 | [`pipeline-variations.md`](pipeline-variations.md) | The flow skill's [`route-matrix.md`](../skills/flow-next-flow/references/route-matrix.md) and capture's rewrite mode cite it; the routing test scans it as a consumer of the shared routing reference |
 | [`skills.md`](skills.md) | The resolve-pr skill and the route matrix cite the backend-split heuristic; the count test pins the 30 skills table |
-| [`tracker-sync.md`](tracker-sync.md) | Capture, make-pr, and work read the retro-fire rule; `flowctl_tracker` code and the config schema cite the fn-64 ordering rule |
+| [`tracker-sync.md`](tracker-sync.md) | Capture, make-pr, and work read the retro-fire rule; `flowctl_tracker` code and the config schema cite the dependency-projection ordering rule |
 | [`memory-schema.md`](memory-schema.md) | The qa skill maps bug categories through it |
 | [`html-artifacts.md`](html-artifacts.md) | The html-lens references in capture, make-pr, and plan; the fixture-contract test reads it |
 | [`pr-cognitive-aid.md`](pr-cognitive-aid.md) | The consumer contract for the stored PR walkthrough and its rendered briefing |
@@ -35,7 +35,7 @@ Skill prose lives beside each skill under `../skills/`. The flow conductor is [`
 
 ## Conventions
 
-- **Cross-link discipline.** Canonical sources (`templates/spec.md`, `scripts/sync-codex.sh`, `STRATEGY.md`, `GLOSSARY.md`) are linked, never re-embedded.
+- **Cross-link discipline.** Canonical sources (`templates/spec.md`, `STRATEGY.md`, `GLOSSARY.md`) are linked, never re-embedded.
 - **Relative paths only** inside this tree. Links to the site use the full `https://flow-next.dev/...` URL.
 - **No mirrored pages.** A page that explains the product to a human belongs on flow-next.dev. A file lands here only when something at runtime reads it, and it leaves when nothing does.
 

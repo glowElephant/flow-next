@@ -14,7 +14,7 @@ Run after modifying any of:
 - `plugins/flow-next/references/**` - shared disclosure files (e.g. `html-artifacts.md`) mirrored byte-identical into `codex/references/` (tool-name-agnostic by contract; no rewrite pass touches them)
 - `plugins/flow-next/docs/**` - doc pages mirrored (markdown only, `reach/` included) into the owned namespace `codex/docs/flow-next/`; mirror skill cross-links gain the matching `flow-next/` segment, and the mirrored pages' own internal links are rewritten to the **link-closure property** - every link either resolves on disk within the mirror or is an absolute GitHub URL (`install-codex.sh` replaces ONLY `$CODEX_HOME/docs/flow-next/` - never loose files or siblings under `$CODEX_HOME/docs/`, which a user or another package may own)
 
-Plugin-level `hooks/hooks.json` is gone (fn-114). Do not re-add a hooks stage.
+There is no plugin-level `hooks/hooks.json`. Do not re-add a hooks stage.
 
 ```bash
 ./scripts/sync-codex.sh
@@ -26,10 +26,10 @@ Commit the regenerated `plugins/flow-next/codex/` tree alongside the canonical c
 
 The script runs in numbered stages (see banners in [`../../../scripts/sync-codex.sh`](../../../scripts/sync-codex.sh)):
 
-1. **Copy & patch skills** - canonical `skills/` copied to `codex/skills/`, then per-stage transforms applied (Claude-native tool names rewritten to Codex equivalents; `request_user_input` → plain-text numbered prompt per fn-45).
+1. **Copy & patch skills** - canonical `skills/` copied to `codex/skills/`, then per-stage transforms applied (Claude-native tool names rewritten to Codex equivalents; `request_user_input` → plain-text numbered prompt).
 2. **Convert agents** - `agents/*.md` → `codex/agents/*.toml` with per-agent reasoning effort, sandbox mode, model mapping, and nickname candidates.
 3. **Zero hooks** - remove any stale `codex/hooks.json`; assert absence.
-4. **Mirror templates/ + references/ + docs/** - canonical `templates/spec.md` copied to `codex/templates/` so the R20 discovery cascade resolves the same relative path in the mirror; canonical `references/` copied byte-identical to `codex/references/` (shared disclosure files are tool-name-agnostic, so no transform applies); canonical `docs/` copied markdown-only to the owned namespace `codex/docs/flow-next/`, and mirror skill cross-links (`../../docs/` / `../../../docs/`) gain the `flow-next/` segment so they resolve both in-repo and installed - the install replaces only that owned dir, so it can never destroy non-flow-next content under `$CODEX_HOME/docs/` (fn-202 / #363). The mirrored pages' own internal links are then rewritten by target class to the **link-closure property**: same-dir doc links stay untouched; links up-and-into installed trees (`skills/`, `templates/`, `references/`) gain one `../` for the deeper mirror location (depth-aware for `reach/` pages); links to targets outside the installed universe (repo root, the plugin README, `schema/`, `tests/`, the non-markdown `ci-workflow-example.yml`) become absolute canonical GitHub URLs computed from the canonical docs location. A validation guard hard-fails the sync on any docs-mirror link that neither resolves on disk at its mirror location nor is an absolute URL - and because the install copies these trees verbatim into the same relative layout under `$CODEX_HOME`, the repo-tree check is the install check.
+4. **Mirror templates/ + references/ + docs/** - canonical `templates/spec.md` copied to `codex/templates/` so the R20 discovery cascade resolves the same relative path in the mirror; canonical `references/` copied byte-identical to `codex/references/` (shared disclosure files are tool-name-agnostic, so no transform applies); canonical `docs/` copied markdown-only to the owned namespace `codex/docs/flow-next/`, and mirror skill cross-links (`../../docs/` / `../../../docs/`) gain the `flow-next/` segment so they resolve both in-repo and installed - the install replaces only that owned dir, so it can never destroy non-flow-next content under `$CODEX_HOME/docs/`. The mirrored pages' own internal links are then rewritten by target class to the **link-closure property**: same-dir doc links stay untouched; links up-and-into installed trees (`skills/`, `templates/`, `references/`) gain one `../` for the deeper mirror location (depth-aware for `reach/` pages); links to targets outside the installed universe (repo root, the plugin README, `schema/`, `tests/`, the non-markdown `ci-workflow-example.yml`) become absolute canonical GitHub URLs computed from the canonical docs location. A validation guard hard-fails the sync on any docs-mirror link that neither resolves on disk at its mirror location nor is an absolute URL - and because the install copies these trees verbatim into the same relative layout under `$CODEX_HOME`, the repo-tree check is the install check.
 5. **Validation** - counts + drift guards (see below).
 
 ## Validation guards
@@ -57,7 +57,7 @@ Each guard prints `file:line` hits where available so the fix is mechanical: cle
 
 **The guards police the transform, not the prose.** They check tool names, dispatch phrasing, and structural drift - nothing in the script reads what a mirrored page *says*. Where mirrored content carries a user-facing contract of its own, the pin lives in the test suite instead: `tests/test_model_routing_scaffold.py` asserts the mirrored routing block keeps its markers and the four tier names, ships no model identifier, and that the retired pin-ceremony references are actually gone from the mirror (an incomplete regen leaves them loadable). A canonical-only assertion would stay green while every Codex install shipped the deleted ceremony.
 
-## Plain-text transform (fn-45)
+## Plain-text transform
 
 The Codex Default-mode + CLI surface errors on `request_user_input` calls ([openai/codex#10384](https://github.com/openai/codex/issues/10384), [#11536](https://github.com/openai/codex/issues/11536), [#12694](https://github.com/openai/codex/issues/12694)). Stage 3 rewrites canonical `AskUserQuestion` blocks into plain-text numbered prompts in the mirror, appending an `N+1. Other — type your own answer` option so the mirror still offers the freeform-input affordance. The R6 mirror scan re-runs after the rewrite to catch any surviving references.
 
@@ -65,7 +65,7 @@ For the user-facing smoke procedure that validates this transform, see [`../../.
 
 ## R17 cross-link discipline
 
-Memory entry `bug/build-errors/fn-445-review-r17-enforcement-beyond-2026-05-15` confirms: R17 is **review-blocking**. Canonical skill prose never enumerates the spec-template's 7-section sequence; skills cross-link [`../templates/spec.md`](../templates/spec.md) instead. The R21 validation guard catches the structural form (`^## Goal & Context` followed by other canonical headers within 30 lines); reviewer catch is the semantic backstop.
+R17 is **review-blocking**. Canonical skill prose never enumerates the spec-template's 7-section sequence; skills cross-link [`../templates/spec.md`](../templates/spec.md) instead. The R21 validation guard catches the structural form (`^## Goal & Context` followed by other canonical headers within 30 lines); reviewer catch is the semantic backstop.
 
 ## See also
 

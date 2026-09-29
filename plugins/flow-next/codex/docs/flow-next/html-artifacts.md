@@ -83,7 +83,7 @@ Generation failure is non-fatal everywhere: skip the link line, one stderr note,
 
 - **Diff-derived, never commit messages.** Inputs are the `flowctl spec export-cognitive-aid` payload plus the real diff stat; commit subjects/bodies are not lens input.
 - **Structured walkthrough parity.** When a supported current v1 PR cognitive-aid object is available, the HTML lens consumes that exact validated object as the authoritative source for artifact identity/currentness, sources, ordered groups, file membership, separate change/attention dimensions, file-level R-ID/task links, deliberate non-changes, and verification. It embeds flowctl's lossless HTML-safe JSON carrier, so tests and consumers can recover the exact object. It may enrich interaction but cannot reclassify, reorder, or mix stale/legacy semantics. See [`pr-cognitive-aid.md`](pr-cognitive-aid.md).
-- **R-ID verification - warn-in-artifact, never block.** Payload-vs-diff mismatches (claimed evidence outside the diff range, undeclared R-IDs - criteria a still-open task claims render as claimed-not-evidenced, never as mismatches (fn-180) - evidence touching no diff files) render as visibly flagged rows (red R-ID cell + `mismatch` chip + reason). A mismatch never blocks PR creation and is never silently dropped.
+- **R-ID verification - warn-in-artifact, never block.** Payload-vs-diff mismatches (claimed evidence outside the diff range, undeclared R-IDs - criteria a still-open task claims render as claimed-not-evidenced, never as mismatches - evidence touching no diff files) render as visibly flagged rows (red R-ID cell + `mismatch` chip + reason). A mismatch never blocks PR creation and is never silently dropped.
 - **Current v1 stays local-only.** Committing HTML that embeds a head-bound current object would advance `HEAD` and stale its own input. The v1 lens therefore leaves `HEAD` unchanged and emits local-open guidance. Only the visibly labeled legacy fallback may use the pathspec-confined `chore(flow): pr artifact <spec-id>` commit and SHA-pinned blob link. Byte-identical fallback regeneration makes no empty commit.
 - **Failure-guarded git.** Every git step is guarded (`LENS_OK` flag): a hook rejection or stage failure degrades to no-body-line + one stderr note; the PR is still created.
 - **`--dry-run` writes nothing.** No artifact, no commit, no body line - the dry-run no-state-change promise holds.
@@ -124,7 +124,7 @@ There is no regeneration slash command. Auto-regen rides the lifecycle touchpoin
 
 > "regenerate the artifact for fn-12"
 
-after hand edits, an interview pass, or drained Lavish annotations. The agent reloads the disclosure reference, re-reads the spec + flowctl state, regenerates at the same fixed path, and re-runs the pre-publish checklist.
+after hand edits, a refine pass, or drained Lavish annotations. The agent reloads the disclosure reference, re-reads the spec + flowctl state, regenerates at the same fixed path, and re-runs the pre-publish checklist.
 
 ## Lavish integration (optional)
 

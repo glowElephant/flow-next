@@ -8,11 +8,9 @@ while legacy receipts and unparseable responses remain valid.
 This is a receipt contract, not an internal API. Consumers read stored receipts;
 they do not call parser helpers or write resolution state back into Flow-Next.
 
-The maximum-item local parser/validation benchmark uses the same strict
-`<100 ms p95` ceiling over 30 warm runs. A representative parallel-suite run
-observed 90.57 ms; that cost is operationally negligible within the end-to-end
-workflow and supersedes the original 50 ms target. The benchmark permits no
-model or network I/O.
+Parsing and validating a maximum-size findings object stays under a
+`<100 ms p95` ceiling over 30 warm runs, with no model or network I/O; the cost
+is negligible within the end-to-end workflow.
 
 ## Contents
 
@@ -138,7 +136,7 @@ silently resolving it.
 ### Merged fan-out rounds
 
 On the codex and host backends the first review round of a scope fans out three
-axis draws that the coordinator merges into one finding set (fn-215). The
+axis draws that the coordinator merges into one finding set. The
 finalized round records ONE valid v1 container over the union of the draws'
 surviving findings, with ordinals re-assigned 1..N across that union - draw-local
 ordinals do not survive the merge, and the container is indistinguishable in
@@ -292,14 +290,12 @@ Limits are rejection boundaries, not truncation targets. Oversize input,
 overflowing output, duplicates, unsafe paths, invalid lineage, unknown enums,
 or unsupported schema versions produce no usable structured container.
 
-**Nothing shortens a prompt to fit a transport (fn-169).** Earlier releases sized
-the rendered prior-finding block to `cursor-agent`'s argv cap and stopped emitting
-items once the budget ran out. A reviewer shown a SUBSET of its own prior findings
-can truthfully answer `Prior findings: all fixed` for everything it saw, and
-sweeping the untruncated container then marked omitted, unverified findings
-`fixed` - a false SHIP. The interim guard that withheld the aggregate sweep on
-truncating backends is gone with the truncation itself: every backend now renders
-every prior item, so the aggregate is sound by construction on all of them. The
+**Nothing shortens a prompt to fit a transport.** Every backend renders every
+prior item. A reviewer shown only a SUBSET of its own prior findings could
+truthfully answer `Prior findings: all fixed` for everything it saw, and sweeping
+the full container would then mark omitted, unverified findings `fixed` - a false
+SHIP. Rendering every item keeps the aggregate sound by construction on every
+backend. The
 bounds above remain *rejection* boundaries, which is a different thing entirely.
 
 A resumed re-review carries no rendered items at all - the reviewer holds them in

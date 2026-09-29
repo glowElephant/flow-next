@@ -10,19 +10,19 @@ Common recovery patterns for stuck tasks, broken state, and review-backend confl
 - [Reset a stuck task](#reset-a-stuck-task)
 - [Clean up `.flow/` safely](#clean-up-flow-safely)
 - [`flow --auto` keeps skipping a spec the board says is ready (strikes ledger)](#flow---auto-keeps-skipping-a-spec-the-board-says-is-ready-strikes-ledger)
-- [Review loop stalls, repeats unchanged work, or runs away (fn-90/fn-159)](#review-loop-stalls-repeats-unchanged-work-or-runs-away-fn-90fn-159)
-- [flowctl says my config carries removed keys, or my routing block is ignored (fn-195)](#flowctl-says-my-config-carries-removed-keys-or-my-routing-block-is-ignored-fn-195)
-- [Review reports a model downgrade / floor (fn-76 resolution ladder)](#review-reports-a-model-downgrade-floor-fn-76-resolution-ladder)
-- [Worker reports a merge conflict at wave join (fn-176 wave dispatch)](#worker-reports-a-merge-conflict-at-wave-join-fn-176-wave-dispatch)
+- [Review loop stalls, repeats unchanged work, or runs away](#review-loop-stalls-repeats-unchanged-work-or-runs-away)
+- [flowctl says my config carries removed keys, or my routing block is ignored](#flowctl-says-my-config-carries-removed-keys-or-my-routing-block-is-ignored)
+- [Review reports a model downgrade / floor (resolution ladder)](#review-reports-a-model-downgrade-floor-resolution-ladder)
+- [Worker reports a merge conflict at wave join](#worker-reports-a-merge-conflict-at-wave-join)
 - [Custom RepoPrompt CLI instructions conflicting](#custom-repoprompt-cli-instructions-conflicting)
-- [Copilot review backend on Windows (fixed in 1.1.9)](#copilot-review-backend-on-windows-fixed-in-119)
-- [Windows: `python3` not found / Microsoft Store alias stub (fixed in fn-77)](#windows-python3-not-found-microsoft-store-alias-stub-fixed-in-fn-77)
+- [Copilot review backend on Windows](#copilot-review-backend-on-windows)
+- [Windows: `python3` not found / Microsoft Store alias stub](#windows-python3-not-found-microsoft-store-alias-stub)
 - [`/flow-next:map`: clawpatch not found / version mismatch / Node 20](#flow-nextmap-clawpatch-not-found-version-mismatch-node-20)
 - [Uninstall](#uninstall)
 - [Cursor in-IDE browser MCP missing (`cursor-ide-browser`)](#cursor-in-ide-browser-mcp-missing-cursor-ide-browser)
-- [Renamed skill: `browser` → `flow-next-drive` (1.4.0)](#renamed-skill-browser-flow-next-drive-140)
+- [Renamed skill: `browser` → `flow-next-drive`](#renamed-skill-browser-flow-next-drive)
 - [Rolling-frontier scheduling (`/flow-next:work` default route)](#rolling-frontier-scheduling-flow-nextwork-default-route)
-- [Land on a chain: `chain broken`, a retarget conflict, or a pending merge-async (fn-149)](#land-on-a-chain-chain-broken-a-retarget-conflict-or-a-pending-merge-async-fn-149)
+- [Land on a chain: `chain broken`, a retarget conflict, or a pending merge-async](#land-on-a-chain-chain-broken-a-retarget-conflict-or-a-pending-merge-async)
 - [See also](#see-also)
 
 ## Updated the plugin: do I re-run setup?
@@ -66,8 +66,6 @@ flowctl init
 
 Or run `/flow-next:uninstall` to clean up docs and get the commands printed for manual execution.
 
-<a id="pilot-keeps-skipping-a-spec-the-board-says-is-ready-strikes-ledger-fn-184325"></a>
-
 ## `flow --auto` keeps skipping a spec the board says is ready (strikes ledger)
 
 **Symptom:** `/flow-next:flow --auto` printed `PILOT_VERDICT=BLOCKED ... reason="no advancement (strike 2/2, spec unreadied): ..."` on an earlier run, and now every run skips that spec - even though the issue sits in the ready state on the board and `flowctl show <spec-id>` reports `ready: true`.
@@ -90,26 +88,27 @@ flowctl pilot strikes clear --all
 
 Clearing a strike **does not re-ready the spec** - the two signals are orthogonal. On a `readyState` repo the board (or the next pull) owns readiness; on a repo without it, run `flowctl spec ready <spec-id>` yourself. Fix the underlying failure first: the strike reason in `strikes list` names the stage and what did not advance.
 
-## Review loop stalls, repeats unchanged work, or runs away (fn-90/fn-159)
+## Review loop stalls, repeats unchanged work, or runs away
 
-**Symptoms:** a plan/impl/completion review loops far more than the ~3-round cap - the field report was **~11×** on a large ticket before the reviewer and implementer converged. Most common on the **Cursor** review backend, but the underlying causes were backend-agnostic.
+**Symptoms:** a plan/impl/completion review runs many more rounds than expected before the reviewer and implementer converge, most often on the **Cursor** review backend.
 
-**What was happening (root causes, now bounded):**
-- **The cap was prose-only and reset every invocation.** `MAX_REVIEW_ITERATIONS` (then default 4; now 8) was an instruction to the host LLM to keep an in-context counter - but it reset to 0 on every *fresh* review invocation (a new `flow --auto` hop, a human retry). The runaway was ≈ 5-6 fresh invocations × ~3 in-agent rounds. Now flowctl owns a **cumulative counter on spec state** that survives fresh invocations and **refuses at the cap** (exit `4` + `ESCALATE:`).
-- **Every re-review was a fresh blind review** (a churn lottery - two identical fresh Cursor reviews overlapped on only ~50% of findings, so SHIP was statistically near-unreachable within the cap). The **convergence ratchet** now renders the validated `findings.items` records (severity, classification, and status) with labeled legacy prose only as a fallback. Its shrink-only contract remains: verify each prior finding fixed; only a NEW ≥ Major finding may block; all prior fixed + no new ≥ Major ⇒ MUST SHIP.
-- **Codex/copilot verdicts could be poisoned** by a verdict literal echoed in tool output (e.g. a grep of `smoke_test.sh`'s assertions), making flowctl report SHIP while the reviewer said NEEDS_WORK - a false SHIP *or* a false NEEDS_WORK that kept a loop alive. The parse now isolates the final agent message (last-match).
-- **The ratchet asked for prior-finding resolutions without stating the machine grammar**, so a compliant-sounding reviewer answered in prose and the parser recorded nothing: every prior carried forward at `open`, the open set looked inflated, and a trend-based stall rule escalated three healthy converging loops in a row at round 2 of 8. The prompt now states the exact line grammar (and an aggregate all-clear), the parser accepts every token it advertises, and **the trend rules are gone** - see the note below on what a runaway looks like now.
-- **Cursor's ambient injection** (its built-in persona rubric + auto-attached `AGENTS.md`) diluted the scope anchor. A **persona-override preamble** now rides in every cursor review prompt (see [`orchestration.md`](orchestration.md)).
+**How it is bounded:**
+- **One fix pass, one re-review by default.** A `NEEDS_WORK` verdict gets one fix pass and one scoped re-review, and that re-review's verdict is terminal. A longer loop runs only under `/flow-next:flow --until=merge` or when you ask for review until SHIP.
+- **The cap is enforced by flowctl, not prose.** A cumulative counter on spec state survives fresh invocations (a new `flow --auto` hop, a human retry) and **refuses at the cap** (exit `4` + `ESCALATE:`).
+- **Re-reviews are not fresh blind reviews.** The **convergence ratchet** renders the validated `findings.items` records (severity, classification, and status), with labeled legacy prose only as a fallback. Its contract is shrink-only: verify each prior finding fixed; only a NEW ≥ Major finding may block; all prior fixed + no new ≥ Major ⇒ MUST SHIP.
+- **Verdict parsing reads the final agent message only** (last match), so a verdict literal echoed in tool output cannot produce a false SHIP or a false NEEDS_WORK.
+- **Prior-finding resolutions use a stated machine grammar** (`Prior finding #2: not-fixed`, plus an aggregate all-clear), and the parser accepts every token the prompt advertises. There are no trend-based stall rules.
+- **Ambient reviewer instructions are overridden.** A **persona-override preamble** rides in every cursor review prompt so the host's built-in persona and auto-attached `AGENTS.md` cannot dilute the scope anchor (see [`orchestration.md`](orchestration.md)).
 
 **What to do if you hit the cap now:**
 - `NOT_RETRYABLE: artifact unchanged since last verdict` exits **1** before dispatch and consumes no round. Change the actual reviewed artifact, or have a human decide whether an explicit re-plan is warranted; do not blindly retry it.
 - Either `ESCALATE: review loop stalled (<rule>)` or `ESCALATE: reviewer requested human review` exits **4** and is **not retryable**. Under `flow --auto` it surfaces as NEEDS_HUMAN. A human should inspect the persisted receipt and findings trail, then decide whether the work needs redesign, a focused fix, or a re-plan.
 - After an explicit **re-plan** (you rewrote the spec/approach, not just patched a finding), a human can reset the counter to re-open the cap: `flowctl spec reset-review-rounds <spec-id>` (add `--impl` to also clear per-task impl-review counters). A `SHIP` verdict resets automatically. Reset commands and `--force` are human recovery tools, never autonomous ones.
-- **A loop that runs to the cap with no early escalation is now the expected shape for a non-compliant reviewer, not a bug.** Only one rule terminates early - the reviewer explicitly marking the same finding `not-fixed` in two consecutive rounds - and it needs the machine grammar (`Prior finding #2: not-fixed`) to fire. A reviewer that resolves priors in prose produces no such evidence, so the cap is its only bound. That is deliberate: the trend heuristics this replaced turned non-compliance into *wrong* early stalls instead of *expensive* ones. If the cost bites, **lower the cap - do not re-add trend inference** (the reasoning is recorded in `.flow/memory/knowledge/decisions/`).
+- **A loop that runs to the cap with no early escalation is now the expected shape for a non-compliant reviewer, not a bug.** Only one rule terminates early - the reviewer explicitly marking the same finding `not-fixed` in two consecutive rounds - and it needs the machine grammar (`Prior finding #2: not-fixed`) to fire. A reviewer that resolves priors in prose produces no such evidence, so the cap is its only bound. That is deliberate: trend heuristics turn non-compliance into *wrong* early stalls instead of *expensive* ones. If the cost bites, **lower the cap** rather than inferring stalls from trends.
 - The default is 8, resolved as env `MAX_REVIEW_ITERATIONS` > config `review.maxIterations` > 8. Tune it with `flowctl config set review.maxIterations <n>` for a persistent change; the cap remains enabled (minimum 1) and escalation remains preferable to a larger budget.
 - Full semantics: [`flowctl.md` § Deterministic review cap](flowctl.md#codex-impl-review).
 
-## flowctl says my config carries removed keys, or my routing block is ignored (fn-195)
+## flowctl says my config carries removed keys, or my routing block is ignored
 
 **Symptom:** one non-blocking line like
 
@@ -127,7 +126,7 @@ note: .flow/config.json still carries removed key(s): models.roles, models.verif
 - **The harness may not have that reach at all.** Check its page under [`reach/`](reach/README.md): a host with no subagent primitive and no second CLI runs the work in session, and that is the documented degradation, not a fault.
 - **Check what actually ran.** Stage records carry the model where the harness exposes it - an absent value means unknown, never the configured value.
 
-## Review reports a model downgrade / floor (fn-76 resolution ladder)
+## Review reports a model downgrade / floor (resolution ladder)
 
 **Symptom:** a review prints one stderr line like
 
@@ -137,7 +136,7 @@ warning: codex model '<ranking top>' unavailable; downgraded to '<next in rankin
 
 (or `… fell back to the never-fail floor (the CLI default / 'auto')`), and the review's receipt records the model actually used / `auto` / `default` rather than the ranking top.
 
-**This is expected, not an error.** flow-next dispatches the *strongest* model by default and, when the local CLI can't run it, transparently resolves the best available one (the [model-resolution ladder](flowctl.md#model-resolution-strongest-available-never-fail-fn-76)). It fires ONLY on the distinctive model-unavailable signature (codex *"requires a newer version of Codex"*, copilot *`… from --model flag is not available`*, cursor *`Cannot use this model: …`*; claude: exit 0 with `is_error: true`, `api_error_status: 404` and a result text starting *"There's an issue with the selected model"*, or the `[claude-code:unrecognized_model]` stderr tag - a 404 without that text, or the text without a 404, is a transport failure, never a ladder step); auth / network / sandbox / timeout failures propagate unchanged.
+**This is expected, not an error.** flow-next dispatches the *strongest* model by default and, when the local CLI can't run it, transparently resolves the best available one (the [model-resolution ladder](flowctl.md#model-resolution-strongest-available-never-fail)). It fires ONLY on the distinctive model-unavailable signature (codex *"requires a newer version of Codex"*, copilot *`… from --model flag is not available`*, cursor *`Cannot use this model: …`*; claude: exit 0 with `is_error: true`, `api_error_status: 404` and a result text starting *"There's an issue with the selected model"*, or the `[claude-code:unrecognized_model]` stderr tag - a 404 without that text, or the text without a 404, is a transport failure, never a ladder step); auth / network / sandbox / timeout failures propagate unchanged.
 
 **What to do:**
 - **Want the top model?** Upgrade the backend CLI - a ranking top can require a newer CLI than the one installed. The cache key is `(backend, CLI version, effective routing intent)`, so a CLI or routing change re-resolves automatically on the next review.
@@ -145,7 +144,7 @@ warning: codex model '<ranking top>' unavailable; downgraded to '<next in rankin
 - **Force a specific model** (skip the ladder + cache entirely): pin it explicitly - `--spec codex:<model>`, a per-task/per-spec `review:` value, `FLOW_CODEX_MODEL`, or `review.backend`. An explicit unavailable model errors clearly instead of downgrading.
 - **Reset the cache:** `rm -rf .flow/.cache/` - it is regenerated (and gitignored) on the next review; a corrupt file is already treated as a cold start.
 
-## Worker reports a merge conflict at wave join (fn-176 wave dispatch)
+## Worker reports a merge conflict at wave join
 
 **Symptom:** a concurrent wave's workers all finished green in their own workspaces, but the conductor hits a merge conflict while joining one of their commits onto the target branch.
 
@@ -168,27 +167,25 @@ Flow-Next's plan-review and impl-review skills include specific instructions for
 
 > **Note:** RepoPrompt is macOS-only. When the CE-first ladder (`rpce-cli`, the two CE user links, then Classic `rp-cli`) finds no runnable candidate, `/flow-next:plan` and the review skills do not propose RepoPrompt. Explicit `--review=rp` is still accepted and errors at runtime if no supported RepoPrompt CLI is available.
 
-## Copilot review backend on Windows (fixed in 1.1.9)
+## Copilot review backend on Windows
 
-Spec-driven `flowctl copilot {impl,plan,completion}-review` calls work on native Windows from 1.1.9 onwards. No action required - the WSL detour from the 1.1.8 era is no longer necessary.
+Spec-driven `flowctl copilot {impl,plan,completion}-review` calls work on native Windows; no WSL detour is needed.
 
-**What changed:** the POSIX path passes the prompt via `copilot -p "<text>"` (argv) which collides with Windows' `CreateProcessW` 32,767-char limit for spec-sized prompts. From 1.1.9, `run_copilot_exec` detects `sys.platform == "win32"` and switches to stdin delivery (`subprocess.run(input=prompt, ...)`) - bypassing the argv cap entirely. Stdin-mode `--resume` is resume-only (unlike `-p` mode's create-or-resume), so flow-next uses `--session-id=<uuid>` on the first call and `--resume=<uuid>` afterwards, tracked via a touch marker under `.flow/tmp/copilot-sessions/<uuid>`.
+**How:** the POSIX path passes the prompt via `copilot -p "<text>"` (argv), which collides with Windows' `CreateProcessW` 32,767-char limit for spec-sized prompts. On native Windows flowctl switches to stdin delivery, bypassing the argv cap. Stdin-mode `--resume` is resume-only (unlike `-p` mode's create-or-resume), so flow-next uses `--session-id=<uuid>` on the first call and `--resume=<uuid>` afterwards, tracked via a touch marker under `.flow/tmp/copilot-sessions/<uuid>`.
 
-POSIX (macOS / Linux / WSL) behavior is unchanged.
-
-**If you still see Windows argv errors:** inspect the installed plugin version in your host's plugin manager and update Flow-Next - every repo consumes the updated launcher directly, so no per-repo re-run is needed. If the repo still carries a legacy `.flow/bin/` copy, delete it (see [I have `.flow/bin/` from an old install](#i-have-flowbin-from-an-old-install)); a stale copy shadows the fixed launcher.
+**If you still see Windows argv errors:** inspect the installed plugin version in your host's plugin manager and update Flow-Next - every repo consumes the updated launcher directly, so no per-repo re-run is needed. If the repo still carries a legacy `.flow/bin/` copy, delete it (see [I have `.flow/bin/` from an old install](#i-have-flowbin-from-an-old-install)); a stale copy shadows the current launcher.
 
 **Upstream:** [github/copilot-cli#3398](https://github.com/github/copilot-cli/issues/3398) tracks a first-class `--prompt-file` flag. Once that lands, both POSIX and Windows paths will move to the cleaner file-based delivery.
 
-## Windows: `python3` not found / Microsoft Store alias stub (fixed in fn-77)
+## Windows: `python3` not found / Microsoft Store alias stub
 
 **Symptom:** on Windows, `flowctl` fails with *"Python was not found; run without arguments to install from the Microsoft Store…"* and exit code **9009**, even though you installed real Python.
 
-**Cause:** `python3` resolves to the Microsoft Store **App Execution Alias** - a 0-byte reparse point at `%LOCALAPPDATA%\Microsoft\WindowsApps\python3.exe` that Windows ships **enabled by default**. When your real Python came from [python.org](https://python.org) or the `py` launcher (not the Store), the stub shadows it: it satisfies `command -v python3` (it *is* on `PATH`) but is non-functional. Older flowctl launchers trusted presence over function and picked the stub - so flow-next broke on every Windows machine in this configuration.
+**Cause:** `python3` resolves to the Microsoft Store **App Execution Alias** - a 0-byte reparse point at `%LOCALAPPDATA%\Microsoft\WindowsApps\python3.exe` that Windows ships **enabled by default**. When your real Python came from [python.org](https://python.org) or the `py` launcher (not the Store), the stub shadows it: it satisfies `command -v python3` (it *is* on `PATH`) but is non-functional. A launcher that trusts presence over function picks the stub and fails.
 
-**The shipped fix (no action needed on a fresh install):** the `flowctl` launchers now probe interpreter functionality **and require Python 3.11+** in order `$PYTHON_BIN` → `py -3` → `python3` → `python`, so the 9009 stub and working-but-too-old interpreters are skipped before `flowctl.py` loads. If no candidate works, the error says so; if candidates work but are below 3.11, a distinct error tells you to install or select a supported Python. A `flowctl.cmd` batch shim ships alongside the extensionless bash `flowctl`, so PowerShell / cmd.exe (Claude Desktop, native Codex, native Cursor) resolve a supported interpreter too. See [`platforms.md` → Windows: Python discovery](platforms.md#windows-python-discovery).
+**Current launchers handle it (no action needed on a fresh install):** the `flowctl` launchers probe interpreter functionality **and require Python 3.11+** in order `$PYTHON_BIN` → `py -3` → `python3` → `python`, so the 9009 stub and working-but-too-old interpreters are skipped before `flowctl.py` loads. If no candidate works, the error says so; if candidates work but are below 3.11, a distinct error tells you to install or select a supported Python. A `flowctl.cmd` batch shim ships alongside the extensionless bash `flowctl`, so PowerShell / cmd.exe (Claude Desktop, native Codex, native Cursor) resolve a supported interpreter too. See [`platforms.md` → Windows: Python discovery](platforms.md#windows-python-discovery).
 
-**Recovering a legacy copied install** (a pre-fix `.flow/bin/flowctl` hardcodes `exec python3` and cannot fix itself). This only applies to repos still carrying the retired copy layout. Pick either:
+**Recovering a legacy copied install** (an old copied `.flow/bin/flowctl` hardcodes `exec python3` and cannot fix itself). This only applies to repos still carrying the retired copy layout. Pick either:
 
 1. **Delete the copy (recommended, durable).** The plugin's own launchers already carry the fix, and nothing reads `.flow/bin/` any more:
 
@@ -251,9 +248,9 @@ Drive / QA on Cursor probes the built-in browser by exact MCP id `cursor-ide-bro
 
 A mid-run `MCP server does not exist: cursor-ide-browser` after the pane was already driving is a known Cursor flake, not a first-use miss. `@Browser` does not restore that session. Quit Cursor fully (Cmd-Q), wait ~10s, confirm the Browser pane shows connected, then start a **fresh chat**. Detail: [`platforms.md`](platforms.md) and [`cursor-ide-browser.md`](../skills/flow-next-drive/references/cursor-ide-browser.md).
 
-## Renamed skill: `browser` → `flow-next-drive` (1.4.0)
+## Renamed skill: `browser` → `flow-next-drive`
 
-The `browser` skill was renamed `flow-next-drive` in 1.4.0 (surface-aware driver ladder). The invocation is now `/flow-next:flow-next-drive`; the Codex mirror is also `flow-next-drive` (previously `agent-browser`, which collided with the user's global `agent-browser` skill and Codex-native browser skills).
+The old `browser` skill is now `flow-next-drive` (surface-aware driver ladder). The invocation is now `/flow-next:flow-next-drive`; the Codex mirror is also `flow-next-drive` (previously `agent-browser`, which collided with the user's global `agent-browser` skill and Codex-native browser skills).
 
 If a cached install still surfaces an orphaned `browser` / `agent-browser` skill after upgrading, it auto-clears within ~7 days as the plugin cache refreshes. To clear it immediately, delete the stale cached marketplace directory under the Claude plugin cache path:
 
@@ -265,14 +262,14 @@ rm -rf ~/.claude/plugins/cache/<marketplace>   # then reload Claude Code
 
 `/flow-next:work` schedules on the rolling frontier by default and prints the route once during Phase 3, before the first claim - the wave form at entry, the rolling form after the scheduler's dispatch probe (`Scheduling: rolling`, or `Scheduling: wave (<reason>)`). Most failures resolve exactly as wave-route failures do. Route-specific ones:
 
-- **`Scheduling: wave (planSync.enabled=true)`** - plan-sync's per-wave barrier is a fail-closed rule, so a repo that opted into plan-sync runs the wave loop. **`false` is the shipped default since 4.5.1** (earlier inits wrote `true`), so this fires only on repos that opted in: rolling needs `flowctl config set planSync.enabled false`. The run never mutates config itself.
+- **`Scheduling: wave (planSync.enabled=true)`** - plan-sync's per-wave barrier is a fail-closed rule, so a repo that opted into plan-sync runs the wave loop. **`false` is the shipped default** (older inits wrote `true`), so this fires only on repos that set it: rolling needs `flowctl config set planSync.enabled false`. The run never mutates config itself.
 - **`Scheduling: wave (task-id run | single task | sequential dependency chain)`** - the run was given a task id (the wave route runs exactly that task), the spec has fewer than two open tasks, or no two open tasks are dependency-independent; one lane has nothing for rolling admission to schedule, so the single-worker wave path runs it with less machinery (when the run has exactly one task, the conductor implements it inline). Not an error.
 - **`Scheduling: degraded to wave (host lacks non-blocking dispatch)`** - the host's subagent dispatch was measured to block until completion, so the rolling overlap is lost; the rest of the rolling lifecycle (isolated workspaces, conductor-owned review, notes surface) still runs. See the [platforms matrix](platforms.md).
 - **A task is held or dropped as claimed by another actor** - task claims live in the shared runtime state store and are spec-scoped, so two runs on the same spec contend on the same claims and fail closed against each other. That is the designed behavior, not a bug. Do not clear or steal another run's claim; if the other run is truly dead, recover with the human-only repair in [Reset a stuck task](#reset-a-stuck-task).
 - **`Notes surface: unavailable (...)`** - the shared run-notes directory could not be created. Advisory only: the run continues without it, nothing blocks. A notes dir abandoned by an interrupted run (under `<state-root>/flow-notes/`, see [`architecture.md`](architecture.md#outside-tree-runtime-state-and-run-notes-dirs)) is inert markdown and safe to delete by hand.
-- **A worker reports a merge conflict at integration** - per-task integration reuses the wave-join mechanics; the conflicting task is retried serially, never a correctness loss. Same handling as [the wave-join section above](#worker-reports-a-merge-conflict-at-wave-join-fn-176-wave-dispatch).
+- **A worker reports a merge conflict at integration** - per-task integration reuses the wave-join mechanics; the conflicting task is retried serially, never a correctness loss. Same handling as [the wave-join section above](#worker-reports-a-merge-conflict-at-wave-join).
 
-## Land on a chain: `chain broken`, a retarget conflict, or a pending merge-async (fn-149)
+## Land on a chain: `chain broken`, a retarget conflict, or a pending merge-async
 
 Land accepts one named PR and merges only the lowest open layer. It links open
 children into a native stack before merging where supported. GitHub handles

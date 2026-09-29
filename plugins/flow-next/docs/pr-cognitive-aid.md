@@ -45,13 +45,13 @@ Optional `specIds` lists 1–32 canonical spec IDs without duplicates and includ
 `specId`, which still binds the expected host and storage path. Schema version
 stays 1. With several IDs, spec sources may name any member and task sources
 may name tasks of any member. Every `rid` source ref and `rIds` entry must use
-`fn-250:R4`: short spec ID, colon, bare requirement ID. The short ID must resolve
+`fn-12:R4`: short spec ID, colon, bare requirement ID. The short ID must resolve
 to exactly one listed spec. Bare IDs are invalid in this mode. Without `specIds`,
 or with one member, existing validation and rendering remain unchanged and
 qualified IDs are invalid. Sparse expansion preserves `specIds`.
 
 Row tags and per-criterion tables retain qualified IDs. Coverage has one line
-per spec in `specIds` order, for example `Coverage fn-250: R1 → group 1; R2 → groups 1, 2`.
+per spec in `specIds` order, for example `Coverage fn-12: R1 → group 1; R2 → groups 1, 2`.
 Specs without declared requirements have no coverage line; declared but
 uncovered requirements remain visible.
 

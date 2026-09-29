@@ -38,7 +38,7 @@ When a skill needs the spec template, it walks three locations in order (first m
 2. `<repo_root>/spec.md` - lowercase honored when uppercase absent
 3. `${PLUGIN_ROOT}/templates/spec.md` - bundled (canonical source of truth)
 
-Since fn-220 flowctl itself applies this cascade for `spec create` and `spec skeleton`, so a repo `SPEC.md` shapes CLI-created specs as well as skill-authored ones.
+flowctl itself applies this cascade for `spec create` and `spec skeleton`, so a repo `SPEC.md` shapes CLI-created specs as well as skill-authored ones.
 
 Case-insensitive FS handling (macOS APFS, Windows NTFS) and the bash walker that implements it live in [`../references/spec-template-discovery.md`](../references/spec-template-discovery.md).
 
@@ -57,7 +57,7 @@ git add SPEC.md && git commit -m "docs: project spec scaffold"
 
 Commit it. The scaffold is a team artifact - an uncommitted `SPEC.md` gives you a spec shape your teammates and your CI agents do not have.
 
-Frontmatter and the `<!-- scope: ... -->` markers are authoring guidance, not spec content; keep them if you want the interview passes to keep routing correctly, and know that they may be stripped from the finished spec body.
+Frontmatter is authoring guidance, not spec content, and may be stripped from the finished spec body. `<!-- scope: ... -->` comments copied from an older template are ignored.
 
 ### What is safe to change
 
@@ -77,7 +77,7 @@ Frontmatter and the `<!-- scope: ... -->` markers are authoring guidance, not sp
   - **R1:** Given a signed-in user with an expired session, when they submit the form, then the draft is preserved and they are returned to it after re-auth.
   ```
 
-  Every spec the project authors from then on arrives with that instruction, and every interview/capture pass writes criteria in that shape. The only load-bearing parts are the heading name and the `**R<n>:**` bullet marker - the criterion *text* is yours (the parser reads wrapped multi-line bullets, and anything it cannot read is surfaced as `acceptance_criteria_residue` rather than silently dropped). The same move works for any house convention.
+  Every spec the project authors from then on arrives with that instruction, and every refine/capture pass writes criteria in that shape. The only load-bearing parts are the heading name and the `**R<n>:**` bullet marker - the criterion *text* is yours (the parser reads wrapped multi-line bullets, and anything it cannot read is surfaced as `acceptance_criteria_residue` rather than silently dropped). The same move works for any house convention.
 
   More house styles, same mechanism - each is one instruction comment (or one rewritten guidance line) in your copied `SPEC.md`, and every spec the project authors from then on obeys it:
 
@@ -274,7 +274,7 @@ Then refine only the uncertainty instead of re-litigating settled requirements:
 
 Append-only R-ID numbering is what makes that targeting safe - a later session cannot renumber or rewrite the criteria you already blessed, and it will not retag them either.
 
-Scope: tags apply to a spec's `## Acceptance Criteria` bullets. Task acceptance is plain `- [ ]` checklist items and carries no tags, and an interview over a loose markdown file leaves that file's structure alone - tags start when `/flow-next:plan` promotes it to a spec.
+Scope: tags apply to a spec's `## Acceptance Criteria` bullets. Task acceptance is plain `- [ ]` checklist items and carries no tags, and refining a loose markdown file leaves that file's structure alone - tags start when `/flow-next:plan` promotes it to a spec.
 
 Note: `flowctl spec export-cognitive-aid --json` does not surface parsed criteria with their tags as a top-level array today (the parse feeds the PR-body coverage table internally), so the grep above is the supported route.
 

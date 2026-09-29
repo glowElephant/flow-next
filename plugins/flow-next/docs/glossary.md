@@ -47,10 +47,6 @@ Last-term `remove` leaves a `# Glossary` H1 husk on disk - the file is **never**
 - **`/flow-next:sync`** Phase 3b.1: glossary renames replace `_Avoid_` aliases with the canonical term inline across downstream task specs, with a `<!-- Updated by plan-sync: glossary rename ... -->` breadcrumb.
 - **`docs-gap-scout`** in the planning phase: reads `GLOSSARY.md` on the ancestor chain to surface canonical terminology in the planning context; flags terminology mismatches between the proposed feature description and the glossary.
 
-## Forbidden vocabulary (R17)
-
-A small list of jargon terms is grep-guarded out of canonical skill / agent / command / flowctl prose by `ci_test.sh` section 5c (canonical scan, prints `file:line` on hit), and out of the Codex mirror by `scripts/sync-codex.sh` validation block (mirror scan, prints count + remediation hint). The forbidden list is enumerated only inside the grep pattern itself; documentation refers to "the R17 forbidden list" without re-enumeration to avoid teaching the very vocabulary it's meant to suppress.
-
 ## See also
 
 - [Strategy on flow-next.dev](https://flow-next.dev/skills/strategy/) - the repo-root `STRATEGY.md` file; the `flowctl strategy` commands are in [`flowctl.md`](flowctl.md#strategy).
