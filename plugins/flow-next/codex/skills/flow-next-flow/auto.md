@@ -113,6 +113,8 @@ When `PILOT_AUTONOMY=ready` (the default), the run behaves exactly as Phases 1 t
 
 The `/goal` validator is transcript-blind. It reads conversation output only and never runs tools. Every hop therefore echoes its verification evidence into the output (flowctl status fields, task counts, task status transitions, and the gh-confirmed PR URL for make-pr).
 
+Before that line, print a `Decisions:` list: each default chosen, finding declined and review skipped on the person's behalf this run, with its evidence (working-rules.md); `Decisions: none` when there were none. The same list goes into the pull request body when make-pr runs.
+
 Every run ends with exactly one terminal line, the last line of the response, with nothing after it. The common ready-mode grammar is:
 
 ```text

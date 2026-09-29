@@ -513,7 +513,7 @@ Context optimization. Each task gets fresh context:
 - Review cycles stay isolated
 - Main conversation stays lean (just summaries)
 
-A run with a single task to implement has no next task to bleed into, so the conductor implements it inline instead (3c).
+A run with a single task has no next task to bleed into, so phases.md Phase 3 implements it inline unless it was sent here for a worker.
 
 **Autonomous mode** (`mode:autonomous` token or `FLOW_AUTONOMOUS=1`): forward `FLOW_AUTONOMOUS=1` to the worker when set. It suppresses questions only.
 

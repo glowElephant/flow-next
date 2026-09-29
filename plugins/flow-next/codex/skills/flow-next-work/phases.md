@@ -222,7 +222,8 @@ here, inline.** Print `Scheduling: inline (single task)`.
    fails) read [references/tracker-touchpoints.md](references/tracker-touchpoints.md) and fire its
    `First claim` section now and its `Task done` section after step 6; otherwise nothing fires.
 3. **Implement** to the acceptance criteria, following working-rules.md: a failing test first
-   where cheap (on the defect route, [references/defect-route.md](references/defect-route.md)),
+   where cheap (on the defect route, [references/defect-route.md](references/defect-route.md); on
+   the hill-climb route, [references/hill-climb.md](references/hill-climb.md) replaces this step),
    one focused test per criterion and per enumerated error case, the focused tests for the code
    you changed. Never weaken a test, gate or assertion to make the change pass; a gate you believe
    is wrong is `BLOCKED: TOOLING_FAILURE`. Do not edit `.flow/features/`.
@@ -415,16 +416,9 @@ Confirm before ship:
 ## Example flow
 
 ```
-Phase 1 (resolve) → Phase 2 (branch) → Phase 3 (route: rolling by default; wave when plan-sync on, <2 open tasks, or a sequential chain):
-  ├─ rolling: references/rolling-scheduler.md (admit at every worker return → per-task integrate/review/done → quiesce → 3g)
-  ├─ wave:
-  ├─ 3a-c: inspect frontier → select/claim wave → dispatch isolated worker(s)
-  ├─ 3d: join → integrate → review/complete each task
-  ├─ 3e: plan-sync after the wave resolves (if enabled + downstream tasks exist)
-  ├─ 3f: SPEC_MODE? → loop to 3a | SINGLE_TASK_MODE? → Phase 4
-  ├─ no more tasks → 3g
-  │   ├─ policy skip (single-task + per-task SHIP covers spec surface) → CAS-persist not_required, record stage line → Phase 4
-  │   ├─ status != ship → invoke $flow-next-spec-completion-review → skill fixes, writes SHIP once, returns
-  │   └─ status = ship → Phase 4
-  └─ Phase 4 (quality) → Phase 5 (ship: verify → commit → sync check → retro-fire MISSING once → summary w/ Tracker sync slot)
+Phase 1 (resolve) -> Phase 2 (branch) -> Phase 3:
+  one task: inline (claim, anchor, implement, commit, review by risk, done, completion-review skip)
+  several tasks, or a worker asked for: references/multi-task.md (rolling by default; wave when
+    plan-sync is on or the tasks form a sequential chain; completion review at 3g)
+-> Phase 4 (quality) -> Phase 5 (ship: verify, commit, tracker check, summary)
 ```
