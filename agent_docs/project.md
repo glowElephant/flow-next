@@ -43,6 +43,11 @@ fitters and truncators are not a remedy. Genuine transport limits stay explicit.
   changes with their source; CI's `./scripts/sync-codex.sh --check` enforces
   freshness. Preserve transform/guard pairs and validate the installed
   consumer layout, not just the source tree.
+- Cross-route agent behaviour (scope, design, tests, attended versus
+  unattended, review, pull requests and follow-ups, handoff) lives only in
+  [working-rules.md](../plugins/flow-next/references/working-rules.md).
+  Skills and agents link it near the top and keep only their own
+  instructions; never restate or contradict it elsewhere.
 - Read [setup.md](setup.md) before changing setup, snippets, artifact resolution,
   or their transforms. Setup-block rejects symlink targets deliberately.
 - Avoid feature flags and compatibility scaffolding without a demonstrated
