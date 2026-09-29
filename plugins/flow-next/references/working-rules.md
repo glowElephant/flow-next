@@ -44,12 +44,16 @@ Before writing logic for a feature, name the data it touches and what owns each 
 
 ## Review
 
-When a review backend is configured, every implementation is reviewed, on every route: direct,
-defect, and spec work alike. Only `review=none` or a qualifying triage-skip receipt skips it;
-read the configuration rather than assuming it. Review is not deferred to a pull request. Use
-the configured backend; if it cannot run, say so instead of substituting another reviewer.
-Attended, hand back first and run the review in the background, then report the verdict when it
-lands. Unattended, the verdict gates the handoff and any merge.
+When a review backend is configured, review by risk, not by size. Review every change that
+touches persisted or shared state, concurrency, security, data layout or migrations, and every
+multi-file feature. A small local fix to output, wording or display is not reviewed; record the
+skip and its reason. Read the configuration rather than assuming it, use the configured backend,
+and if it cannot run, say so instead of substituting another reviewer. Review is never deferred
+to a pull request.
+
+Attended: hand the result back first, in its own message, and end the turn; then start the review
+in the background and report its verdict (and any fix) when it lands. Unattended: the verdict
+gates the handoff and any merge.
 
 ## Handoff
 
