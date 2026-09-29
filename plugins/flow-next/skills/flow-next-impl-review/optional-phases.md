@@ -100,7 +100,7 @@ Carmack flow is unchanged.
 ### Step D.1: Determine which passes to run
 
 Compute `SELECTED_PASSES` here (the flags `DEEP` / `DEEP_PASSES` and
-`BASE_COMMIT` were parsed in SKILL.md Step 0) using `flowctl review-deep-auto`
+`BASE_COMMIT` were parsed in other-paths.md Step 0) using `flowctl review-deep-auto`
 against the changed-file list. Explicit CSV form
 (`--deep=adversarial,security`) overrides auto-enable.
 

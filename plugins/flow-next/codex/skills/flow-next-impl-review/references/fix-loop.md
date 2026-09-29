@@ -2,7 +2,7 @@
 
 Read this only when the delivered verdict is `NEEDS_WORK`. A SHIP run never
 needs it; `MAJOR_RETHINK` escalates as `BLOCKED: DESIGN_CONFLICT` and never
-enters this loop (see [../SKILL.md](../SKILL.md) § Fix Loop for the verdict
+enters this loop (see [../other-paths.md](../other-paths.md) § Fix Loop for the verdict
 contract, the iteration cap, and the two anti-patterns — those stay in force
 here).
 

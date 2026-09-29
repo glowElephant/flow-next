@@ -2,7 +2,7 @@
 
 Read this only when a triage result needs explaining or auditing (a SKIP you
 want to justify, a misclassification you suspect, or an LLM-judge run). The
-executable pre-check lives inline in [../SKILL.md](../SKILL.md) Step 0.5 — a
+executable pre-check lives inline in [../other-paths.md](../other-paths.md) Step 0.5 — a
 normal review just runs it and reads the exit code.
 
 **Default behavior:** deterministic whitelist only (no LLM call). Ambiguous

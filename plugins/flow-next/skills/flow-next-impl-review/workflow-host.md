@@ -441,13 +441,13 @@ held in Step 3 (before the fix pass); a standalone review holds none:
 
 ## Step 5: Continue through the shared fix loop
 
-Carry the verdict directly into SKILL.md's shared Fix Loop in this same skill
+Carry the verdict directly into other-paths.md's shared Fix Loop in this same skill
 run.
 
 - `SHIP`: complete the review contract.
 - `MAJOR_RETHINK`: continue into the shared `BLOCKED: DESIGN_CONFLICT`
   terminal; do not patch the design.
-- `NEEDS_WORK`: fix the findings SKILL.md's Fix Loop says to fix, run the
+- `NEEDS_WORK`: fix the findings other-paths.md's Fix Loop says to fix, run the
   relevant tests/lints, and commit the fixes before re-review. Then repeat Steps 1–4
   once with **one new** read-only subagent (never a second fan-out — the fan-out is
   first-round only), the same cross-family rules, and the full merged
