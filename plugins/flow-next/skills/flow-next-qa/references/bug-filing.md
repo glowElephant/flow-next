@@ -1,71 +1,34 @@
-# Bug filing — turning live-app failures into actionable findings
+# Filing a finding
 
-A finding is only useful if engineering can act on it. **File immediately on FAIL** (not batched), with a complete repro and real captured evidence, into the bug memory track. Findings carry the R-ID(s) they trace back to, closing the **spec-AC ↔ scenario ↔ finding ↔ R-ID** loop.
+Read from `workflow.md` Phase 5 before filing the first finding. Reproduction, severity and the
+evidence list are in Phase 5; this file covers the body, the commands and dedup. The severity
+scale, reproduce-twice and session-hygiene practice are adapted from Ray Fernando's
+`running-bug-review-board` skill (Apache-2.0).
 
-> The P0/P1/P2 taxonomy, the evidence rules, the reproduce-before-file discipline, and the "never downgrade a P0" rule are a lean borrow from Ray Fernando's `running-bug-review-board` skill (Apache-2.0). flow-next adapts them to its own storage — the **bug memory track** (`track: bug`) and the **`qa_verdict` receipt** — rather than BRB's `BUG-NNN.md` files + HTML dashboard.
+## The body
 
-**Contents:** reproduce-twice · severity (P0/P1/P2) + tie-break · steps to reproduce ·
-expected vs actual · evidence · title style · filing to bug memory (body template, **host
-filing skeleton**, category) · dedup · promote to a spec/task · anti-patterns.
+Write for an engineer with no context. Finding prose follows [docs/prose.md](../../../docs/prose.md)
+when it exists; the rules here win where they differ.
 
-## Reproduce before you file (twice)
+- **Title** states what the user experiences, not the suspected fix:
+  `<persona> can't <goal> — <one-line observed symptom>` (`Fresh user can't complete signup — OTP
+  step redirects to /500`, not `Fix the OTP cron job`).
+- **Steps** run cold: persona and address used, full starting URL with query string, each action
+  with its exact input, wait conditions ("after redirect to X"), where the screenshot was taken.
+- **Expected** is quoted from the criterion and decision context; **Actual** is what the app did.
+  When the two read the same but the bug is real, the difference is hidden state (URL, storage,
+  server row): spell it out.
+- Console lines are verbatim with tokens and personal data removed. Multi-step screenshots are
+  numbered (`01-…png`). The failing request and the snapshot of the failing step help when you
+  have them.
+- One root cause is one finding: file the highest-impact case.
 
-Agentic driving is non-deterministic — a single failed observation is not yet a finding. Re-run the scenario's failing step a **second** time (fresh `observe → snapshot → act → verify`, same persona + viewport). File only if it fails **both** times. A pass-on-retry is a flake: record it in the run notes (not a finding) and move on. This closes the GitHub-Eng gap — agent self-reported failure is ~82% accurate; reproduce-twice grounds the verdict in structural evidence, not narration.
+## Commands
 
-## Severity (P0/P1/P2)
-
-| Level | Definition | Verdict impact |
-|-------|------------|----------------|
-| **P0** | Blocks the core flow; data loss; auth bypass; security; crash — a real user cannot complete the scenario's goal | A single open P0 ⇒ verdict NEEDS_WORK |
-| **P1** | Feature broken or wrong with a workaround; wrong-but-recoverable result | Any open P1 ⇒ verdict NEEDS_WORK |
-| **P2** | Cosmetic, edge case, accessibility, dev-console noise | Does not by itself block SHIP |
-
-**Tie-break:** when between two severities, take the **higher** if it touches the core flow or data integrity. **Never relabel a P0 as P1 to avoid stopping the pass** — that hides severity and tells the next reader the breakage is optional. Severity rests on observed user impact, never on convenience.
-
-## Steps to reproduce — runnable cold
-
-Must be executable by a fresh agent with no context:
-
-- **Persona** (fresh user / member / admin) + the persona email/suffix used
-- **Starting URL** (full, incl. query string)
-- Each click / fill **verbatim**, with the exact input values
-- **Wait conditions** ("after redirect to X", "when the Loading spinner disappears")
-- Where the screenshot was taken
-
-## Expected vs Actual — both mandatory
-
-- **Expected** comes from the spec: the AC text and the resolved-default in `decision_context` (the Phase 2.4 mapping). Quote it; do not paraphrase the intent.
-- **Actual** comes from the live observation — the snapshot / screenshot / observed state.
-
-If Expected and Actual read the same in plain text but the bug is real, the difference is usually **invisible state** (URL, query string, storage, server row) — spell it out explicitly.
-
-## Evidence — required for every finding
-
-All evidence is captured in Phase 4 under `.flow/tmp/qa-<spec-id>/` (gitignored) and **referenced by path**, never inlined wholesale:
-
-- **Console** — last ~30 lines, **verbatim** (`<sid>-console.log`). Strip auth tokens / PII.
-- **Screenshot** — at least the moment of failure; sequence multi-step ones `01-…png`, `02-…png`.
-- **URL at failure** — full URL including query string.
-- **Write side-effects** — for any create/update/delete, the server/DB row or API response confirming the **actual persisted state** (the write path is where invisible-state bugs hide — check it first).
-
-Optional but valuable: the failing network request (method, URL, status, sanitized body); the DOM/accessibility snapshot from the failing step.
-
-## Title style — observed behavior, never the suspected fix
-
-`<persona> can't <goal> — <one-line observed symptom>`. Describe what the user experiences, not what you think is wrong in the code.
-
-- Good: `Fresh user can't complete signup — OTP step redirects to /500`
-- Bad: `Fix the OTP cron job`
-
-## Filing to bug memory
-
-Finding-body prose follows the artifact prose contract in [docs/prose.md](../../../docs/prose.md); proceed without it when the doc is absent, and under its "structural contracts win" precedence the verbatim-quote rules (Expected quoted from the spec, console lines verbatim) and the severity rules in this file stay authoritative.
-
-flow-next stores findings in the **bug memory track** (not `BUG-NNN.md` files). File the moment a FAIL is confirmed (after reproduce-twice), **with overlap scoring left ON** (never `--no-overlap-check`):
+With memory disabled, skip this and keep the finding in the run notes. Otherwise probe for an
+existing entry, decide, then file once:
 
 ```bash
-# No-op cleanly when memory is disabled — still record the finding in the run notes
-# so Phase 6 can count it toward the verdict.
 if [ "$($FLOWCTL config get memory.enabled --json | jq -r '.value')" = "true" ]; then
   mkdir -p .flow/tmp/qa-"$SPEC_ID"
   cat > .flow/tmp/qa-"$SPEC_ID"/finding-<sid>.md <<'EOF'
@@ -93,59 +56,34 @@ if [ "$($FLOWCTL config get memory.enabled --json | jq -r '.value')" = "true" ];
 ## Traceability
 - R-IDs: [R<i>, ...]   scenario: S<n>   driver_rung: <rung>   viewport: <wxh>
 EOF
-
-  $FLOWCTL memory add \
-    --track bug --category "<ui|runtime-errors|integration|data|security|performance|...>" \
-    --title "<persona> can't <goal> — <one-line symptom>" \
-    --module "<surface / route / component>" \
-    --tags "qa,<spec-id>,<surface>" \
-    --symptoms "<observed actual, one line>" \
-    --root-cause "(observed via live QA — unconfirmed)" \
-    --body-file .flow/tmp/qa-"$SPEC_ID"/finding-<sid>.md
-fi
-```
-
-### Host filing skeleton (dedup fold + commit tracking)
-
-`workflow.md` §5.4 executes this on the host the moment a FAIL is confirmed. It wraps the
-`memory add` above with the overlap probe and explicit update and the `QA_FILED_MEMORY` tracking
-that §6.3b's narrow-pathspec commit depends on:
-
-```bash
-# memory disabled → no-op cleanly (still record the finding in the run notes for the verdict).
-if [ "$($FLOWCTL config get memory.enabled --json | jq -r '.value')" = "true" ]; then
-  mkdir -p .flow/tmp/qa-"$SPEC_ID"
-  # Write the finding body (problem / repro / expected-vs-actual / evidence pointers / R-IDs)
-  # to .flow/tmp/qa-$SPEC_ID/finding-<sid>.md per the template above, then:
-  # Prefer --update <prior-id> when this run (or a prior QA pass) already filed the same finding.
-  # Probe first; the host reads matches and decides whether this is the same bug.
+  # Probe only; nothing is written.
   _out="$($FLOWCTL memory add --check-overlap \
-    --track bug --category "<ui|runtime-errors|integration|data|...>" \
+    --track bug --category "<category>" \
     --title "<persona> can't <goal> — <one-line symptom>" \
     --module "<surface / route / component>" --tags "qa,<spec-id>,<surface>" --json)"
-  # Then file exactly once with the same fields and body. For a confirmed
-  # rediscovery add --update <matched-id>; otherwise omit --update.
+  # File once. Add --update <matched-id> only when a match is this same bug.
   _out="$($FLOWCTL memory add \
     --track bug --category "<same category>" --title "<same title>" \
     --module "<same module>" --tags "qa,<spec-id>,<surface>" \
-    --symptoms "<observed actual>" \
+    --symptoms "<observed actual, one line>" \
     --root-cause "(observed via live QA — unconfirmed)" \
     --body-file .flow/tmp/qa-"$SPEC_ID"/finding-<sid>.md --json)"
+  # Assign in this shell (not a pipeline tail) so the autonomous commit sees it.
   _p="$(printf '%s' "$_out" | jq -r '.path // empty')"
-  # Capture via command-substitution in the PARENT shell — a `… | { read … }` pipeline tail
-  # runs in a subshell, so the assignment would be lost and the memory left uncommitted.
   [ -n "$_p" ] && QA_FILED_MEMORY="${QA_FILED_MEMORY:+$QA_FILED_MEMORY }$_p"
-  # Track the EXACT path filed (from --json) into QA_FILED_MEMORY — §6.3b commits precisely
-  # these, never a broad `.flow/memory` glob. NEVER pass --no-overlap-check.
-  # memory add always creates unless --update <id>. Read .matches (scored):
-  # high score → surface "matches existing entry X"; re-run with --update <id> when
-  # this is the same finding. Moderate → related_to cross-reference on the new entry.
 fi
 ```
 
-### Category
+Never pass `--no-overlap-check`: it empties `matches`, and later passes re-file the same bug
+blind. `memory add` creates a new entry unless given `--update <id>`. Reading `matches`:
 
-Map the observed failure to a bug-track category (`docs/memory-schema.md`):
+- score 3 or more: note "matches existing entry X"; when it is the same bug (a re-run, or an id you
+  already know), file with `--update <id>` so the entry folds in rather than gaining a sibling.
+- score 2: file new; the entry records `related_to` the match.
+
+The root cause is unconfirmed (QA saw a symptom), so it stays `(observed via live QA — unconfirmed)`.
+
+## Category
 
 | Observed | Category |
 |----------|----------|
@@ -156,33 +94,9 @@ Map the observed failure to a bug-track category (`docs/memory-schema.md`):
 | auth bypass, leaked secret, injection | `security` |
 | slow load, jank, memory growth | `performance` |
 
-When ambiguous, pick the most specific that fits. `--root-cause` for a live finding is genuinely unconfirmed (QA observed a symptom, not a cause) — record `(observed via live QA — unconfirmed)` rather than guessing.
+Pick the most specific that fits.
 
-## Dedup — overlap scoring stays on; the caller decides update-vs-create
+## Turning a finding into work
 
-**Every QA filing runs with overlap scoring on.** A `memory add` carrying `--no-overlap-check` has broken this — the `matches` signal the caller decides from would be empty.
-
-`memory add` always **creates** unless you pass explicit `--update <id>`. Overlap scoring still runs and the JSON response always emits `matches` (with scores) as a retrieval signal (`docs/memory-schema.md`):
-
-- **high** (`score >= 3`): surface "matches existing entry X" in the run notes. If this is the same finding (re-run / known prior id), re-run with `--update <match-id>` to fold body/tags into the existing entry. Prefer passing `--update` on the first call when you already know the prior entry id from this run's notes.
-- **moderate** (`score == 2`): creates a new entry with `related_to: [existing-id]`.
-- **Never** pass `--no-overlap-check` — that blanks the match signal and breaks re-run awareness.
-
-## Promote to a spec/task (the fix loop)
-
-A finding worth fixing is **promoted to a flow spec/task** — compose from `flowctl spec create` + `spec set-plan`, or `/flow-next:capture` from the finding body. That closes the loop: the QA finding becomes the intent for the fix, traceable back through its R-ID to the original spec. QA itself **does not fix product code** — it files, surfaces, and hands off (BRB's "test, document, file, hand off; don't fix unless asked").
-
-**Spec-id routing gate:** when promoting via `/flow-next:capture`, the mint gate is **owned by capture** (capture/workflow.md Phase 5.2) — do not re-implement it here. When composing with `flowctl spec create` directly, apply the same gate: read `tracker.specIds` from ONE root config snapshot (no per-leaf get), and when value is `tracker` AND the bridge is active, read the named issue (or run create-first for a fresh one) to get `{id, identifier, url}`, then mint linked with `spec create --tracker-first --tracker-identifier <key> --tracker-id <id> --tracker-url <url>` and seed the merge base (tracker-sync steps.md §2 Identity and linking); bridge inactive / no transport degrades **silently** to flow-first; explicit override wins. Network cost is conditional (reorder when `tracker.perEvent.qa` / capture is on; earlier remote write when off). No runtime nag.
-
-## Anti-patterns
-
-| Don't | Why |
-|-------|-----|
-| File before reproducing twice | Flake → false bug → wastes triage and corrupts the verdict |
-| Use the suspected fix as the title | Pre-decides the solution; confuses the fixer |
-| Skip console / write-side-effect evidence | Can't debug or confirm the actual state |
-| "I think this is broken" with no concrete steps | Untestable — not a finding |
-| File N separate findings for one root cause | File the highest-impact one; the overlap check links the rest |
-| Mark a P0 as P1 to "not stop the pass" | Hides severity; the verdict reads green when it isn't |
-| Pass `--no-overlap-check` | Blanks match signal; re-files the same finding every pass without awareness |
-| Assert PASS by reading source | Forbidden — PASS rests on captured live-app evidence only |
+QA does not fix product code. When the person wants a finding fixed, `/flow-next:capture` turns
+the finding body into a spec; capture owns spec-id minting and tracker linking.
