@@ -21,7 +21,6 @@ verdict command, merge, branch deletion, or tracker mutation.
 Land owns no persistent files. It never rebases, force-pushes, or retargets.
 It never checks out a branch in the invoking checkout. Repairs use an isolated
 checkout and ordinary file-scoped commits and pushes to this PR's branch.
-Never run under Ralph (`FLOW_RALPH` or `REVIEW_RECEIPT_PATH`).
 
 Resolve the bundled CLI when reading configuration or tracker support:
 

@@ -18,5 +18,3 @@ The skill itself is markdown — there's no unit-test surface. The validation is
 - Phase 6 prints the next-step footer with its `Recommended next:` line judged from `plan-vs-no-plan.md`; no separate business-refine suggestion is appended.
 
 The two autofix end-states (`--yes` absent vs present) are stated once in [autofix-mode.md](autofix-mode.md) § Autofix exit summary — smoke both against that wording.
-
-The Ralph-block (SKILL.md) ensures this skill never runs under `FLOW_RALPH=1` or `REVIEW_RECEIPT_PATH` — capture requires a user at the terminal.

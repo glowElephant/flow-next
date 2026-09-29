@@ -155,5 +155,5 @@ Follow the phases in the per-backend file end-to-end. Each file owns its own Ide
 
 Both are backend-agnostic and live in [workflow-common.md](workflow-common.md) — already in context from Phase 0:
 
-- §"Fix Loop (INTERNAL - do not exit to Ralph)" — the round cap, the anti-patterns, and the parse → fix → commit → re-review cycle.
+- §"Fix Loop (INTERNAL)" — the round cap, the anti-patterns, and the parse → fix → commit → re-review cycle.
 - §"Record the terminal verdict exactly once" — who writes `completion_review_status`, and when host/rp re-run the Step 0.5 checkpoint above.

@@ -48,20 +48,7 @@ Interpret any argument as an optional focus: a section name to revisit (`metrics
 
 ### Phase 0: Route by file state
 
-**0.1 — Ralph block (R17)**
-
-`/flow-next:strategy` is exploratory and human-in-the-loop. Autonomous loops have no business deciding repo strategy. Hard-error with exit 2 when running under Ralph.
-
-```bash
-if [[ -n "${REVIEW_RECEIPT_PATH:-}" || "${FLOW_RALPH:-}" == "1" ]]; then
-  echo "[STRATEGY: user-triggered only — Ralph cannot run /flow-next:strategy]" >&2
-  exit 2
-fi
-```
-
-No env-var opt-in. Ralph never decides direction.
-
-**0.2 — Read file state**
+**0.1 — Read file state**
 
 ```bash
 STATUS_JSON=$("$FLOWCTL" strategy status --json 2>/dev/null) || STATUS_JSON=
@@ -108,7 +95,7 @@ JSON fields (frozen by Task 1):
 - `generator` (str|null) — frontmatter `generator` value
 - `generator_match` (bool) — `generator == "flow-next-strategy"`
 
-**0.3 — Subdirectory walk-up surfacing (R16)**
+**0.2 — Subdirectory walk-up surfacing (R16)**
 
 If `file_path` is set and differs from `${PWD}/STRATEGY.md`, surface one line in chat before any question fires:
 
@@ -118,7 +105,7 @@ Using repo-root STRATEGY.md at <file_path>.
 
 This is the only line printed before routing — keep the noise floor low.
 
-**0.4 — Foreign-file resolution (R15)**
+**0.3 — Foreign-file resolution (R15)**
 
 If `exists: true` AND `generator_match: false`, do not write. Fire `AskUserQuestion`:
 
@@ -132,9 +119,9 @@ If `exists: true` AND `generator_match: false`, do not write. Fire `AskUserQuest
 
 Single-select `AskUserQuestion`, lead-with-recommendation, neutral option labels.
 
-**0.5 — Routing**
+**0.4 — Routing**
 
-After Ralph block, walk-up surfacing, and foreign-file resolution:
+After walk-up surfacing and foreign-file resolution:
 
 | State | Route |
 |-------|-------|
@@ -147,13 +134,13 @@ Announce the selected path, then load exactly one direct workflow reference:
 - First-run: say `Strategy doc not found — let's write it.`, then read and follow `references/first-run.md`.
 - Update: say `Found existing strategy — let's review and update.`, then read and follow `references/update.md`.
 
-Do not read the unselected workflow. A foreign file stays entirely in Phase 0.4
+Do not read the unselected workflow. A foreign file stays entirely in Phase 0.3
 unless the user confirms `rewrite`; confirmed rewrite selects the first-run
 workflow. Any state not matched by the table is unsafe to classify: leave the
 file unchanged and exit 0 with the same safe-classification stderr line from
-Phase 0.2.
+Phase 0.1.
 
-**Done when:** the Ralph guard has passed, `STATUS_JSON` has validated, the selected path was announced, and exactly one of `references/first-run.md` / `references/update.md` has been read — or the run exited 0 leaving `STRATEGY.md` untouched.
+**Done when:** `STATUS_JSON` has validated, the selected path was announced, and exactly one of `references/first-run.md` / `references/update.md` has been read — or the run exited 0 leaving `STRATEGY.md` untouched.
 
 ### Phase 3: Downstream handoff
 
@@ -177,12 +164,11 @@ One paragraph max. No follow-up questions.
 
 ## Forbidden
 
-- **Running under Ralph** — hard-block via the Phase 0.1 guard.
 - **Setting `context: fork`** — `AskUserQuestion` must stay reachable across phases.
 - **Inline cross-platform tool tables** in prose (multi-platform listings naming the tool primitive on each harness). Canonical files use Claude-native names only; sync-codex.sh handles the Codex rewrite.
 - **Lead-with-recommendation on substance questions** — problem / approach / persona / metrics / tracks get free-form, no recommendation, no menu. Recommendation primes the user out of their own language. Routing questions only.
 - **Leaking anti-pattern names** to the user. `vanity` / `fluff` / `feature-list` / `goal-stated-as-problem` are internal labels for formulating sharper follow-ups.
-- **Auto-overwriting a foreign-file STRATEGY.md** — Phase 0.4 always asks. v1's stance is refusal; user can rename or delete to bootstrap.
+- **Auto-overwriting a foreign-file STRATEGY.md** — Phase 0.3 always asks. v1's stance is refusal; user can rename or delete to bootstrap.
 - **Writing more than 4 sentences per section** (except Tracks, where each track has its own short block). The post-write checklist in `references/strategy-template.md` catches this.
 - **Adding sections beyond the locked 5 + 2 optional**. CE's `Marketing` section is dropped on purpose; do not re-introduce it. Section order is locked.
 - **Inventing flowctl subcommands** — The supported read surface is `"$FLOWCTL" strategy {status,read}` only. The skill writes the file directly via `Write`; no strategy add/list command exists.

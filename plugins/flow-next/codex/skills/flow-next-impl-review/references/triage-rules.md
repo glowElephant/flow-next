@@ -8,9 +8,7 @@ normal review just runs it and reads the exit code.
 **Default behavior:** deterministic whitelist only (no LLM call). Ambiguous
 diffs default to REVIEW. Opt-in to LLM judge with `FLOW_TRIAGE_LLM=1`.
 
-**Opt-out:**
-- `--no-triage` argument on the skill
-- `FLOW_RALPH_NO_TRIAGE=1` env var (Ralph runs)
+**Opt-out:** `--no-triage` argument on the skill.
 
 **Receipt shape on SKIP:**
 
@@ -27,9 +25,6 @@ diffs default to REVIEW. Opt-in to LLM judge with `FLOW_TRIAGE_LLM=1`.
   "timestamp": "2026-04-24T10:00:00Z"
 }
 ```
-
-Ralph reads `verdict` — `SHIP` satisfies the gate regardless of `mode`. No
-Ralph-script changes required.
 
 **Triage rules (deterministic layer):**
 

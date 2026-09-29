@@ -86,9 +86,9 @@ DESCRIPTIONS: dict[str, str] = {
     "review.maxIterations": (
         "Cumulative review-round cap per scope (default 8, minimum 1 - the cap "
         "can never be disabled). The env var MAX_REVIEW_ITERATIONS takes "
-        "precedence over this key. Raising it is a human act: ralph-guard blocks "
-        "the config write, the config file, and the env assignment so an "
-        "autonomous agent cannot extend its own review gate."
+        "precedence over this key. In an autonomous run (flow --auto) this key "
+        "may only lower the cap, so an autonomous agent cannot extend its own "
+        "review gate."
     ),
     "scouts": "Planning-scout settings.",
     "scouts.github": "Enable github-scout during planning (requires the gh CLI).",
@@ -255,8 +255,8 @@ DESCRIPTIONS: dict[str, str] = {
     "tracker.conflictTiebreak": (
         "Status who-wins tiebreak: flow-wins | tracker-wins | always-ask. "
         "Strict enum: invalid CLI writes are rejected; malformed persisted "
-        "values fail before status work. In Ralph mode always-ask resolves "
-        "to queue, not prompt."
+        "values fail before status work. In autonomous mode always-ask "
+        "resolves to queue, not prompt."
     ),
     "tracker.readyState": (
         "Readiness projection: the tracker workflow state meaning ready for "

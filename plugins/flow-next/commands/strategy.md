@@ -11,4 +11,4 @@ The ONLY purpose of this command is to call the `flow-next-strategy` skill. You 
 
 **Arguments:** $ARGUMENTS
 
-Pass the arguments to the skill verbatim. The skill handles Ralph-block, file-state routing, foreign-file refusal, the section interview, atomic per-section writes, mandatory read-back, and downstream handoff.
+Pass the arguments to the skill verbatim. The skill handles file-state routing, foreign-file refusal, the section interview, atomic per-section writes, mandatory read-back, and downstream handoff.

@@ -2,20 +2,12 @@
 
 `/flow-next:qa` emits a `type: qa_verdict` receipt carrying the four QA
 outcomes in a separate `qa_outcome` field, while `verdict` holds the
-Ralph-guard-compatible projection. The guard (`ralph-guard.py`) validates
-`verdict in {SHIP, NEEDS_WORK, MAJOR_RETHINK, NEEDS_HUMAN}` — so every one of the
-four outcomes MUST project to a verdict the guard accepts.
+review-verdict projection (`SHIP` / `NEEDS_WORK`).
 
 This test mirrors the §6.2 projection table from
 `skills/flow-next-qa/workflow.md` and asserts, for each of the four
-`qa_outcome` fixtures, that:
-
-  1. the documented projection holds (SHIP→SHIP, NEEDS_WORK→NEEDS_WORK,
-     BLOCKED→NEEDS_WORK, NA→SHIP);
-  2. the projected `verdict` is in the guard's accepted enum;
-  3. the on-disk receipt passes the guard's `validate_receipt_data` AND
-     `validate_receipt_file` (the standalone-file path — `qa-*.json` is not
-     a `parse_receipt_path` pattern, so no type/id mismatch is enforced).
+`qa_outcome` fixtures, that the documented projection holds (SHIP→SHIP,
+NEEDS_WORK→NEEDS_WORK, BLOCKED→NEEDS_WORK, NA→SHIP).
 
 fn-72.1 extends the receipt with the lean additive fields the pilot stage +
 make-pr read from the persisted receipt (workflow.md §6.3):
@@ -26,14 +18,12 @@ make-pr read from the persisted receipt (workflow.md §6.3):
   * `open_p0p1` — now an array of OBJECTS with v1 severity/confidence/classification
                   (was bare ids), so make-pr surfaces structured findings.
 
-The additive fields must be **additive only** — the receipt still passes the
-guard (which gates on `verdict` and ignores everything else), and the
-free-form object fields must survive `json.dump` escaping unscathed (the
+The free-form object fields must survive `json.dump` escaping unscathed (the
 heredoc-vs-python lesson — a hostile reason with a quote/backslash/newline
 must round-trip to valid JSON).
 
-Hermetic: loads the guard in-process via importlib (no subprocess, no
-network, no LLM) and writes fixtures to a `tempfile.TemporaryDirectory`.
+Hermetic: no subprocess, no network, no LLM; fixtures go to a
+`tempfile.TemporaryDirectory`.
 Windows-portable: `pathlib` everywhere, no shell, no hard-coded separators.
 
 Run:
@@ -42,36 +32,10 @@ Run:
 
 from __future__ import annotations
 
-import importlib.util
 import json
-import sys
 import tempfile
 import unittest
 from pathlib import Path
-from typing import Any
-
-# fn-139.1: the tracker package sits beside flowctl.py; under a test module
-# sys.path[0] is THIS directory, not scripts/, so it would not import.
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
-
-HERE = Path(__file__).resolve()
-TESTS_DIR = HERE.parent
-PLUGIN_DIR = TESTS_DIR.parent
-GUARD_PY = PLUGIN_DIR / "scripts" / "hooks" / "ralph-guard.py"
-
-
-def _load_guard() -> Any:
-    if not GUARD_PY.is_file():
-        raise RuntimeError(f"ralph-guard.py not found at {GUARD_PY}")
-    spec = importlib.util.spec_from_file_location("ralph_guard_qa_receipt_under_test", GUARD_PY)
-    mod = importlib.util.module_from_spec(spec)
-    assert spec.loader is not None
-    sys.modules[spec.name] = mod
-    spec.loader.exec_module(mod)
-    return mod
-
-
-guard = _load_guard()
 
 
 # The §6.2 projection table from workflow.md, encoded as the contract under test.
@@ -107,7 +71,7 @@ def _build_receipt(qa_outcome: str, spec_id: str = "fn-53-flow-nextqa-live-app-r
     receipt = {
         "type": "qa_verdict",
         "id": spec_id,
-        "mode": "ralph",
+        "mode": "rp",
         "verdict": verdict,
         "qa_outcome": qa_outcome,
         # fn-72.1 additive fields:
@@ -164,40 +128,6 @@ class TestQaVerdictProjection(unittest.TestCase):
         """The QA matrix has no outcome that maps to MAJOR_RETHINK."""
         self.assertNotIn("MAJOR_RETHINK", {v for v, _ in PROJECTION.values()})
 
-
-class TestQaReceiptPassesGuard(unittest.TestCase):
-    """Each fixture's projected verdict passes the Ralph guard's validators."""
-
-    def test_projected_verdict_in_guard_enum(self) -> None:
-        for qa_outcome in PROJECTION:
-            with self.subTest(qa_outcome=qa_outcome):
-                self.assertIn(_project(qa_outcome), guard.VALID_RECEIPT_VERDICTS)
-
-    def test_validate_receipt_data_accepts_each_fixture(self) -> None:
-        """In-memory: validate_receipt_data returns '' (valid) for all four."""
-        for qa_outcome in PROJECTION:
-            with self.subTest(qa_outcome=qa_outcome):
-                receipt = _build_receipt(qa_outcome)
-                err = guard.validate_receipt_data(receipt)
-                self.assertEqual(err, "", f"{qa_outcome} receipt rejected: {err!r}")
-
-    def test_validate_receipt_file_accepts_each_fixture(self) -> None:
-        """On-disk: each qa-*.json fixture passes validate_receipt_file.
-
-        `qa-<id>.json` is NOT a parse_receipt_path pattern, so the file
-        validator does not enforce a type/id match — it only checks the
-        verdict enum + presence of type/id. All four must pass.
-        """
-        with tempfile.TemporaryDirectory() as tmp:
-            receipts_dir = Path(tmp) / ".flow" / "review-receipts"
-            receipts_dir.mkdir(parents=True, exist_ok=True)
-            for qa_outcome in PROJECTION:
-                with self.subTest(qa_outcome=qa_outcome):
-                    receipt = _build_receipt(qa_outcome)
-                    path = receipts_dir / f"qa-{receipt['id']}-{qa_outcome.lower()}.json"
-                    path.write_text(json.dumps(receipt) + "\n", encoding="utf-8")
-                    err = guard.validate_receipt_file(str(path))
-                    self.assertEqual(err, "", f"{qa_outcome} file rejected: {err!r}")
 
     def test_reason_fields_scoped_to_their_outcome(self) -> None:
         """blocked_reason only on BLOCKED; na_reason only on NA; neither elsewhere."""
@@ -270,13 +200,6 @@ class TestQaReceiptAdditiveFields(unittest.TestCase):
             self.assertIn(finding["confidence"], {0, 25, 50, 75, 100})
             self.assertIn(finding["classification"], {"introduced", "pre_existing"})
 
-    def test_additive_fields_do_not_break_the_guard(self) -> None:
-        """The extra fields are additive — the guard (gates on verdict only) still accepts."""
-        for qa_outcome in PROJECTION:
-            with self.subTest(qa_outcome=qa_outcome):
-                err = guard.validate_receipt_data(_build_receipt(qa_outcome))
-                self.assertEqual(err, "", f"{qa_outcome} receipt rejected: {err!r}")
-
     def test_free_form_object_fields_serialize_safely(self) -> None:
         """A hostile finding reason (quote + backslash + newline) round-trips to valid JSON.
 
@@ -292,32 +215,6 @@ class TestQaReceiptAdditiveFields(unittest.TestCase):
             path.write_text(json.dumps(receipt) + "\n", encoding="utf-8")
             roundtrip = json.loads(path.read_text(encoding="utf-8"))
         self.assertEqual(roundtrip["open_p0p1"][0]["reason"], 'he said "boom"\\crash\nnext line')
-        # And the guard still accepts the on-disk file.
-        with tempfile.TemporaryDirectory() as tmp:
-            rdir = Path(tmp) / ".flow" / "review-receipts"
-            rdir.mkdir(parents=True, exist_ok=True)
-            fpath = rdir / f"qa-{receipt['id']}.json"
-            fpath.write_text(json.dumps(receipt) + "\n", encoding="utf-8")
-            self.assertEqual(guard.validate_receipt_file(str(fpath)), "")
-
-
-class TestGuardRejectsMalformedQaReceipts(unittest.TestCase):
-    """Negative cases — the guard is the gate, so confirm it actually rejects."""
-
-    def test_missing_verdict_rejected(self) -> None:
-        receipt = _build_receipt("SHIP")
-        del receipt["verdict"]
-        self.assertNotEqual(guard.validate_receipt_data(receipt), "")
-
-    def test_bad_verdict_rejected(self) -> None:
-        receipt = _build_receipt("SHIP")
-        receipt["verdict"] = "PASS"  # not in the enum
-        self.assertNotEqual(guard.validate_receipt_data(receipt), "")
-
-    def test_missing_id_rejected(self) -> None:
-        receipt = _build_receipt("NA")
-        del receipt["id"]
-        self.assertNotEqual(guard.validate_receipt_data(receipt), "")
 
 
 if __name__ == "__main__":

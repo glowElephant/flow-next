@@ -82,7 +82,7 @@ class UnattendedSkillFences(unittest.TestCase):
                     receipt.write_text(before, encoding="utf-8")
                     result = self.shell(stub + code + '\nprintf FULL_REVIEW', FLOWCTL="flowctl",
                                         TASK_ID="fn-1.1", BASE_COMMIT="", ACTION=action, PROBE_RC=rc,
-                                        RECEIPT=str(receipt), TRIAGE_DISABLED="", FLOW_RALPH_NO_TRIAGE="")
+                                        RECEIPT=str(receipt), TRIAGE_DISABLED="")
                     self.assertEqual(result.returncode, 0, result.stderr)
                     self.assertEqual("VERDICT=SHIP" in result.stdout, skipped)
                     self.assertEqual("FULL_REVIEW" in result.stdout, not skipped)

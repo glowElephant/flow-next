@@ -1,15 +1,12 @@
-# Autonomy — Ralph-aware-not-blocked + opt-in tracker post + graceful degradation
+# Autonomy — detect-once routing + opt-in tracker post + graceful degradation
 
 This reference carries the full Phase A contract for `/flow-next:qa` (R9 +
-R11 + R13): detect-once Ralph routing, the opt-in `tracker.perEvent.qa` verdict
+R11 + R13): detect-once autonomous routing, the opt-in `tracker.perEvent.qa` verdict
 post, and the graceful-degradation matrix when no live deploy / driver is present.
 `workflow.md` Phase A is the entry point; this is the detail it folds.
 
-> **The skill is not Ralph-blocked — QA runs in interactive and autonomous loops alike.**
-> A run that exits 2 on detecting Ralph has broken this.
-> There is **no** top-of-skill `FLOW_RALPH`/`REVIEW_RECEIPT_PATH` exit-2 guard — the
-> make-pr Phase 0 precedent ([flow-next-make-pr/SKILL.md](../../flow-next-make-pr/SKILL.md)
-> "Forbidden"). Detect Ralph once, then route deterministically; never re-probe per phase.
+> **QA runs in interactive and autonomous loops alike.** Detect autonomy once, then
+> route deterministically; never re-probe per phase.
 
 **Contents:** §0 the autonomous routing table (`NO_PROMPT=1`) · §1 detect-once routing ·
 §2 the four-outcome verdict as the autonomy contract · §3 graceful degradation ·
@@ -18,11 +15,11 @@ post, and the graceful-degradation matrix when no live deploy / driver is presen
 ## 0. The autonomous routing table (NO_PROMPT=1)
 
 Reached from `workflow.md` "Autonomous-mode gate" when `NO_PROMPT=1` (the `mode:autonomous`
-token, `FLOW_AUTONOMOUS=1`, or Ralph). Every `plain-text numbered prompt` info-prompt in the workflow
+token or `FLOW_AUTONOMOUS=1`). Every `plain-text numbered prompt` info-prompt in the workflow
 routes deterministically instead of asking — resolve from spec / config / env, else surface
 the limitation as a **BLOCKED `qa_verdict`** (§6.3) + clean exit:
 
-| Undocumented fact | `NO_PROMPT=0` (interactive) | `NO_PROMPT=1` (autonomous / Ralph) |
+| Undocumented fact | `NO_PROMPT=0` (interactive) | `NO_PROMPT=1` (autonomous) |
 |-------------------|------------------------------|-------------------------------------|
 | Spec id (1.1) | `plain-text numbered prompt` (info) | resolve by branch-match; else non-zero exit + stderr (no user to ask) |
 | Base ref (1.2) | `plain-text numbered prompt` (info) | use the detection cascade; if it yields nothing → **BLOCKED** + clean exit |
@@ -32,18 +29,17 @@ the limitation as a **BLOCKED `qa_verdict`** (§6.3) + clean exit:
 
 ## 1. Detect-once routing (R11)
 
-Detect at the top of the run and route downstream — never re-detect. `RALPH` is computed
-**once**, in `workflow.md`'s "Autonomous-mode gate" preamble block
-(`REVIEW_RECEIPT_PATH` set OR `FLOW_RALPH=1` ⇒ `RALPH=1`); every step below reuses that
-value rather than re-probing.
+Detect at the top of the run and route downstream — never re-detect. `NO_PROMPT` is
+computed **once**, in `workflow.md`'s "Autonomous-mode gate" preamble block; every step
+below reuses that value rather than re-probing.
 
 `plain-text numbered prompt` is **info-only** — it resolves *undocumented facts* (target URL,
 test accounts), NEVER a confirm gate ("shall I QA? / ship?"). Interactive resolves
-the same facts via the prompt; Ralph cannot ask, so the SAME undocumented fact routes
+the same facts via the prompt; an autonomous run cannot ask, so the SAME undocumented fact routes
 to a BLOCKED verdict instead. Both are info prompts, not a gate — there is no
 interactive-only "confirm before verdict" step.
 
-| Fact | Interactive (RALPH=0) | Autonomous (RALPH=1) |
+| Fact | Interactive (NO_PROMPT=0) | Autonomous (NO_PROMPT=1) |
 |------|-----------------------|----------------------|
 | Spec id undetermined (Phase 1.1) | `plain-text numbered prompt` (info) | hard error, non-zero exit + stderr (no user) |
 | Target URL undocumented (Phase 3.1) | `plain-text numbered prompt` (info) | **BLOCKED** verdict (`blocked_reason`), clean exit |
@@ -58,20 +54,19 @@ BLOCKED).
 
 ### Why no exit guard
 
-A spec-id-undetermined case under Ralph is a genuine "no user to ask" error (exit
-non-zero) — but an undocumented URL/accounts is **not** an error: it is an expected,
-surfaced limitation that maps to a BLOCKED verdict (§3). The skill always reaches the
-verdict; it never aborts at the top because it detected Ralph. Mirrors make-pr, which
-forces `--draft` under Ralph but still creates the PR.
+A spec-id-undetermined case in an autonomous run is a genuine "no user to ask" error
+(exit non-zero) — but an undocumented URL/accounts is **not** an error: it is an
+expected, surfaced limitation that maps to a BLOCKED verdict (§3). The skill always
+reaches the verdict; it never aborts at the top because it runs autonomously.
 
 ## 2. The four-outcome verdict is the autonomy contract
 
-Ralph consumes the `qa_verdict` receipt's `verdict` field (the Ralph-guard enum
-projection — `workflow.md` §6.2). Under Ralph the receipt is the *only* output that
-matters; there is no human to read the surfaced summary. So Phase A's whole job is to
+The `flow --auto` QA stage consumes the `qa_verdict` receipt's `qa_outcome` field
+(`workflow.md` §6.2). In an autonomous run the receipt is the output that matters;
+there is no human to read the surfaced summary. So Phase A's whole job is to
 guarantee a **valid receipt is always written** — autonomous-pass (SHIP), autonomous-NO
 (NEEDS_WORK), no-driveable-UI (NA→SHIP), or can't-verify (BLOCKED→NEEDS_WORK). It never
-exits without a receipt under Ralph except the genuine spec-id error.
+exits without a receipt in an autonomous run except the genuine spec-id error.
 
 ## 3. Graceful degradation (R13)
 
@@ -146,16 +141,10 @@ already a recognised leaf verb; this task only adds the `qa` *key* defaulting
 - **Transport lives in flow-next-tracker-sync.** Phase A only gates + delegates — it
   never opens a transport, renders a comment body, or dedups comments itself.
 
-### Receipt-prefix note (v1)
-
-A `qa-*.json` receipt parses to `parse_receipt_path`'s fallback but still validates via
-the verdict enum. `parse_receipt_path` is **not** extended in v1 — QA is **not** a hard
-Ralph receipt-gate (the planning decision); no `ralph-guard.py` change.
-
 ## 5. Autonomous self-commit (`QA_AUTONOMOUS=1`)
 
 The commit itself is `workflow.md` §6.3b (it runs only when `QA_AUTONOMOUS=1` - the `flow --auto`
-QA stage dispatched the pass; autonomy ≠ Ralph). This section carries the precondition that
+QA stage dispatched the pass). This section carries the precondition that
 governs it.
 
 **Precondition (autonomous mode):** the loop operates on **committed state** — the worker

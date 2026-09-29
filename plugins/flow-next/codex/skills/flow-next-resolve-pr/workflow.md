@@ -47,7 +47,7 @@ if [[ "${FLOW_AUTONOMOUS:-}" == "1" ]]; then
 fi
 ```
 
-`AUTONOMOUS=1` flips question-suppression branches ONLY (Phase 10): the needs-human surface reports instead of blocking, and the run ends with the machine-readable `RESOLVE_PR_VERDICT=` terminal line. Autonomy ≠ Ralph — neither signal sets `FLOW_RALPH`, implies `REVIEW_RECEIPT_PATH` receipt obligations, or activates ralph-guard hooks. Every other phase (triage, demotion/skip logic, cluster gate, dispatch, validation, commit, reply/resolve, the 2-cycle bound) behaves identically in both modes.
+`AUTONOMOUS=1` flips question-suppression branches ONLY (Phase 10): the needs-human surface reports instead of blocking, and the run ends with the machine-readable `RESOLVE_PR_VERDICT=` terminal line. Every other phase (triage, demotion/skip logic, cluster gate, dispatch, validation, commit, reply/resolve, the 2-cycle bound) behaves identically in both modes.
 
 Detect mode from `TARGET`. Regex matches are authoritative — do not relax:
 

@@ -89,7 +89,7 @@ def failure(err: TrackerError, *, retryable: Optional[bool] = None) -> tuple[str
 def emit(payload_and_code: tuple[str, int], *, note: Optional[str] = None) -> int:
     if note:
         # stderr is not a safe channel for an unredacted note: it is captured in
-        # CI logs and Ralph receipts exactly like stdout.
+        # CI logs exactly like stdout.
         print(redact(note), file=sys.stderr)
     payload, code = payload_and_code
     print(payload)

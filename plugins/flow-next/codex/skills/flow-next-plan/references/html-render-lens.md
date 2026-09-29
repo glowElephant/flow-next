@@ -31,7 +31,7 @@ Load this reference only after Step 8.5 derives
 
    ```bash
    LAVISH_OK=true
-   [[ "${AUTONOMOUS:-0}" == "1" || -n "${FLOW_AUTONOMOUS:-}" || -n "${FLOW_RALPH:-}" || -n "${REVIEW_RECEIPT_PATH:-}" ]] && LAVISH_OK=false
+   [[ "${AUTONOMOUS:-0}" == "1" || -n "${FLOW_AUTONOMOUS:-}" ]] && LAVISH_OK=false
    if [[ "$LAVISH_OK" == "true" ]] && command -v lavish-axi >/dev/null 2>&1; then
      lavish-axi "$(pwd)/.flow/artifacts/<spec-id>/spec.html"
      # ...then poll in the background via `lavish-axi poll`, only inside this guard.

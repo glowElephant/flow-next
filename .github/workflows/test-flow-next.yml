@@ -137,9 +137,6 @@ jobs:
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
         run: ./scripts/sync-codex.sh --check
 
-      - name: Syntax check — ralph.sh
-        run: bash -n plugins/flow-next/skills/flow-next-ralph-init/templates/ralph.sh
-
       # ──────────── Python unit tests (file-level parallel, fn-119) ────────────
       # Canonical full-suite entrypoint: scripts/run_tests_parallel.py
       # Shards by FILE only (never within a file). Default jobs = the runner's
@@ -345,10 +342,6 @@ jobs:
         run: |
           cd "$RUNNER_TEMP"
           bash "$GITHUB_WORKSPACE/plugins/flow-next/scripts/smoke_test.sh"
-
-      # Smokes intentionally skipped (require external CLIs not on GitHub runners):
-      #   - ralph_smoke_test.sh / ralph_smoke_rp.sh — need claude / codex / rp-cli
-      #   - plan_review_prompt_smoke.sh — needs rp-cli
 
   python-intermediate-smoke:
     timeout-minutes: 10

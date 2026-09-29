@@ -58,20 +58,20 @@ export FLOW_UNTIL
 
 ## Autonomy refusal - runs right after the token parse
 
-Attended flow, `flow --auto`, and Ralph are three drivers and are never nested. Without `--auto`, flow is attended: under any autonomy marker (scan the marker namespace: `FLOW_RALPH`, `FLOW_AUTONOMOUS`, `REVIEW_RECEIPT_PATH`, `AUTONOMOUS=1`, a `mode:autonomous` token), stop before any read or write:
+Attended flow and `flow --auto` are two drivers and are never nested. Without `--auto`, flow is attended: under any autonomy marker (scan the marker namespace: `FLOW_AUTONOMOUS`, `AUTONOMOUS=1`, a `mode:autonomous` token), stop before any read or write:
 
 ```
 NEEDS_HUMAN: /flow-next:flow is attended - run /flow-next:flow --auto for unattended runs
 ```
 
-With `--auto`, the refusal is Ralph-only (`FLOW_RALPH`, `REVIEW_RECEIPT_PATH`, in auto.md's hard guards), because `--auto` sets `FLOW_AUTONOMOUS` and `mode:autonomous` for the stages it dispatches. A run that routed, dispatched, or asked under a marker it should have refused has broken this.
+With `--auto` there is no marker refusal, because `--auto` sets `FLOW_AUTONOMOUS` and `mode:autonomous` for the stages it dispatches. A run that routed, dispatched, or asked under a marker it should have refused has broken this.
 
 ## Invariants (every run)
 
 - **Route on content and context, never on input kind.** Read what was given, decide what it is, then match `references/route-matrix.md` at the route step.
 - **Ask only on a fork that is material and not observable.** Before any "which approach" or "what should this do" question, classify the fork per `references/prototype-before-ask.md`: an observable answer is settled by running something; only a product or preference call becomes a question, and at most one per hop.
 - **Never fabricate a review, QA, or completion verdict** to pass a gate. Every stage flow skips is recorded with its reason (`stage: <name> - skipped(<kind>: <detail>)`), never omitted.
-- **Land owns merge; make-pr owns spec close.** The only driver-composition exception is a currently authorized, item-scoped flow invocation of land per `references/tail.md`. Never dispatch another flow, pilot, Ralph, or a loop from inside a run.
+- **Land owns merge; make-pr owns spec close.** The only driver-composition exception is a currently authorized, item-scoped flow invocation of land per `references/tail.md`. Never dispatch another flow, pilot, or a loop from inside a run.
 - **`--explain` writes nothing and dispatches nothing.** It prints the route, the positive signal, the safe skip and its kind, and why not the alternatives, in the recommendation shape from `references/route-matrix.md`.
 - **Host command form:** print every copy-pasteable flow-next command in the spelling this host invokes - the flat `/flow-next-<name>` form when the resolved plugin root carries `.flow-next-opencode-manifest` (an OpenCode install), otherwise exactly as spelled here.
 

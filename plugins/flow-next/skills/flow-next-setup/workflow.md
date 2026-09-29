@@ -68,7 +68,7 @@ fi
 Store `PLATFORM` for use in later steps. This determines:
 - Which manifest to read for version (`plugin.json`)
 - Which docs file to prefer (CLAUDE.md vs AGENTS.md)
-- Whether to copy Codex agents to project (hooks are **not** copied here — Ralph is opt-in via the Ralph question + `/flow-next:ralph-init`)
+- Whether to copy Codex agents to project (hooks are **not** copied)
 - Which command-name syntax the docs snippet uses (Claude-format skill ids for Claude Code / Droid / **Cursor** / **Grok**; `/flow-next-plan` flat form for **OpenCode**; `$flow-next-plan` for Codex)
 
 ### Done when
@@ -101,7 +101,7 @@ Read all setup probes once:
 
 Keep this response through the ceremony. `first_run` supplies `SETUP_FIRST_RUN`,
 `plugin_version` supplies `PLUGIN_VERSION`, and `optional_answers` holds prior
-answers for `spec`, `leftovers`, `docs`, `criteria`, `ralph`, and `star`.
+answers for `spec`, `leftovers`, `docs`, `criteria`, and `star`.
 A missing or unreadable metadata file means first run. A same-version rerun
 continues without a confirmation question; existing choices remain authoritative.
 
@@ -114,8 +114,8 @@ explicitly asks to change that choice. Persist each attended answer immediately
 under `.flow/meta.json` → `setup.optional_answers.<key>` as its answer label,
 preserving all other metadata (including block hashes). This also applies to
 Step 4a's Skip/Keep and Step 2b's Keep. Never record a missing answer as consent.
-An unattended run (`FLOW_RALPH`, `REVIEW_RECEIPT_PATH`, `FLOW_AUTONOMOUS=1`,
-`AUTONOMOUS=1`, or `mode:autonomous`) asks nothing: defer unanswered optional
+An unattended run (`FLOW_AUTONOMOUS=1`, `AUTONOMOUS=1`, or `mode:autonomous`)
+asks nothing: defer unanswered optional
 questions, record no answer, and continue without their optional mutations.
 Existing explicit authorization still governs its scope. Customized-file
 replacement without authorization returns `NEEDS_HUMAN`; no overwrite occurs.
@@ -241,7 +241,7 @@ Then:
 
 **This step runs only when `PLATFORM` is `codex`.** A `.codex/agents/` directory created on a Claude Code, Droid, Cursor, Grok, or OpenCode host has broken this. (Cursor, Grok, and OpenCode drive the workflow with slash commands, not project-scoped `.codex/` agents. Grok never copies `.codex/agents`. OpenCode never copies `.codex/agents`.)
 
-On Codex, agents live in project-scoped `.codex/` directories (not in the plugin cache). Copy them. **Do not copy or enable Ralph hooks here** — hooks are opt-in via the Ralph question (Step 6d, always asked) and `/flow-next:ralph-init` registration prose.
+On Codex, agents live in project-scoped `.codex/` directories (not in the plugin cache). Copy them. **Do not copy or enable hooks here.**
 
 ### Copy agent .toml files
 
@@ -262,7 +262,7 @@ fi
 ### Done when
 
 - **User-owned files — repo-root `SPEC.md`, `.flow/criteria.md` — were compared before writing, left untouched when identical, and never overwritten without an explicit answer.** A customized one silently replaced has broken this.
-- `.codex/agents/*.toml` exists only when `PLATFORM=codex`, and no Ralph hook was copied or enabled here.
+- `.codex/agents/*.toml` exists only when `PLATFORM=codex`, and no hook was copied or enabled here.
 
 ## Step 5: Update meta.json
 
@@ -329,7 +329,7 @@ Only include lines for config values that are set. If no config is set, skip thi
 
 Build the questions array dynamically. **The questions array is built only from keys that read raw-null in `.flow/config.json`** (one exception: `pipeline.qa` materializes as `off` on init, so the Live QA question also treats that default as unanswered on a first setup run and never on a re-run). A re-run with everything set that asks a config question it already knows the answer to has broken this — existing config is preserved, never silently flipped. To change an already-set value, the user runs `flowctl config set <key> <value>` directly (the commands are surfaced in 6c's current-config notice).
 
-Skipped questions = config values already persisted from a prior run. Asking again would either no-op (same answer) or silently flip a deliberate user choice — both are wrong. The questions go out in two `AskUserQuestion` calls, because the tool takes at most 4 questions per call, 4 options per question, and a header of at most 12 characters: the **config call** (Review, HTML, Live QA, Spec ids — only the unset entries) and then the **files call** (Docs, Criteria, Ralph, Star). Skip a call whose array is empty, so a steady re-run with all choices recorded asks nothing. Filter the files call through `optional_answers` before applying its remaining gates. **There is no routing question** — the routing block is proposed, not negotiated (Step 7).
+Skipped questions = config values already persisted from a prior run. Asking again would either no-op (same answer) or silently flip a deliberate user choice — both are wrong. The questions go out in two `AskUserQuestion` calls, because the tool takes at most 4 questions per call, 4 options per question, and a header of at most 12 characters: the **config call** (Review, HTML, Live QA, Spec ids — only the unset entries) and then the **files call** (Docs, Criteria, Star). Skip a call whose array is empty, so a steady re-run with all choices recorded asks nothing. Filter the files call through `optional_answers` before applying its remaining gates. **There is no routing question** — the routing block is proposed, not negotiated (Step 7).
 
 Available questions (include only if corresponding config is unset):
 
@@ -529,28 +529,6 @@ For **OpenCode** (`PLATFORM=opencode`) — OpenCode reads AGENTS.md. Command stu
 }
 ```
 
-**Ralph question.** Resolve its gate before reading question prose:
-
-```bash
-RALPH_ASK=1
-if [[ "$PLATFORM" == "cursor" || "$PLATFORM" == "grok" || "$PLATFORM" == "opencode" ]]; then
-  RALPH_ASK=0
-  RALPH_OUTCOME="off (unsupported on $PLATFORM)"
-elif [[ "${FLOW_RALPH:-}" == "1" || -n "${REVIEW_RECEIPT_PATH:-}" \
-      || "${FLOW_AUTONOMOUS:-}" == "1" || "${AUTONOMOUS:-}" == "1" || "${ARGUMENTS:-}" == *mode:autonomous* ]]; then
-  RALPH_ASK=0
-  RALPH_OUTCOME="off (non-interactive)"
-fi
-```
-
-On Cursor/Grok/OpenCode: never offer, never register, never run `/flow-next:ralph-init`.
-A recorded Ralph answer sets `RALPH_ASK=0` and preserves the existing hooks.
-When `RALPH_ASK=1`, **MUST read and follow exactly**
-[references/ralph-question.md](references/ralph-question.md) and add its object
-to the files call. When zero, read no Ralph reference and ask no Ralph
-question. Unknown/malformed gate state fails safe to `RALPH_ASK=0`: no hook
-registration and no branch read.
-
 **Star question** (include only when unanswered):
 ```json
 {
@@ -572,9 +550,8 @@ Send the config call, then the files call, each through `AskUserQuestion` (call 
 
 ### Done when
 
-- The config call and the files call each carried at most 4 questions, every question at most 4 options, and every header at most 12 characters; together they hold only the still-unanswered keys plus Docs / Star (and Ralph, Criteria when their own gates passed).
+- The config call and the files call each carried at most 4 questions, every question at most 4 options, and every header at most 12 characters; together they hold only the still-unanswered keys plus Docs / Star (and Criteria when its own gate passed).
 - **No routing question was asked, no CLI was probed for model ids, and no pin was proposed or stamped.** Setup asking which model to route to, or writing a model id anywhere, has broken this.
-- **Under any autonomy marker (`FLOW_RALPH`, `REVIEW_RECEIPT_PATH`, `FLOW_AUTONOMOUS`, `mode:autonomous`) the Ralph ceremony was skipped silently** — no reference read, no question, no summary noise. A run that blocked on it under an autonomy marker has broken this.
 
 ## Step 7: Process Answers
 
@@ -692,12 +669,11 @@ For each resolved file (CLAUDE.md and/or AGENTS.md) - the block mechanics (marke
 The marker-block boundaries are load-bearing: **docs snippets are written through `flowctl setup-block apply`, touching only the bytes inside the flow-next markers.** Prose outside `<!-- BEGIN FLOW-NEXT -->` … `<!-- END FLOW-NEXT -->` that changed, or a write made by anything other than the helper, has broken this. And **an `ask` result prompts Keep mine / Overwrite / abort** — a customized block replaced without that answer has broken this too.
 
 **Routing block** — one proposal, no question. Run this **after** the Docs block
-above and before Ralph/Star. Always re-read target files from disk after Docs;
+above and before Star. Always re-read target files from disk after Docs;
 never interleave the two writes. Two hard outs before the ladder: a **Docs
 answer of `Skip`** is a decline of documentation edits and declines this write
 too — record `skipped (docs declined)` and move on; a **headless or autonomous
-run** (`FLOW_RALPH=1`, `REVIEW_RECEIPT_PATH` set, `FLOW_AUTONOMOUS=1`, or
-`AUTONOMOUS=1`, or `mode:autonomous`) never writes the block — instruction-file edits are the
+run** (`FLOW_AUTONOMOUS=1`, `AUTONOMOUS=1`, or `mode:autonomous`) never writes the block — instruction-file edits are the
 user's, so record `skipped (headless)` and move on.
 
 Resolve the target with this ladder, first match wins:
@@ -736,18 +712,6 @@ Then say what was written, once, in one sentence:
 `Wrote a commented model-routing example to <file> — every line is commented out; edit it to name the models you want for each tier, or delete the block.`
 (Nothing was written → say `kept (yours)` / `skipped (shim)` / `skipped (docs declined)` / `skipped (headless)` instead and move on.)
 
-**Ralph** (only when its question was asked; Cursor/Grok/OpenCode remain
-unsupported and read no Ralph reference):
-
-- `Yes, enable or keep` → **MUST read and follow exactly**
-  [references/ralph-enable.md](references/ralph-enable.md).
-- `No (Recommended)` or an empty/default interactive answer → **MUST read and
-  follow exactly** [references/ralph-disable.md](references/ralph-disable.md).
-
-Unknown answer fails safe to the disable reference. Under any non-interactive
-marker, do not read either Ralph reference, do not register hooks, and set
-`RALPH_OUTCOME="off (non-interactive)"`.
-
 **Star:**
 - If "Yes, star it":
   1. Check if `gh` CLI is available: `which gh`
@@ -780,7 +744,6 @@ Nothing was copied into .flow/ — flowctl comes from the plugin install:
 Cursor host notes:
 - flowctl resolves from the plugin install via the skill's own absolute path (Cursor exposes no plugin-root env vars) — nothing is copied into the repo
 - Review default: host (host-native cross-family subagent; the model is named on the `reviewer` tier of the AGENTS.md routing block)
-- Ralph: unsupported on Cursor (not offered; not registered)
 ```
 
 **If PLATFORM=grok, also show:**
@@ -790,7 +753,7 @@ Grok host notes:
 - Docs: /flow-next: slash snippet (CLAUDE.md default lifecycle target; Grok also reads AGENTS.md)
 - Routing block: AGENTS.md (where host review reads the `reviewer` tier)
 - Review: host offered (single-native-family fail-closed for Grok writers) + rp/codex/copilot/cursor/claude/none
-- No .codex/agents copy; Ralph: unsupported on Grok (not offered; not registered)
+- No .codex/agents copy
 - Detection: GROK_AGENT=1 (not ~/.grok or PATH)
 ```
 
@@ -800,7 +763,7 @@ OpenCode host notes:
 - flowctl resolves from the plugin install via the skill's own absolute path (OpenCode exposes no plugin-root env vars) — nothing is copied into the repo
 - Docs: AGENTS.md with the Claude snippet rewritten /flow-next: → /flow-next- (flat command names; never $flow-next-)
 - Routing block: AGENTS.md
-- Review: default menu (Host + None). Ralph: unsupported on OpenCode (not offered; not registered)
+- Review: default menu (Host + None)
 - Detection: ${PLUGIN_ROOT}/.flow-next-opencode-manifest (installer ownership file; never an env var)
 - Invoke setup later as /flow-next-setup (flat), not /flow-next:setup
 ```
@@ -809,7 +772,6 @@ OpenCode host notes:
 ```
 Codex project setup:
 - .codex/agents/*.toml (<N> agent configs)
-- Ralph hooks: only if Ralph was enabled (via ralph-init → .codex/hooks.json); otherwise none
 ```
 
 **Then always show:**
@@ -832,12 +794,11 @@ Model routing: <ROUTING_OUTCOME — "written to CLAUDE.md" | "kept (yours)" | "s
 
 Notes:
 - Plugin updates need no per-repo action, on any host — nothing was copied, so nothing goes stale. Re-run /flow-next:setup only when setup says the snippet schema bumped, or to change configuration / seed files.
-- Ralph: answered in the setup ceremony (default off; skipped entirely on Cursor, Grok, and OpenCode — unsupported). To enable later on supported hosts: /flow-next:ralph-init (merges project hooks; plugin ships none)
 - Live QA stage: off by default. Change it with `flowctl config set pipeline.qa <off|on|auto>`; what each value does is in the flow skill's gate-selection reference (`skills/flow-next-flow/references/gate-selection.md`). Needs a running app plus a browser driver
 - Stage chaining (deprecated, removed with the /flow-next:pilot alias next release): off by default. `flowctl config set pipeline.chainStages on` makes /flow-next:flow --auto --tick (and the pilot alias) run make-pr in the same tick as a fresh terminal qa verdict; a long-horizon /flow-next:flow --auto run already runs the two as consecutive hops and ignores the key with one notice
 - Land patience: `flowctl config set land.patienceMinutes <minutes>` sets the wait after the last push when no human authorized the merge in-session.
 - Use Linear / GitHub Issues / GitLab / Jira for project management? Run /flow-next:tracker-sync to configure the (opt-in) two-way tracker bridge — it runs a discovery ceremony (detects Linear MCP / LINEAR_API_KEY / gh auth / glab auth or GITLAB_TOKEN / JIRA_BASE_URL + credential, asks, writes config), then syncs specs ⇄ issues; on Linear it additionally makes your PRs reviewable as Linear Diffs. Skips cleanly if you don't use a tracker; adds nothing to the base install until enabled.
-- Uninstall (run manually): remove the <!-- BEGIN/END FLOW-NEXT --> and <!-- flow-next:model-routing:start/end --> blocks from docs (plus any legacy .flow/bin, .flow/templates, .flow/usage.md leftovers, if you kept them) — or run /flow-next:uninstall for full cleanup (also strips Ralph guard hook entries from project settings)
+- Uninstall (run manually): remove the <!-- BEGIN/END FLOW-NEXT --> and <!-- flow-next:model-routing:start/end --> blocks from docs (plus any legacy .flow/bin, .flow/templates, .flow/usage.md leftovers, if you kept them) — or run /flow-next:uninstall for full cleanup
 - This setup is optional - plugin works without it
 ```
 **Tracker-sync proposal (always show, after the Notes block).** Surface the tracker bridge as an explicit optional next step — the discovery ceremony is the bridge's own setup, separate from this skill (which never touches tracker config, keeping the zero-dep base clean):

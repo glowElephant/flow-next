@@ -46,7 +46,7 @@ fi
 | Mode | When | Behavior |
 |------|------|----------|
 | **Interactive** (default) | User is at the terminal | Ask via plain-text numbered prompt when an entry's content suggests overriding the mechanical default; confirm Phase 4 cleanup; show triage summary before writes |
-| **Autofix** (`mode:autofix` in arguments) | Ralph or batch usage | No user questions. Apply mechanical defaults for every entry. Override only when the agent has high-confidence evidence from the entry body. Mark genuinely ambiguous entries as `needs-review` in the report. Default-decline Phase 4 cleanup. Print full report |
+| **Autofix** (`mode:autofix` in arguments) | Autonomous or batch usage | No user questions. Apply mechanical defaults for every entry. Override only when the agent has high-confidence evidence from the entry body. Mark genuinely ambiguous entries as `needs-review` in the report. Default-decline Phase 4 cleanup. Print full report |
 
 ### Autofix mode rules
 

@@ -42,20 +42,19 @@ Format: `[focus hint]` — freeform single string. Optional. May be:
 
 If empty, the skill picks its own coverage targets (15-25 candidates → 5-8 survivors).
 
-## Ralph-block (R8)
+## Autonomy block (R8)
 
-`/flow-next:prospect` is exploratory and human-in-the-loop. Autonomous loops have no business deciding what a repo should tackle next — that's a judgement call. Hard-error with exit 2 when running under Ralph.
+`/flow-next:prospect` is exploratory and human-in-the-loop. Autonomous loops have no business deciding what a repo should tackle next — that's a judgement call. Hard-error with exit 2 when running autonomously.
 
 ```bash
-if [[ -n "${REVIEW_RECEIPT_PATH:-}" || "${FLOW_RALPH:-}" == "1" \
-   || "${FLOW_AUTONOMOUS:-}" == "1" || "${AUTONOMOUS:-}" == "1" \
+if [[ "${FLOW_AUTONOMOUS:-}" == "1" || "${AUTONOMOUS:-}" == "1" \
    || " ${ARGUMENTS:-} " == *" mode:autonomous "* ]]; then
-  echo "Error: /flow-next:prospect requires a user at the terminal; not compatible with Ralph mode (REVIEW_RECEIPT_PATH or FLOW_RALPH detected)." >&2
+  echo "Error: /flow-next:prospect requires a user at the terminal; not compatible with autonomous mode." >&2
   exit 2
 fi
 ```
 
-No env-var opt-in. Ralph never decides direction.
+No env-var opt-in. Autonomous runs never decide direction.
 
 ## Workflow
 
@@ -75,7 +74,7 @@ The artifact verbs are `flowctl prospect promote` and `flowctl prospect archive`
 
 ## Forbidden
 
-- Running under Ralph — hard-block via the guard above.
+- Running autonomously — hard-block via the guard above.
 - Setting `context: fork` — plain-text numbered prompts must stay reachable.
 - Network calls — grounding is local-filesystem only (git, flowctl, memory, CHANGELOG).
 - Writing to `.flow/specs/` directly — only `flowctl prospect promote` may do that.

@@ -63,7 +63,7 @@ specs emit the complete coverage table and `Unaddressed R-IDs: [...]`.
 For each gap emit Severity, Confidence exactly 0/25/50/75/100, and
 Classification introduced or pre_existing. Suppress below 75 except P0 at
 50+; only introduced gaps block. Never recommend deleting protected `.flow/*`, generated
-plugin mirrors, spec/task records, review receipts, or Ralph artifacts.
+plugin mirrors, spec/task records, or review receipts.
 Emit suppression/classification/protected-path tallies when applicable.
 End with exactly one tag: <verdict>SHIP</verdict>,
 <verdict>NEEDS_WORK</verdict>, or <verdict>NEEDS_HUMAN</verdict>.
@@ -381,9 +381,8 @@ The following paths are flow-next / project-pipeline artifacts. Any gap/finding 
 - `.flow/tasks/*.md` — task specs (decision artifacts)
 - `docs/plans/*` — plan artifacts (if project uses this convention)
 - `docs/solutions/*` — solutions artifacts (if project uses this convention)
-- `scripts/ralph/*` — Ralph harness (when present)
 
-These files are intentionally committed. They are the pipeline's state, not clutter. An agent that deletes them destroys the project's planning trail and breaks Ralph autonomous runs.
+These files are intentionally committed. They are the pipeline's state, not clutter. An agent that deletes them destroys the project's planning trail.
 
 If you notice genuine issues with content INSIDE these files (e.g., a spec that contradicts itself, a stale runtime value, a memory entry that's wrong), flag the content — not the file's existence.
 
@@ -438,7 +437,7 @@ live cap counters from `review-rounds attempts`.
 At the cap this refuses with an `ESCALATE:` marker + exit 4. That is NOT a
 retryable error: do NOT dispatch the review or invent a completion verdict.
 Surface the ESCALATE message to the caller and stop without writing completion
-status (Ralph/autonomous: NEEDS_HUMAN). Only proceed to `chat-send` when the
+status (autonomous: NEEDS_HUMAN). Only proceed to `chat-send` when the
 increment succeeds.
 
 Redirect the review response to the literal response file — it must enter context exactly ONCE, via a single Read of that file (command substitution + `echo` would be the second copy; redirection keeps stdout out of context entirely):
@@ -646,16 +645,14 @@ fi
 **Committed code changes land before every re-review.** A re-review dispatched with no change since the last verdict has broken this — the reviewer just returns NEEDS_WORK again.
 
 **MAX ITERATIONS**: Limit fix+re-review cycles to
-**${MAX_REVIEW_ITERATIONS:-8}** iterations (default 8, configurable in Ralph's
-config.env). The `review-rounds increment` gate (step 6 below and Phase 3)
+**${MAX_REVIEW_ITERATIONS:-8}** iterations (default 8). The `review-rounds increment` gate (step 6 below and Phase 3)
 enforces this deterministically across fresh invocations — completion reviews
 share the spec-scoped plan counter, so plan + completion rounds cannot each
 spend a full cap. When a delivered `NEEDS_WORK` consumes the final round,
 continue immediately to SKILL.md Step 3, write terminal `needs_work` exactly
 once, then emit `ESCALATE:` and exit 4. Do not attempt another increment first.
 An entry-time cap refusal with no delivered completion verdict remains
-non-terminal: surface it and stop without a status write (Ralph:
-`NEEDS_HUMAN`).
+non-terminal: surface it and stop without a status write.
 
 If verdict is NEEDS_WORK:
 

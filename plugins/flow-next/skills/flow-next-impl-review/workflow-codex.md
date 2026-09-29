@@ -63,8 +63,6 @@ esac
 
 # Standalone branch reviews leave TASK_ID empty — OMIT the positional entirely
 # (a quoted "" is rejected as an invalid task id; standalone mode needs no task arg).
-# Subcommand tokens stay LITERAL on the command line (the Ralph guard blocks
-# a variable in either of the two tokens after the launcher).
 # DEFAULT topology only — when the user gave a steering instruction ("use 1
 # reviewer instead of 3", "three different model families"), read "Steering
 # draw topology" below and add the explicit --draw args BEFORE running this.

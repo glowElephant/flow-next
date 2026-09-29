@@ -9,7 +9,7 @@ export FLOWCTL
 bash "$(dirname "$FLOWCTL")/map.sh" "$ARGUMENTS"
 ```
 
-Exit 1 reports missing install or failed init; exit 2 reports the Ralph block or
+Exit 1 reports missing install or failed init; exit 2 reports
 invalid arguments; other nonzero map exits propagate unchanged. Never install
 or opt up the source automatically. The script never writes review receipts.
 

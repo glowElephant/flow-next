@@ -112,7 +112,7 @@ class AutonomyNamespaceScan(unittest.TestCase):
     @unittest.skipUnless(_BASH, "bash required to execute the autonomy fence")
     def test_novel_marker_outside_any_written_list_refuses(self) -> None:
         # FLOW_AUTONOMOUS_FUTURE is deliberately not a name written in the
-        # fence. A two-var check of FLOW_RALPH / FLOW_AUTONOMOUS would miss it.
+        # fence. A fixed check of FLOW_AUTONOMOUS alone would miss it.
         proc = _run_bash(
             self.fence,
             env=_clean_env(FLOW_AUTONOMOUS_FUTURE="1"),

@@ -50,7 +50,6 @@ class MakePrReachedPathTests(unittest.TestCase):
             'LINK_MODE=""',
             "Exactly one stderr note total per skipped lens",
             "NO `lavish-axi` session opened",
-            "Ralph `PR_URL=<url>` stdout contract",
         ):
             self.assertIn(needle, self.html)
         self.assertIn("[html-lens.md](html-lens.md)", self.root)
@@ -65,7 +64,7 @@ class MakePrReachedPathTests(unittest.TestCase):
             self.assertIn(needle, self.create)
         for needle in (
             "OPEN_COUNT > 0",
-            "Ralph/autonomous hard-errors (exit 2)",
+            "autonomous hard-errors (exit 2)",
             "existing OPEN PR is REQUIRED",
             'select(.state == "OPEN")',
         ):

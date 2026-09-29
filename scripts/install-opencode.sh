@@ -33,7 +33,7 @@
 #   - Manifest:   .flow-next-opencode-manifest  (sorted relative paths; no
 #                 timestamps; no absolute paths). Also the setup-skill
 #                 platform-detection signal (PLUGIN_ROOT = this config root).
-#   - Hooks:      none. Never register Ralph / OpenCode JS hooks.
+#   - Hooks:      none. Never register OpenCode JS hooks.
 #   - ~/.claude/: never written.
 #
 # Support dirs follow the spec's derivation rule: grep-derived ${PLUGIN_ROOT}/
@@ -85,7 +85,7 @@ Pinned OpenCode directory names (2026-08-20, opencode 1.18.19,
 https://opencode.ai/config.json): skills/, agents/, commands/ (all plural).
 
 Not installed:
-  Ralph / hooks      OpenCode hook system is incompatible; never registered
+  hooks              OpenCode hook system is incompatible; never registered
 
 Re-run to update the snapshot. Deletions apply only to paths listed in the
 ownership manifest; user files outside those paths stay untouched.
@@ -441,7 +441,7 @@ echo "  agents:    $DEST/agents"
 echo "  commands:  $DEST/commands"
 echo "  manifest:  $MANIFEST_PATH"
 echo ""
-echo "Not installed: Ralph/hooks."
+echo "Not installed: hooks."
 echo ""
 echo "Next steps:"
 echo "  1. Restart OpenCode (or start a new session) so it rescans $DEST."

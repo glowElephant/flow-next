@@ -95,7 +95,6 @@ Parse `$ARGUMENTS` for the literal token `mode:autonomous` (strip it, same shape
 Under `AUTONOMOUS=1`:
 - **No setup question is asked.** A question surfaced under `AUTONOMOUS=1` has broken this. Explicit passthrough flags (`--depth`, `--research`, `--review`) win as usual; for anything unset, apply the defaults: depth per **Plan depth** below, research = `repo-scout`, review = configured backend (`none` when `REVIEW_BACKEND` is `ASK`).
 - **Never hang on a question.** If a genuinely unanswerable ambiguity remains (e.g. empty input), stop cleanly with a one-line `NEEDS_HUMAN: <reason>` report instead of asking.
-- Autonomy ≠ Ralph: neither `mode:autonomous` nor `FLOW_AUTONOMOUS` activates ralph-guard hooks or any receipt path — they gate question suppression only.
 
 ### Option Parsing (skip questions if found in arguments)
 

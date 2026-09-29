@@ -706,7 +706,7 @@ class ExcusedReviewInvalidationTestCase(TaskCreateFilesTestCase):
 
     Adding a task (single or bulk) or rewriting the plan changes the review
     surface, so the excuse must reset to `unknown` in the same command —
-    otherwise scheduler/pilot/Ralph advance an expanded spec without a
+    otherwise scheduler/pilot advance an expanded spec without a
     completion review. Real verdicts (`ship`) are never touched.
     """
 

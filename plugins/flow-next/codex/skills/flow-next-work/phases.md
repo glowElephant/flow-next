@@ -36,8 +36,7 @@ Detect input type in this order (first match wins):
 **Track the mode** — it controls looping in Phase 3.
 
 **Direct-route review gate (both modes):** after reading the parent spec metadata,
-apply this gate before proceeding in either `SINGLE_TASK_MODE` (including Ralph's
-task-ID dispatch) or `SPEC_MODE`. It applies only to zero-task specs or
+apply this gate before proceeding in either `SINGLE_TASK_MODE` or `SPEC_MODE`. It applies only to zero-task specs or
 `no_plan: true` with exactly one task in total marked `implicit_owner: true`.
 Stop if `plan_review_status` is `needs_work` or `needs_human`, or the current user
 message or carried invocation host context explicitly requests spec/design review
@@ -411,7 +410,6 @@ TASK_ID: fn-X.Y
 SPEC_ID: fn-X
 FLOWCTL: $FLOWCTL
 REVIEW_MODE: none|rp|codex|copilot|cursor|claude|host|host-deferred
-RALPH_MODE: true|false
 PARALLEL_WAVE: true|false
 WORKSPACE: <isolated mutable workspace>
 HANDOVER_SUMMARY: <task-unique summary path>
@@ -713,9 +711,7 @@ Context optimization. Each task gets fresh context:
 - Review cycles stay isolated
 - Main conversation stays lean (just summaries)
 
-**Ralph mode**: Worker inherits `bypassPermissions` from parent. FLOW_RALPH=1 and REVIEW_RECEIPT_PATH are passed through.
-
-**Autonomous mode** (`mode:autonomous` token or `FLOW_AUTONOMOUS=1`): forward `FLOW_AUTONOMOUS=1` to the worker when set. It suppresses questions only — no receipt obligations, no ralph-guard activation; never set `FLOW_RALPH` from it.
+**Autonomous mode** (`mode:autonomous` token or `FLOW_AUTONOMOUS=1`): forward `FLOW_AUTONOMOUS=1` to the worker when set. It suppresses questions only.
 
 **Interactive mode**: Permission prompts pass through to user. Worker runs in foreground (blocking).
 
@@ -776,9 +772,8 @@ git diff --staged
 git commit -m "<final summary>"
 ```
 
-**The spec is left open unless the user explicitly asked for it to be closed** —
-Ralph closes done specs at the end of the loop. A run that closed the spec on its
-own initiative has broken this.
+**The spec is left open unless the user explicitly asked for it to be closed.**
+A run that closed the spec on its own initiative has broken this.
 
 Then push + open PR if user wants.
 
@@ -807,8 +802,6 @@ EVENTS="work.firstClaim,work.done"   # ← substitute the actual triggered set
 "$FLOWCTL" sync check "$SPEC_ID" --events "$EVENTS" --since "$SINCE" --json
 # Empty output → bridge inactive → slot = `n/a (bridge inactive)`. Otherwise
 # `.missing` empty → slot = `OK`; non-empty → retro-fire (below).
-# Under Ralph (FLOW_RALPH=1 / REVIEW_RECEIPT_PATH set): route any echo of check
-# output to stderr (>&2) — work's stdout stays clean for harness parsing.
 ```
 
 (Nothing triggered at all — no claims, no dones, no 3g, e.g. a resumed no-op run — skip the check; the slot is vacuously `OK`.)
@@ -820,7 +813,7 @@ the missed events only → record the final state in the summary slot). Still MI
 after the one cycle is a recorded, visible outcome — never a second retro-fire, never
 a block.
 
-**Final summary (mandatory template).** End the run with this block. **`Tracker sync:` is a required field carrying exactly one of its four states** — an explicit `n/a` proves the check ran, and an absent field reads as a skipped check. A summary printed without the slot has broken this. Under Ralph, the summary goes to the summary block / stderr, never stdout. The `Gates:` slot is where host-layer gate skips surface — one `Gates:` line per accumulated Phase 4 outcome (repeat the line for each skip/honor so none is overwritten); worker-layer skips live in each task's evidence `tests[]`.
+**Final summary (mandatory template).** End the run with this block. **`Tracker sync:` is a required field carrying exactly one of its four states** — an explicit `n/a` proves the check ran, and an absent field reads as a skipped check. A summary printed without the slot has broken this. The `Gates:` slot is where host-layer gate skips surface — one `Gates:` line per accumulated Phase 4 outcome (repeat the line for each skip/honor so none is overwritten); worker-layer skips live in each task's evidence `tests[]`.
 
 ```
 Spec: <spec-id> — <title>

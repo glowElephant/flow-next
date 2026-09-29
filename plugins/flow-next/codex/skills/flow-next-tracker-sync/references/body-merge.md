@@ -194,7 +194,7 @@ The confirmation shows the *whole merged body* (so the human sees the merge is
 correct everywhere else) but the *decision* is scoped to the contradicting section.
 That is the R9 guarantee: focused, not whole-body.
 
-### Autonomous / Ralph mode — queue, never block (R9/R11)
+### Autonomous mode — queue, never block (R9/R11)
 
 Confident merges (Steps 1–3 with no Step 4 contradiction) proceed unattended. A
 genuine contradiction — **including the `always-ask` tiebreak default** — does NOT
@@ -203,8 +203,7 @@ resolves to "queue for the human" in autonomous mode (same policy, surface-depen
 delivery — mirrors flow-next-drive's surface-aware ladder).
 
 ```bash
-# Any autonomy marker (FLOW_RALPH, REVIEW_RECEIPT_PATH, FLOW_AUTONOMOUS,
-# AUTONOMOUS, or mode:autonomous): queue the scoped conflict, write
+# Any autonomy marker (FLOW_AUTONOMOUS, AUTONOMOUS, or mode:autonomous): queue the scoped conflict, write
 # NO body, skip the facade call, continue the batch.
 $FLOWCTL sync defer "$SPEC_ID" \
   --summary "Goal section rewritten on both sides to mean different things (flow: OAuth-only; tracker: OAuth+SAML)" \
@@ -215,7 +214,7 @@ $FLOWCTL sync defer "$SPEC_ID" \
 The conflict-tiebreak default (`flow-wins | tracker-wins | always-ask`, R1) governs
 the rare unresolvable case: `flow-wins`/`tracker-wins` auto-resolve the scoped
 section to that side (still a confident merge → proceed); `always-ask` queues in
-Ralph (above) and prompts interactively.
+autonomous mode (above) and prompts interactively.
 
 ## Step 5 — Write-back
 
@@ -344,11 +343,11 @@ things** (flow excludes SAML; tracker includes it) → Step 4 scoped conflict.
 - The conflict is surfaced **scoped to the `## Goal & Context` section only** — the
   Acceptance section merged cleanly and is NOT presented as a conflict.
 - It is **NOT a whole-body diff**: the human (interactive) or the deferred-sink entry
-  (Ralph) references only the Goal contradiction, with the rest already merged.
+  (autonomous) references only the Goal contradiction, with the rest already merged.
 - No silent overwrite: neither Goal version is written until the human picks.
 
 ```bash
-# Ralph proof for Fixture C — exactly ONE scoped conflict queued, no body written:
+# Autonomous proof for Fixture C — exactly ONE scoped conflict queued, no body written:
 $FLOWCTL sync defer "$SPEC_ID" \
   --summary "Goal contradicts: flow excludes SAML, tracker includes it" \
   --suggested "Human picks OAuth-only vs OAuth+SAML" --reason "genuine-contradiction"

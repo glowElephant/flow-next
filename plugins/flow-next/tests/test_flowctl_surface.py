@@ -553,15 +553,9 @@ class RepoPromptCapabilityProbeTest(unittest.TestCase):
         "skills/flow-next-plan-review/workflow.md",
         "skills/flow-next-impl-review/workflow-common.md",
         "skills/flow-next-spec-completion-review/workflow-common.md",
-        "skills/flow-next-ralph-init/SKILL.md",
         "codex/skills/flow-next-plan/references/setup-questions.md",
         "codex/skills/flow-next-impl-review/workflow-common.md",
         "codex/skills/flow-next-spec-completion-review/workflow-common.md",
-        "codex/skills/flow-next-ralph-init/SKILL.md",
-        "scripts/ralph_smoke_rp.sh",
-        "scripts/ralph_e2e_rp_test.sh",
-        "scripts/ralph_e2e_short_rp_test.sh",
-        "scripts/plan_review_prompt_smoke.sh",
     )
 
     def test_all_active_probes_use_the_ce_first_ladder(self) -> None:

@@ -3,7 +3,7 @@
 WHY THIS IS A PACKAGE, AND WHY THE NAME IS NAMESPACED.
 
 flowctl ships as *named files*, not a package: `install-codex.sh` copies
-`flowctl` and `flowctl.py` by name, and Ralph scaffolding does the same. So a
+`flowctl` and `flowctl.py` by name. So a
 package only reaches a user if the distribution paths are taught about it -
 that is task .5, and until it lands this package is importable from a checkout
 but NOT from an install.

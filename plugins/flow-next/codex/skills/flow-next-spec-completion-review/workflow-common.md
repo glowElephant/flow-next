@@ -102,7 +102,7 @@ Only the file for the active backend should enter context. Do not read the other
 
 ---
 
-## Fix Loop (INTERNAL - do not exit to Ralph)
+## Fix Loop (INTERNAL)
 
 **The fix loop never pauses for user confirmation.** Every valid finding is fixed and re-reviewed automatically — the goal is complete spec compliance. A loop that stops to ask, or that exits with a valid finding unfixed, has broken this. Never use the plain-text numbered prompt in this loop.
 

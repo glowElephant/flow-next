@@ -24,7 +24,7 @@ One oversized/unclear idea whose **destination is nameable but route is not** (a
 
 ## Common Commands
 
-The typical flow. Everything else (deps, block/reset, memory, glossary, config, tracker sync, checkpoints, Ralph): `flowctl --help` and `flowctl <cmd> --help`.
+The typical flow. Everything else (deps, block/reset, memory, glossary, config, tracker sync, checkpoints): `flowctl --help` and `flowctl <cmd> --help`.
 
 ```bash
 flowctl list                          # all specs + tasks grouped

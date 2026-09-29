@@ -18,7 +18,7 @@ Bash vars do not survive across tool calls - re-declare the FLOWCTL block at the
 
 **Read-only scouts:** use `Task` with `subagent_type: Explore`. On hosts without an Explore builtin (e.g. Cursor), use the host's generic read-only dispatch with Edit/Write disallowed. Facts with safe path/revision references only - never judgments that settle attended decisions.
 
-**Unattended driver** (any one signal): `FLOW_RALPH=1`, non-empty `REVIEW_RECEIPT_PATH`, non-empty `FLOW_AUTONOMOUS`, or host loop with no human present. Interactive terminal = attended.
+**Unattended driver** (any one signal): non-empty `FLOW_AUTONOMOUS`, or host loop with no human present. Interactive terminal = attended.
 
 ---
 

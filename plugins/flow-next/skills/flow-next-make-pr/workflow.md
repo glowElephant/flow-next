@@ -17,13 +17,12 @@ source "$(dirname "$FLOWCTL")/make-pr-preflight.sh"
 ```
 
 Exit 1 is failure; exit 2 needs human intervention; exit 3 carries `NEED_INPUT:`.
-Under `FLOW_RALPH`, `REVIEW_RECEIPT_PATH`, `FLOW_AUTONOMOUS=1`, `AUTONOMOUS=1`,
-or `mode:autonomous`, never prompt: preserve the exit outcome. Attended, resolve
+Under `FLOW_AUTONOMOUS=1`, `AUTONOMOUS=1`, or `mode:autonomous`, never prompt: preserve the exit outcome. Attended, resolve
 only the named missing input and rerun.
 
 Already-closed specs stay untouched. Otherwise completed specs close on the head branch before Phase 1. Incomplete or
 task-less specs have no close commit and still compose interactively. For `OPEN_COUNT > 0`,
-Ralph/autonomous hard-errors (exit 2). Dry-run and body-only updates never close. Under `--update` an
+autonomous hard-errors (exit 2). Dry-run and body-only updates never close. Under `--update` an
 existing OPEN PR is REQUIRED; closed/merged PRs do not prevent a create. Preserve `PHASE0_CONTEXT.head`.
 ## Phase 1: Gather inputs
 

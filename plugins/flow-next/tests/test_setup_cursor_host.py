@@ -11,7 +11,6 @@ rewrite and is not the Cursor host path) for:
   (c) [removed in fn-195.2] the host-native pin scaffold — setup now proposes
       one commented routing block; its contract lives in
       test_model_routing_scaffold.py.
-  (d) No Ralph offer/registration on Cursor.
 
 Run:
     cd plugins/flow-next/tests && python3 -m unittest test_setup_cursor_host -q
@@ -27,16 +26,10 @@ from pathlib import Path
 HERE = Path(__file__).resolve()
 PLUGIN = HERE.parent.parent
 WORKFLOW = PLUGIN / "skills" / "flow-next-setup" / "workflow.md"
-CURSOR_REFS = (
-    PLUGIN / "skills" / "flow-next-setup" / "references" / "ralph-question.md",
-)
 
 
 def _read() -> str:
-    return "\n".join(
-        path.read_text(encoding="utf-8")
-        for path in (WORKFLOW, *CURSOR_REFS)
-    )
+    return WORKFLOW.read_text(encoding="utf-8")
 
 
 class TestCursorPositiveDetection(unittest.TestCase):
@@ -132,40 +125,6 @@ class TestHostLeadsReviewMenu(unittest.TestCase):
         host_case = self.text.index('"Host"*) REVIEW_BACKEND="host"')
         cursor_case = self.text.index('"Cursor"*|"cursor"*) REVIEW_BACKEND="cursor"')
         self.assertLess(host_case, cursor_case)
-
-
-class TestNoRalphOnCursor(unittest.TestCase):
-    """R6 / boundary: no Ralph offer or registration on Cursor."""
-
-    def setUp(self) -> None:
-        self.text = _read()
-
-    def test_ralph_skipped_on_cursor(self) -> None:
-        self.assertRegex(
-            self.text,
-            re.compile(
-                r"skip entirely when `PLATFORM=cursor`|PLATFORM=cursor.*no Ralph"
-                r"|no Ralph support on Cursor|unsupported on Cursor",
-                re.I | re.S,
-            ),
-        )
-        self.assertIn("unsupported on Cursor", self.text)
-
-    def test_never_run_ralph_init_on_cursor(self) -> None:
-        # Processing path: never offer, never register, never run ralph-init.
-        self.assertRegex(
-            self.text,
-            re.compile(
-                r"never offer, never register, never run ralph-init"
-                r"|never run `/flow-next:ralph-init`",
-                re.I,
-            ),
-        )
-
-    def test_ralph_question_still_present_for_other_hosts(self) -> None:
-        # Non-Cursor hosts keep the Ralph ceremony (test_no_default_hooks pin).
-        self.assertIn('"header": "Ralph"', self.text)
-        self.assertIn("No (Recommended)", self.text)
 
 
 class TestCursorHostNotes(unittest.TestCase):

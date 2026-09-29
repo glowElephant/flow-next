@@ -82,9 +82,6 @@ When `SPEC_ID` is empty, the **discover** phase resolves it (branch-match, or by
 Under `QA_AUTONOMOUS=1`:
 - **The run asks nothing.** Every `plain-text numbered prompt` info-prompt path becomes a deterministic branch: resolve from spec / config / env, else surface a limitation. A prompt anywhere on this path has broken it.
 - **Undocumented target URL / required accounts / no reachable local app / undetermined spec id ⇒ emit a `BLOCKED` `qa_verdict` + clean exit** (the §6.3 writer), never an interactive prompt and never a hang.
-- **Autonomy ≠ Ralph.** Neither `mode:autonomous` nor `FLOW_AUTONOMOUS` activates ralph-guard hooks or any receipt-path gate — they gate **question suppression** only. Ralph (`FLOW_RALPH=1` / `REVIEW_RECEIPT_PATH`) is the separate, additive signal detected in Phase A; the two compose (a `flow --auto` run may be autonomous-but-not-Ralph).
-
-Ralph mode (`FLOW_RALPH=1` or `REVIEW_RECEIPT_PATH` set) is detected in workflow.md §AUTONOMY — the skill is **aware but not Ralph-blocked** (R11). Ralph independently suppresses prompts too (Phase A), so a Ralph run is implicitly autonomous; `QA_AUTONOMOUS` covers the non-Ralph autonomous caller (the `flow --auto` QA stage).
 
 ## flow-next-drive consumption — a read-and-drive contract, not a callable API
 
@@ -100,7 +97,6 @@ Per scenario, record an **evidence tuple**: `{driver_rung, target_url, viewport,
 - **Marking PASS / SHIP from source inspection.** See "The hard rule" above. PASS requires captured live-app evidence; no live app → BLOCKED, never PASS.
 - **Re-implementing driving.** QA consumes flow-next-drive via the read-and-drive contract; it never reimplements CDP / agent-browser / Computer Use, and never duplicates flow-next-drive's ladder prose.
 - **Inventing findings or evidence.** Every finding cites real captured evidence (screenshot / console / URL). No "I think this might be broken" without a reproduction.
-- **Ralph-blocking the skill.** QA is aware of Ralph but is not a hard Ralph-block (R11). A `FLOW_RALPH`/`REVIEW_RECEIPT_PATH` exit-2 guard at the top of the skill has broken this.
 
 ## Workflow
 

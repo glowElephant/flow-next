@@ -153,10 +153,8 @@ class PilotSnapshotTests(unittest.TestCase):
         _git(self.repo, 'commit', '--allow-empty', '-qm', 'feat: new code')
         self.assertFalse(self.snapshot()['selected']['qa_fresh'])
 
-    def test_guards_ralph_only_and_dirty_outside_flow(self):
-        for marker in ('FLOW_RALPH', 'REVIEW_RECEIPT_PATH', 'FLOW_AUTONOMOUS', 'AUTONOMOUS'):
-            with patch.dict(os.environ, {'FLOW_RALPH': '', 'REVIEW_RECEIPT_PATH': '', marker: '1'}):
-                self.assertEqual(self.snapshot()['guards']['nested'], marker in ('FLOW_RALPH', 'REVIEW_RECEIPT_PATH'))
+    def test_guards_dirty_outside_flow(self):
+        self.assertEqual(set(self.snapshot()['guards']), {'dirty'})
         (self.repo / 'new-code.py').write_text('x = 1\n')
         self.assertTrue(self.snapshot()['guards']['dirty'])
 

@@ -1,4 +1,4 @@
-# NEEDS_WORK fix-loop procedure (INTERNAL — do not exit to Ralph)
+# NEEDS_WORK fix-loop procedure (INTERNAL)
 
 Read this only when the delivered verdict is `NEEDS_WORK`. A SHIP run never
 needs it; `MAJOR_RETHINK` escalates as `BLOCKED: DESIGN_CONFLICT` and never

@@ -128,7 +128,7 @@ After receiving feedback, return here to implement fixes.
 
 ## Note
 
-**This skill is manual-only.** It produces no receipts and no status updates, so an autonomous Ralph invocation is declined rather than served — a run that reports success to a Ralph caller has broken this.
+**This skill is manual-only.** It produces no receipts and no status updates, so an autonomous invocation is declined rather than served — a run that reports success to an autonomous caller has broken this.
 
 #### Done when
 

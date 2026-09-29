@@ -16,7 +16,7 @@ Most scenarios beyond the public happy path need credentials. Resolve them befor
 auth-dependent steps:
 
 1. Look for a documented playbook — auth-provider dev mode, a seed script (`scripts/seed-*`, `db/seeds/`, `supabase/seed.sql`), fixtures (`__fixtures__/`, `test-data/`), or a `.env.test.example`.
-2. If none is documented: when `NO_PROMPT=0`, **ask the user** (`AskUserQuestion`, info prompt): the auth provider / dev-user docs, an admin account (or permission to create one), and the per-run email-suffix convention — offer to document the convention as part of the pass. When `NO_PROMPT=1` (autonomous / Ralph), undocumented accounts are a hard limitation → BLOCKED + clean exit (the public happy-path scenarios may still run if a target URL resolved; auth-dependent scenarios that cannot proceed without credentials make the outcome BLOCKED).
+2. If none is documented: when `NO_PROMPT=0`, **ask the user** (`AskUserQuestion`, info prompt): the auth provider / dev-user docs, an admin account (or permission to create one), and the per-run email-suffix convention — offer to document the convention as part of the pass. When `NO_PROMPT=1` (autonomous), undocumented accounts are a hard limitation → BLOCKED + clean exit (the public happy-path scenarios may still run if a target URL resolved; auth-dependent scenarios that cannot proceed without credentials make the outcome BLOCKED).
 3. **Never guess credentials**, and never commit a password to the repo — record only the email pattern + role; pass secrets via the existing chat / vault. (Provider fixtures like Clerk's `424242` OTP or Stripe's `4242…` test card are out of this lean borrow's scope — reach for the provider's docs when a flow needs one.)
 
 Generate fresh-user personas with the collision-proof suffix from `qa-discipline.md` —
@@ -35,7 +35,7 @@ device coverage inherits flow-next-drive's surface support later):
 | Mobile | `375 × 812` | `agent-browser set viewport 375 812` |
 
 Lead with the app's **primary** target: take it from the spec; if the spec is silent, ask the
-user which mode matters most when `NO_PROMPT=0`; when `NO_PROMPT=1` (autonomous / Ralph — no
+user which mode matters most when `NO_PROMPT=0`; when `NO_PROMPT=1` (autonomous — no
 user to ask), infer the likely primary from repo signals (responsive CSS / framework defaults
 / marketing copy) and **note the assumption** in the run notes. The viewport choice is a soft
 default, not a blocking fact — it never gates the run (unlike an undocumented target URL /

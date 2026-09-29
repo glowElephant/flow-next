@@ -107,8 +107,7 @@ Runs inside the Phase 5 new-spec ceremony, immediately after `spec create --plan
 # On retry: if produced_specs already has this B-ID+cluster identity, discover
 # that entry and link the existing spec instead of minting another (Phase 1.2b).
 if [[ -n "$CHART_ID" && -n "$BRIEFING_ID" ]]; then
-  # Subcommand tokens stay LITERAL on the command line (the Ralph guard blocks
-  # a variable in either of the two tokens after the launcher); only arguments
+  # Subcommand tokens stay LITERAL on the command line; only arguments
   # come from the array.
   LINK_ARGS=("$CHART_ID" --briefing "$BRIEFING_ID" --spec "$SPEC_ID" --decisions "$CHART_DECISIONS" --json)
   [[ -n "$CLUSTER_KEY" ]] && LINK_ARGS+=(--cluster "$CLUSTER_KEY")

@@ -61,7 +61,7 @@ mode, never a configured backend.
 - Stick to one backend for the full review/fix cycle.
 - If `REVIEW_RECEIPT_PATH` is set, every review verdict writes a receipt.
 - Any backend/transport failure outputs `<promise>RETRY</promise>` and stops;
-  never silently fall back to a different backend. Autonomous/Ralph callers
+  never silently fall back to a different backend. Autonomous callers
   receive the same retry terminal and decide whether to re-enter. A no-verdict
   dispatch is refunded and recorded by flowctl; never manually reset the review
   counter for a transport failure. Exit 5 / `TRANSPORT_UNHEALTHY` means stop
@@ -90,7 +90,7 @@ Format: `<flow-spec-id> [focus areas] [--review=<mode>]`
    Fix Loop below.
 5. Continue in that loop until its terminal contract is satisfied.
 
-## Fix Loop (INTERNAL - do not exit to Ralph)
+## Fix Loop (INTERNAL)
 
 **The fix loop never pauses for user confirmation.** Every valid finding is
 fixed and re-reviewed automatically. A loop that stops to ask, or that exits
@@ -98,12 +98,12 @@ with a valid finding unfixed, has broken this. Never use plain-text numbered pro
 loop.
 
 `MAJOR_RETHINK` is not a fix-loop input. Surface the reviewer's rationale and
-stop with `BLOCKED: DESIGN_CONFLICT` (Ralph: `<promise>RETRY</promise>`). Only
+stop with `BLOCKED: DESIGN_CONFLICT`. Only
 `NEEDS_WORK` enters the loop.
 
 Fix+re-review cycles are bounded at `${MAX_REVIEW_ITERATIONS:-8}`. The counter
 is flowctl-owned; never keep an agent-side counter. On cap exhaustion, surface
-surviving findings and stop (Ralph: `<promise>RETRY</promise>`).
+surviving findings and stop.
 
 **The cap is enforced deterministically by flowctl:** every dispatch reserves a
 spec-scoped round before launch. SHIP / NEEDS_WORK / MAJOR_RETHINK / NEEDS_HUMAN consume it;

@@ -28,18 +28,17 @@ real event key; never invoke that facade without `--event`.
 All autonomous signals collapse into one no-prompt gate:
 
 ```bash
-RALPH=0
-[[ "${FLOW_RALPH:-}" == "1" || -n "${REVIEW_RECEIPT_PATH:-}" \
-   || "${FLOW_AUTONOMOUS:-}" == "1" || "${AUTONOMOUS:-}" == "1" \
+UNATTENDED=0
+[[ "${FLOW_AUTONOMOUS:-}" == "1" || "${AUTONOMOUS:-}" == "1" \
    || "$ARGUMENTS" == *mode:autonomous* ]] \
-  && RALPH=1
+  && UNATTENDED=1
 ```
 
-`RALPH=1` means any unattended run, not only Ralph. A lifecycle stage that
+`UNATTENDED=1` means any unattended run. A lifecycle stage that
 runs the inline wrapper applies its own autonomy: a stage `flow --auto`
-dispatched carries `mode:autonomous`, so it takes the `RALPH=1` path.
+dispatched carries `mode:autonomous`, so it takes the `UNATTENDED=1` path.
 
-> **Autonomy parity is a hard invariant.** Under `RALPH=1` no code path reaches
+> **Autonomy parity is a hard invariant.** Under `UNATTENDED=1` no code path reaches
 > `plain-text numbered prompt`: discovery, collisions, merge conflicts, and question
 > authoring defer for a human instead of prompting.
 
@@ -63,7 +62,7 @@ alternate API versions are unsupported.
 
 **Done when:** `tracker resolve` returned a destination that was shown for
 confirmation, the confirmed non-secret configuration is persisted, and no
-credential landed in `.flow/config.json`. Under `RALPH=1` discovery deferred for
+credential landed in `.flow/config.json`. Under `UNATTENDED=1` discovery deferred for
 a human instead — the transcript shows no `plain-text numbered prompt` on this path.
 
 ## 2. Identity and linking
@@ -99,8 +98,7 @@ winner - a closed duplicate is inert and auditable, and there is deliberately
 no spec-delete verb. Never re-put. On `subtype=record_missing`, the candidate
 was already promoted and cleared (or never recorded here): locate the issue's
 attached spec via the tracker id and adopt it. **Under any autonomy marker**
-(`FLOW_RALPH=1`, `REVIEW_RECEIPT_PATH`, `FLOW_AUTONOMOUS=1`,
-`mode:autonomous`) a CAS conflict resolves to `sync defer` like every other
+(`FLOW_AUTONOMOUS=1`, `mode:autonomous`) a CAS conflict resolves to `sync defer` like every other
 collision - adopting a winner and retiring a spec is a human-confirmed
 resolution, not an autonomous one. Only after the linked mint, merge-base seed,
 back-reference, and the normal spec-keyed receipt all succeed may the caller
@@ -179,8 +177,7 @@ Flow body locally before the facade call and pass the full original comment
 snapshot. Pull never changes Flow task status.
 
 A true section conflict remains host judgment: show the section and both edits,
-then ask in attended mode. Any autonomy marker (`FLOW_RALPH=1`,
-`REVIEW_RECEIPT_PATH`, `FLOW_AUTONOMOUS=1`, `AUTONOMOUS=1`, or
+then ask in attended mode. Any autonomy marker (`FLOW_AUTONOMOUS=1`, `AUTONOMOUS=1`, or
 `mode:autonomous`, including the calling stage's marker) or a fork uses
 `flowctl sync defer` instead.
 
@@ -229,9 +226,9 @@ Branch only on the envelope:
 | `external_action_required` | perform the named MCP action if authorized, then resume with `persist-external`; otherwise defer |
 
 A push `conflict` with subtype `tracker_diverged` means someone edited the
-tracker body since the last sync. With `RALPH=0`, ask once: reconcile
+tracker body since the last sync. With `UNATTENDED=0`, ask once: reconcile
 (recommended, merges both sides), overwrite the tracker body (rerun the same
-push with `--overwrite-diverged`), or leave it. With `RALPH=1` (including every
+push with `--overwrite-diverged`), or leave it. With `UNATTENDED=1` (including every
 stage `flow --auto` runs), never overwrite: record it with
 `flowctl sync defer <spec-id> --summary "tracker body diverged since last sync"
 --suggested "reconcile, or confirm an --overwrite-diverged push"` and continue.

@@ -8,7 +8,6 @@ import io
 import json
 import os
 import shutil
-import subprocess
 import sys
 import tempfile
 import unittest
@@ -179,26 +178,6 @@ class NextZeroTaskCase(unittest.TestCase):
                     f"{status} fn-1 {reason}",
                 )
 
-    def test_legacy_ralph_stops_before_taskless_work_dispatch(self) -> None:
-        source = (HERE.parent.parent / "skills/flow-next-ralph-init/templates/ralph.sh").read_text(encoding="utf-8")
-        block = source.split('  export RALPH_ITERATION="$iter"', 1)[1].split(
-            '  if [[ "$status" == "plan" ]]; then', 1
-        )[0]
-        bash = shutil.which("bash") or "bash"
-        if os.name == "nt" and (git := shutil.which("git")):
-            git_bash = Path(git).resolve().parent.parent / "bin" / "bash.exe"
-            if git_bash.is_file():
-                bash = str(git_bash)
-        for reason in ("needs_implicit_task", "unknown"):
-            with self.subTest(reason=reason):
-                proc = subprocess.run(
-                    [bash, "-c", 'status=work; task_id=""; spec_id=fn-1; reason="$1"\n'
-                     'log() { :; }; ui_complete() { :; }; '
-                     'write_completion_marker() { echo "$1"; }\n' + block + '\necho DISPATCHED',
-                     "ralph-test", reason], capture_output=True, text=True, check=True,
-                )
-                self.assertEqual(proc.stdout.strip(), "NEEDS_TASKS")
-
     def test_zero_task_human_output(self) -> None:
         self.write_spec("fn-1")
         output = self._cmd_next_human()
@@ -230,8 +209,7 @@ class NextZeroTaskCase(unittest.TestCase):
         # Regression (PR #382 review): with --require-plan-review, a
         # never-planned zero-task spec whose plan_review_status is not
         # "ship" must surface needs_tasks, not needs_plan_review — the
-        # spec needs planning first, and Ralph's typed zero-task stop
-        # keys on that reason.
+        # spec needs planning first.
         self.write_spec("fn-1", plan_review_status="none")
         result = self._cmd_next(require_plan_review=True)
         self.assertEqual(

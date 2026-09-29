@@ -104,10 +104,6 @@ The full list lives in [SKILL.md](SKILL.md) — single copy. Branch-specific row
 ## Decision tree (quick reference)
 
 ```
-Ralph mode? (FLOW_RALPH=1 or REVIEW_RECEIPT_PATH set)
-  yes → exit 2 with Ralph-block message (see SKILL.md)
-  no  → continue
-
 Compaction signal detected?
   no  → continue
   yes → evidence needed for this capture missing / truncated / summary-only?

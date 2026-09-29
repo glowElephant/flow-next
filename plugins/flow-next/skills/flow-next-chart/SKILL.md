@@ -66,7 +66,7 @@ CHART_VERDICT=<RESOLVED|BLOCKED|NEEDS_HUMAN|COMPLETE|NO_WORK> chart=<id> decisio
 
 Chart mode and status mode also print one terminal line so host `/loop`/`/goal` drivers can parse uniformly (`decision=-` when no D-ID was claimed).
 
-**Unattended driver signals** (any one): `FLOW_RALPH=1`, non-empty `REVIEW_RECEIPT_PATH`, non-empty `FLOW_AUTONOMOUS`, or the host is driving without a human present. Interactive terminal sessions are attended.
+**Unattended driver signals** (any one): non-empty `FLOW_AUTONOMOUS`, or the host is driving without a human present. Interactive terminal sessions are attended.
 
 ## Decision types = evidence routes
 

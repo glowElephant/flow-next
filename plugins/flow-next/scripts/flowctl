@@ -3,7 +3,7 @@
 # probed Python 3.11+ interpreter.
 #
 # SELF-CONTAINED: this launcher does NOT source scripts/lib/pick-python.sh —
-# installed copies (.flow/bin/flowctl, scripts/ralph/flowctl) can't assume that
+# installed copies (.flow/bin/flowctl) can't assume that
 # path is reachable. Keep this inline probe in sync with the shared resolver at
 # plugins/flow-next/scripts/lib/pick-python.sh.
 #

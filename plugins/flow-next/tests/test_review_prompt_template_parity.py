@@ -361,13 +361,6 @@ class TestReviewPromptPreChangeBinding(_HermeticCriteria):
                     (REPO_ROOT / rel).read_text(encoding="utf-8"),
                 )
 
-    def test_all_ralph_prompts_have_needs_human_guidance(self) -> None:
-        for name in ("plan", "work", "completion"):
-            with self.subTest(prompt=name):
-                text = (REPO_ROOT / f"plugins/flow-next/skills/flow-next-ralph-init/templates/prompt_{name}.md").read_text(encoding="utf-8")
-                self.assertIn("NEEDS_HUMAN", text)
-                self.assertIn("never a soft", text)
-
 
 class TestDeepPassFallbackCoverage(unittest.TestCase):
     """Structural checks only - deliberately NOT a content comparison.

@@ -23,7 +23,7 @@ Cold session or run start: `$FLOWCTL brief` first for session-scope orientation 
 
 ## Hard guards (before anything else)
 
-The first `pilot snapshot` below returns both hard guards before selection, ledger writes, branch changes, or dispatch. `guards.nested` refuses Ralph (`FLOW_RALPH` / `REVIEW_RECEIPT_PATH`); `guards.dirty` lists changes outside `.flow/`. Either ends `NEEDS_HUMAN`, leaves state untouched, and records no strike. The post-hop dirty guard remains in Phase 5.
+The first `pilot snapshot` below returns the hard guard before selection, ledger writes, branch changes, or dispatch. `guards.dirty` lists changes outside `.flow/`; a non-empty list ends `NEEDS_HUMAN`, leaves state untouched, and records no strike. The post-hop dirty guard remains in Phase 5.
 
 ## Arguments
 
@@ -89,10 +89,6 @@ printf '%s' "$PILOT_SNAPSHOT" > "$SNAPSHOT_FILE" \
 # fence:pilot-guards
 [ -n "${PILOT_SNAPSHOT:-}" ] || PILOT_SNAPSHOT="$(cat "$(git rev-parse --show-toplevel)/.flow/tmp/pilot-snapshot.json" 2>/dev/null)"
 printf '%s' "$PILOT_SNAPSHOT" | jq -e 'type == "object"' >/dev/null 2>&1 || { echo 'PILOT_VERDICT=NEEDS_HUMAN spec=- stage=- reason="pilot snapshot missing or unreadable; rerun the snapshot step"'; exit 1; }
-if [ "$(printf '%s' "$PILOT_SNAPSHOT" | jq -r '.guards.nested')" = true ]; then
-  echo 'PILOT_VERDICT=NEEDS_HUMAN spec=- stage=- reason="nested under Ralph harness (FLOW_RALPH/REVIEW_RECEIPT_PATH set) — refuse to run"'
-  exit 1
-fi
 if [ "$(printf '%s' "$PILOT_SNAPSHOT" | jq '.guards.dirty | length')" -gt 0 ]; then
   echo "Evidence: dirty non-.flow working tree at run start"
   printf '%s' "$PILOT_SNAPSHOT" | jq -r '.guards.dirty[]'
@@ -101,7 +97,7 @@ if [ "$(printf '%s' "$PILOT_SNAPSHOT" | jq '.guards.dirty | length')" -gt 0 ]; t
 fi
 ```
 
-Apply `guards` now; never select or dispatch if either guard fails. The snapshot contains config, actor, strikes, ready candidates with chain and other-actor claims, branch-joined PR observations, selected spec/task state, review backend, route, QA freshness and before-dispatch tasks. Use those values throughout this hop. On later hops rerun the snapshot fence with `PILOT_SPEC="$SELECTED_SPEC"`, which rewrites the file, and apply the same error and guard rules.
+Apply `guards` now; never select or dispatch if the guard fails. The snapshot contains config, actor, strikes, ready candidates with chain and other-actor claims, branch-joined PR observations, selected spec/task state, review backend, route, QA freshness and before-dispatch tasks. Use those values throughout this hop. On later hops rerun the snapshot fence with `PILOT_SPEC="$SELECTED_SPEC"`, which rewrites the file, and apply the same error and guard rules.
 
 No branch flag exists. Branch resolution is run-owned from the selected spec's `branch_name`.
 
@@ -140,11 +136,10 @@ Driver condition examples (the default recipe is one `flow --auto` per item; the
 - Dispatching any skill outside the stage set `{plan, plan-review, work, qa, make-pr, land}`, with `qa` only when `references/gate-selection.md` selected it for this hop and `land` only through the currently authorized, scoped handoff in `references/tail.md`. **Backlog mode additionally invokes tracker-sync for `reconcile` and `question`; read-only `list-open`, `comment-list`, and `relation-list` run directly through `$FLOWCTL tracker wire`**, never as pipeline stages. Capture, refine, chart, resolve-pr, merge, and release are **never** stages of this run (capture/refine/chart are human authoring and discovery upstream of the consent boundary; resolve-pr/merge belong to land downstream of the PR; release is separate).
 - Dispatching two stages in one hop. Each hop dispatches exactly one stage; the next hop re-classifies from observed state. The one exception is `--tick` under `pipeline.chainStages==on`: `make-pr` after this tick's `qa` verified a fresh terminal verdict (Phase 5, Chained stage), which is the `qa+make-pr` tick the deprecated key still buys for one release.
 - Re-implementing sub-skill logic. This file owns selection, classification glue, dispatch, verification, verdicts, and the strikes ledger only. The backlog-mode SELECT/TRIAGE/ASK workflow lives in `references/backlog-mode.md` (loaded only when `PILOT_AUTONOMY=backlog`); the question-anchor authoring plus answer round-trip live in tracker-sync; backlog mode invokes them, never re-implements them.
-- **Never execute merge steps inline.** Without current landing authority, either mode ends at the draft PR. The only driver-composition exception is the scoped land stage under `references/tail.md`; backlog mode alone grants no merge authority. Never dispatch another flow, pilot, Ralph, or host loop.
+- **Never execute merge steps inline.** Without current landing authority, either mode ends at the draft PR. The only driver-composition exception is the scoped land stage under `references/tail.md`; backlog mode alone grants no merge authority. Never dispatch another flow, pilot, or host loop.
 - **Never authoring a spec** (backlog mode). `capture`/`refine` are human-gated upstream. A missing or too-thin spec is surfaced as a "needs capture/refine" gap and parked (`ASKED`), never auto-written. The only writing the `ask` stage may do is fill an obvious blank in an *existing* spec, never create a spec stub from a bare ticket.
 - Touching gh anywhere except existing-PR selection, Step 2's read-only route-state PR probe, the all-done classification branch's fallback PR probe, the plan/plan-review branch row's open-PR probe, the make-pr verification probe, and the exact-target landing identity/verification reads in `references/tail.md`.
 - Printing anything after the `PILOT_VERDICT` line.
-- Running under Ralph (`FLOW_RALPH` / `REVIEW_RECEIPT_PATH`).
 
 ## Review no-repeat terminal
 
@@ -540,7 +535,7 @@ advanced=<true|false>
 
 When the work stage's output contains a `Sequential fallback:` line, repeat that line verbatim in the evidence echo.
 
-For `qa`, advancement is judged from the **post-dispatch `qa_verdict` receipt**, observed state, never the QA skill's narration. Read the receipt's `qa_outcome` field, never the Ralph-guard `verdict` projection (the QA skill projects `BLOCKED->verdict=NEEDS_WORK`, so a hop that read `verdict` conflated "couldn't verify" with "found problems" and has broken this).
+For `qa`, advancement is judged from the **post-dispatch `qa_verdict` receipt**, observed state, never the QA skill's narration. Read the receipt's `qa_outcome` field, never the `verdict` projection (the QA skill projects `BLOCKED->verdict=NEEDS_WORK`, so a hop that read `verdict` conflated "couldn't verify" with "found problems" and has broken this).
 
 Read the receipt fresh after dispatch. The QA skill commits its own handoff in autonomous mode (qa §6.3b), so `HEAD` is now the `chore(flow): qa verdict` commit; peel it to the **code head** and match the receipt's `head_sha` against that (the pr-artifact commit can't exist yet; that is the next hop's make-pr):
 
@@ -754,7 +749,7 @@ Terminal verdict when no spec was dispatched, split by why. **The two cases stay
 
 ### Backlog-mode decision log - one row per dispatched stage, at the resolving terminal
 
-**Active only when `PILOT_AUTONOMY=backlog`.** Every backlog run that selected a subject appends exactly **one** decision-log row per dispatched stage (one per hop, two on a chained `qa+make-pr` tick), each with its own `--stage`, keyed to the verdict grammar action, at its resolving terminal. The row co-occurs with the state-changing terminal; a live `TRIAGED` is never a bare no-op, so the logged action is always a terminal action. Stored under `.flow/pilot-runs/` (a sync-runs-style dir, NOT a ralph-guard `receipts/` path), auto-gitignored:
+**Active only when `PILOT_AUTONOMY=backlog`.** Every backlog run that selected a subject appends exactly **one** decision-log row per dispatched stage (one per hop, two on a chained `qa+make-pr` tick), each with its own `--stage`, keyed to the verdict grammar action, at its resolving terminal. The row co-occurs with the state-changing terminal; a live `TRIAGED` is never a bare no-op, so the logged action is always a terminal action. Stored under `.flow/pilot-runs/` (a sync-runs-style dir, NOT a `receipts/` path), auto-gitignored:
 
 ```bash
 # ACTION in {advanced, asked, blocked, needs-human}  (mapped from the terminal verdict)

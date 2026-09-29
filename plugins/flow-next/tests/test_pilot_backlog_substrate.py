@@ -19,7 +19,7 @@ Three thin, judgment-free additions to flowctl — pure enumeration + storage:
 
   3. ``pilot-log append`` — a FROZEN decision-log CLI writing
      ``{tick, id, action, stage, costTokens}`` rows under ``.flow/pilot-runs/``
-     (sync-runs-style; NEVER a ``receipts/`` path the ralph-guard validates).
+     (sync-runs-style; NEVER a ``receipts/`` path).
      ``--id`` accepts an OPAQUE id (spec id OR bare tracker key), safe-filename
      normalized, never forced through ``resolve_spec_id_arg``.
 

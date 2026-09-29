@@ -88,7 +88,7 @@ Format: `[task ID] [--base <commit>] [--validate] [--deep[=passes]] [--interacti
 - `--base <commit>` - Compare against this commit instead of main/master (for task-scoped reviews)
 - `--validate` - After NEEDS_WORK verdict, run a validator pass that drops false-positive findings (opt-in)
 - `--deep` / `--deep=<passes>` - Run additional specialized passes (adversarial / security / performance) after primary review (opt-in)
-- `--interactive` - On NEEDS_WORK, walk through each finding with the user (Apply/Defer/Skip/Acknowledge) (opt-in, Ralph-incompatible)
+- `--interactive` - On NEEDS_WORK, walk through each finding with the user (Apply/Defer/Skip/Acknowledge) (opt-in)
 - Task ID - Optional, for context and receipt tracking
 - Focus areas - Optional, specific areas to examine
 
@@ -99,13 +99,12 @@ Format: `[task ID] [--base <commit>] [--validate] [--deep[=passes]] [--interacti
 **Opt-in flags:**
 - `--validate` — adds a validator pass on NEEDS_WORK that re-checks each finding
   for false positives. All findings dropping upgrades verdict to SHIP.
-- `FLOW_VALIDATE_REVIEW=1` env var — enables `--validate` session-wide (works in Ralph).
+- `FLOW_VALIDATE_REVIEW=1` env var — enables `--validate` session-wide.
 - `--deep` — adds adversarial pass always + security/performance auto-enabled
   per diff paths. `--deep=adversarial,security` restricts to listed passes.
-- `FLOW_REVIEW_DEEP=1` env var — enables `--deep` session-wide (works in Ralph).
+- `FLOW_REVIEW_DEEP=1` env var — enables `--deep` session-wide.
 - `--interactive` — per-finding walkthrough on NEEDS_WORK. **No env var form** —
-  per-invocation only, always hard-errors in Ralph mode (`REVIEW_RECEIPT_PATH` or
-  `FLOW_RALPH=1`) to prevent accidental autonomous engagement.
+  per-invocation only.
 - Default review behavior (no flags) is unchanged.
 
 ## Workflow
@@ -121,7 +120,7 @@ Parse $ARGUMENTS for:
 - `--no-triage` → set `TRIAGE_DISABLED=1` (skip trivial-diff pre-check)
 - `--validate` → set `VALIDATE=true` (validator pass on NEEDS_WORK)
 - `--deep` / `--deep=<passes>` → set `DEEP=true` + optional `DEEP_PASSES` CSV
-- `--interactive` → set `INTERACTIVE=true` (per-finding walkthrough on NEEDS_WORK; Ralph-blocked)
+- `--interactive` → set `INTERACTIVE=true` (per-finding walkthrough on NEEDS_WORK)
 - First positional arg matching `fn-*` → `TASK_ID`
 - Remaining args → focus areas
 
@@ -143,7 +142,7 @@ for arg in $(printf '%s\n' "$ARGUMENTS"); do   # command substitution word-split
   esac
 done
 
-# Env opt-ins (Ralph-friendly). --interactive has NO env var form — per-invocation only.
+# Env opt-ins. --interactive has NO env var form — per-invocation only.
 if [[ "${FLOW_VALIDATE_REVIEW:-}" == "1" ]]; then
   VALIDATE=true
 fi
@@ -174,14 +173,6 @@ PHASES_RESUME_SESSION=0
 [[ "$DEEP" == "true" || "$VALIDATE" == "true" ]] && PHASES_RESUME_SESSION=1
 echo "PHASES_RESUME_SESSION=$PHASES_RESUME_SESSION"
 
-# Ralph-block: Ralph must never engage interactive.
-if [[ "$INTERACTIVE" == "true" ]]; then
-  if [[ -n "${REVIEW_RECEIPT_PATH:-}" || "${FLOW_RALPH:-}" == "1" ]]; then
-    echo "Error: --interactive requires a user at the terminal; not compatible with Ralph mode (REVIEW_RECEIPT_PATH or FLOW_RALPH detected)." >&2
-    exit 2
-  fi
-fi
-
 if [[ "$DEEP" == "true" || "$VALIDATE" == "true" || "$INTERACTIVE" == "true" ]]; then
   echo "OPTIONAL PHASES ACTIVE — STOP. Read optional-phases.md (deep=$DEEP validate=$VALIDATE interactive=$INTERACTIVE) before continuing."
 fi
@@ -196,17 +187,15 @@ lockfile-only, docs-only, release-chore, and generated-file diffs. On SKIP, the
 receipt is written with `mode: "triage_skip"` / `verdict: "SHIP"` and the
 expensive backend call is skipped entirely.
 
-Opt-out: `--no-triage` argument or `FLOW_RALPH_NO_TRIAGE=1` env var.
+Opt-out: `--no-triage` argument.
 
 ```bash
-if [[ -z "${TRIAGE_DISABLED:-}" && -z "${FLOW_RALPH_NO_TRIAGE:-}" ]]; then
+if [[ -z "${TRIAGE_DISABLED:-}" ]]; then
   # Only a first-round route may skip review; probe failure falls through.
   if ROUTE="$($FLOWCTL review-route ${TASK_ID:+"$TASK_ID"} --json)" \
       && [[ "$(jq -r '.action // empty' <<<"$ROUTE")" == "fanout" ]]; then
     TASK_ID="$(jq -r '.task_id // empty' <<<"$ROUTE")"
     RECEIPT_PATH="$(jq -r '.receipt_path' <<<"$ROUTE")"
-    # Subcommand + one literal flag stay on the command line (the Ralph guard
-    # blocks a variable in either of the two tokens after the launcher).
     TRIAGE_ARGS=(--receipt "$RECEIPT_PATH")
     [[ -n "$BASE_COMMIT" ]] && TRIAGE_ARGS+=(--base "$BASE_COMMIT")
     [[ -n "$TASK_ID" ]] && TRIAGE_ARGS+=(--task "$TASK_ID")
@@ -229,8 +218,7 @@ fi
 
 **Opt-out note:** Pass `--no-triage` to force the full backend review (useful
 when explicitly validating a suspicious chore diff, or when the deterministic
-whitelist misclassifies). `FLOW_RALPH_NO_TRIAGE=1` has the same effect for
-Ralph runs.
+whitelist misclassifies).
 
 The deterministic rule table, the SKIP receipt shape, and the `FLOW_TRIAGE_LLM=1`
 judge live in [references/triage-rules.md](references/triage-rules.md) — read it
@@ -247,11 +235,11 @@ only when a triage result needs justifying or auditing.
 
 Follow the phases in the per-backend file end-to-end. Each file owns its own Identify → Execute → Verdict → Receipt steps (and, for RP, the full Phase 1-4 setup-review / chat-send / receipt build + Fix Loop). Cross-backend gated phases (Deep-Pass, Validator, Interactive Walkthrough) live in [optional-phases.md](optional-phases.md) — the backend files reference them.
 
-## Fix Loop (INTERNAL - do not exit to Ralph)
+## Fix Loop (INTERNAL)
 
 **The fix loop never pauses for user confirmation.** Every valid finding is fixed and re-reviewed automatically — the goal is production-grade world-class software and architecture. A loop that stops to ask, or that exits with a valid finding unfixed, has broken this. Never use AskUserQuestion in this loop.
 
-**MAJOR_RETHINK is NOT a fix-loop input.** Every backend can emit `MAJOR_RETHINK` (a valid verdict tag), but it means the *design/approach* is wrong — not something to patch finding-by-finding. Do NOT enter the fix loop on it. Escalate immediately: surface the reviewer's rationale to the caller and stop with a typed **`BLOCKED: DESIGN_CONFLICT`** (Ralph mode: output `<promise>RETRY</promise>`). A re-approach is a human/worker decision, never an ad-hoc patch. Only `NEEDS_WORK` drives the loop below.
+**MAJOR_RETHINK is NOT a fix-loop input.** Every backend can emit `MAJOR_RETHINK` (a valid verdict tag), but it means the *design/approach* is wrong — not something to patch finding-by-finding. Do NOT enter the fix loop on it. Escalate immediately: surface the reviewer's rationale to the caller and stop with a typed **`BLOCKED: DESIGN_CONFLICT`**. A re-approach is a human/worker decision, never an ad-hoc patch. Only `NEEDS_WORK` drives the loop below.
 
 **MAX ITERATIONS (backend-agnostic — rp, codex, copilot, cursor, claude, host):**
 flowctl reserves a per-task round before every task-scoped dispatch. A delivered

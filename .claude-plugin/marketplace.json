@@ -5,13 +5,13 @@
     "url": "https://github.com/gmickel"
   },
   "metadata": {
-    "description": "Plan-first workflows for Claude Code and Factory Droid. Ships flow-next: zero-dep, spec-driven, Ralph autonomous mode.",
+    "description": "Plan-first workflows for Claude Code and Factory Droid. Ships flow-next: zero-dep, spec-driven, unattended flow --auto runs.",
     "version": "6.6.0"
   },
   "plugins": [
     {
       "name": "flow-next",
-      "description": "Zero-dependency, spec-driven agentic SDLC: durable specs, context-fit plans, re-anchored workers, adversarial cross-model review, and receipts. Includes 21 subagents, 27 commands, 33 skills.",
+      "description": "Zero-dependency, spec-driven agentic SDLC: durable specs, context-fit plans, re-anchored workers, adversarial cross-model review, and receipts. Includes 21 subagents, 26 commands, 32 skills.",
       "version": "6.6.0",
       "author": {
         "name": "Gordon Mickel",

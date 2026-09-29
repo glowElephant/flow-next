@@ -15,12 +15,10 @@
 # What gets installed (from pre-built codex/ directory):
 #   - Skills:    codex/skills/             → ~/.codex/skills/
 #   - Agents:    codex/agents/*.toml       → ~/.codex/agents/
-#   - Hooks:     none by default (fn-114). Ralph guard is opt-in via
-#                /flow-next:ralph-init → project .codex/hooks.json
+#   - Hooks:     none
 #   - Prompts:   commands/*.md             → ~/.codex/prompts/
 #   - CLI tools: flowctl, flowctl.py       → ~/.codex/scripts/
 #   - Scripts:   worktree.sh              → ~/.codex/scripts/  (from codex/skills/)
-#   - Templates: ralph-init templates      → ~/.codex/templates/
 #   - References: codex/references/*.md    → ~/.codex/references/
 #   - Docs:      codex/docs/flow-next/     → ~/.codex/docs/flow-next/ (owned namespace only)
 #   - Manifest:  .codex-plugin/plugin.json → ~/.codex/plugin.json
@@ -188,7 +186,7 @@ echo -e "${GREEN}✓${NC} $AGENT_COUNT agents"
 # Mirror ships no hooks.json (fn-114). Upgrade cleanup: a ~/.codex/hooks.json
 # from an OLDER flow-next install would keep the outdated guard firing globally
 # with [features] hooks=true set - remove it, but ONLY when it is verifiably
-# ours (flow-next/ralph-guard fingerprint); user-customized files are kept.
+# ours (flow-next / legacy ralph-guard fingerprint); user-customized files are kept.
 if [ -f "$CODEX_DIR/hooks.json" ] && grep -qE "ralph-guard|flow-next" "$CODEX_DIR/hooks.json" 2>/dev/null; then
     # Strip ONLY the fingerprinted flow-next entries; user-defined hooks in the
     # same file survive. Delete the file only when nothing else remains.
@@ -239,10 +237,10 @@ if isinstance(data, dict):
         path.write_text(json.dumps(data, indent=2) + "\n")
         print(f"stripped stale flow-next entries from {path} (your other hooks kept)")
 PYEOF
-    echo -e "${YELLOW}!${NC} pre-opt-in flow-next hook entries cleaned (re-run /flow-next:ralph-init in projects that use Ralph)"
+    echo -e "${YELLOW}!${NC} stale flow-next hook entries cleaned"
 fi
 if [ -f "$CODEX_SRC/hooks.json" ]; then
-    echo -e "${YELLOW}!${NC} codex/hooks.json present in source but not installed (Ralph is opt-in via ralph-init)"
+    echo -e "${YELLOW}!${NC} codex/hooks.json present in source but not installed (the plugin ships no hooks)"
 fi
 
 # ====================
@@ -287,17 +285,6 @@ echo -e "${GREEN}✓${NC} flowctl_tracker package verified → $CODEX_DIR/script
 if [ -f "$CODEX_DIR/bin/flowctl" ]; then
     rm -f "$CODEX_DIR/bin/flowctl" "$CODEX_DIR/bin/flowctl.py"
     echo -e "${YELLOW}→${NC} removed old $CODEX_DIR/bin/flowctl (moved to scripts/)"
-fi
-
-# ====================
-# Templates (ralph-init)
-# ====================
-if [ -d "$CODEX_SRC/skills/flow-next-ralph-init/templates" ]; then
-    rm -rf "$CODEX_DIR/templates/flow-next-ralph-init"
-    cp -r "$CODEX_SRC/skills/flow-next-ralph-init/templates" "$CODEX_DIR/templates/flow-next-ralph-init"
-    chmod +x "$CODEX_DIR/templates/flow-next-ralph-init/"*.sh 2>/dev/null || true
-    chmod +x "$CODEX_DIR/templates/flow-next-ralph-init/"*.py 2>/dev/null || true
-    echo -e "${GREEN}✓${NC} ralph-init templates"
 fi
 
 # ====================
@@ -390,7 +377,7 @@ python3 "$SCRIPT_DIR/merge_codex_config.py" "$CONFIG" "$CODEX_SRC/agents" \
     --max-threads "$CODEX_MAX_THREADS"
 
 echo -e "  ${GREEN}✓${NC} config.toml ($AGENT_COUNT agent entries, max_threads=$CODEX_MAX_THREADS)"
-echo -e "  ${GREEN}✓${NC} [features] hooks = true (feature flag only; no default Ralph hooks file)"
+echo -e "  ${GREEN}✓${NC} [features] hooks = true (feature flag only; no hooks file)"
 
 # ====================
 # Summary
@@ -399,7 +386,7 @@ echo
 echo -e "${GREEN}Done!${NC} $PLUGIN installed to $CODEX_DIR"
 echo "  $SKILL_COUNT skills, $AGENT_COUNT agents, $PROMPT_COUNT prompts"
 [ "$HAS_FLOWCTL" = true ] && echo "  flowctl: $CODEX_DIR/scripts/flowctl"
-echo "  hooks: none by default (ralph-init writes project .codex/hooks.json when opted in)"
+echo "  hooks: none"
 echo "  config: $CODEX_DIR/config.toml (merged, max_threads=$CODEX_MAX_THREADS)"
 echo
 echo -e "${YELLOW}Requires Codex CLI 0.102.0+${NC}"

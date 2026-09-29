@@ -5,7 +5,7 @@ sentinel (`READINESS_WARN=true`): the input resolved to an existing SPEC that is
 not marked ready, in a repo that has adopted readiness. Ready specs, task ids,
 freeform ideas (Route B), and non-adopting repos never reach this file.
 
-- **Non-interactive / Ralph / autonomous** (any non-interactive marker: `FLOW_RALPH=1`, `REVIEW_RECEIPT_PATH` set, `FLOW_AUTONOMOUS=1`, or the `mode:autonomous` token parsed in SKILL.md — treat the marker *family* as the gate, not a rigid two-var list): auto-proceed with one stderr line, never block:
+- **Non-interactive / autonomous** (any non-interactive marker: `FLOW_AUTONOMOUS=1`, or the `mode:autonomous` token parsed in SKILL.md — treat the marker *family* as the gate, not a rigid two-var list): auto-proceed with one stderr line, never block:
   ```bash
   echo "[READINESS]: spec <id> not marked ready — proceeding (non-interactive)" >&2
   ```

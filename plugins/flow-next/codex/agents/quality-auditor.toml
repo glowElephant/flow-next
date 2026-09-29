@@ -105,7 +105,6 @@ The following paths are flow-next / project-pipeline artifacts. Never recommend 
 - `.flow/memory/*` — learnings store
 - `.flow/specs/*.md`, `.flow/tasks/*.md` — decision artifacts
 - `docs/plans/*`, `docs/solutions/*` — plan/solution artifacts (if project uses them)
-- `scripts/ralph/*` — Ralph harness (when present)
 
 These files are intentionally committed. Flag content issues inside them if you see any, but never the files' existence.
 

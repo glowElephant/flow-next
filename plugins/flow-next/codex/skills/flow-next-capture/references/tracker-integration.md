@@ -73,7 +73,7 @@ if [ "$("$FLOWCTL" sync active --json | jq -r '.active')" = "true" ] \
   # --body-file FIRST line is `evidence=<sha256-of-current-spec-file>`; delete
   # the file after the call. No content travels in argv.
   # No reachable transport is best-effort; genuine body conflicts surface scoped
-  # (interactive) or queue (Ralph, though capture itself is Ralph-blocked).
+  # (interactive) or queue (autofix).
   :
 fi
 ```

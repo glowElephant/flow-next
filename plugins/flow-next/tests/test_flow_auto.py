@@ -45,10 +45,6 @@ DEPRECATION_LINE = (
 )
 PILOT_ARGUMENTS = ("--spec", "--backlog", "--dry-run", "--review", "--research", "--depth")
 CLASSIFY_POINTERS = ("route-matrix.md", "plan-vs-no-plan.md", "gate-selection.md")
-RALPH_REFUSAL_VERDICT = (
-    'PILOT_VERDICT=NEEDS_HUMAN spec=- stage=- reason="nested under Ralph harness '
-    '(FLOW_RALPH/REVIEW_RECEIPT_PATH set) — refuse to run"'
-)
 QA_AUTO_SKIP_TOKEN = "skipped(config: pipeline.qa=auto:"
 
 LOCAL_REF_MENTION_RE = re.compile(r"references/([A-Za-z0-9_.-]+\.md)")
@@ -181,14 +177,13 @@ class ZeroTaskRouteRecording(unittest.TestCase):
 
 
 class RefusalInversion(unittest.TestCase):
-    """(7) Attended flow refuses under every autonomy marker; `--auto` refuses
-    under Ralph only, because it sets FLOW_AUTONOMOUS for the stages it
-    dispatches."""
+    """(7) Attended flow refuses under every autonomy marker; `--auto` does
+    not, because it sets FLOW_AUTONOMOUS for the stages it dispatches."""
 
     def test_attended_skill_pins_the_line_and_the_marker_family(self) -> None:
         text = _read(FLOW_SKILL)
         self.assertIn("NEEDS_HUMAN:", text)
-        for marker in ("FLOW_RALPH", "FLOW_AUTONOMOUS", "REVIEW_RECEIPT_PATH", "mode:autonomous"):
+        for marker in ("FLOW_AUTONOMOUS", "AUTONOMOUS=1", "mode:autonomous"):
             with self.subTest(marker=marker):
                 self.assertIn(marker, text)
 
@@ -197,24 +192,21 @@ class RefusalInversion(unittest.TestCase):
 
     def test_auto_consumes_snapshot_guards(self) -> None:
         fence = self._hard_guard_fence()
-        self.assertIn('.guards.nested', fence)
         self.assertIn('.guards.dirty', fence)
-        self.assertIn(RALPH_REFUSAL_VERDICT, fence)
 
     @_POSIX_BASH
     @unittest.skipUnless(shutil.which("jq"), "requires jq")
     def test_snapshot_guard_consumer_stops_before_dispatch(self) -> None:
-        for nested, dirty, rc, expected in (
-            (True, [], 1, RALPH_REFUSAL_VERDICT),
-            (False, [' M code.py'], 0, 'dirty working tree at tick start'),
-            (False, [], 0, 'PASSED'),
+        for dirty, rc, expected in (
+            ([' M code.py'], 0, 'dirty working tree at tick start'),
+            ([], 0, 'PASSED'),
         ):
             result = subprocess.run(['bash', '-c', self._hard_guard_fence() + '\nprintf PASSED'],
-                                    env={**os.environ, 'PILOT_SNAPSHOT': json.dumps({'guards': {'nested': nested, 'dirty': dirty}})},
+                                    env={**os.environ, 'PILOT_SNAPSHOT': json.dumps({'guards': {'dirty': dirty}})},
                                     capture_output=True, text=True)
             self.assertEqual(result.returncode, rc)
             self.assertIn(expected, result.stdout)
-            if nested or dirty:
+            if dirty:
                 self.assertNotIn('PASSED', result.stdout)
 
 
@@ -234,7 +226,7 @@ class RefusalInversion(unittest.TestCase):
             self.assertNotIn("PASSED", missing.stdout)
             snap = Path(tmp) / ".flow" / "tmp" / "pilot-snapshot.json"
             snap.parent.mkdir(parents=True)
-            snap.write_text(json.dumps({"guards": {"nested": False, "dirty": []}}))
+            snap.write_text(json.dumps({"guards": {"dirty": []}}))
             present = subprocess.run(["bash", "-c", script], cwd=tmp, env=env,
                                      capture_output=True, text=True)
             self.assertEqual(present.returncode, 0, present.stderr)

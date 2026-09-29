@@ -29,18 +29,17 @@ done
 
 ---
 
-## Ralph-block (R8) — runs first, before everything else
+## Autonomy block (R8) — runs first, before everything else
 
 ```bash
-if [[ -n "${REVIEW_RECEIPT_PATH:-}" || "${FLOW_RALPH:-}" == "1" \
-   || "${FLOW_AUTONOMOUS:-}" == "1" || "${AUTONOMOUS:-}" == "1" \
+if [[ "${FLOW_AUTONOMOUS:-}" == "1" || "${AUTONOMOUS:-}" == "1" \
    || " ${ARGUMENTS:-} " == *" mode:autonomous "* ]]; then
-  echo "Error: /flow-next:prospect requires a user at the terminal; not compatible with Ralph mode (REVIEW_RECEIPT_PATH or FLOW_RALPH detected)." >&2
+  echo "Error: /flow-next:prospect requires a user at the terminal; not compatible with autonomous mode." >&2
   exit 2
 fi
 ```
 
-**No env-var opt-in.** Ralph cannot decide what a repo should build next — that's a human judgement call. Pattern matches impl-review `--interactive`. The block runs before `mkdir`, before any user prompt, before any scan; the artifact directory is not created and no question is surfaced.
+**No env-var opt-in.** An autonomous run cannot decide what a repo should build next — that's a human judgement call. The block runs before `mkdir`, before any user prompt, before any scan; the artifact directory is not created and no question is surfaced.
 
 ---
 

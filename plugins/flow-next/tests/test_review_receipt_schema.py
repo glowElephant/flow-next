@@ -1,8 +1,8 @@
 """Receipt schema stability tests (fn-32.4).
 
 Verifies that `--validate`, `--deep`, and `--interactive` each write exactly
-their own additive receipt block without mutating other blocks. Ralph's
-gate logic reads `verdict` / `mode` / `session_id` only, so new fields are
+their own additive receipt block without mutating other blocks. Receipt
+readers gate on `verdict` / `mode` / `session_id` only, so new fields are
 optional by contract.
 
 Run:
@@ -12,13 +12,12 @@ Covers fn-32.4 AC3-AC7:
   - AC3: default review (no flags) produces only base fields.
   - AC4: each flag alone writes exactly its own block.
   - AC5: combined flags accumulate without mutation.
-  - AC6: Ralph gate keys (`verdict`, `mode`, `session_id`) remain stable.
+  - AC6: gate keys (`verdict`, `mode`, `session_id`) remain stable.
   - AC7: edge cases — empty validator block, all-dropped upgrade path,
          deep SHIP → NEEDS_WORK upgrade, walkthrough never flips verdict.
 
 These tests exercise the in-process merge helpers directly rather than
-spawning the backend LLM — the backend-interactive paths are covered by
-the smoke suite (see `ralph_smoke_test.sh`).
+spawning the backend LLM.
 """
 
 from __future__ import annotations
@@ -113,7 +112,7 @@ class TestReceiptDefaultShape(unittest.TestCase):
             _seed_primary_receipt(rp, verdict="SHIP")
             receipt = json.loads(rp.read_text(encoding="utf-8"))
 
-            # Ralph gate keys present
+            # Gate keys present
             self.assertIn("verdict", receipt)
             self.assertIn("mode", receipt)
             self.assertIn("session_id", receipt)
@@ -511,7 +510,7 @@ class TestCombinedFlags(unittest.TestCase):
             self.assertIn("validator_timestamp", final)
             self.assertIn("walkthrough_timestamp", final)
 
-            # Base / Ralph gate keys untouched across composition.
+            # Base / gate keys untouched across composition.
             self.assertEqual(final["type"], "impl_review")
             self.assertEqual(final["id"], "fn-32.4")
             self.assertEqual(final["mode"], "codex")
@@ -557,13 +556,13 @@ class TestCombinedFlags(unittest.TestCase):
             self.assertIn("deep_passes", receipt)
 
 
-# --- AC6: Ralph gate reads verdict/mode/session_id across combos --------
+# --- AC6: receipt readers gate on verdict/mode/session_id across combos ---
 
 
-class TestRalphGateStability(unittest.TestCase):
-    """Existing Ralph scripts read these keys; all flag combos must keep them."""
+class TestGateKeyStability(unittest.TestCase):
+    """Receipt readers gate on these keys; all flag combos must keep them."""
 
-    RALPH_GATE_KEYS = ("verdict", "mode", "session_id")
+    GATE_KEYS = ("verdict", "mode", "session_id")
 
     def test_gate_keys_survive_every_combo(self) -> None:
         combos: list[tuple[bool, bool, bool]] = [
@@ -614,11 +613,11 @@ class TestRalphGateStability(unittest.TestCase):
                             flowctl.cmd_review_walkthrough_record(args)
 
                     receipt = json.loads(rp.read_text(encoding="utf-8"))
-                    for k in self.RALPH_GATE_KEYS:
+                    for k in self.GATE_KEYS:
                         self.assertIn(
                             k,
                             receipt,
-                            f"Ralph gate key {k!r} missing for combo "
+                            f"gate key {k!r} missing for combo "
                             f"validate={validate} deep={deep} interactive={interactive}",
                         )
                     self.assertEqual(receipt["mode"], "codex")
@@ -681,31 +680,24 @@ class TestSplitByMode(unittest.TestCase):
     """fn-113.4: autonomous keeps receipt math; interactive surfaces raw only."""
 
     def test_is_autonomous_context_uses_established_signals(self) -> None:
-        """Mode detection reuses FLOW_RALPH / REVIEW_RECEIPT_PATH / FLOW_AUTONOMOUS only."""
+        """Mode detection uses FLOW_AUTONOMOUS only."""
         base = {
             k: v
             for k, v in os.environ.items()
-            if k not in ("FLOW_RALPH", "REVIEW_RECEIPT_PATH", "FLOW_AUTONOMOUS")
+            if k not in ("REVIEW_RECEIPT_PATH", "FLOW_AUTONOMOUS")
         }
         with mock.patch.dict(os.environ, base, clear=True):
             self.assertFalse(flowctl._is_autonomous_context())
-        with mock.patch.dict(os.environ, {**base, "FLOW_RALPH": "1"}, clear=True):
-            self.assertTrue(flowctl._is_autonomous_context())
-        with mock.patch.dict(
-            os.environ, {**base, "REVIEW_RECEIPT_PATH": "/tmp/r.json"}, clear=True
-        ):
-            self.assertTrue(flowctl._is_autonomous_context())
         with mock.patch.dict(
             os.environ, {**base, "FLOW_AUTONOMOUS": "1"}, clear=True
         ):
             self.assertTrue(flowctl._is_autonomous_context())
-        # Empty REVIEW_RECEIPT_PATH is not a marker (bash -n semantics).
+        # A receipt-path override is not an autonomy marker.
         with mock.patch.dict(
-            os.environ, {**base, "REVIEW_RECEIPT_PATH": ""}, clear=True
+            os.environ, {**base, "REVIEW_RECEIPT_PATH": "/tmp/r.json"}, clear=True
         ):
             self.assertFalse(flowctl._is_autonomous_context())
-        # FLOW_RALPH=0 is not autonomous.
-        with mock.patch.dict(os.environ, {**base, "FLOW_RALPH": "0"}, clear=True):
+        with mock.patch.dict(os.environ, {**base, "FLOW_AUTONOMOUS": "0"}, clear=True):
             self.assertFalse(flowctl._is_autonomous_context())
 
     def test_autonomous_deep_receipt_byte_identical_to_fixture(self) -> None:
@@ -742,7 +734,7 @@ class TestSplitByMode(unittest.TestCase):
             )
 
     def test_autonomous_run_deep_pass_matches_apply_fixture(self) -> None:
-        """FLOW_RALPH=1: _run_deep_pass mutates receipt byte-identically to apply."""
+        """FLOW_AUTONOMOUS=1: _run_deep_pass mutates receipt byte-identically to apply."""
         with tempfile.TemporaryDirectory() as tmp:
             rp = Path(tmp) / "receipt.json"
             _seed_primary_receipt(rp, verdict="SHIP")
@@ -754,7 +746,7 @@ class TestSplitByMode(unittest.TestCase):
                 for k, v in os.environ.items()
                 if k not in ("FLOW_AUTONOMOUS", "REVIEW_RECEIPT_PATH")
             }
-            base_env["FLOW_RALPH"] = "1"
+            base_env["FLOW_AUTONOMOUS"] = "1"
             with mock.patch.dict(os.environ, base_env, clear=True):
                 with mock.patch.object(
                     flowctl, "_dispatch_session_pass", return_value="deep-output"
@@ -800,7 +792,7 @@ class TestSplitByMode(unittest.TestCase):
                 k: v
                 for k, v in os.environ.items()
                 if k
-                not in ("FLOW_RALPH", "REVIEW_RECEIPT_PATH", "FLOW_AUTONOMOUS")
+                not in ("REVIEW_RECEIPT_PATH", "FLOW_AUTONOMOUS")
             }
             with mock.patch.dict(os.environ, base, clear=True):
                 with mock.patch.object(
@@ -859,7 +851,7 @@ class TestSplitByMode(unittest.TestCase):
                 k: v
                 for k, v in os.environ.items()
                 if k
-                not in ("FLOW_RALPH", "REVIEW_RECEIPT_PATH", "FLOW_AUTONOMOUS")
+                not in ("REVIEW_RECEIPT_PATH", "FLOW_AUTONOMOUS")
             }
             with mock.patch.dict(os.environ, base, clear=True):
                 with mock.patch.object(
@@ -899,7 +891,7 @@ class TestSplitByMode(unittest.TestCase):
             base = {
                 k: v
                 for k, v in os.environ.items()
-                if k not in ("FLOW_RALPH", "REVIEW_RECEIPT_PATH")
+                if k != "REVIEW_RECEIPT_PATH"
             }
             base["FLOW_AUTONOMOUS"] = "1"
             with mock.patch.dict(os.environ, base, clear=True):
@@ -927,7 +919,7 @@ class TestSplitByMode(unittest.TestCase):
 
 class TestFanoutDrawsBlock(unittest.TestCase):
     """fn-215 R12: draws[] is ADDITIVE — appended after every existing optional
-    key when supplied, absent otherwise. Ralph's gate keys stay untouched."""
+    key when supplied, absent otherwise. The gate keys stay untouched."""
 
     def _payload(self, **kwargs) -> dict:
         return flowctl._backend_review_receipt_payload(
@@ -956,13 +948,13 @@ class TestFanoutDrawsBlock(unittest.TestCase):
         payload = self._payload(draws=draws)
         self.assertEqual(payload["draws"], draws)
         self.assertEqual(list(payload)[-1], "draws")
-        # Ralph gate keys (AC6) are unchanged by the additive block.
+        # Gate keys (AC6) are unchanged by the additive block.
         self.assertLessEqual(
             BASE_RECEIPT_KEYS - {"timestamp"}, set(payload)
         )
 
     def test_written_receipt_keeps_base_keys_beside_draws(self) -> None:
-        """On-disk fan-out receipt still carries Ralph's base keys plus draws[]."""
+        """On-disk fan-out receipt still carries the base keys plus draws[]."""
         with tempfile.TemporaryDirectory() as tmp:
             rp = Path(tmp) / "receipt.json"
             draws = [

@@ -1573,7 +1573,7 @@ class TestSupersededVerdictNeverSurfacesAsTerminal(TestNeedsHumanHandlerOrdering
 
     The late finalization correctly consumes nothing and writes no status, but
     the handler used to route its NEEDS_WORK/NEEDS_HUMAN out as a live terminal
-    — exit 4 / fix-loop — while durable state said ship, so pilot and Ralph
+    — exit 4 / fix-loop — while durable state said ship, so pilot
     acted on a pre-SHIP artifact. The late verdict must surface as SUPERSEDED
     evidence instead.
     """

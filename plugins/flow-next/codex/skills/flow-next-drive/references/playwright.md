@@ -15,11 +15,11 @@ Two ways an agent drives Playwright. They differ in token cost and statefulness:
 
 | | `@playwright/cli` (run as `playwright-cli`) | Playwright **MCP** |
 |---|---|---|
-| Best for | **Coding agents / autonomous + Ralph loops** | **Interactive, persistent agentic loops** |
+| Best for | **Coding agents / autonomous loops** | **Interactive, persistent agentic loops** |
 | Why | Token-efficient: **snapshot-to-disk** — each command writes a YAML snapshot to a file (e.g. `.playwright-cli/page-<ts>.yml`) instead of dumping a large accessibility tree into context | Persistent state + iterative reasoning over live page structure (exploratory / long-running) |
 | Cost | Avoids loading large tool schemas / verbose trees into the model context | Verbose tree in context each turn |
 
-For flow-next autonomous / Ralph passes, **prefer `@playwright/cli`** — the snapshot-to-disk shape keeps context small over a long unattended run. Use the MCP only for interactive, human-in-the-loop exploration.
+For flow-next autonomous passes, **prefer `@playwright/cli`** — the snapshot-to-disk shape keeps context small over a long unattended run. Use the MCP only for interactive, human-in-the-loop exploration.
 
 ## CLI quickstart (the autonomous default)
 

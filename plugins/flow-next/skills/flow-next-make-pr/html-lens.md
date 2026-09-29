@@ -97,7 +97,7 @@ claim.
    `` > **Render lens:** `.flow/artifacts/<spec-id>/pr.html` (v1 currentness preserved — open locally in a browser; regenerable) ``
    or `spec closed — open locally` / the existing `gitignored — open locally` variant (`.flow/artifacts/<spec-id>/pr.html` as bare inline code). `LINK_MODE` empty (`LENS_OK=false`) → no body line at all. Never emit a blob link that 404s.
 7. **No Lavish — ever.** The PR lens is a read-only review instrument (reference §5): make-pr never opens a `lavish-axi` session and never polls, **interactive AND autonomous alike** — review conversation belongs to the code host. There is no Lavish snippet in this skill by design; do not import one from capture §5.10 / plan Step 8.5.
-8. **Failure is non-fatal — mechanically.** The stage/commit path is already guarded by step 5's `LENS_OK` flag. Generation or checklist failure (steps 2-4, host-agent actions) takes the same route: do NOT run step 5's stage/commit at all — set `LENS_OK=false`, `LINK_MODE=""`, print ONE stderr note (`HTML render lens skipped: <reason>`), and proceed to Phase 2 — the PR is the product, the lens is an extra. Exactly one stderr note total per skipped lens. Under Ralph ALL artifact messaging routes to stderr — the `PR_URL=<url>` single-line stdout contract (§5.4) and every receipt are untouched.
+8. **Failure is non-fatal — mechanically.** The stage/commit path is already guarded by step 5's `LENS_OK` flag. Generation or checklist failure (steps 2-4, host-agent actions) takes the same route: do NOT run step 5's stage/commit at all — set `LENS_OK=false`, `LINK_MODE=""`, print ONE stderr note (`HTML render lens skipped: <reason>`), and proceed to Phase 2 — the PR is the product, the lens is an extra. Exactly one stderr note total per skipped lens.
 
 ## Done when
 
@@ -110,4 +110,4 @@ claim.
 - Every git step failure-guarded via `LENS_OK` — no unguarded `git add`/`git commit` that could abort the skill under `set -e`.
 - Render-lens body line recorded for §2.1 (or skipped — `LINK_MODE=""` — with one stderr note on failure).
 - NO `lavish-axi` session opened and NO poll — interactive AND autonomous alike (read-only review instrument; no Lavish snippet exists in this skill).
-- Failure path: generation / checklist / stage / commit failure ⇒ `LENS_OK=false`, body line skipped, exactly ONE stderr note (`HTML render lens skipped: <reason>`), phase exits cleanly into Phase 2 — PR creation proceeds. Ralph `PR_URL=<url>` stdout contract + receipts untouched.
+- Failure path: generation / checklist / stage / commit failure ⇒ `LENS_OK=false`, body line skipped, exactly ONE stderr note (`HTML render lens skipped: <reason>`), phase exits cleanly into Phase 2 — PR creation proceeds. Receipts untouched.

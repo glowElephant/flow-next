@@ -7,7 +7,7 @@
     "mode_hint": "work",
     "driver": "unattended",
     "unattended_signals": [
-      "FLOW_RALPH=1"
+      "FLOW_AUTONOMOUS=1"
     ],
     "chart_id": "fn-140",
     "decision_pin": null,

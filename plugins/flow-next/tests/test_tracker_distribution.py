@@ -110,11 +110,7 @@ class InstallerVerifier(unittest.TestCase):
                 self.assertIn("verify_tracker_manifest",
                               (REPO / rel).read_text(encoding="utf-8"))
         # fn-197: setup copies nothing into a repo, so it has no package to
-        # verify. ralph-init still stages its own copy and keeps the check.
-        for rel in ("plugins/flow-next/skills/flow-next-ralph-init/SKILL.md",):
-            with self.subTest(skill=rel):
-                self.assertIn("verify_tracker_manifest",
-                              (REPO / rel).read_text(encoding="utf-8"))
+        # verify.
 
 
 class RuntimeSmoke(unittest.TestCase):
@@ -152,7 +148,7 @@ class RuntimeSmoke(unittest.TestCase):
 
     def test_staged_layouts_import_the_package(self) -> None:
         """Every named-files runtime layout: flowctl.py + bootstrap + package
-        copied flat (the shape Codex installs, the Cursor installers, and ralph all
+        copied flat (the shape Codex installs and the Cursor installers
         produce), with and without the package - absence must FAIL loudly."""
         for with_package in (True, False):
             with self.subTest(with_package=with_package), \

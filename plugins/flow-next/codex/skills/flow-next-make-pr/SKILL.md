@@ -23,11 +23,10 @@ unknown flags and missing base values. Carry these values between prompt turns:
 | `--memory` | `WRITE_MEMORY=1`; default 0 |
 | `--dry-run` | `DRY_RUN=1`; default 0 |
 | `--update` | `UPDATE_MODE=1`; default 0; refresh an existing open PR |
-| `mode:autonomous` or `FLOW_AUTONOMOUS=1` | `AUTONOMOUS=1`; default 0; never sets `RALPH` |
+| `mode:autonomous` or `FLOW_AUTONOMOUS=1` | `AUTONOMOUS=1`; default 0 |
 
 Keep this skill inline so `plain-text numbered prompt` remains available. Resolve only missing information, one question
 at a time with a recommended option; use a numbered prompt if the tool is unavailable. `NEED_INPUT:` means ask
-outside Bash and rerun with the answer. Ralph/autonomous gaps hard-error instead. Ralph alone owns `PR_URL=`
-stdout and harness semantics. Draft rules live in create-and-finalize; a complete chained layer can be ready
+outside Bash and rerun with the answer. Autonomous gaps hard-error instead. Draft rules live in create-and-finalize; a complete chained layer can be ready
 under autonomy. Never merge here. Evidence, paths and requirement attribution must be grounded in the export
 and receipts, with unknowns explicit rather than invented.

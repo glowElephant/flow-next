@@ -103,8 +103,10 @@ PROMPT_HASHES = {
         "0cfb49bfadf0be45e5c8036950d34698b5ae3bbccf24a90564983e13d0a1192f",
     "PLAN_REVIEW_PROMPT_FALLBACK":
         "74379b64bf37793ecf65d77c3a539f086ac02f60bcefe5c0787c4d4dd0ad2fa2",
+    # 7.0: the removed external loop's scaffold path leaves the protected-path
+    # list (deliberate bump).
     "PROTECTED_ARTIFACTS_BLOCK":
-        "e9b68af0cf36f6b2cb1b70c9bcc5ff67ccb86295f369d02ffcec4f25fd6f2d5e",
+        "c8459db40ec51be18a9e92364d876b77869558870558061607d41744b43a8797",
     "REVIEW_JSON_TALLY_BLOCK":
         "01b6b78ce0515285db7d7c20ae6ad1a04b6619f4fa429c1a4189375392cedf3c",
     "R_ID_COVERAGE_BLOCK":
@@ -160,8 +162,8 @@ NOT_PROMPT_TEXT = {
     "VALIDATOR_TEMPLATE_REL",
     "DEEP_PASSES_TEMPLATE_REL",
     # fn-159.3: a machine terminal marker (one string, two emit sites), not
-    # prompt text. No agent is instructed by it; hosts and ralph.sh match on
-    # it, and those matchers are covered by their own tests.
+    # prompt text. No agent is instructed by it; hosts match on it, and those
+    # matchers are covered by their own tests.
     "NEEDS_HUMAN_ESCALATION_MARKER",
 }
 
@@ -210,18 +212,6 @@ TEMPLATE_HASHES = {
         "74379b64bf37793ecf65d77c3a539f086ac02f60bcefe5c0787c4d4dd0ad2fa2",
     "plugins/flow-next/skills/flow-next-spec-completion-review/references/completion-review-prompt.md":
         "a4b3105a7a8a3a56ba21d035d89dfc5cc62a496f4e1317b00fa89b01e197aafc",
-    # Rendered by ralph.sh each autonomous loop - production prompts, and the
-    # ones an unattended run depends on most. fn-159.6 clarifies that a review
-    # call's tag set differs from the step's return set: NEEDS_WORK loops
-    # in-step, while only terminal tags return control to Ralph. fn-258 R6:
-    # the rendered prompts name skill ids (`flow-next:flow-next-<name>`), since
-    # command shims are no longer model-invocable (deliberate bump).
-    "plugins/flow-next/skills/flow-next-ralph-init/templates/prompt_plan.md":
-        "cfc128637d0a0993221d595943f693b4dc47789ed148eb9a3ddf3a587450d61e",
-    "plugins/flow-next/skills/flow-next-ralph-init/templates/prompt_work.md":
-        "e77215dfc42a1c04e0e72d94d2a273b8080b4a12d61e7ce81cd049fda5c4faa7",
-    "plugins/flow-next/skills/flow-next-ralph-init/templates/prompt_completion.md":
-        "d3117e907e3b28d1cca2a10c94c5c8b0311a55d829cd081c42350e0e0a1f71f6",
 }
 
 

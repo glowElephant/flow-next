@@ -1400,9 +1400,8 @@ def get_default_config() -> dict:
         # fn-168 R7 — `maxIterations` is the review-round cap's persistent rung
         # (env MAX_REVIEW_ITERATIONS still wins). Defaulted here, like the
         # land.* block, so `config get review.maxIterations` answers 8
-        # rather than null on a fresh repo. Raising it is a HUMAN act: ralph-guard
-        # blocks the `config set`, a file-tool write to .flow/config.json, and the
-        # env assignment, so an autonomous agent cannot extend its own gate.
+        # rather than null on a fresh repo. In an autonomous run the config rung
+        # may only lower the cap, so an autonomous agent cannot extend its own gate.
         "review": {"backend": None, "maxIterations": DEFAULT_MAX_REVIEW_ITERATIONS},
         "scouts": {"github": False},
         "tracker": get_default_tracker_config(),
@@ -3163,7 +3162,7 @@ def cmd_setup_status(args: argparse.Namespace) -> None:
     answers = setup.get("optional_answers", {}) if isinstance(setup, dict) else {}
     answers = answers if isinstance(answers, dict) else {}
     answers = {key: value for key, value in answers.items()
-               if key in {"spec", "leftovers", "docs", "criteria", "ralph", "star"}
+               if key in {"spec", "leftovers", "docs", "criteria", "star"}
                and isinstance(value, str)}
     platform = getattr(args, "platform", "claude-code")
     manifests = {
@@ -4340,7 +4339,7 @@ def resolve_codex_sandbox(sandbox: str) -> str:
             )
         return sandbox
 
-    # Check CODEX_SANDBOX env var (Ralph config) when CLI is 'auto' or not specified
+    # Check CODEX_SANDBOX env var when CLI is 'auto' or not specified
     env_sandbox = os.environ.get("CODEX_SANDBOX", "").strip()
     if env_sandbox:
         if env_sandbox not in CODEX_SANDBOX_MODES:
@@ -9240,13 +9239,13 @@ remain accepted as a logged fallback when this block is omitted."""
 #
 # Safety rail: external reviewers (codex/copilot on unfamiliar projects) routinely
 # look at committed `.flow/*` JSONs/specs and naturally suggest "why are these
-# committed?" Ralph in autofix mode could then apply that finding and destroy its
+# committed?" An autofix run could then apply that finding and destroy its
 # own state. This block is injected alongside the confidence + classification
 # rubrics so every review backend (rp, codex, copilot) honors the same hard list.
 # Keep synchronized with the three workflow.md files + quality-auditor.md.
 
 PROTECTED_ARTIFACTS_BLOCK = """## Protected artifacts
-NEVER recommend deleting / gitignoring / removing these committed pipeline paths (flag bad CONTENT inside them, never their existence): `.flow/*`, `.flow/bin/*`, `.flow/memory/*`, `.flow/specs/*.md`, `.flow/tasks/*.md`, `docs/plans/*`, `docs/solutions/*`, `scripts/ralph/*`. Discard any such finding during synthesis; emit a `Protected-path filter:` count when any dropped."""
+NEVER recommend deleting / gitignoring / removing these committed pipeline paths (flag bad CONTENT inside them, never their existence): `.flow/*`, `.flow/bin/*`, `.flow/memory/*`, `.flow/specs/*.md`, `.flow/tasks/*.md`, `docs/plans/*`, `docs/solutions/*`. Discard any such finding during synthesis; emit a `Protected-path filter:` count when any dropped."""
 
 
 # --- Per-R-ID requirements coverage (fn-29.2) ---
@@ -10037,7 +10036,7 @@ def get_review_exec_timeout() -> int:
     ``FLOW_REVIEW_EXEC_TIMEOUT`` overrides; a present-but-invalid value falls back
     to the default rather than being treated as absent, so a typo cannot silently
     remove the bound. Unlike the review-round cap this is not a cost gate — it is a
-    liveness bound — so it is deliberately NOT ralph-guarded: an autonomous loop
+    liveness bound — an autonomous loop
     raising it cannot review more, only wait longer for the one review it already
     reserved.
     """
@@ -10070,9 +10069,9 @@ def get_max_review_iterations() -> int:
     PRESENT-but-invalid one stops at the default rather than handing control to
     the value the caller was trying to override. An invalid config value also
     falls back to the default. The cap can never be disabled or made zero (that
-    would reopen the runaway). Raising it is a human act: ralph-guard blocks the
-    config write, the config file, and the env assignment (fn-159's invariant is
-    that the implementing agent can never reset or extend its own gate).
+    would reopen the runaway). In an autonomous run the config rung may only
+    lower the cap (fn-159's invariant is that the implementing agent can never
+    reset or extend its own gate).
 
     Raised 4 -> 8 as an interim measure. The cap counts *dispatches*, which
     cannot distinguish a loop that is genuinely stuck from one converging in
@@ -10158,9 +10157,7 @@ def _max_review_iterations_from_config() -> Optional[int]:
         # LOWER the cap, never raise it — whatever wrote the file, and however it
         # was written.
         #
-        # ralph-guard screens the routes it can see (the `config set` verb, the
-        # config path, the env assignment), but a shell command's effective
-        # destination is not decidable from its text: `cd .flow && … > config.json`
+        # A shell command's effective destination is not decidable from its text: `cd .flow && … > config.json`
         # writes the protected file while naming neither the path nor the verb, and
         # the next spelling is always `pushd`, a variable, or a script. Five rounds
         # of that on this PR is the evidence. So the invariant lives HERE, where it
@@ -10178,7 +10175,7 @@ def _max_review_iterations_from_config() -> Optional[int]:
 
 # Exit code the review commands use when the deterministic cap is hit. Distinct
 # from transport/backend failure codes (2 = exec failure, 3 = sandbox) so hosts
-# and Ralph can't misread the refusal as a retryable error.
+# can't misread the refusal as a retryable error.
 REVIEW_CAP_EXIT_CODE = 4
 # Terminal marker for a reviewer-requested human escalation. Shares the cap's
 # exit code; hosts key off this string in prose mode and off `escalate` in JSON.
@@ -11845,8 +11842,8 @@ def apply_superseded_review_outcome(
 
     PR #290 bot r8: when a concurrent SHIP superseded the reservation, the
     finalization consumed nothing and wrote no status - but the handler still
-    routed the late NEEDS_WORK/NEEDS_HUMAN out as a live terminal, so pilot and
-    Ralph acted on a pre-SHIP artifact while durable state said ship. The
+    routed the late NEEDS_WORK/NEEDS_HUMAN out as a live terminal, so pilot
+    acted on a pre-SHIP artifact while durable state said ship. The
     verdict stays in the payload as evidence; ``superseded`` plus
     ``effective_status`` say what the caller must actually act on, and the
     NEEDS_HUMAN escalation/exit-4 tail is skipped by the caller.
@@ -20063,89 +20060,6 @@ def find_dependents(task_id: str, same_epic: bool = False) -> list[str]:
     return sorted(found)
 
 
-# --- Ralph status soft-probe (fn-114 PLAN DECISION 2026-07-21) ---
-# Control (pause/resume/stop/status) lives in scripts/ralph/ralphctl.py after
-# ralph-init. flowctl status only soft-probes scripts/ralph/runs/ when present:
-# tolerant dir/progress read, no import of ralphctl, zero cost when absent.
-
-
-def soft_probe_active_runs() -> list[dict]:
-    """Tolerant scan of scripts/ralph/runs/ for ``flowctl status`` display.
-
-    Returns [] immediately when the directory is absent (Ralph not installed;
-    zero cost). When present, parses progress.txt key=value contract lines the
-    same way as ralphctl (completion_reason= + promise=COMPLETE). Does not
-    import ralphctl.
-    """
-    repo_root = get_repo_root()
-    runs_dir = repo_root / "scripts" / "ralph" / "runs"
-    active_runs: list[dict] = []
-
-    if not runs_dir.exists():
-        return active_runs
-
-    for run_dir in runs_dir.iterdir():
-        if not run_dir.is_dir():
-            continue
-        progress_file = run_dir / "progress.txt"
-        if not progress_file.exists():
-            continue
-
-        try:
-            content = progress_file.read_text(encoding="utf-8", errors="replace")
-        except OSError:
-            continue
-
-        # key=value contract (last assignment wins); ignore non-kv lines
-        kv: dict = {}
-        for raw in content.splitlines():
-            line = raw.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            key, _, val = line.partition("=")
-            key = key.strip()
-            if not key or any(c.isspace() for c in key):
-                continue
-            if not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", key):
-                continue
-            kv[key] = val.strip()
-
-        # Terminal marker pair (matches ralphctl.parse_progress_kv)
-        if "completion_reason" in kv and kv.get("promise") == "COMPLETE":
-            continue
-
-        run_info = {
-            "id": run_dir.name,
-            "path": str(run_dir),
-            "iteration": None,
-            "current_epic": None,
-            "current_task": None,
-            "paused": (run_dir / "PAUSE").exists(),
-            "stopped": (run_dir / "STOP").exists(),
-        }
-
-        raw_iter = kv.get("iteration", "")
-        if isinstance(raw_iter, str) and raw_iter.isdigit():
-            run_info["iteration"] = int(raw_iter)
-
-        epic = kv.get("spec") or kv.get("epic") or ""
-        if epic:
-            run_info["current_epic"] = epic
-
-        task = kv.get("task") or ""
-        if task:
-            run_info["current_task"] = task
-
-        active_runs.append(run_info)
-
-    return active_runs
-
-
-def _ralph_runs_dir_present() -> bool:
-    """True when scripts/ralph/runs/ exists (Ralph scaffold installed)."""
-    return (get_repo_root() / "scripts" / "ralph" / "runs").is_dir()
-
-
 # --- Commands ---
 
 
@@ -20175,7 +20089,7 @@ FLOW_GITIGNORE_AUTO_PATTERNS = [
     "locks/",
     # fn-68 pilot backlog-mode decision-log rows (per-tick triage/advance/ask
     # proof-of-work; accumulate per pilot tick, same runtime-artifact class as
-    # sync-runs/ — deliberately NOT a receipts/ path the ralph-guard validates)
+    # sync-runs/ — deliberately NOT a receipts/ path)
     "pilot-runs/",
     # fn-76 model-resolution cache (.flow/.cache/): a memoized
     # ladder result, a runtime artifact keyed on the local CLI version — never
@@ -20561,7 +20475,7 @@ def cmd_detect(args: argparse.Namespace) -> None:
 
 
 def cmd_status(args: argparse.Namespace) -> None:
-    """Show .flow state; soft-probe active Ralph runs when scaffold present."""
+    """Show .flow state."""
     flow_dir = get_flow_dir()
     flow_exists = flow_dir.exists()
 
@@ -20590,10 +20504,6 @@ def cmd_status(args: argparse.Namespace) -> None:
             if status in task_counts:
                 task_counts[status] += 1
 
-    # Soft-probe: only scan when scripts/ralph/runs/ exists (fn-114).
-    runs_present = _ralph_runs_dir_present()
-    active_runs = soft_probe_active_runs() if runs_present else []
-
     if args.json:
         json_output(
             {
@@ -20601,17 +20511,6 @@ def cmd_status(args: argparse.Namespace) -> None:
                 "flow_exists": flow_exists,
                 "specs": epic_counts,
                 "tasks": task_counts,
-                "runs": [
-                    {
-                        "id": r["id"],
-                        "iteration": r["iteration"],
-                        "current_spec": r["current_epic"],
-                        "current_task": r["current_task"],
-                        "paused": r["paused"],
-                        "stopped": r["stopped"],
-                    }
-                    for r in active_runs
-                ],
             }
         )
     else:
@@ -20623,31 +20522,6 @@ def cmd_status(args: argparse.Namespace) -> None:
                 f"Tasks: {task_counts['todo']} todo, {task_counts['in_progress']} in_progress, "
                 f"{task_counts['done']} done, {task_counts['blocked']} blocked"
             )
-
-        # Active-runs section only when Ralph scaffold is present.
-        if runs_present:
-            print()
-            if active_runs:
-                print("Active runs:")
-                for r in active_runs:
-                    state = []
-                    if r["paused"]:
-                        state.append("PAUSED")
-                    if r["stopped"]:
-                        state.append("STOPPED")
-                    state_str = f" [{', '.join(state)}]" if state else ""
-                    task_info = ""
-                    if r["current_task"]:
-                        task_info = f", working on {r['current_task']}"
-                    elif r["current_epic"]:
-                        task_info = f", epic {r['current_epic']}"
-                    iter_info = (
-                        f"iteration {r['iteration']}" if r["iteration"] else "starting"
-                    )
-                    print(f"  {r['id']} ({iter_info}{task_info}){state_str}")
-            else:
-                print("No active runs")
-
 
 
 def cmd_config_get(args: argparse.Namespace) -> None:
@@ -20835,7 +20709,7 @@ def cmd_review_backend(args: argparse.Namespace) -> None:
 
     Accepts spec-form values (``codex:gpt-5.4:high``) from ``FLOW_REVIEW_BACKEND``
     and ``.flow/config.json`` ``review.backend``. JSON mode returns the full
-    resolved spec plus model + effort fields so skills / Ralph can route model
+    resolved spec plus model + effort fields so skills can route model
     choice. Text mode still prints just the bare backend name for back-compat
     with skill greps (``BACKEND=$(flowctl review-backend)``).
     """
@@ -26433,7 +26307,7 @@ def cmd_qa_receipt(args: argparse.Namespace) -> None:
         for i, row in enumerate(coverage.get("rids", [])):
             if not isinstance(row, dict) or not isinstance(row.get("id"), str) or row.get("coverage") not in ("live", "subtracted", "no_live_scenario", "backend_cli"):
                 errors.append(f"rid_coverage.rids[{i}]: invalid id or coverage")
-    mode = data.get("mode") or ("ralph" if os.environ.get("REVIEW_RECEIPT_PATH") else "rp" if args.receipt else "interactive")
+    mode = data.get("mode") or ("rp" if args.receipt or os.environ.get("REVIEW_RECEIPT_PATH") else "interactive")
     if not isinstance(mode, str):
         errors.append("mode: expected a string")
     _artifact_errors(errors, args)
@@ -32475,8 +32349,7 @@ def cmd_review_rounds_reset(args: argparse.Namespace) -> None:
     """Human-only recovery reset for the deterministic review-round counter.
 
     SHIP resets are system-owned inside ``review-rounds record`` (fn-159 R9) —
-    no workflow calls this verb anymore, and ralph-guard blocks it for
-    autonomous agents. It remains the manual recovery tool for a human
+    no workflow calls this verb anymore. It remains the manual recovery tool for a human
     unsticking a capped or stalled loop; it advances the hash epoch alongside
     the counter. For a re-plan reset use
     ``flowctl spec reset-review-rounds`` instead.
@@ -40231,7 +40104,7 @@ def parse_validator_output(output: str, findings: list[dict]) -> dict:
 
 
 # fn-113.4: deep-pass/validator judgment math is mode-split.
-# Autonomous (FLOW_RALPH / REVIEW_RECEIPT_PATH / FLOW_AUTONOMOUS) keeps the
+# Autonomous (FLOW_AUTONOMOUS) keeps the
 # deterministic receipt path; interactive surfaces raw findings for the host.
 HOST_JUDGES_NOTE = (
     "Interactive mode: raw findings only; host judges merge/promotion "
@@ -40240,20 +40113,12 @@ HOST_JUDGES_NOTE = (
 
 
 def _is_autonomous_context() -> bool:
-    """True when Ralph / pilot / receipt harness owns the run.
+    """True when an autonomous driver (``flow --auto``) owns the run.
 
-    Reuses the established autonomy-marker family exactly (same three signals
-    make-pr / pilot / setup honor for non-interactive):
-      - FLOW_RALPH == "1"
-      - REVIEW_RECEIPT_PATH is non-empty
-      - FLOW_AUTONOMOUS == "1"
-    Interactive impl-review has none of these set. Do not invent new signals.
+    ``FLOW_AUTONOMOUS == "1"`` is the one environment signal; interactive
+    impl-review does not set it. Do not invent new signals.
     """
-    return (
-        os.environ.get("FLOW_RALPH") == "1"
-        or bool(os.environ.get("REVIEW_RECEIPT_PATH"))
-        or os.environ.get("FLOW_AUTONOMOUS") == "1"
-    )
+    return os.environ.get("FLOW_AUTONOMOUS") == "1"
 
 
 def _apply_validator_to_receipt(
@@ -41619,19 +41484,13 @@ def cmd_deep_auto_enable(args: argparse.Namespace) -> None:
 DEFER_SINK_DIR_REL = ".flow/review-deferred"
 
 # fn-52.1 (R12): sync receipts live in their OWN directory, deliberately NOT
-# under any path matching `receipts/` and NOT pointed to by REVIEW_RECEIPT_PATH.
-# The review-receipt guard (`hooks/ralph-guard.py`) only validates the file in
-# REVIEW_RECEIPT_PATH (verdict enum SHIP/NEEDS_WORK/MAJOR_RETHINK/NEEDS_HUMAN) and pattern-
-# matches shell writes to `…receipts/…json`; a sync receipt with `type: "sync"`
-# and a status enum here is never seen by that validator, so it can't be rejected.
+# under any path matching `receipts/`, so review-receipt readers never see a
+# `type: "sync"` row.
 SYNC_RUNS_DIR_REL = ".flow/sync-runs"
 
 # fn-68.1 (R8): pilot backlog-mode decision-log rows live in their OWN
-# directory, deliberately NOT under any `receipts/` path and NOT pointed to by
-# REVIEW_RECEIPT_PATH — same guard-safe placement rationale as SYNC_RUNS_DIR_REL
-# above. The ralph-guard only validates the REVIEW_RECEIPT_PATH file and
-# pattern-matches shell writes to `…receipts/…json`; a pilot-log row here is
-# never seen by that validator, so an autonomous pilot run can append freely.
+# directory, deliberately NOT under any `receipts/` path — same placement
+# rationale as SYNC_RUNS_DIR_REL above.
 PILOT_RUNS_DIR_REL = ".flow/pilot-runs"
 
 # fn-68.1 (finding #8): FROZEN action enum for the decision-log. The host
@@ -42028,7 +41887,7 @@ def _review_walkthrough_record_write(args, path: Path, receipt: dict) -> None:
 #
 # Deterministic flowctl helpers ONLY: config activation, per-spec sync state
 # setters/getters, enumerate-only list helpers, the sync receipt, and the
-# Ralph-safe deferral path. No tracker API calls — the SKILL (later tasks)
+# autonomy-safe deferral path. No tracker API calls — the SKILL (later tasks)
 # performs the actual fetch / merge / reconcile and CALLS these helpers.
 
 
@@ -43489,8 +43348,8 @@ def cmd_sync_receipt(args: argparse.Namespace) -> None:
 
     `type: "sync"` + a status enum {pushed,pulled,merged,updated,diverged,
     queued,errored,noop}; records each body merge for rollback. Written to
-    `.flow/sync-runs/` (NOT a `receipts/` path, NOT REVIEW_RECEIPT_PATH) so the
-    review-receipt guard never inspects it.
+    `.flow/sync-runs/` (NOT a `receipts/` path) so review-receipt readers never
+    inspect it.
     """
     if not ensure_flow_exists():
         error_exit(".flow/ does not exist. Run 'flowctl init' first.", use_json=args.json)
@@ -43563,8 +43422,7 @@ def cmd_pilot_log_append(args: argparse.Namespace) -> None:
     """Append one pilot backlog-mode decision-log row (fn-68.1, R8).
 
     Writes a `{tick, id, action, stage, costTokens}` row under
-    `.flow/pilot-runs/` — a guard-safe path (NOT any `receipts/` path the
-    ralph-guard validates). PURE STORAGE: flowctl validates the frozen action
+    `.flow/pilot-runs/` (NOT any `receipts/` path). PURE STORAGE: flowctl validates the frozen action
     enum and stores the host-reported fields; it applies NO judgment.
 
     `--id` is an OPAQUE id (a flow spec id OR a bare tracker key for
@@ -43837,8 +43695,7 @@ def pilot_snapshot(spec_arg: str | None = None) -> dict:
     current = subprocess.run(["git", "branch", "--show-current"], cwd=repo,
                              capture_output=True, text=True, check=True).stdout.strip()
     current_prs = [row for row in rows or [] if row["headRefName"] == current]
-    return {"guards": {"nested": bool(os.environ.get("FLOW_RALPH") or os.environ.get("REVIEW_RECEIPT_PATH")),
-                       "dirty": dirty}, "config": config, "actor": actor, "strikes": strikes,
+    return {"guards": {"dirty": dirty}, "config": config, "actor": actor, "strikes": strikes,
             "counts": {"total": len(specs), "open": sum(s["status"] == "open" for s in specs),
                        "ready": sum(s.get("ready") is True for s in specs)},
             "candidates": result, "selected": selected, "review_backend": selected["review_backend"] if selected else None,
@@ -44094,7 +43951,7 @@ def _cmd_pilot_strikes_clear_locked(args: argparse.Namespace) -> None:
 def cmd_sync_defer(args: argparse.Namespace) -> None:
     """Queue a genuine sync conflict to the deferred-decisions sink (R11).
 
-    NEVER blocks. In autonomous/Ralph mode, an `always-ask` tiebreak resolves
+    NEVER blocks. In autonomous mode, an `always-ask` tiebreak resolves
     to *queue* (this), not prompt — same policy, surface-dependent delivery.
     Reuses the review deferred-findings sink so conflicts land where the human
     already looks for deferred work.
@@ -44895,21 +44752,6 @@ def _claude_run_exec(
     )
 
 
-def stamp_ralph_iteration(receipt: dict) -> None:
-    """Stamp ``iteration`` from ``RALPH_ITERATION`` when set and parseable.
-
-    Shared by every review/triage receipt writer. Behavior identical to the
-    prior inline copies: non-int env values are ignored; missing env is a no-op.
-    """
-    ralph_iter = os.environ.get("RALPH_ITERATION")
-    if not ralph_iter:
-        return
-    try:
-        receipt["iteration"] = int(ralph_iter)
-    except ValueError:
-        pass
-
-
 def _completion_review_receipt_recovery_path(review_id: str) -> Path:
     return (
         get_flow_dir()
@@ -45111,7 +44953,6 @@ def _backend_review_receipt_payload(
                     and isinstance(latest.get("timestamp"), str)
                 ):
                     receipt_data["attempt_timestamp"] = latest["timestamp"]
-    stamp_ralph_iteration(receipt_data)
     if focus:
         receipt_data["focus"] = focus
     if suppressed_count:
@@ -45224,7 +45065,7 @@ def _write_backend_review_receipt(
     extra_fields: Optional[dict] = None,
     precondition=None,
 ) -> bool:
-    """Write a review receipt with stable key order (Ralph / pilot / land).
+    """Write a review receipt with stable key order (pilot / land).
 
     ``precondition`` (codex r49) is a zero-arg callable evaluated INSIDE the
     publication lock, after the current file state is observable and before
@@ -50569,7 +50410,6 @@ def cmd_triage_skip(args: argparse.Namespace) -> None:
         }
         if model_used:
             receipt_data["model"] = model_used
-        stamp_ralph_iteration(receipt_data)
         try:
             Path(args.receipt).parent.mkdir(parents=True, exist_ok=True)
             receipt_path = Path(args.receipt)
@@ -55612,7 +55452,7 @@ def main() -> None:
     p_detect.set_defaults(func=cmd_detect)
 
     # status
-    p_status = subparsers.add_parser("status", help="Show .flow state and active runs")
+    p_status = subparsers.add_parser("status", help="Show .flow state")
     p_status.add_argument("--json", action="store_true", help="JSON output")
     p_status.set_defaults(func=cmd_status)
 

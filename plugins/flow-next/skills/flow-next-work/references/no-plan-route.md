@@ -20,9 +20,8 @@ A run that asked under a clean `NO_PLAN=1` has broken this.
 
 ## Autonomous refusal
 
-Under ANY autonomy marker (`FLOW_RALPH`, `FLOW_AUTONOMOUS`, `AUTONOMOUS=1` /
-`mode:autonomous`, `REVIEW_RECEIPT_PATH` — scan the marker family/namespace, never a
-fixed two-var list) WITHOUT an explicit no-plan instruction, stop with the typed
+Under ANY autonomy marker (`FLOW_AUTONOMOUS`, `AUTONOMOUS=1` /
+`mode:autonomous` — scan the marker family/namespace, never a fixed two-var list) WITHOUT an explicit no-plan instruction, stop with the typed
 report: `NEEDS_HUMAN: spec has no tasks - choose /flow-next:work <spec-id> --no-plan or /flow-next:plan <spec-id>`.
 Never ask, never fall through. An explicit no-plan instruction — the flag or stated
 intent in the dispatching invocation, or the spec's own `no_plan: true` field (an explicit human write, or the route `flow --auto` records before dispatch, which is how its classification routes here) — is the

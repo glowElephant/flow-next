@@ -39,7 +39,7 @@ subagent prompt — it has the same repository you do.
 
 **If no cross-family pin is available:**
 - **Interactive:** ask the user explicitly (plain-text numbered prompt) which reviewer model/family to use — do not silently self-review
-- **Autonomous** (`mode:autonomous` / `FLOW_AUTONOMOUS=1` / Ralph / `REVIEW_RECEIPT_PATH` set): stop with `NEEDS_HUMAN: host review needs a cross-family model pin in AGENTS.md model-routing` — never same-family self-review
+- **Autonomous** (`mode:autonomous` / `FLOW_AUTONOMOUS=1`): stop with `NEEDS_HUMAN: host review needs a cross-family model pin in AGENTS.md model-routing` — never same-family self-review
 
 ## Step 2: Dispatch read-only reviewer subagents
 

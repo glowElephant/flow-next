@@ -2,9 +2,8 @@
 # fn-33-flow-nextprospect-upstream-of-plan-idea.6
 # Smoke tests for /flow-next:prospect skill + flowctl prospect subcommands.
 #
-# Covers the 11 cases enumerated in the task spec:
+# Covers the cases enumerated in the task spec (original numbering kept):
 #   1. Skeleton + slash command registered
-#   2. Ralph-block (FLOW_RALPH=1 and REVIEW_RECEIPT_PATH)
 #   3. Phase 0 resume / artifact classification via helpers (active / stale / corrupt)
 #   4. Artifact writer (collision suffix + atomic + roundtrip)
 #   5. Graceful degradation (no git / no epics / no CHANGELOG)
@@ -13,7 +12,6 @@
 #   8. Promote errors (out-of-range / 0 / non-int / corrupt)
 #   9. archive (list/read CLI removed fn-111)
 #  10. Numbered-options fallback frozen format (R19)
-#  11. Ralph regression sweep (ralph_smoke_test.sh still green)
 #
 # Pure shell + Python harness — no LLM invocations. Targets <60s runtime.
 # Pattern follows impl-review_smoke_test.sh (fn-32.5) and resolve-pr_smoke_test.sh (fn-31.6).
@@ -241,51 +239,6 @@ if [[ -f "$SKILL_FILE" ]]; then
   assert_grep "AskUserQuestion" "$fm_block" "Case 1: SKILL.md allowed-tools includes AskUserQuestion"
   assert_grep_re '^name:[[:space:]]*flow-next-prospect' "$fm_block" "Case 1: SKILL.md name == flow-next-prospect"
 fi
-
-# =============================================================================
-# CASE 2: Ralph-block (R8) — FLOW_RALPH=1 / REVIEW_RECEIPT_PATH must exit 2
-# =============================================================================
-echo -e "${YELLOW}--- Case 2: Ralph-block (R8) ---${NC}"
-
-# Reproduce the SKILL.md guard verbatim. Ralph never decides direction — no
-# env-var opt-in. Spec: hard-error with exit 2 when either var present.
-RALPH_GUARD="$TEST_DIR/ralph_guard.sh"
-cat > "$RALPH_GUARD" <<'BASH'
-#!/usr/bin/env bash
-set -e
-if [[ -n "${REVIEW_RECEIPT_PATH:-}" || "${FLOW_RALPH:-}" == "1" ]]; then
-  echo "Error: /flow-next:prospect requires a user at the terminal; not compatible with Ralph mode (REVIEW_RECEIPT_PATH or FLOW_RALPH detected)." >&2
-  exit 2
-fi
-exit 0
-BASH
-chmod +x "$RALPH_GUARD"
-
-# Sanity: exact bytes from the SKILL.md must appear in the source so Ralph
-# can never silently decide direction. Pattern grep keeps the smoke
-# independent of small markdown reflows.
-if grep -q 'REVIEW_RECEIPT_PATH' "$SKILL_FILE" && grep -q 'FLOW_RALPH' "$SKILL_FILE" && grep -q 'exit 2' "$SKILL_FILE"; then
-  ok "Case 2: SKILL.md ships Ralph-block with exit 2 + both env-var checks"
-else
-  fail "Case 2: SKILL.md missing FLOW_RALPH/REVIEW_RECEIPT_PATH/exit 2 guard"
-fi
-
-# 2a: FLOW_RALPH=1 → exit 2
-rc=0
-err="$(FLOW_RALPH=1 bash "$RALPH_GUARD" 2>&1)" || rc=$?
-assert_rc 2 "$rc" "Case 2a: FLOW_RALPH=1 → exit 2"
-assert_grep "Ralph" "$err" "Case 2a: error mentions Ralph"
-
-# 2b: REVIEW_RECEIPT_PATH=/tmp/no-such → exit 2 (regardless of file presence).
-rc=0
-err="$(REVIEW_RECEIPT_PATH=/tmp/prospect-smoke-no-such-receipt.json bash "$RALPH_GUARD" 2>&1)" || rc=$?
-assert_rc 2 "$rc" "Case 2b: REVIEW_RECEIPT_PATH set → exit 2"
-assert_grep "Ralph" "$err" "Case 2b: error mentions Ralph"
-
-# 2c: neither set → exit 0 (passes through).
-rc=0
-bash "$RALPH_GUARD" >/dev/null 2>&1 || rc=$?
-assert_rc 0 "$rc" "Case 2c: no Ralph env → exit 0 (terminal OK)"
 
 # =============================================================================
 # CASE 3: Phase 0 helper classification — active vs stale vs corrupt
@@ -726,29 +679,6 @@ assert_grep "ROUTE=SKIP" "$out" "Case 10d: empty reply → SKIP"
 rc=0
 out="$(bash "$ROUTE_SH" 3 "garbage" || rc=$?)"
 assert_grep "UNRECOGNIZED" "$out" "Case 10e: garbage reply → UNRECOGNIZED"
-
-# =============================================================================
-# CASE 11: Ralph regression sweep — ralph_smoke_test.sh stays green
-# =============================================================================
-echo -e "${YELLOW}--- Case 11: Ralph regression sweep ---${NC}"
-
-# Skip on Windows runners — ralph_smoke_test.sh has Windows-specific issues
-# (subprocess Python harness expects POSIX-style paths) that aren't related
-# to prospect; the regression check's purpose is "prospect doesn't break
-# ralph". On Windows where ralph isn't a primary supported target anyway,
-# the check is moot.
-if [[ "${RUNNER_OS:-}" == "Windows" ]]; then
-  echo "Case 11: skipped on Windows (ralph_smoke_test.sh isn't a primary Windows target)"
-else
-  RALPH_LOG="$TEST_DIR/ralph_smoke.log"
-  rc=0
-  ( cd "$TEST_DIR" && FLOW_RALPH=1 "$PLUGIN_ROOT/scripts/ralph_smoke_test.sh" > "$RALPH_LOG" 2>&1 ) || rc=$?
-  assert_rc 0 "$rc" "Case 11: ralph_smoke_test.sh exits 0 under FLOW_RALPH=1 (prospect doesn't interfere)"
-  if [[ "$rc" -ne 0 ]]; then
-    echo "--- ralph_smoke_test.sh tail ---" >&2
-    tail -40 "$RALPH_LOG" >&2 || true
-  fi
-fi
 
 # =============================================================================
 # Results

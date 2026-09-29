@@ -895,7 +895,7 @@ class ErrorEnvelopeRedactsEveryOutboundString(unittest.TestCase):
                 self.assertNotIn("s3cret-token-value", payload)
 
     def test_stderr_note_is_redacted(self) -> None:
-        """stderr is captured by CI logs and Ralph receipts exactly like stdout."""
+        """stderr is captured by CI logs exactly like stdout."""
         import io
         buf = io.StringIO()
         with mock.patch("sys.stderr", buf), mock.patch("sys.stdout", io.StringIO()):

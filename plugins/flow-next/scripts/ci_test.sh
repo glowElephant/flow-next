@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Comprehensive CI tests for flowctl.py and ralph.sh helpers
+# Comprehensive CI tests for flowctl.py
 # Runs on Linux, macOS, and Windows (Git Bash)
 set -euo pipefail
 
@@ -1072,97 +1072,7 @@ PYTEST
 [[ $? -eq 0 ]] && pass "RepoPrompt chat-send compatibility" || fail "RepoPrompt chat-send compatibility"
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 7. ralph.sh Helper Functions
-# ─────────────────────────────────────────────────────────────────────────────
-echo -e "\n${YELLOW}--- ralph.sh Helpers ---${NC}"
-
-# Test tag extraction
-"${FLOW_PY[@]}" - << 'PYTEST'
-import re
-import sys
-
-def extract_tag(text, tag):
-    matches = re.findall(rf"<{tag}>(.*?)</{tag}>", text, flags=re.S)
-    return matches[-1] if matches else ""
-
-# Test cases
-test1 = "<verdict>SHIP</verdict>"
-assert extract_tag(test1, "verdict") == "SHIP", f"Expected SHIP, got {extract_tag(test1, 'verdict')}"
-
-test2 = "<promise>continue</promise> some text <promise>stop</promise>"
-assert extract_tag(test2, "promise") == "stop", f"Expected stop (last), got {extract_tag(test2, 'promise')}"
-
-test3 = "no tags here"
-assert extract_tag(test3, "verdict") == "", f"Expected empty, got {extract_tag(test3, 'verdict')}"
-
-test4 = "<verdict>NEEDS_WORK</verdict>\n<reason>Missing tests</reason>"
-assert extract_tag(test4, "verdict") == "NEEDS_WORK"
-assert extract_tag(test4, "reason") == "Missing tests"
-
-print("Tag extraction tests passed")
-PYTEST
-[[ $? -eq 0 ]] && pass "tag extraction" || fail "tag extraction"
-
-# Test JSON helpers (simulate ralph.sh json_get)
-"${FLOW_PY[@]}" - << 'PYTEST'
-import json
-
-def json_get(key, data):
-    val = data.get(key)
-    if val is None:
-        return ""
-    elif isinstance(val, bool):
-        return "1" if val else "0"
-    else:
-        return str(val)
-
-test_data = {"status": "work", "task": "fn-1-abc.2", "blocked": False, "count": 5}
-
-assert json_get("status", test_data) == "work"
-assert json_get("task", test_data) == "fn-1-abc.2"
-assert json_get("blocked", test_data) == "0"
-assert json_get("count", test_data) == "5"
-assert json_get("missing", test_data) == ""
-
-print("JSON helper tests passed")
-PYTEST
-[[ $? -eq 0 ]] && pass "JSON helpers" || fail "JSON helpers"
-
-# Test attempts tracking
-"${FLOW_PY[@]}" - "$TEST_DIR" << 'PYTEST'
-import json
-import sys
-from pathlib import Path
-
-test_dir = Path(sys.argv[1])
-attempts_file = test_dir / "attempts.json"
-
-def bump_attempts(path, task):
-    data = {}
-    if path.exists():
-        data = json.loads(path.read_text())
-    count = int(data.get(task, 0)) + 1
-    data[task] = count
-    path.write_text(json.dumps(data, indent=2))
-    return count
-
-# Test bump
-assert bump_attempts(attempts_file, "fn-1.1") == 1
-assert bump_attempts(attempts_file, "fn-1.1") == 2
-assert bump_attempts(attempts_file, "fn-1.2") == 1
-assert bump_attempts(attempts_file, "fn-1.1") == 3
-
-# Verify file content
-data = json.loads(attempts_file.read_text())
-assert data["fn-1.1"] == 3
-assert data["fn-1.2"] == 1
-
-print("Attempts tracking tests passed")
-PYTEST
-[[ $? -eq 0 ]] && pass "attempts tracking" || fail "attempts tracking"
-
-# ─────────────────────────────────────────────────────────────────────────────
-# 8. Artifact File Handling (GH-21)
+# 7. Artifact File Handling (GH-21)
 # ─────────────────────────────────────────────────────────────────────────────
 echo -e "\n${YELLOW}--- Artifact File Handling ---${NC}"
 
@@ -1182,7 +1092,7 @@ set -e
 [[ $NEXT_RC -eq 0 ]] && pass "next ignores artifact files" || fail "next with artifact files (rc=$NEXT_RC)"
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 9. Async Control Commands
+# 8. Async Control Commands
 # ─────────────────────────────────────────────────────────────────────────────
 echo -e "\n${YELLOW}--- Async Control Commands ---${NC}"
 
@@ -1194,33 +1104,6 @@ flowctl status >/dev/null 2>&1
 STATUS_OUT="$(flowctl status --json)"
 echo "$STATUS_OUT" | "${FLOW_PY[@]}" -c 'import json,sys; json.load(sys.stdin)' 2>/dev/null
 [[ $? -eq 0 ]] && pass "status --json" || fail "status --json invalid JSON"
-
-# Test ralphctl pause/resume/stop (fn-114: extracted from flowctl into ralphctl.py)
-RALPHCTL_SRC="$PLUGIN_ROOT/skills/flow-next-ralph-init/templates/ralphctl.py"
-RALPHCTL_TMP="$(mktemp -d)"
-mkdir -p "$RALPHCTL_TMP/scripts/ralph/runs/test-run"
-cp "$RALPHCTL_SRC" "$RALPHCTL_TMP/scripts/ralph/ralphctl.py"
-chmod +x "$RALPHCTL_TMP/scripts/ralph/ralphctl.py"
-echo "iteration: 1" > "$RALPHCTL_TMP/scripts/ralph/runs/test-run/progress.txt"
-(
-  cd "$RALPHCTL_TMP"
-  "${FLOW_PY[@]}" scripts/ralph/ralphctl.py pause --run test-run >/dev/null
-)
-[[ -f "$RALPHCTL_TMP/scripts/ralph/runs/test-run/PAUSE" ]] && pass "ralphctl pause" || fail "ralphctl pause"
-
-(
-  cd "$RALPHCTL_TMP"
-  "${FLOW_PY[@]}" scripts/ralph/ralphctl.py resume --run test-run >/dev/null
-)
-[[ ! -f "$RALPHCTL_TMP/scripts/ralph/runs/test-run/PAUSE" ]] && pass "ralphctl resume" || fail "ralphctl resume"
-
-(
-  cd "$RALPHCTL_TMP"
-  "${FLOW_PY[@]}" scripts/ralph/ralphctl.py stop --run test-run >/dev/null
-)
-[[ -f "$RALPHCTL_TMP/scripts/ralph/runs/test-run/STOP" ]] && pass "ralphctl stop" || fail "ralphctl stop"
-
-rm -rf "$RALPHCTL_TMP"
 
 # Test task reset
 RESET_EPIC="$(flowctl spec create --title "Reset test" --json | "${FLOW_PY[@]}" -c 'import json,sys; print(json.load(sys.stdin)["id"])')"
@@ -1251,47 +1134,6 @@ DEPS="$(flowctl show "$DEP_CHILD" --json | "${FLOW_PY[@]}" -c 'import json,sys; 
 flowctl spec rm-dep "$DEP_CHILD" "$DEP_BASE" --json >/dev/null
 DEPS="$(flowctl show "$DEP_CHILD" --json | "${FLOW_PY[@]}" -c 'import json,sys; print(",".join(json.load(sys.stdin).get("depends_on_epics",[])))')"
 [[ -z "$DEPS" ]] && pass "epic rm-dep" || fail "epic rm-dep: deps=$DEPS"
-
-# Test ralphctl auto-detection (single active run)
-RALPHCTL_TMP="$(mktemp -d)"
-mkdir -p "$RALPHCTL_TMP/scripts/ralph/runs/auto-test"
-cp "$RALPHCTL_SRC" "$RALPHCTL_TMP/scripts/ralph/ralphctl.py"
-echo "iteration: 1" > "$RALPHCTL_TMP/scripts/ralph/runs/auto-test/progress.txt"
-(
-  cd "$RALPHCTL_TMP"
-  "${FLOW_PY[@]}" scripts/ralph/ralphctl.py pause >/dev/null 2>&1
-)
-[[ -f "$RALPHCTL_TMP/scripts/ralph/runs/auto-test/PAUSE" ]] && pass "ralphctl auto-detect single run" || fail "ralphctl auto-detect"
-rm -rf "$RALPHCTL_TMP"
-
-# Test multiple active runs error
-RALPHCTL_TMP="$(mktemp -d)"
-mkdir -p "$RALPHCTL_TMP/scripts/ralph/runs/run-a" "$RALPHCTL_TMP/scripts/ralph/runs/run-b"
-cp "$RALPHCTL_SRC" "$RALPHCTL_TMP/scripts/ralph/ralphctl.py"
-echo "iteration: 1" > "$RALPHCTL_TMP/scripts/ralph/runs/run-a/progress.txt"
-echo "iteration: 1" > "$RALPHCTL_TMP/scripts/ralph/runs/run-b/progress.txt"
-set +e
-(
-  cd "$RALPHCTL_TMP"
-  "${FLOW_PY[@]}" scripts/ralph/ralphctl.py pause 2>/dev/null
-)
-MULTI_RC=$?
-set -e
-[[ $MULTI_RC -ne 0 ]] && pass "ralphctl rejects multiple active runs" || fail "ralphctl should reject multiple runs"
-rm -rf "$RALPHCTL_TMP"
-
-# Test flowctl status soft-probe: completed run excluded; uses "runs" key
-mkdir -p scripts/ralph/runs/completed-test
-cat > scripts/ralph/runs/completed-test/progress.txt << 'PROGRESS'
-iteration: 5
-promise=RETRY
-
-completion_reason=DONE
-promise=COMPLETE
-PROGRESS
-ACTIVE_COUNT="$(flowctl status --json | "${FLOW_PY[@]}" -c 'import json,sys; d=json.load(sys.stdin); print(len(d.get("runs",[])))')"
-[[ "$ACTIVE_COUNT" == "0" ]] && pass "completed run excluded from active" || fail "completed run still active: count=$ACTIVE_COUNT"
-rm -rf scripts/ralph/runs/completed-test
 
 # Test task reset --cascade
 CASCADE_EPIC="$(flowctl spec create --title "Cascade test" --json | "${FLOW_PY[@]}" -c 'import json,sys; print(json.load(sys.stdin)["id"])')"

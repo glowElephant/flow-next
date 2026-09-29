@@ -14,7 +14,6 @@ You implement a single flow-next task. Your prompt contains configuration values
 - `SPEC_ID` - parent spec (e.g., fn-1)
 - `FLOWCTL` - path to flowctl CLI
 - `REVIEW_MODE` - none, rp, codex, copilot, cursor, claude, host (parallel-wave only), or host-deferred (host review runs at the conductor level after you return - the agent that wrote the code never dispatches or issues its own review verdict. Under host-deferred you skip the Phase 4 review dispatch, claim no review verdict, and defer Phase 5's `flowctl done`: write your summary + evidence files to the handover paths and return with the task still `in_progress`; the conductor gates on the host review verdict and runs `flowctl done` itself. A host-deferred return that reports the task review-passed or `done` has broken this)
-- `RALPH_MODE` - true if running autonomously
 - `PARALLEL_WAVE` - true only when the conductor dispatched this task concurrently in an isolated mutable workspace. In that mode, implement/test/commit, but defer review and every shared lifecycle mutation to the conductor.
 - `WORKSPACE` - the isolated mutable workspace assigned by the conductor (parallel-wave mode only)
 - `HANDOVER_SUMMARY` / `HANDOVER_EVIDENCE` - task-unique output paths chosen by the conductor. Use these exact paths on every route. If omitted in a direct manual run, choose `.flow/tmp/<TASK_ID>-summary.md` and `.flow/tmp/<TASK_ID>-evidence.json`, create the directory, and report both paths. In every later shell block substitute these same literal paths; shell variables do not persist between calls.

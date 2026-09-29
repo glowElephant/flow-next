@@ -5,12 +5,11 @@
 # This is the LATE PROOF POINT for fn-39. Tasks 1-5 are already on disk; this
 # test fires after them to confirm the full end-to-end contract holds:
 #   - flowctl strategy status/read/list JSON shapes (Task 1)
-#   - skill SKILL.md Ralph-block guard (Task 2)
 #   - prospect grounding snapshot (Task 3)
 #   - plan-sync drift surfacing read-only invariant (Task 4)
 #   - ci_test fluff guard (Task 5 -- already gates main repo, here we cross-check)
 #
-# Cases (T1-T12 from spec):
+# Cases (T1-T11 from spec):
 #   T1.  First-run on-disk shape: full populated STRATEGY.md → status reports
 #        exists, !husk, sections_filled==5, generator_match. (R1, R6, R23)
 #   T2.  Targeted section re-run preservation: byte-identical untouched
@@ -33,8 +32,6 @@
 #        approach + tracks. (R10)
 #   T11. plan-sync read-only invariant: agents/plan-sync.md contains
 #        "never auto-supersedes" or equivalent. (R14)
-#   T12. Ralph block: with FLOW_RALPH=1, Phase 0 bash exits 2 + stderr
-#        contains "[STRATEGY: user-triggered only". (R17)
 #
 # Pure shell + Python harness -- no LLM invocations. Targets <30s runtime.
 # Pattern follows glossary_smoke_test.sh (fn-38.2).
@@ -771,65 +768,6 @@ T11_DRIFT="$(grep -F 'Strategy drift flagged for review' "$PLAN_SYNC_FILE" || tr
 [[ -n "$T11_DRIFT" ]] \
   && ok "T11" "Strategy drift flagged for review heading wired up" \
   || fail "T11" "missing 'Strategy drift flagged for review' heading"
-
-# =============================================================================
-# T12: Ralph block -- FLOW_RALPH=1 → exit 2 + stderr message
-# =============================================================================
-echo -e "${YELLOW}--- T12: FLOW_RALPH=1 fires Ralph block (exit 2, stderr message) ---${NC}"
-# Extract the Phase 0.1 Ralph-block from SKILL.md and run it as a shell
-# script. SKILL.md ships:
-#   if [[ -n "${REVIEW_RECEIPT_PATH:-}" || "${FLOW_RALPH:-}" == "1" ]]; then
-#     echo "[STRATEGY: user-triggered only -- Ralph cannot run /flow-next:strategy]" >&2
-#     exit 2
-#   fi
-# We run the literal block under FLOW_RALPH=1.
-
-T12_BLOCK="$TEST_DIR/t12-ralph-block.sh"
-cat > "$T12_BLOCK" <<'EOF'
-#!/usr/bin/env bash
-if [[ -n "${REVIEW_RECEIPT_PATH:-}" || "${FLOW_RALPH:-}" == "1" ]]; then
-  echo "[STRATEGY: user-triggered only -- Ralph cannot run /flow-next:strategy]" >&2
-  exit 2
-fi
-echo "fell through (would run skill body)"
-exit 0
-EOF
-chmod +x "$T12_BLOCK"
-
-# 12a: With FLOW_RALPH=1, expect exit 2.
-set +e
-T12_OUT="$( FLOW_RALPH=1 "$T12_BLOCK" 2>&1 1>/dev/null )"
-T12_RC=$?
-set -e
-assert_rc "T12" 2 "$T12_RC" "FLOW_RALPH=1 → exit 2"
-assert_grep "T12" "[STRATEGY: user-triggered only" "$T12_OUT" "stderr message present under FLOW_RALPH=1"
-
-# 12b: With REVIEW_RECEIPT_PATH set, also expect exit 2.
-set +e
-T12_OUT2="$( REVIEW_RECEIPT_PATH=/tmp/fake-receipt.json "$T12_BLOCK" 2>&1 1>/dev/null )"
-T12_RC2=$?
-set -e
-assert_rc "T12" 2 "$T12_RC2" "REVIEW_RECEIPT_PATH set → exit 2"
-assert_grep "T12" "[STRATEGY: user-triggered only" "$T12_OUT2" "stderr message present under REVIEW_RECEIPT_PATH"
-
-# 12c: Without either env var, falls through (rc=0).
-set +e
-T12_OUT3="$( unset FLOW_RALPH REVIEW_RECEIPT_PATH; "$T12_BLOCK" 2>&1 )"
-T12_RC3=$?
-set -e
-assert_rc "T12" 0 "$T12_RC3" "no Ralph env vars → falls through"
-assert_grep "T12" "fell through" "$T12_OUT3" "fall-through message present"
-
-# 12d: Cross-check the canonical SKILL.md ships the same guard.
-SKILL_FILE="$PLUGIN_ROOT/skills/flow-next-strategy/SKILL.md"
-if grep -q 'REVIEW_RECEIPT_PATH' "$SKILL_FILE" \
-  && grep -q 'FLOW_RALPH' "$SKILL_FILE" \
-  && grep -q 'exit 2' "$SKILL_FILE" \
-  && grep -q '\[STRATEGY: user-triggered only' "$SKILL_FILE"; then
-  ok "T12" "canonical SKILL.md ships the literal Ralph-block (exit 2 + stderr message)"
-else
-  fail "T12" "SKILL.md missing FLOW_RALPH/REVIEW_RECEIPT_PATH/exit 2 or stderr message"
-fi
 
 # =============================================================================
 # Sanity: verify nothing leaked outside $TEST_DIR.

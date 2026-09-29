@@ -223,11 +223,10 @@ class PilotBacklogMirrorSafety(unittest.TestCase):
     def test_mirror_carries_tracker_sync_r14_phase0_fix(self) -> None:
         """The R14 Phase-0 autonomy-marker fix (fn-68.2) survives in the
         tracker-sync mirror: the full marker family is recognized and folds into
-        the single RALPH gate."""
+        the single UNATTENDED gate."""
         for token in (
-            "FLOW_RALPH",
-            "REVIEW_RECEIPT_PATH",
             "FLOW_AUTONOMOUS",
+            "AUTONOMOUS",
             "mode:autonomous",
         ):
             with self.subTest(token=token):
@@ -236,8 +235,8 @@ class PilotBacklogMirrorSafety(unittest.TestCase):
                     self.m_ts_steps,
                     f"tracker-sync mirror must recognize {token!r} (R14 parity)",
                 )
-        # The single gate line carries all four markers.
-        gate_window = self.m_ts_steps.split("RALPH=0", 1)[1][:600]
+        # The single gate line carries the markers.
+        gate_window = self.m_ts_steps.split("UNATTENDED=0", 1)[1][:600]
         for token in ("FLOW_AUTONOMOUS", "mode:autonomous"):
             with self.subTest(gate=token):
                 self.assertIn(token, gate_window)
@@ -245,7 +244,7 @@ class PilotBacklogMirrorSafety(unittest.TestCase):
     def test_no_r2_block_before_tracker_sync_phase0_invariant(self) -> None:
         """THE second defect this regen exposed (impl-review r1): the R2 ask
         INSTRUCTION block was injected directly BEFORE the tracker-sync Phase-0
-        autonomy invariant ('Under RALPH=1 NO code path may reach ...'). That
+        autonomy invariant ('Under UNATTENDED=1 NO code path may reach ...'). That
         contradicts R14 (under the marker tracker-sync queues/defers, never
         prompts). The block belongs at the GENUINE Phase-1 discovery ASK (where
         the human IS prompted to enable the bridge), never at the Phase-0

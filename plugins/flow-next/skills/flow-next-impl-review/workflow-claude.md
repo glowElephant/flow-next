@@ -49,8 +49,6 @@ RECEIPT_PATH="$(jq -r '.receipt_path' <<<"$ROUTE")"
 
 # Standalone branch reviews leave TASK_ID empty — OMIT the positional entirely
 # (a quoted "" is rejected as an invalid task id; standalone mode needs no task arg).
-# Subcommand tokens stay LITERAL on the command line (the Ralph guard blocks
-# a variable in either of the two tokens after the launcher).
 args=()
 [ -n "$TASK_ID" ] && args+=("$TASK_ID")
 args+=(--base "$DIFF_BASE" --receipt "$RECEIPT_PATH")

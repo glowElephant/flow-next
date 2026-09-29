@@ -214,10 +214,9 @@ class ImplReviewArgFenceTestCase(unittest.TestCase):
                 text.count("for arg in $(printf "), 1,
                 f"{path}: impl-review must parse $ARGUMENTS in exactly ONE fence",
             )
-            # The merged fence still covers all three opt-in flags + Ralph block.
+            # The merged fence still covers all three opt-in flags.
             for needle in ("--validate) VALIDATE=true", "--deep) DEEP=true",
-                           "--interactive) INTERACTIVE=true",
-                           "not compatible with Ralph mode"):
+                           "--interactive) INTERACTIVE=true"):
                 self.assertIn(needle, text, f"{path}: merged arg fence lost {needle!r}")
 
 

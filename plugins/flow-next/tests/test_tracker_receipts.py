@@ -1,13 +1,9 @@
-"""Sync receipt + Ralph-deferral schema tests (fn-52.1, R11 + R12).
+"""Sync receipt + autonomous-deferral schema tests (fn-52.1, R11 + R12).
 
 Asserts:
   * `sync receipt` writes `type: "sync"` + a status from the enum
     {pushed,pulled,merged,updated,diverged,queued,errored,noop}, records each
-    body merge for rollback, and lands at a path the review-receipt guard does
-    NOT validate (no `receipts/` substring; not REVIEW_RECEIPT_PATH).
-  * The ralph-guard's review-receipt validator REJECTS a sync receipt
-    (missing/invalid verdict) — proving the distinct namespace is load-bearing
-    — and its shell-write detector does NOT match a write to `.flow/sync-runs/`.
+    body merge for rollback, and lands outside any `receipts/` path.
   * An invalid status is rejected by the handler.
   * `sync defer` appends a genuine conflict to the deferred-decisions sink and
     never blocks (no SystemExit), so an autonomous loop keeps running.
@@ -39,7 +35,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
 HERE = Path(__file__).resolve()
 FLOWCTL_PY = HERE.parent.parent / "scripts" / "flowctl.py"
-RALPH_GUARD_PY = HERE.parent.parent / "scripts" / "hooks" / "ralph-guard.py"
 
 
 def _load_module(name: str, path: Path) -> Any:
@@ -59,7 +54,6 @@ class TrackerReceiptTestCase(unittest.TestCase):
             ["git", "init", "-q"], cwd=self.tmpdir, check=True, capture_output=True
         )
         self.flowctl = _load_module("flowctl_tracker_receipt_under_test", FLOWCTL_PY)
-        self.guard = _load_module("ralph_guard_under_test", RALPH_GUARD_PY)
         self._call(func=self.flowctl.cmd_init)
         self.spec_id = self._call(
             func=self.flowctl.cmd_spec_create, title="Receipt subject", branch=None
@@ -181,27 +175,15 @@ class TrackerReceiptTestCase(unittest.TestCase):
         self.assertIn("event", data)
         self.assertIsNone(data["event"])
 
-    # --- guard isolation (R12: distinct path/type) --------------------------
+    # --- distinct path (R12) ------------------------------------------------
 
-    def test_receipt_path_is_guard_safe(self) -> None:
+    def test_receipt_path_is_outside_review_receipts(self) -> None:
         res = self._receipt("noop")
         receipt_path = res["receipt"]
-        # No `receipts/` substring → the guard's shell-write detector won't fire.
         self.assertNotIn("receipts/", receipt_path)
         self.assertIn(".flow/sync-runs/", receipt_path.replace(os.sep, "/"))
-        self.assertFalse(
-            self.guard.is_receipt_write_command(f"echo x > {receipt_path}", "")
-        )
 
-    def test_review_guard_would_reject_sync_receipt(self) -> None:
-        # The review-receipt validator demands a SHIP/NEEDS_WORK/MAJOR_RETHINK/NEEDS_HUMAN
-        # verdict; a sync receipt has none. Proves WHY the sync receipt needs a
-        # path the guard never inspects.
-        res = self._receipt("pulled")
-        err = self.guard.validate_receipt_file(res["receipt"])
-        self.assertTrue(err, "sync receipt should not validate as a review receipt")
-
-    # --- Ralph deferral (R11) -----------------------------------------------
+    # --- autonomous deferral (R11) -------------------------------------------
 
     def test_defer_queues_conflict_and_never_blocks(self) -> None:
         res = self._call(

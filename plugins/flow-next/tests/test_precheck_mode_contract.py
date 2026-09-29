@@ -38,7 +38,6 @@ LIFECYCLE_SKILLS = [
     "flow-next-prime",
     "flow-next-prospect",
     "flow-next-qa",
-    "flow-next-ralph-init",
     "flow-next-resolve-pr",
     "flow-next-strategy",
     "flow-next-sync",

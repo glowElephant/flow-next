@@ -681,8 +681,7 @@ class TestDeterministicCap(unittest.TestCase):
     def test_autonomous_runs_can_only_lower_the_cap_via_config(self):
         """fn-168 / PR #295 r6: the self-grant invariant lives in the CONSUMER.
 
-        ralph-guard screens the routes it can see, but a shell command's effective
-        destination is not decidable from its text — `cd .flow && … > config.json`
+        A shell command's effective destination is not decidable from its text — `cd .flow && … > config.json`
         writes the protected file while naming neither the path nor the verb, and
         the next spelling is always `pushd`, a variable, or a script. So the
         invariant is enforced where it is true by construction: in an autonomous
@@ -703,11 +702,9 @@ class TestDeterministicCap(unittest.TestCase):
         for raw, autonomous, expected in cases:
             with self.subTest(config=raw, autonomous=autonomous):
                 self._set_cap_config(raw)
-                env = {"FLOW_RALPH": "1"} if autonomous else {}
+                env = {"FLOW_AUTONOMOUS": "1"} if autonomous else {}
                 with mock.patch.dict(os.environ, env, clear=False):
                     if not autonomous:
-                        os.environ.pop("FLOW_RALPH", None)
-                        os.environ.pop("REVIEW_RECEIPT_PATH", None)
                         os.environ.pop("FLOW_AUTONOMOUS", None)
                     flowctl._MAX_REVIEW_ITERATIONS_CONFIG_MEMO.clear()
                     self.assertEqual(flowctl.get_max_review_iterations(), expected)

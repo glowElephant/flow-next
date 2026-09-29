@@ -49,19 +49,6 @@ Single source of truth for the supported clawpatch range. The bundled script par
 
 clawpatch is pre-1.0 (v0.4.0, 2026-05-22; weekly minor releases). The README forecasts breaking changes between minor releases — tolerant parsing matters.
 
-## Ralph-block (R13) — runs first, before everything else
-
-`/flow-next:map` requires a user at the terminal for the install-prompt and init-prompt branches. Autonomous loops cannot install global npm packages or accept interactive consent. Decline-to-run when Ralph signals are set.
-
-The bundled script checks `FLOW_RALPH=1` and nonempty `REVIEW_RECEIPT_PATH`
-before argument parsing or init; either causes exit 2 and names the trigger.
-Run that script once through [workflow.md](workflow.md), without reassembling
-its guard or commands in the host.
-
-**Decline-to-run only — nothing is written to `$REVIEW_RECEIPT_PATH`.** That file belongs to the upstream review caller; a run that leaves any byte there under Ralph has corrupted an unrelated receipt and broken this. The bundled script exits before work under Ralph; install/init paths are unreachable.
-
-No env-var opt-in. Ralph never installs global tools or accepts interactive consent.
-
 ## Workflow
 
 Invoke the bundled script as [workflow.md](workflow.md) directs. It handles
@@ -87,7 +74,5 @@ Teams that want a shared, in-repo feature index can edit `.clawpatch/.gitignore`
 - **Proxying flow-next's review backend into `CLAWPATCH_PROVIDER`.** Orthogonal matrices. clawpatch users configure clawpatch directly.
 - **Auto-upgrading `--source` to `auto` or `agent` when heuristic coverage looks weak.** Users opt up explicitly via `--source`.
 - **Touching the repo `.gitignore`.** The `.clawpatch/.gitignore` skeleton is self-contained inside `.clawpatch/` so a full deletion of that directory removes both data and ignore rules in one step.
-- **Writing to `$REVIEW_RECEIPT_PATH` from the Ralph-block path** — see R13 above. The receipt belongs to the upstream review caller; the Ralph branch is decline-to-run, not a receipt producer.
 - **Importing or requiring clawpatch from flowctl.** flowctl never references this skill or clawpatch — uninstall promise (`rm -rf .flow/`) stays intact and zero-dep STRATEGY track is preserved.
 - **Network calls beyond what clawpatch itself does.** The wrap is local-only; clawpatch's network behavior is upstream's concern.
-- **Running under Ralph** — hard-blocked by R13 above.

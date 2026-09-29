@@ -143,7 +143,7 @@ field-by-field; there is no single winner.
 | **labels** / other metadata | sides differ | **append-union, surface removals** | additive labels merge; a *removed* label is surfaced (could be intentional) — never silently dropped both ways |
 
 **"Surface to the user"** means: interactive → show the divergence and ask via
-`AskUserQuestion`; Ralph/autonomous → `sync defer` (queue, never block). It does
+`AskUserQuestion`; autonomous → `sync defer` (queue, never block). It does
 **not** mean "pick a side" — the field is left as-is on both sides until a human
 decides. This is the R7 "priority + `deferred`/`wontfix` surface to the user, never
 auto-changed" guarantee, made mechanical.
@@ -198,7 +198,7 @@ Resolution falls back to the **R1 `conflictTiebreak` default**
 (`tracker.conflictTiebreak` ∈ `flow-wins | tracker-wins | always-ask`, default
 `always-ask` — `flowctl config get tracker.conflictTiebreak`):
 
-| `conflictTiebreak` | Interactive | Ralph / autonomous |
+| `conflictTiebreak` | Interactive | Autonomous |
 |---|---|---|
 | `tracker-wins` | if the tracker is terminal, fold `done` into the spec through the existing local-status path (no provider write; `pulled` receipt). The mirror — merged Flow terminal while the tracker is active — is not durably representable by raw `spec.status`, so return the candidate-bearing `status-deadlock-unrepresentable` conflict with no mutation | same deterministic result |
 | `flow-wins` | push Flow's normalized state through the existing provider-neutral `setStatus` path; terminal projection still requires clean merged-PR evidence | same — confident, proceeds |
@@ -206,10 +206,10 @@ Resolution falls back to the **R1 `conflictTiebreak` default**
 
 "Ask the human" resolves to "**queue** for the human" in autonomous mode (the
 deferred-decisions sink) — same policy, surface-dependent delivery, mirroring
-flow-next-drive's surface-aware ladder and the body-merge `always-ask × Ralph` rule.
+flow-next-drive's surface-aware ladder and the body-merge `always-ask × autonomous` rule.
 
 ```bash
-# Ralph deadlock under always-ask — queue, write no status, advance no state:
+# Autonomous deadlock under always-ask — queue, write no status, advance no state:
 $FLOWCTL sync defer "$SPEC_ID" \
   --summary "Status deadlock: tracker=done, flow=in-progress" \
   --suggested "Human picks: close the spec to match the tracker, or reopen the issue to match flow" \
@@ -266,7 +266,7 @@ normalizeTrackerStatus(state):
   else:
      # an unknown type (future Linear schema) — do NOT guess a flow effect:
      warn("unmapped tracker state '<name>' (type '<type>') — surfacing, not auto-applying")
-     surface to the user (interactive ask / Ralph sync defer)
+     surface to the user (interactive ask / autonomous sync defer)
      return UNMAPPED                              # treated like deferred/wontfix: never auto-change flow
 ```
 
@@ -350,7 +350,7 @@ Linear; the live `setStatus` is the smoke phase).
 **Tracker:** `issue.priority = "Urgent"`, and on a later sync a human lowered it to
 `"Medium"`.
 
-**Expected:** the priority change is **surfaced** (interactive ask / Ralph
+**Expected:** the priority change is **surfaced** (interactive ask / autonomous
 `sync defer`) — the bridge writes **no** priority on either side.
 
 **Oracle:** zero priority writes; one surfaced/queued entry naming the priority
@@ -380,7 +380,7 @@ This is the canonical deadlock (terminal-vs-in-progress collision). Because the
 deadlock check fires **first** in the evaluation order (before terminal-wins), it is
 NOT auto-closed by the tracker-wins-terminal rule — it resolves via
 `tracker.conflictTiebreak`:
-- `always-ask` (default) → **interactive ask** / **Ralph `sync defer`** (queue —
+- `always-ask` (default) → **interactive ask** / **autonomous `sync defer`** (queue —
   see the `sync defer` block above). PASS iff exactly one
   scoped status deadlock is surfaced and **no** status is written.
 - `tracker-wins` → the facade folds `done` into the spec. PASS iff the spec
@@ -410,7 +410,7 @@ and 0 `OPEN` — closed without merging).
 **Expected:** `flowToNormalized(spec, closed-unmerged)` → **`in-review`** (NON-terminal
 — a closed-without-merge PR is NOT merge evidence, so terminal is forbidden). The
 ambiguity (locally shipped, but the PR was closed unmerged) **surfaces NEEDS_HUMAN**
-(interactive ask / Ralph `sync defer --reason closed-unmerged`). The issue stays
+(interactive ask / autonomous `sync defer --reason closed-unmerged`). The issue stays
 **non-terminal** (In Progress preserved); no terminal write.
 
 **Oracle:** **no** `setStatus(done|verified)` / no close; exactly one NEEDS_HUMAN
@@ -437,7 +437,7 @@ the conflict reaches a human.
 - **Per-field who-wins — never one global rule.** Terminal → tracker; in-progress →
   flow; priority + `deferred`/`wontfix` + unmapped → surface, never auto-change.
 - **Status is never silently overwritten on a deadlock** — it falls back to the R1
-  `conflictTiebreak`; `always-ask` queues in Ralph, prompts interactively.
+  `conflictTiebreak`; `always-ask` queues in autonomous mode, prompts interactively.
 - **State advances only on a successful reconcile.** A `setStatus` error, an
   unmapped state surfaced, or a queued deadlock does NOT advance `lastSyncedAt`.
 - **Native open records a manual reopen.** On GitHub and GitLab, a lone stale

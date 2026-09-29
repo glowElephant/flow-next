@@ -38,7 +38,7 @@ Parse `$ARGUMENTS` for the literal token `mode:autofix`. If present, strip it fr
 ```bash
 RAW_ARGS="$ARGUMENTS"
 MODE="interactive"
-if [[ "$RAW_ARGS" == *"mode:autofix"* || "$RAW_ARGS" == *"mode:autonomous"* || -n "${FLOW_RALPH:-}" || -n "${REVIEW_RECEIPT_PATH:-}" || "${FLOW_AUTONOMOUS:-}" == "1" || "${AUTONOMOUS:-}" == "1" ]]; then
+if [[ "$RAW_ARGS" == *"mode:autofix"* || "$RAW_ARGS" == *"mode:autonomous"* || "${FLOW_AUTONOMOUS:-}" == "1" || "${AUTONOMOUS:-}" == "1" ]]; then
   MODE="autofix"
   # Strip token, collapse whitespace, trim.
   SCOPE_HINT=$(printf "%s" "$RAW_ARGS" | sed 's/mode:autofix//' | tr -s ' ' | sed 's/^ //;s/ $//')
@@ -50,7 +50,7 @@ fi
 | Mode | When | Behavior |
 |------|------|----------|
 | **Interactive** (default) | User is at the terminal | Ask decisions on ambiguous cases via plain-text numbered prompt; confirm batched actions; run discoverability check with consent |
-| **Autofix** (`mode:autofix` in arguments) | Ralph or batch usage | No user questions. Apply Keep/Update/Consolidate/auto-Delete/Replace-with-sufficient-evidence directly. Mark ambiguous as stale. Print the full report. Discoverability surfaces as a recommendation, not an edit |
+| **Autofix** (`mode:autofix` in arguments) | Autonomous or batch usage | No user questions. Apply Keep/Update/Consolidate/auto-Delete/Replace-with-sufficient-evidence directly. Mark ambiguous as stale. Print the full report. Discoverability surfaces as a recommendation, not an edit |
 
 ### Autofix mode rules
 
@@ -85,7 +85,7 @@ The goal is automated maintenance with human oversight on judgment calls — not
 - **Deleting silently.** Delete is reserved for unambiguous cases (code gone AND problem domain gone). Default to Replace or Consolidate when there's still value to preserve.
 - **`git rm` on superseded decision entries.** Decision history stays on disk. Replace for `knowledge/decisions/` entries means write a new entry and mark the old `decision_status: superseded` with `superseded_by: <new-id>` — never delete the old file.
 - **Deleting glossary terms.** When a term has zero code hits, mark stale via Edit-tool HTML comment. Removing the term entry is the operator's call, surfaced in the report.
-- **Auto-applying Harden.** In `mode:autofix` (and therefore any `flow --auto` / Ralph invocation) Harden **never applies**: no gate artifact is written, no entry is demoted, no un-graduation is executed. Candidates surface under Recommended only. Graduation edits files outside `.flow/memory/` — lint config, CI, CLAUDE.md — and silent edits to shared repo infrastructure from an autonomous sweep are unacceptable. Audit proposes; a human accepts.
+- **Auto-applying Harden.** In `mode:autofix` (and therefore any `flow --auto` invocation) Harden **never applies**: no gate artifact is written, no entry is demoted, no un-graduation is executed. Candidates surface under Recommended only. Graduation edits files outside `.flow/memory/` — lint config, CI, CLAUDE.md — and silent edits to shared repo infrastructure from an autonomous sweep are unacceptable. Audit proposes; a human accepts.
 - **Demoting a lesson to a gate that was never verified to fire.** `memory mark-hardened` runs only after the gate is confirmed live (resolved lint config / a job that actually runs / the substantive instruction file). Verification failure leaves the entry `active` and reports a failed graduation. A gate that does not fire is worse than no gate.
 - **`git rm` on Harden.** Ever, on any track. The entry file stays on disk as a pointer at the gate — that is what keeps "why does this rule exist?" answerable.
 - **Scaffolding infrastructure to host a gate.** Never create a linter setup, a CI pipeline, or a config file that does not already exist. The gate lands in a surface the repo already has, degrades to the substantive instruction file, or the entry stays Keep.

@@ -24,22 +24,12 @@ FLOWCTL="${DROID_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/flowctl"
 
 **Hard requirements (non-negotiable):**
 - **Every completed task passes through `flowctl done` and a verified `done` status.** A task treated as finished while `flowctl show <task>` still reads `todo` or `in_progress` has broken this.
-- **Staging is `git add -A`, never an explicit file list** — that is what pulls `.flow/` and `scripts/ralph/` (when present) into the commit. A commit whose diff omits the run's `.flow/` writes has broken this.
+- **Staging is `git add -A`, never an explicit file list** — that is what pulls `.flow/` into the commit. A commit whose diff omits the run's `.flow/` writes has broken this.
 - **Completion is claimed only after `flowctl show <task>` reports `status: done`.** A completion claim printed ahead of that read has broken this.
 - **`flow-next:flow-next-impl-review` is dispatched only on a green tree.** A review sent while tests or Quick commands are red has broken this.
 
 **Role**: execution lead, plan fidelity first.
 **Goal**: complete every task in order with tests.
-
-## Ralph Mode Rules (always follow)
-
-If `REVIEW_RECEIPT_PATH` is set or `FLOW_RALPH=1`, the Hard requirements above are
-the receipt contract, plus:
-
-- **The verified `done` status precedes the commit that carries the task.** A commit landing ahead of its verified `flowctl done` has broken this.
-- **Tracking stays in `.flow/` via `flowctl` — TodoWrite is never the task record.** A Ralph iteration whose task list lives in TodoWrite has broken this.
-
-Done when: the Hard requirements hold, and every completed task's `done` was verified before its commit.
 
 ## Autonomous Mode (questions off, no receipt obligations)
 
@@ -59,7 +49,6 @@ If `AUTONOMOUS=1`:
 - **No setup question is asked** (branch + review questions below are suppressed). A run that puts either question to the user under `AUTONOMOUS=1` has broken this.
 - **Branch defaults deterministically to `--branch=new`** when no explicit branch option is present — under autonomy "the user's answer" never exists, and defaulting to the current branch could commit straight to main. A chained spec (`flowctl spec chain` names a parent) forks from the parent's remote tip instead of main (phases.md Phase 2). **Name the new branch exactly the spec's `branch_name` field** (`$FLOWCTL show <spec-id> --json | jq -r '.branch_name'`) — the branch matrix of `flow --auto`, its all-done PR probe, and make-pr's branch-match spec detection all key on that name; an ad-hoc name breaks continuity across hops and invocations.
 - **Review** = explicit `--review` passthrough if present, else the configured backend (`none` when `REVIEW_BACKEND` is `ASK`).
-- **Autonomy ≠ Ralph.** Neither signal sets `FLOW_RALPH`, implies `REVIEW_RECEIPT_PATH` receipt obligations, or activates ralph-guard hooks. The Ralph rules above apply only under their own markers (the done/`git add -A`/no-TodoWrite discipline is universal anyway).
 - **Never hang on a question.** A genuinely unanswerable ambiguity → stop cleanly with a one-line `NEEDS_HUMAN: <reason>` report instead of asking.
 
 ## Input

@@ -45,5 +45,5 @@ Audit `sync check "$SPEC_ID" --events makePr --since <PR-createdAt> --json` inde
 MISSING, record a UTC start, Retro-fire the same wrapper once with explicit `--pr-url`, then recheck since
 that start. Never loop. Print the PR URL, `Reviewer feedback → $flow-next-resolve-pr <number>` and
 `Body inspection → $flow-next-make-pr <spec-id> --dry-run` in native host invocation syntax (OpenCode
-hyphenates the command). Under Ralph stdout is solely `PR_URL=<url>`, all other output goes to stderr. The last summary line (stderr under Ralph) is: `Tracker sync: <OK |
+hyphenates the command). The last summary line is: `Tracker sync: <OK |
 MISSING:makePr → retro-fired → OK | MISSING:makePr (retro-fire failed: <reason>) | n/a (bridge inactive)>`.

@@ -1,7 +1,7 @@
 #!/bin/bash
 # Generate pre-built Codex files from canonical skills/ and agents/ sources.
 # Output: plugins/flow-next/codex/{skills/,agents/}
-# (No hooks.json: Ralph hooks are opt-in via ralph-init project settings, not the mirror.)
+# (No hooks.json: the plugin ships no hooks.)
 #
 # Idempotent — running twice produces identical output.
 # Run after modifying skills/ or agents/ and commit the result.
@@ -203,7 +203,7 @@ if [ -d "$PLUGIN_DIR/references" ]; then
 fi
 
 # Mirror canonical docs dir (fn-202 / #363 codex P2 + P1: skill prose
-# cross-links `../../docs/<name>.md` — pipeline-variations.md, ralph.md,
+# cross-links `../../docs/<name>.md` — pipeline-variations.md,
 # flowctl.md, the reach/ pages...). The mirror carries them under the
 # flow-next-OWNED namespace `codex/docs/flow-next/` (never loose under
 # `codex/docs/`): install-codex.sh replaces ONLY `$CODEX_HOME/docs/flow-next/`
@@ -285,7 +285,7 @@ done
 # --- Docs-mirror invocation banner (#363 codex P2, rounds 7-8) ---------------
 # The mirrored docs pages mention `/flow-next:<cmd>` in examples and prose. A
 # REWRITE cannot work here: docs contain host-SPECIFIC examples (`claude -p
-# "/flow-next:ralph-init"`, `/loop` recipes) where `$flow-next-*` is wrong and
+# "/flow-next:flow --auto"`, `/loop` recipes) where `$flow-next-*` is wrong and
 # even dangerous (`$flow` expands inside double quotes in bash). Two attempts
 # proved any rewrite/exclude-list is an enumeration racing the next page. The
 # invariant instead: docs prose ships VERBATIM, and every mirrored page opens
@@ -336,12 +336,11 @@ find "$CODEX_DIR/skills" -name "*.md" -type f | while read -r f; do
     -e 's|FLOWCTL="$HOME/.codex/scripts/flowctl"|FLOWCTL="${CODEX_HOME:-$HOME/.codex}/scripts/flowctl"|g' \
     "$f"
 
-  # fn-48.6: canonical files now use a once-per-skill `PLUGIN_ROOT` prelude
-  # (e.g. flow-next-ralph-init/SKILL.md) to collapse 10+ inline expansions.
+  # fn-48.6: canonical files may use a once-per-skill `PLUGIN_ROOT` prelude
+  # to collapse repeated inline expansions.
   # Rewrite the PLUGIN_ROOT assignment to the runtime Codex form so subsequent
   # `$PLUGIN_ROOT/...` references resolve. Then path-remap specific subtrees
-  # that have different on-disk layouts in the Codex install (templates land
-  # at `~/.codex/templates/<skill>` rather than `~/.codex/skills/<skill>/templates`).
+  # that have different on-disk layouts in the Codex install.
   sed -i.bak \
     -e 's|PLUGIN_ROOT="\${DROID_PLUGIN_ROOT:-\${CLAUDE_PLUGIN_ROOT}}"|PLUGIN_ROOT="${CODEX_HOME:-$HOME/.codex}"|g' \
     "$f"
@@ -357,18 +356,16 @@ find "$CODEX_DIR/skills" -name "*.md" -type f | while read -r f; do
   # Template/script path patches — both legacy inline form and the new
   # fn-48.6 `$PLUGIN_ROOT/...` consolidated form.
   sed -i.bak \
-    -e 's|\${DROID_PLUGIN_ROOT:-\${CLAUDE_PLUGIN_ROOT}}/skills/flow-next-ralph-init/templates|${CODEX_HOME:-$HOME/.codex}/templates/flow-next-ralph-init|g' \
     -e 's|\${DROID_PLUGIN_ROOT:-\${CLAUDE_PLUGIN_ROOT}}/skills/flow-next-worktree-kit/scripts|${CODEX_HOME:-$HOME/.codex}/scripts|g' \
-    -e 's|\$PLUGIN_ROOT/skills/flow-next-ralph-init/templates|${CODEX_HOME:-$HOME/.codex}/templates/flow-next-ralph-init|g' \
     -e 's|\$PLUGIN_ROOT/skills/flow-next-worktree-kit/scripts|${CODEX_HOME:-$HOME/.codex}/scripts|g' \
     -e 's|\${DROID_PLUGIN_ROOT:-\${CLAUDE_PLUGIN_ROOT}}/skills/|${CODEX_HOME:-$HOME/.codex}/skills/|g' \
     -e 's|\$PLUGIN_ROOT/skills/|${CODEX_HOME:-$HOME/.codex}/skills/|g' \
     "$f"
   # The two generic /skills/ rules above are a catch-all for skill-local asset
   # paths (e.g. resolve-pr's SCRIPTS dir) — install-codex.sh copies each skill
-  # dir wholesale to CODEX_HOME/skills/, so that root always resolves. Specific
-  # destinations (ralph-init templates, worktree-kit scripts) are rewritten
-  # first and therefore win. $HOME (not ~) so the path expands inside quotes.
+  # dir wholesale to CODEX_HOME/skills/, so that root always resolves. The
+  # specific worktree-kit scripts destination is rewritten first and therefore
+  # wins. $HOME (not ~) so the path expands inside quotes.
 
   sed -i.bak \
     -e 's|AGENTS_SRC="$HOME/.codex/agents"|AGENTS_SRC="${CODEX_HOME:-$HOME/.codex}/agents"|g' \
@@ -603,7 +600,6 @@ TASK_ID: fn-X.Y
 SPEC_ID: fn-X
 FLOWCTL: $FLOWCTL
 REVIEW_MODE: none|rp|codex|copilot|cursor|claude|host|host-deferred
-RALPH_MODE: true|false
 PARALLEL_WAVE: true|false
 WORKSPACE: <isolated mutable workspace>
 HANDOVER_SUMMARY: <task-unique summary path>
@@ -1141,7 +1137,7 @@ text = re.sub(
 )
 
 # E. Anti-mandate "do NOT use AskUserQuestion tool" — used in
-#    flow-next-plan/SKILL.md:117 + flow-next-ralph-init/SKILL.md:37 to tell
+#    flow-next-plan/SKILL.md to tell
 #    the agent "ask in plain text ad-hoc, not via the structured tool". On
 #    Codex there IS no structured tool, so the negation is a tautology.
 #    Strip the parenthetical entirely (along with optional surrounding
@@ -1525,14 +1521,14 @@ def is_negative_context(line):
     is NOT a live ask — auto-fix-loop sites, skip/no-prompt prose,
     reference/checklist bullets about what something IS NOT or what is
     skipped. Injecting R2 here either contradicts the surrounding prose
-    or pollutes deterministic/Ralph branches."""
+    or pollutes deterministic/autonomous branches."""
     # Auto-fix-loop hard mandates.
     if 'Never use' in line and 'plain-text numbered prompt' in line:
         return True
     if 'do NOT use' in line and 'plain-text numbered prompt' in line:
         return True
     # Hard-error / no-user prose ("questions hard-error ...", "no user to
-    # ask ..."). These lines DESCRIBE a Ralph/autonomous branch that refuses
+    # ask ..."). These lines DESCRIBE an autonomous branch that refuses
     # to ask — injecting the R2 ask block here would contradict the branch
     # semantics (observed: make-pr autonomous bullet, fn-59.3 review).
     if ('hard-error' in line or 'no user to ask' in line) \
@@ -1569,7 +1565,7 @@ def is_negative_context(line):
     # "no path reaches `plain-text numbered prompt`", "NO code path may reach
     # `plain-text numbered prompt`", "Never asks interactively". Injecting the R2
     # ask block here contradicts the surface-don't-block / autonomous contract
-    # (fn-68 R14: the backlog/Ralph path never reaches an interactive prompt).
+    # (fn-68 R14: the backlog path never reaches an interactive prompt).
     # The verb regex mis-reads the leading "Asking ..." / "Never asks ..." OR the
     # trailing "ask the human" as an active-ask anchor, so this guard must catch
     # the negation explicitly.
@@ -1787,7 +1783,6 @@ generate_openai_yaml "flow-next-visual" "Flow Visual" "Restate a spec, task, dif
 # drafting-moment shape so Codex matches it the same way other hosts match
 # the canonical description.
 generate_openai_yaml "flow-next-prose" "Flow Prose" "Use while drafting a substantial reply, report, or summary for the user - read the prose contract before writing and draft under its rules" "#F59E0B" true
-generate_openai_yaml "flow-next-ralph-init" "Flow Ralph Init" "Scaffold the repo-local Ralph autonomous harness" "#3B82F6" true
 
 # Internal skills (gray, explicit-only). These are spawned by other skills,
 # never by user prose. Codex defaults allow_implicit_invocation to TRUE when
@@ -1847,7 +1842,6 @@ DIET = {
     "flow-next-impl-review": "Carmack-level implementation review of changes via the configured backend. Use when asked to review code or a diff in a flow-next repo.",
     "flow-next-plan-review": "Carmack-level review of a flow-next spec or plan via the configured backend. Use when asked to review a plan or spec.",
     "flow-next-spec-completion-review": "Verify that a spec's completed tasks fully implement the spec requirements. Use at spec completion before close.",
-    "flow-next-ralph-init": "Scaffold the repo-local Ralph autonomous harness and project hooks. Use when asked to set up Ralph.",
     "flow-next": "Manage .flow/ tasks and specs. Use for show or list tasks, task status, what is ready, show fn-N. NOT for planning or executing (use the plan and work skills).",
     "flow-next-prose": "Use while drafting a substantial reply, report, or summary for the user - read the prose contract before writing and draft under its rules. Not for short turns or file/PR output.",
 }
@@ -1905,7 +1899,6 @@ REQUIRED_OPENAI_YAML_SKILLS=(
   "flow-next-prime"
   "flow-next-map"
   "flow-next-visual"
-  "flow-next-ralph-init"
   "flow-next-drive"
   "flow-next-sync"
   "flow-next-export-context"
@@ -2064,9 +2057,8 @@ for path in sorted(Path(sys.argv[1]).rglob("*")):
 SKILL_ID_TRANSFORM
 
 # ─── 3. Hooks (none by default; fn-114) ───────────────────────────────────────
-# Codex mirror ships ZERO hooks. Plugin hooks/ is gone; Ralph guard registration
-# is agent-driven via /flow-next:ralph-init into project .codex/hooks.json.
-# Remove any stale mirror hooks.json left from older sync runs.
+# Codex mirror ships ZERO hooks. Remove any stale mirror hooks.json left from
+# older sync runs.
 echo -e "${BLUE}Hooks: zero-default (no codex/hooks.json)...${NC}"
 if [ -f "$CODEX_DIR/hooks.json" ]; then
   rm -f "$CODEX_DIR/hooks.json"
@@ -2114,7 +2106,7 @@ fi
 
 # Assert no default hooks.json in the Codex mirror (fn-114 zero-default)
 if [ -f "$CODEX_DIR/hooks.json" ]; then
-  echo -e "  ${RED}✗${NC} codex/hooks.json must not ship (Ralph is opt-in via ralph-init)"
+  echo -e "  ${RED}✗${NC} codex/hooks.json must not ship (the plugin ships no hooks)"
   errors=$((errors + 1))
 else
   echo -e "  ${GREEN}✓${NC} no codex/hooks.json (zero-default)"
@@ -2216,9 +2208,8 @@ fi
 # skill prose — should all have been rewritten to the plain-text numbered
 # prompt by Stage 3 (fn-45). Bare AskUserQuestion in the Codex skill prose
 # is a sync bug.
-# Exclude templates/ subdirs (those are user-script templates, not skill prose
-# that the agent reads — e.g., ralph-init/templates/watch-filter.py uses the
-# tool name as a dict key for hook event emoji mapping, which is intentional).
+# Exclude templates/ subdirs (those are user-facing templates, not skill prose
+# that the agent reads).
 askq_refs=$( { grep -rE 'AskUserQuestion|ToolSearch select:AskUserQuestion' "$CODEX_DIR/skills/" 2>/dev/null || true; } | { grep -v '/templates/' || true; } | wc -l | tr -d ' ')
 if [ "$askq_refs" != "0" ]; then
   echo -e "  ${RED}✗${NC} $askq_refs Claude-native tool refs (AskUserQuestion / ToolSearch) remain in codex skill prose — extend sync transforms"
@@ -2233,8 +2224,7 @@ fi
 # `.flow/bin` rung exactly once. This guard is the pair of the deleted fallback
 # injectors: with the canonical text carrying all three rungs, the failure mode
 # flipped from "missing rung" to "duplicated rung".
-# Scope: skill/agent PROSE only. `templates/` holds self-contained user scripts
-# (ralph's harness resolves its own sibling launcher, never the plugin root).
+# Scope: skill/agent PROSE only. `templates/` holds user-facing templates.
 chain_problems=$( { grep -rlE '^[[:space:]]*FLOWCTL=' "$CODEX_DIR/skills/" "$CODEX_DIR/agents/" 2>/dev/null || true; } | { grep -v '/templates/' || true; } | while read -r cf; do
   [ -f "$cf" ] || continue
   awk -v file="$cf" '

@@ -21,23 +21,20 @@ If `.flow/` does not exist, print `No .flow/ directory — /flow-next:qa runs in
 
 ## Autonomous-mode gate (before any prompt path)
 
-Compute the no-prompt flag **here, at the preamble, before Phase 1** — every interactive prompt in Phases 1.1 / 1.2 / 3.1 / 3.2 reads it, so it must be resolved before the first one is reached (not in a post-verdict preflight). It folds two signals:
+Compute the no-prompt flag **here, at the preamble, before Phase 1** — every interactive prompt in Phases 1.1 / 1.2 / 3.1 / 3.2 reads it, so it must be resolved before the first one is reached (not in a post-verdict preflight):
 
 ```bash
 # QA_AUTONOMOUS arrives from the SKILL.md mode-detection block (mode:autonomous
-# token | FLOW_AUTONOMOUS=1). Ralph (Phase A) also suppresses prompts, so a Ralph
-# run is implicitly autonomous. NO_PROMPT=1 ⇒ never call plain-text numbered prompt anywhere.
-RALPH=0
-if [ -n "${REVIEW_RECEIPT_PATH:-}" ] || [ "${FLOW_RALPH:-}" = "1" ]; then RALPH=1; fi
+# token | FLOW_AUTONOMOUS=1). NO_PROMPT=1 ⇒ never call plain-text numbered prompt anywhere.
 NO_PROMPT=0
-if [ "${QA_AUTONOMOUS:-}" = "1" ] || [ "$RALPH" = "1" ] \
+if [ "${QA_AUTONOMOUS:-}" = "1" ] \
   || [ "${FLOW_AUTONOMOUS:-}" = "1" ] || [ "${AUTONOMOUS:-}" = "1" ] \
   || [[ " ${ARGUMENTS:-} " == *" mode:autonomous "* ]]; then NO_PROMPT=1; fi
 ```
 
 **Ask the user via plain text.** Render the options below as a numbered list `1.` … `N.`, followed by a final option `N+1. Other — type your own answer`. Print the question, then the numbered list, then **stop and wait for the user's next message before continuing**. Parse the reply as: a bare number `1`–`N+1` → that option; the literal text of an option label → that option; free text after `Other` → custom answer.
 
-When `NO_PROMPT=1`, every `plain-text numbered prompt` info-prompt below routes deterministically instead of asking — resolve from spec / config / env, else surface the limitation as a **BLOCKED `qa_verdict`** (§6.3) + clean exit (the spec-id-undetermined case under Ralph is the one genuine hard error — Phase A §1). Each phase below restates its own branch; the full per-fact routing table is reached only on the autonomous path:
+When `NO_PROMPT=1`, every `plain-text numbered prompt` info-prompt below routes deterministically instead of asking — resolve from spec / config / env, else surface the limitation as a **BLOCKED `qa_verdict`** (§6.3) + clean exit (the spec-id-undetermined case is the one genuine hard error — Phase 1). Each phase below restates its own branch; the full per-fact routing table is reached only on the autonomous path:
 
 ```bash
 # Fail OPEN: an unset NO_PROMPT (gate above failed to compute) reads the reference.
@@ -48,7 +45,7 @@ fi   # default branch: bare no-op — NO link, NO read path
 
 When the sentinel prints, STOP and Read [references/autonomy.md](references/autonomy.md) (§0, the per-fact routing table) before any further step. When the gate is silent (`NO_PROMPT=0`, interactive), continue — every prompt path below asks the user as written.
 
-`QA_AUTONOMOUS` (autonomy ≠ Ralph) gates **question suppression only** — it activates no ralph-guard hook and no receipt-path gate. The `flow --auto` QA stage passes it so the build loop never hangs on a prompt; the BLOCKED-and-advance contract (R6) keeps an environment without a local app from wedging the pipeline.
+`QA_AUTONOMOUS` gates **question suppression only**. The `flow --auto` QA stage passes it so the build loop never hangs on a prompt; the BLOCKED-and-advance contract (R6) keeps an environment without a local app from wedging the pipeline.
 
 ---
 
@@ -75,7 +72,7 @@ if [[ -z "$SPEC_ID" ]]; then
 fi
 ```
 
-If still empty: when `NO_PROMPT=0`, ask via `plain-text numbered prompt` (info prompt — *"Which spec should I QA?"*, options drawn from `$FLOWCTL specs`). When `NO_PROMPT=1` (autonomous / Ralph), the branch-match above is the only resolver — an unresolved spec id is a genuine "no user to ask" hard error (non-zero exit + stderr), per the Autonomous-mode gate table. Never silently default to a spec.
+If still empty: when `NO_PROMPT=0`, ask via `plain-text numbered prompt` (info prompt — *"Which spec should I QA?"*, options drawn from `$FLOWCTL specs`). When `NO_PROMPT=1` (autonomous), the branch-match above is the only resolver — an unresolved spec id is a genuine "no user to ask" hard error (non-zero exit + stderr), per the Autonomous-mode gate table. Never silently default to a spec.
 
 Validate the resolved id is a spec (not a task):
 
@@ -121,12 +118,12 @@ if [[ -z "$DEFAULT_BRANCH" ]]; then
     DEFAULT_BRANCH="$ORIGIN_HEAD"
   fi
 fi
-# Still nothing — ask the user for the base (interactive), or hard-error under
-# Ralph. Mirrors make-pr Phase 0: never silently exit on an unusual default branch.
+# Still nothing — ask the user for the base (interactive), or emit BLOCKED
+# when autonomous. Mirrors make-pr Phase 0: never silently exit on an unusual default branch.
 QA_OUTCOME=""   # set non-empty here ONLY to short-circuit to the BLOCKED receipt (autonomous no-base path)
 if [[ -z "$DEFAULT_BRANCH" ]]; then
   if [[ "${NO_PROMPT:-0}" == "1" ]]; then
-    # Autonomous / Ralph: no user to ask. An undetectable base ref means scenarios
+    # Autonomous: no user to ask. An undetectable base ref means scenarios
     # cannot be derived → surface a BLOCKED qa_verdict (the Autonomous-mode gate
     # table), never a prompt, never a hang. Short-circuit straight to the §6.3
     # writer (skip the rev-parse validation + payload pull below) with:
@@ -202,8 +199,8 @@ When it is absent: skip. Behavior is byte-identical to today; the only added cos
 ### Autonomous target preflight
 
 Before scenario derivation, when `NO_PROMPT=1`, resolve the target and account
-requirements using §3.1–3.2. `NO_PROMPT` includes `FLOW_RALPH`,
-`REVIEW_RECEIPT_PATH`, `FLOW_AUTONOMOUS=1`, `AUTONOMOUS=1` and `mode:autonomous`.
+requirements using §3.1–3.2. `NO_PROMPT` includes `FLOW_AUTONOMOUS=1`,
+`AUTONOMOUS=1` and `mode:autonomous`.
 A missing target or required accounts ends BLOCKED immediately through §6.3;
 keep coverage empty because no scenarios were derived. Public-only targets
 need no account. Reuse the resolved target and accounts in Phase 3.
@@ -296,7 +293,7 @@ Scenarios carry forward to Phase 3 (prepare) and Phase 4 (execute). At least one
 
 ## Phase 3: prepare
 
-**Goal:** make the live app driveable before Phase 4 touches it — resolve the **target URL / app**, **test accounts**, **session hygiene**, and the **device matrix** (one desktop + one mobile viewport). The QA discipline this phase applies (the five hygiene rules, persona suffixing, the write-path-first / one-tab-per-shard caution) is the lean BRB borrow in **[references/qa-discipline.md](references/qa-discipline.md)** — read it before preparing. When `NO_PROMPT=0`, ask the user (`plain-text numbered prompt`, info-only — never a confirm gate) when the URL or accounts are undocumented (R7). When `NO_PROMPT=1` (autonomous / Ralph — the Autonomous-mode gate), an undocumented URL / accounts is a hard limitation → BLOCKED (§6.3) + clean exit, never a prompt.
+**Goal:** make the live app driveable before Phase 4 touches it — resolve the **target URL / app**, **test accounts**, **session hygiene**, and the **device matrix** (one desktop + one mobile viewport). The QA discipline this phase applies (the five hygiene rules, persona suffixing, the write-path-first / one-tab-per-shard caution) is the lean BRB borrow in **[references/qa-discipline.md](references/qa-discipline.md)** — read it before preparing. When `NO_PROMPT=0`, ask the user (`plain-text numbered prompt`, info-only — never a confirm gate) when the URL or accounts are undocumented (R7). When `NO_PROMPT=1` (autonomous — the Autonomous-mode gate), an undocumented URL / accounts is a hard limitation → BLOCKED (§6.3) + clean exit, never a prompt.
 
 **Driving stays flow-next-drive's job.** This phase resolves *what to drive and as whom*; the concrete commands (set viewport, clear storage, save/load auth state) live in flow-next-drive's references — point at them, never duplicate the prose:
 
@@ -311,13 +308,13 @@ Find the live target a real user would hit, in this priority order. Stop at the 
 1. **Caller override** — a `--target <url>` flag or a `QA_TARGET_URL` env var, when present.
 2. **Spec signal** — a deploy URL named in `spec.spec_sections.architecture_overview` / `goal_and_context` (Phase 1's payload).
 3. **Repo signal** — a deploy URL in `README`, `.env.example`, or a deploy config (Vercel / Netlify / Cloudflare); or a documented dev-server URL + start command for a localhost run.
-4. **Ask the user** (`plain-text numbered prompt`, info prompt — *"What URL should I QA — a live deploy or a local dev server?"*) when `NO_PROMPT=0`. When `NO_PROMPT=1` (autonomous / Ralph) this is a hard limitation → BLOCKED + clean exit, never a prompt.
+4. **Ask the user** (`plain-text numbered prompt`, info prompt — *"What URL should I QA — a live deploy or a local dev server?"*) when `NO_PROMPT=0`. When `NO_PROMPT=1` (autonomous) this is a hard limitation → BLOCKED + clean exit, never a prompt.
 
 A target the driver cannot reach (no live deploy, no localhost app started) is **not** a Phase 3 failure — it carries forward to the Phase 6 **BLOCKED** outcome (R13 graceful surface), never a fabricated PASS.
 
 ### 3.2 — Resolve test accounts (ask when undocumented)
 
-Most scenarios beyond the public happy path need credentials. Resolve them before authoring auth-dependent steps. When a documented playbook exists (auth-provider dev mode, a seed script, fixtures, a `.env.test.example`), use it. If none is documented: when `NO_PROMPT=0`, **ask the user** (`plain-text numbered prompt`, info prompt) for the auth provider / dev-user docs, an admin account, and the per-run email-suffix convention. When `NO_PROMPT=1` (autonomous / Ralph), undocumented accounts are a hard limitation → BLOCKED + clean exit (the public happy-path scenarios may still run if a target URL resolved; auth-dependent scenarios that cannot proceed without credentials make the outcome BLOCKED). **Never guess credentials**, and never commit a password to the repo.
+Most scenarios beyond the public happy path need credentials. Resolve them before authoring auth-dependent steps. When a documented playbook exists (auth-provider dev mode, a seed script, fixtures, a `.env.test.example`), use it. If none is documented: when `NO_PROMPT=0`, **ask the user** (`plain-text numbered prompt`, info prompt) for the auth provider / dev-user docs, an admin account, and the per-run email-suffix convention. When `NO_PROMPT=1` (autonomous), undocumented accounts are a hard limitation → BLOCKED + clean exit (the public happy-path scenarios may still run if a target URL resolved; auth-dependent scenarios that cannot proceed without credentials make the outcome BLOCKED). **Never guess credentials**, and never commit a password to the repo.
 
 The where-to-look list, the persona-suffix generator, and the secret-handling rule live in **[references/prepare-surface.md](references/prepare-surface.md)** §1 — read it when a scenario needs an account.
 
@@ -507,9 +504,9 @@ fi
 
 This gates only `SHIP` — `NA` (no driveable UI, legitimately no evidence) and `BLOCKED`/`NEEDS_WORK` are untouched. It turns "forbidden" into "impossible": the sole way to a SHIP receipt is to have captured live-app artifacts.
 
-### 6.2 — Project `qa_outcome` → `verdict` (the Ralph-guard enum)
+### 6.2 — Project `qa_outcome` → `verdict` (the review-verdict enum)
 
-`ralph-guard.py` validates **only** `verdict ∈ {SHIP, NEEDS_WORK, MAJOR_RETHINK}` (`validate_receipt_data`). The four QA outcomes live in `qa_outcome`; `verdict` is the enum-compatible **projection**:
+The four QA outcomes live in `qa_outcome`; `verdict` is the review-enum-compatible **projection** (`SHIP`, `NEEDS_WORK`, `MAJOR_RETHINK`):
 
 | `qa_outcome` | `verdict` | Rationale |
 |--------------|-----------|-----------|
@@ -518,7 +515,7 @@ This gates only `SHIP` — `NA` (no driveable UI, legitimately no evidence) and 
 | `BLOCKED` | `NEEDS_WORK` | could not verify → no ship claim on a QA basis |
 | `NA` | `SHIP` | no driveable UI → live QA raises no objection (`na_reason` records why) |
 
-QA never emits `MAJOR_RETHINK` — it is a valid enum member the guard accepts, but the QA matrix has no outcome that maps to it.
+QA never emits `MAJOR_RETHINK` — it is a valid enum member, but the QA matrix has no outcome that maps to it.
 
 ### 6.3 — Write the `qa_verdict` receipt (direct write — the make-pr pattern)
 
@@ -545,18 +542,18 @@ RECEIPT_PATH="${QA_RECEIPT_OVERRIDE:-${REVIEW_RECEIPT_PATH:-$REPO_ROOT/.flow/rev
 $FLOWCTL qa receipt --from-json "$QA_RECEIPT_INPUT" --receipt "$RECEIPT_PATH" --json
 ```
 
-Set payload `mode` to `ralph` when `REVIEW_RECEIPT_PATH` is set, `rp` for a caller
-`--receipt`, otherwise `interactive`. Validation reports all payload errors and
+Set payload `mode` to `rp` for a caller `--receipt` or `REVIEW_RECEIPT_PATH`,
+otherwise `interactive`. Validation reports all payload errors and
 leaves the prior receipt unchanged. Fix the payload and retry; never silently
 omit findings. BLOCKED/NA retain unresolved prior findings.
 
-The additive fields are **additive only** — `type`, `id`, `mode`, `verdict`, `qa_outcome`, the scoped reasons, and `timestamp` are unchanged, so the receipt still passes `ralph-guard.validate_receipt_data` (it gates on `verdict` only; the extra fields are ignored). `open_p0p1` changing from bare ids to objects is a shape change the guard does not inspect (it never reads `open_p0p1`) and make-pr/.2 consume; no Ralph-guard change.
+The additive fields are **additive only** — `type`, `id`, `mode`, `verdict`, `qa_outcome`, the scoped reasons, and `timestamp` are unchanged. `open_p0p1` carries objects, which make-pr consumes.
 
 The default path `.flow/review-receipts/qa-<spec-id>.json` is **committed** (the receipts dir is tracked); `.flow/tmp/` (evidence) is gitignored. A second QA pass **overwrites** the latest receipt (idempotent) — findings dedup against bug memory (Phase 5), the receipt reflects the latest run.
 
 ### 6.3b — Commit QA's own handoff (autonomous mode only)
 
-When `QA_AUTONOMOUS=1` (the `flow --auto` QA stage dispatched this pass - autonomy ≠ Ralph), QA commits **its own outputs** so the dispatching stage hands off a clean tree and the branch the eventual make-pr pushes carries exactly what the briefing’s Verification and Open items report. QA knows exactly which files it produced (the receipt above, plus the memory entries tracked in `QA_FILED_MEMORY` at §5.4 / §5.5), so it commits those and the driver never has to guess or diff the tree. Never a `.flow/memory` glob (it would sweep pre-existing dirty memory) and never `git add -A`. User-invoked QA leaves commits to the user. The precondition (the loop operates on committed state; a dirty `.flow/memory` should be committed first) is in [references/autonomy.md](references/autonomy.md) §5.
+When `QA_AUTONOMOUS=1` (the `flow --auto` QA stage dispatched this pass), QA commits **its own outputs** so the dispatching stage hands off a clean tree and the branch the eventual make-pr pushes carries exactly what the briefing’s Verification and Open items report. QA knows exactly which files it produced (the receipt above, plus the memory entries tracked in `QA_FILED_MEMORY` at §5.4 / §5.5), so it commits those and the driver never has to guess or diff the tree. Never a `.flow/memory` glob (it would sweep pre-existing dirty memory) and never `git add -A`. User-invoked QA leaves commits to the user. The precondition (the loop operates on committed state; a dirty `.flow/memory` should be committed first) is in [references/autonomy.md](references/autonomy.md) §5.
 
 ```bash
 if [ "$QA_AUTONOMOUS" = "1" ]; then
@@ -573,7 +570,7 @@ fi
 
 The `chore(flow): qa verdict` subject is what the `flow --auto` + make-pr freshness gates peel to find the code head; `head_sha` was recorded at QA time (the code head, before this commit), so they still resolve freshness correctly. A no-op when nothing changed.
 
-**There is NO generic `flowctl receipt write` helper** — compose the JSON as above. `qa-*.json` is not a path the Ralph guard's `parse_receipt_path` recognizes, so it validates via the plain verdict-enum check only (the planning decision: QA is **not** a hard Ralph receipt-gate in v1 — no `ralph-guard.py` change).
+**There is NO generic `flowctl receipt write` helper** — compose the JSON as above.
 
 ### 6.4 — Surface the verdict to the user
 
@@ -590,14 +587,13 @@ Print the YES/NO call, the `qa_outcome`, the open P0/P1 list (with finding ids +
 
 ## Phase A: autonomy
 
-**Goal:** detect Ralph **once** and route deterministically (R11) — autonomous when the target URL + test accounts are configured (emits the verdict receipt, no prompts); asks the user (info-only) when they are undocumented. The skill is **not a hard Ralph-block** — there is **no** top-of-skill `FLOW_RALPH` exit-2 guard (the make-pr Phase 0 precedent; see [SKILL.md](SKILL.md) Forbidden). Phase A also owns the opt-in tracker verdict post (`tracker.perEvent.qa`) and the graceful-degradation contract when no live deploy / driver is present. The full routing table, gating predicate, and degradation matrix live in **[references/autonomy.md](references/autonomy.md)** — read it before any Ralph or tracker step.
+**Goal:** route deterministically on the no-prompt flag (R11) — autonomous when the target URL + test accounts are configured (emits the verdict receipt, no prompts); asks the user (info-only) when they are undocumented. Phase A also owns the opt-in tracker verdict post (`tracker.perEvent.qa`) and the graceful-degradation contract when no live deploy / driver is present. The full routing table, gating predicate, and degradation matrix live in **[references/autonomy.md](references/autonomy.md)** — read it before any autonomous or tracker step.
 
-### A.1 — Detect Ralph once, route deterministically (R11)
+### A.1 — Route deterministically (R11)
 
-`RALPH` was already computed **once** in the Autonomous-mode gate above (the make-pr Phase 0 pattern — detect at the top of the run, then route downstream; never re-probe per phase). Reuse that value here; do not recompute it.
+`NO_PROMPT` was already computed **once** in the Autonomous-mode gate above (the make-pr Phase 0 pattern — detect at the top of the run, then route downstream; never re-probe per phase). Reuse that value here; do not recompute it.
 
-- **No top-of-skill exit guard.** `RALPH=1` does **not** abort the skill. QA runs in Ralph; it just routes differently (the make-pr precedent — autonomous loops emitting a QA verdict is the intended use). Do **not** add a `FLOW_RALPH`/`REVIEW_RECEIPT_PATH` exit-2 guard.
-- **`plain-text numbered prompt` is info-only, never a confirm gate.** It resolves *undocumented* facts (target URL, test accounts — Phases 1.1, 3.1, 3.2), never "shall I run QA? / ship?". Interactive asks; Ralph cannot ask, so an undocumented URL/accounts under Ralph is a **hard limitation → BLOCKED** (Phase 6, `blocked_reason`), not a prompt and not an exit.
+- **`plain-text numbered prompt` is info-only, never a confirm gate.** It resolves *undocumented* facts (target URL, test accounts — Phases 1.1, 3.1, 3.2), never "shall I run QA? / ship?". Interactive asks; an autonomous run cannot ask, so an undocumented URL/accounts there is a **hard limitation → BLOCKED** (Phase 6, `blocked_reason`), not a prompt and not an exit.
 - **Autonomous path:** target URL + test accounts configured (spec / config / env) → derive → drive → file → emit the `qa_verdict` receipt to the caller-supplied `--receipt` / `REVIEW_RECEIPT_PATH` (Phase 6.3), zero prompts. The verdict path is identical to interactive; only the prompt-vs-BLOCKED branch on *undocumented* inputs differs.
 
 ### A.2 — Graceful degradation (R13)

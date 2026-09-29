@@ -71,7 +71,7 @@ and `Unaddressed R-IDs: [...]`; a non-deferred not-addressed R-ID blocks.
 Confidence must be exactly 0/25/50/75/100. Suppress below 75 except P0 at 50+.
 Classify every finding introduced or pre_existing; only introduced findings
 block. Never recommend deleting protected `.flow/*`, generated plugin mirrors,
-spec/task records, review receipts, or Ralph artifacts.
+spec/task records, or review receipts.
 
 For each surviving introduced finding emit Severity (P0-P3), Confidence,
 Classification, File:Line, Problem, and Suggestion. List pre-existing findings
@@ -497,7 +497,7 @@ See [optional-phases.md](optional-phases.md) "Phase ordering & flag-combination 
 
 **Committed code changes land before every re-review.** A re-review dispatched with no change since the last verdict has broken this — the reviewer just returns NEEDS_WORK again.
 
-**MAX ITERATIONS**: Limit fix+re-review cycles to **${MAX_REVIEW_ITERATIONS:-8}** iterations (default 8, configurable in Ralph's config.env). If still NEEDS_WORK after max rounds, output `<promise>RETRY</promise>` and stop — let the next Ralph iteration start fresh. The `review-rounds increment` gate (step 6 below and Phase 3) enforces this deterministically across fresh invocations: at the cap it refuses with an `ESCALATE:` marker + exit 4, which is NOT retryable — surface it and stop (Ralph: NEEDS_HUMAN).
+**MAX ITERATIONS**: Limit fix+re-review cycles to **${MAX_REVIEW_ITERATIONS:-8}** iterations (default 8). If still NEEDS_WORK after max rounds, output `<promise>RETRY</promise>` and stop. The `review-rounds increment` gate (step 6 below and Phase 3) enforces this deterministically across fresh invocations: at the cap it refuses with an `ESCALATE:` marker + exit 4, which is NOT retryable — surface it and stop.
 
 If verdict is NEEDS_WORK:
 

@@ -197,5 +197,4 @@ $FLOWCTL specs --json | jq -r '.specs[] | select(.status != "done") | "\(.id): \
 - "Show me the dependency graph"
 - "What's the critical path?"
 - "Which specs can run in parallel?"
-- "Why is Ralph working on X?"
 - "What should I work on next?"

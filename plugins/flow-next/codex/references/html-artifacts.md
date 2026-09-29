@@ -319,7 +319,7 @@ drains them as markdown-source edits, then regenerates the lens.
 - **Conversational regen**: when a user asks "regenerate the artifact for <spec-id>"
   (after hand edits, an interview, drained annotations), reload this file, re-read
   the spec + flowctl state, regenerate at the fixed path, and re-run §8.
-- **Autonomous contexts generate only**: pilot/Ralph/autonomous runs may write
+- **Autonomous contexts generate only**: pilot/autonomous runs may write
   artifacts but NEVER open a session and NEVER poll — never block on a human. At
   most a one-line note that a session has pending prompts.
 - **Idle-stop is invisible**: the server idle-stops (~30 min); the artifact still

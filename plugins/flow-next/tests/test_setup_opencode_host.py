@@ -1,4 +1,4 @@
-"""OpenCode-host setup contracts: detection rung + silent-skip Ralph.
+"""OpenCode-host setup contracts: detection rung + AGENTS.md targets.
 
 Locks:
 
@@ -8,8 +8,7 @@ Locks:
   (b) Executable Step-0 bash: PLUGIN_ROOT carrying
       .flow-next-opencode-manifest classifies as opencode; GROK_AGENT still
       wins; absence of the file is not an OpenCode signal.
-  (c) PLATFORM=opencode never offers Ralph; lifecycle snippet + routing
-      target AGENTS.md.
+  (c) PLATFORM=opencode: lifecycle snippet + routing target AGENTS.md.
 
 Run:
     cd plugins/flow-next/tests && python3 -m unittest test_setup_opencode_host -q
@@ -178,19 +177,10 @@ class TestOpencodeDetectionExecutable(unittest.TestCase):
 
 
 class TestOpencodeSetupProfile(unittest.TestCase):
-    """PLATFORM=opencode: AGENTS.md target, default review menu, no Ralph."""
+    """PLATFORM=opencode: AGENTS.md target, default review menu."""
 
     def setUp(self) -> None:
         self.text = _read(WORKFLOW)
-
-    def test_ralph_silently_skipped(self) -> None:
-        self.assertIn(
-            '[[ "$PLATFORM" == "cursor" || "$PLATFORM" == "grok" '
-            '|| "$PLATFORM" == "opencode" ]]',
-            self.text,
-        )
-        self.assertIn("unsupported on OpenCode", self.text)
-        self.assertIn("Cursor/Grok/OpenCode", self.text)
 
     def test_lifecycle_and_routing_target_agents_md(self) -> None:
         self.assertIn("For **OpenCode** (`PLATFORM=opencode`)", self.text)

@@ -1,8 +1,8 @@
 # Plan next-steps menu (interactive only)
 
 Load this reference only when the Step 8 interactivity gate printed its
-sentinel — no non-interactive marker is set. Autonomous, Ralph, and
-receipt-driven runs never reach this file; they run Step 8.5 directly after
+sentinel — no non-interactive marker is set. Autonomous runs never
+reach this file; they run Step 8.5 directly after
 Step 6/7 complete.
 
 **Above the numbered list, print exactly ONE recommendation line** — mandatory, never silently omitted — and re-judge it at every menu print: a go-deeper/simplify round changes the risk picture, and stale advice is worse than none.

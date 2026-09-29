@@ -49,7 +49,7 @@ tracker restrictions; never widen the target.
    Pass `--review=<backend>` only to stages supporting it.
 
 Flow dispatches land once per hop and copies none of its repair or merge steps.
-Land invokes no driver; its Ralph refusal and merge gates remain authoritative.
+Land invokes no driver; its merge gates remain authoritative.
 
 ## Observe the result and continue
 

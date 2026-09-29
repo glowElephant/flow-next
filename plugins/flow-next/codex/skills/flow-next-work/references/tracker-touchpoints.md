@@ -54,7 +54,7 @@ if [ "$OP" != "off" ]; then
   # local body or relations over tracker-side edits. An unlinked spec still
   # creates, links, seeds the paired base, and then updates status.
   # Unlinked specs create and link inside the facade. No reachable transport is
-  # best-effort; in `FLOW_RALPH`, `REVIEW_RECEIPT_PATH`, `FLOW_AUTONOMOUS=1`, `AUTONOMOUS=1`, or `mode:autonomous`, structured conflicts use `flowctl sync defer` instead of asking.
+  # best-effort; in `FLOW_AUTONOMOUS=1`, `AUTONOMOUS=1`, or `mode:autonomous`, structured conflicts use `flowctl sync defer` instead of asking.
   :
 fi
 ```

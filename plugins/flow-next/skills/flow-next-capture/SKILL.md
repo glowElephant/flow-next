@@ -106,19 +106,6 @@ fi   # default branch: bare no-op — NO link, NO read path
 
 When the sentinel above prints, read [references/autofix-mode.md](references/autofix-mode.md) before Phase 0 — it owns the per-phase autofix rules (Phase 0 hard-errors, Phase 3 exits, §4.4 write gate, split / glossary / readiness behavior). On the default interactive path, read nothing.
 
-## Ralph-block (R13) — runs first, before everything else
-
-`/flow-next:capture` requires conversation context and a user to resolve material questions. Ralph cannot provide that interaction. Hard-error with exit 2 when running under Ralph.
-
-```bash
-if [[ -n "${REVIEW_RECEIPT_PATH:-}" || "${FLOW_RALPH:-}" == "1" ]]; then
-  echo "Error: /flow-next:capture requires conversation context + a user at the terminal; not compatible with Ralph mode (REVIEW_RECEIPT_PATH or FLOW_RALPH detected)." >&2
-  exit 2
-fi
-```
-
-No env-var opt-in. Ralph never decides direction.
-
 ## Interaction Principles (interactive mode only)
 
 In autofix mode, skip user questions entirely and apply the rules in the autofix reference.

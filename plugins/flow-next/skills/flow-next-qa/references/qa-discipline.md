@@ -148,7 +148,7 @@ UI's optimistic render. That write-side-effect check is part of the evidence dis
 Every pass ends with **one** decision a human can act on, grounded in captured evidence —
 never in agent narration, never in reading the diff (R1: PASS is forbidden from source
 inspection). The mechanics (the four-outcome `qa_outcome` matrix, the projection to the
-Ralph-guard `verdict` enum, and the receipt JSON write) live in **`workflow.md` §6**; this
+review `verdict` enum, and the receipt JSON write) live in **`workflow.md` §6**; this
 reference carries the *discipline* that the verdict must obey.
 
 ### The four-outcome verdict (discipline, not mechanics)

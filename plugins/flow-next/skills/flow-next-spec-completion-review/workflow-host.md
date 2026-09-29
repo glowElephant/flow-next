@@ -40,7 +40,7 @@ subagent prompt — it has the same repository you do.
 
 **If no cross-family pin is available:**
 - **Interactive:** ask the user explicitly (blocking question) which reviewer model/family to use — do not silently self-review
-- **Autonomous** (`mode:autonomous` / `FLOW_AUTONOMOUS=1` / Ralph / `REVIEW_RECEIPT_PATH` set): stop with `NEEDS_HUMAN: host review needs a cross-family model pin in AGENTS.md model-routing` — never same-family self-review
+- **Autonomous** (`mode:autonomous` / `FLOW_AUTONOMOUS=1`): stop with `NEEDS_HUMAN: host review needs a cross-family model pin in AGENTS.md model-routing` — never same-family self-review
 
 ## Step 2: Dispatch read-only reviewer subagent
 
@@ -276,7 +276,7 @@ hand.
 ## Step 4: Continue through the shared fix loop and status owner
 
 Continue into the shared Fix Loop — [workflow-common.md](workflow-common.md)
-§"Fix Loop (INTERNAL - do not exit to Ralph)", reached from SKILL.md Step 3 —
+§"Fix Loop (INTERNAL)", reached from SKILL.md Step 3 —
 in this same skill run. The shared
 terminal checkpoint re-reads the latest completion verdict and cap counters
 from `review-rounds resume-terminal`; it never relies on shell variables surviving a

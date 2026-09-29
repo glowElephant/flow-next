@@ -1753,27 +1753,6 @@ class TestReviewBackendCmd(unittest.TestCase):
             self.assertEqual(payload["source"], "config")
 
 
-class TestRalphBareBackendExtraction(unittest.TestCase):
-    """Ralph's `${VAR%%:*}` pattern must extract bare backend for both bare
-    and spec forms. This is a smoke test against the pattern the Ralph shell
-    script uses — not the shell itself, but the equivalent pure-Python form.
-    If this pattern is ever changed in ralph.sh, update this test too.
-    """
-
-    def test_bare_backend_extraction_python_equivalent(self) -> None:
-        # Python equivalent of bash ${VAR%%:*}
-        def bare(v: str) -> str:
-            return v.split(":", 1)[0]
-
-        self.assertEqual(bare("codex"), "codex")
-        self.assertEqual(bare("codex:gpt-5.4:xhigh"), "codex")
-        self.assertEqual(bare("copilot:claude-opus-4.5"), "copilot")
-        self.assertEqual(bare("rp"), "rp")
-        self.assertEqual(bare("none"), "none")
-        # Degenerate: trailing colon still parses cleanly.
-        self.assertEqual(bare("codex:"), "codex")
-
-
 class NoEmbedRegression(unittest.TestCase):
     """PR #184 / fn-169 R4 — a review prompt carries IDENTITIES, never payloads.
 
@@ -2006,29 +1985,6 @@ class TestBackendReviewDriverHooks(unittest.TestCase):
             self.assertNotIn("run_codex_exec(", body)
             self.assertNotIn("run_copilot_exec(", body)
             self.assertNotIn("run_cursor_exec(", body)
-
-    def test_stamp_ralph_iteration_helper(self) -> None:
-        self.assertTrue(callable(flowctl.stamp_ralph_iteration))
-        src = Path(flowctl.__file__).read_text(encoding="utf-8")
-        self.assertEqual(src.count("def stamp_ralph_iteration("), 1)
-        self.assertEqual(
-            len(re.findall(r'os\.environ\.get\("RALPH_ITERATION"\)', src)), 1
-        )
-        receipt: dict = {}
-        old = os.environ.get("RALPH_ITERATION")
-        try:
-            os.environ["RALPH_ITERATION"] = "7"
-            flowctl.stamp_ralph_iteration(receipt)
-            self.assertEqual(receipt["iteration"], 7)
-            receipt2: dict = {}
-            os.environ["RALPH_ITERATION"] = "nope"
-            flowctl.stamp_ralph_iteration(receipt2)
-            self.assertNotIn("iteration", receipt2)
-        finally:
-            if old is None:
-                os.environ.pop("RALPH_ITERATION", None)
-            else:
-                os.environ["RALPH_ITERATION"] = old
 
     def test_plan_completion_pipelines_exist(self) -> None:
         self.assertTrue(callable(flowctl._backend_plan_review))

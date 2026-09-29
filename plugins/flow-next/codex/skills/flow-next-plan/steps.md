@@ -306,7 +306,7 @@ Plan and task-spec prose follows the artifact prose contract in [docs/prose.md](
 
 ```bash
 ACTIVE=0
-[ "${AUTONOMOUS:-0}" = "1" ] || [ -n "${FLOW_AUTONOMOUS:-}" ] || [ -n "${FLOW_RALPH:-}" ] || [ -n "${REVIEW_RECEIPT_PATH:-}" ] || ACTIVE=1
+[ "${AUTONOMOUS:-0}" = "1" ] || [ -n "${FLOW_AUTONOMOUS:-}" ] || ACTIVE=1
 if [ "$ACTIVE" = "1" ]; then
   echo "READ-BACK ACTIVE — STOP. Read docs/read-back.md before the first .flow/ write."
 fi
@@ -656,7 +656,7 @@ Then route on interactivity:
 
 ```bash
 ACTIVE=0
-[ "${AUTONOMOUS:-0}" = "1" ] || [ -n "${FLOW_AUTONOMOUS:-}" ] || [ -n "${FLOW_RALPH:-}" ] || [ -n "${REVIEW_RECEIPT_PATH:-}" ] || ACTIVE=1
+[ "${AUTONOMOUS:-0}" = "1" ] || [ -n "${FLOW_AUTONOMOUS:-}" ] || ACTIVE=1
 if [ "$ACTIVE" = "1" ]; then
   echo "NEXT-STEPS MENU ACTIVE — STOP. Read references/next-steps-menu.md before continuing."
 fi
