@@ -1,4 +1,6 @@
-# Flow Plan Examples
+# Plan examples
+
+Worked good and bad shapes for specs and tasks. Read from Step 5 at STANDARD or DEEP depth, or when unsure how to shape a spec or task.
 
 ## The Golden Rule in Practice
 
@@ -82,28 +84,6 @@ architecture rationale, and re-told R2 acceptance — retold at task length]
 - Everything above is the PARENT SPEC retold — framing, rationale, re-told acceptance
 - Executors get the task TOGETHER with the full parent spec (anchor bundle), so restated content is generated twice, delivered twice, and drifts — plan-sync then chases it
 - Reference R-IDs and spec sections instead: `Implements R2 (see spec §Architecture)` is the whole context a task needs
-
-### ❌ BAD: Task with full implementation
-
-```markdown
-# fn-2.3: Implement claude backend
-
-## Implementation
-
-\`\`\`typescript
-export const claudeBackend: WorkerBackend = {
-  name: 'claude',
-  async spawn(opts) { /* complete process implementation */ },
-  async isAlive(handle) { /* complete liveness implementation */ },
-  async kill(handle) { /* complete shutdown implementation */ },
-};
-\`\`\`
-```
-
-**Problems:**
-- This IS the implementation — nothing left for `/flow-next:work` to do
-- Implementer will re-read this, then write essentially the same code
-- If implementation differs slightly, causes plan-sync drift
 
 ### ✅ GOOD: Task as delegation payload
 
@@ -224,8 +204,6 @@ at `src/components/LoginForm.tsx:25-40`.
 - S task for isolated frontend work
 - Clear file references and patterns
 - Testable acceptance criteria
-
-**Refactor-shaped tasks name an equivalence harness.** A restructuring-without-behavior-change task states its behavior pin in the body — a script diffing old-vs-new outputs, or a recorded baseline replayed against the new code. "Existing tests pass" is not a pin when the tests never covered the moved behavior.
 
 ---
 
@@ -360,27 +338,6 @@ flowchart LR
 
 ---
 
-## Good: Traceability Table
-
-```markdown
-## Requirement coverage
-
-| Req | Description | Task(s) | Gap justification |
-|-----|-------------|---------|-------------------|
-| R1  | OAuth login flow | fn-1-add-oauth.1, fn-1-add-oauth.2 | — |
-| R2  | Session persistence | fn-1-add-oauth.3 | — |
-| R3  | Admin dashboard | — | Deferred to fn-2-admin-panel |
-| R4  | Logout clears tokens | fn-1-add-oauth.2 | — |
-```
-
-**Why this works:**
-- One row per acceptance criterion — nothing slips through
-- Every requirement maps to task(s) or has explicit gap justification
-- R3 is intentionally deferred — called out, not silently dropped
-- Simple Req IDs (R1, R2...) — local to this spec, no global numbering
-
----
-
 ## Good vs Bad: Error-case enumeration
 
 ### ❌ BAD: Criterion with no error cases
@@ -406,35 +363,3 @@ flowchart LR
 **Why this is better:**
 - Each behavioral R-ID names its error/invalid/boundary handling, or records "no error surface beyond X"
 - One-line "none" is complete; silence is not
-
----
-
-## Good: Early Proof Point
-
-```markdown
-## Early proof point
-Task fn-1-add-oauth.1 validates the core approach (OAuth handshake works end-to-end with Google).
-If it fails, re-evaluate the passport.js strategy before continuing with fn-1-add-oauth.2+.
-```
-
-**Why this works:**
-- Identifies the make-or-break task upfront
-- States what it proves (OAuth handshake works)
-- States what to reconsider if it fails (passport.js strategy)
-- Prevents wasted effort on dependent tasks if the approach is wrong
-
----
-
-## Summary
-
-| Include in specs | Don't include |
-|------------------|---------------|
-| What to build + why (spec); concrete approach (task) | Restated spec context in tasks |
-| Where to look (file:line) | Full implementations |
-| Key decisions + why | Copy-paste code |
-| Recent/surprising APIs | Obvious patterns |
-| Non-obvious gotchas | Every function body |
-| Acceptance criteria | Redundant details |
-| Investigation targets (Required/Optional) | Vague file descriptions |
-| Requirement coverage table | Uncovered requirements |
-| Early proof point | Assumed approach validity |
