@@ -8,8 +8,6 @@ user-invocable: false
 
 Turn a rough idea into a spec with tasks in `.flow/`. This skill does not write code.
 
-Follow this skill and linked workflows exactly. Deviations cause drift, bad gates, retries, and user frustration.
-
 **`.flow/` is the only task tracker.** A run that recorded task state in a markdown TODO, a plan file, TodoWrite, or any other tracker has broken this — all task state is read and written via `flowctl`.
 
 ### Chart boundary

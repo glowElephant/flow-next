@@ -8,8 +8,6 @@ user-invocable: false
 
 Execute a plan systematically. Focus on finishing.
 
-Follow this skill and linked workflows exactly. Deviations cause drift, bad gates, retries, and user frustration.
-
 **`.flow/` is the only task tracker.** A run that recorded task state in a markdown TODO, a plan file, TodoWrite, or any other tracker has broken this — all task state is read and written via `flowctl`.
 
 ## Preamble
@@ -24,7 +22,7 @@ FLOWCTL="${CODEX_HOME:-$HOME/.codex}/scripts/flowctl"
 
 **Hard requirements (non-negotiable):**
 - **Every completed task passes through `flowctl done` and a verified `done` status.** A task treated as finished while `flowctl show <task>` still reads `todo` or `in_progress` has broken this.
-- **Staging is `git add -A`, never an explicit file list** — that is what pulls `.flow/` into the commit. A commit whose diff omits the run's `.flow/` writes has broken this.
+- **Staging is the files you changed plus `.flow/` (`git add -- <files> .flow/`), never `git add -A`** — `.flow/` carries the run's task state; files a test run or tool wrote stay out of the diff. A commit whose diff omits the run's `.flow/` writes has broken this.
 - **Completion is claimed only after `flowctl show <task>` reports `status: done`.** A completion claim printed ahead of that read has broken this.
 - **`$flow-next-impl-review` is dispatched only on a green tree.** A review sent while tests or Quick commands are red has broken this.
 
@@ -154,6 +152,6 @@ If user chose review, pass the resolved review mode to every worker. On the wave
 
 - **The branch question is answered before the run starts.** A run that began on an unresolved branch choice has broken this.
 - **A plan or spec exists before implementation starts.** A run that began with no `.flow/` spec has broken this.
-- **Tests run.** A task marked done with its spec's Quick commands unrun has broken this.
+- **Tests run.** A task marked done before the focused tests for the code it changed ran has broken this.
 - **No task is left half-done.** A run that ends with a task still `in_progress` and no `NEEDS_HUMAN`/blocked report has broken this.
 - **Task tracking lives in `.flow/` via `flowctl`.** A run tracking tasks in TodoWrite, or writing a plan file outside `.flow/`, has broken this.

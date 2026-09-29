@@ -384,7 +384,7 @@ conductor's checkout does not exist inside it — and a freshly planned spec is
 uncommitted by default. A worker dispatched into such a workspace cannot
 re-anchor at all: `$FLOWCTL show <task-id>` finds no task there, and the failure
 looks like a broken worker rather than a missing commit. Commit `.flow/` first
-(`git add -A`), then create the workspaces from that commit. Verified 2026-08-14
+(`git add -- .flow/`), then create the workspaces from that commit. Verified 2026-08-14
 on the first live wave dispatch. Single-worker runs are unaffected — they share
 the conductor's checkout.
 
@@ -731,10 +731,10 @@ A run with a single task to implement has no next task to bleed into, so the con
 
 ## Phase 4: Quality
 
-After all tasks complete (or periodically for large specs):
+After all tasks complete:
 
 - When `.flow/features/` exists, once all tasks are done, run [references/feature-map-update.md](references/feature-map-update.md) first: it updates the feature files whose user route this change altered.
-- Run `$FLOWCTL gate classify --base "$(cat .flow/tmp/spec_base)"`; exit 0 means docs-only tier-B: run lint/format only and note `Gates: docs-only tier-B` for the Phase 5 final summary. On nonzero, run the full gates. With `.flow/tmp/spec_base_repos`, also run classify inside each listed repo against its recorded sha: tier-B needs exit 0 in every repo, and a repo that exits nonzero (including a missing path or unresolvable base) runs its full gates. Name each listed repo and its sha in the auditor dispatches below.
+- Run `$FLOWCTL gate classify --base "$(cat .flow/tmp/spec_base)"`; exit 0 means docs-only tier-B: run lint/format only and note `Gates: docs-only tier-B` for the Phase 5 final summary. On nonzero, run the full gates only when the repository's instructions or the user ask for a full suite: once, here, and not again after later fixes (re-check those with focused tests). A full gate that already ran this run (rolling quiesce, the wave join) is not run again here. With `.flow/tmp/spec_base_repos`, also run classify inside each listed repo against its recorded sha: tier-B needs exit 0 in every repo, and a repo that exits nonzero (including a missing path or unresolvable base) runs its full gates. Name each listed repo and its sha in the auditor dispatches below.
 - For each full gate (test) command that would run, first probe `$FLOWCTL gate check --gate <gate_id> --command "<cmd>"`; exit 0 means skip that re-run and note `Gates: baseline reused (green receipt <sha8>)` for the Phase 5 final summary. On nonzero, run it. After any passing full gate run here, write its receipt with `$FLOWCTL gate receipt --gate <gate_id> --command "<cmd>"`.
 - Run lint/format per repo
 - If change is large/risky, run the quality auditor subagent as **two axis-scoped dispatches of the same agent**, both named in ONE message:
@@ -766,9 +766,9 @@ After all tasks complete (or periodically for large specs):
   the value, add the missing assertion, guard the baseline) so the same edit
   cannot pass silently again.
 
-Host skips cannot land in task evidence because tasks are already done by Phase 4. **Every skip/honor outcome is accumulated as it happens** (gate_id, plus the receipt `<sha8>` where one was honored) **and surfaces as its own `Gates:` line in the Phase 5 final summary.** A silent skip, or several mixed outcomes collapsed into one line, has broken this (a periodic Phase 4 pass can produce several: some gates receipt-reused, some run full, a later pass docs-only).
+Host skips cannot land in task evidence because tasks are already done by Phase 4. **Every skip/honor outcome is accumulated as it happens** (gate_id, plus the receipt `<sha8>` where one was honored) **and surfaces as its own `Gates:` line in the Phase 5 final summary.** A silent skip, or several mixed outcomes collapsed into one line, has broken this (one pass can produce several: some gates receipt-reused, some run full).
 
-Done when: lint/format ran, every full gate either ran green or was receipt-honored, and one `Gates:` line is queued per outcome.
+Done when: lint/format ran, every required full gate either ran green or was receipt-honored, and one `Gates:` line is queued per outcome.
 
 ## Phase 5: Ship
 
@@ -780,7 +780,7 @@ $FLOWCTL validate --spec <spec-id> --json
 
 **Final commit** (if any uncommitted changes):
 ```bash
-git add -A
+git add -- <files you changed> .flow/
 git status
 git diff --staged
 git commit -m "<final summary>"
@@ -890,7 +890,7 @@ Confirm before ship:
 - `$FLOWCTL validate --spec <id>` passes
 - Tests pass
 - Lint/format pass
-- Docs updated if needed
+- Docs updated only where the change alters behaviour they document and the request covers it, or the repository requires it
 - Working tree is clean
 - Final summary printed with the mandatory `Tracker sync:` slot (one of the four states — explicit `n/a (bridge inactive)` when no tracker is configured)
 

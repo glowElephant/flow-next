@@ -99,7 +99,7 @@ Scheduling: degraded to wave (host lacks non-blocking dispatch)  # dispatch meas
 
 A rolling run whose first `flowctl start` precedes this line has broken this.
 
-Before the first admission batch, run one baseline at the recorded spec base using the spec's Quick commands. Record the verified SHA and exact commands; a green result may be handed to every task in that first batch as `BASELINE_HANDOFF`, provided only `.flow/` paths changed between verification and dispatch. Any non-`.flow/` change invalidates that handoff; red baselines follow the worker's existing failure rule. For each green full gate in this baseline, write `$FLOWCTL gate receipt --gate <gate_id> --command "<exact command>"` so workers reuse the full gate through their existing receipt check. Lint/format still run per worker.
+Before the first admission batch, run one baseline at the recorded spec base using the spec's focused Quick commands. Record the verified SHA and exact commands; a green result may be handed to every task in that first batch as `BASELINE_HANDOFF`, provided only `.flow/` paths changed between verification and dispatch. Any non-`.flow/` change invalidates that handoff; red baselines follow the worker's existing failure rule. For each green full gate in this baseline, write `$FLOWCTL gate receipt --gate <gate_id> --command "<exact command>"` so workers reuse the full gate through their existing receipt check. Lint/format still run per worker.
 
 ## 3a Admission at Every Worker-Return Event
 
@@ -281,7 +281,7 @@ Before accepting the return or integrating, apply [phases.md Phase 3d](../phases
    head). Keep that base in the conductor's per-task record; if absent, recover
    `base_commit` from that task's normalized evidence. Never read the shared
    `.flow/tmp/base_commit`; a missing base is `BLOCKED`, never an empty review base.
-2. When the task's resolved `REVIEW_MODE` is not `none`, LAUNCH its review
+2. When the task's resolved `REVIEW_MODE` is not `none` and the working-rules.md risk rule selects the task's change, LAUNCH its review
    conductor-side
    (`flow-next:flow-next-impl-review <task-id> --base <task-normalized-integrated-base> --review=<backend>`
    from a safe review context per wave-join.md) **as a concurrent activity via
@@ -380,9 +380,9 @@ foreign in-flight set (tasks `in_progress` under another run on this spec)
 are ALL empty - a non-empty foreign set routes to 3a's typed contention
 outcome instead, never here. At quiesce:
 
-1. Run the full-suite verification once on the final integrated target
-   (wave-join.md's integrated-target verification contract - the full gate
-   runs only here, never per task); fix and commit any failure, then rerun the affected gate. After each green full gate, write `$FLOWCTL gate receipt --gate <gate_id> --command "<exact command>"` at the verified HEAD, using the same gate id and command as Phase 4. Red gates write no receipt. Phase 4 can then honor this receipt at the same HEAD (or after `.flow/`-only commits).
+1. Run the full-suite verification once on the final integrated target when the
+   repository or the user asks for a full suite (wave-join.md's integrated-target
+   verification contract - the full gate runs only here, never per task); fix and commit any failure, then re-check the fix with focused tests. After each green full gate, write `$FLOWCTL gate receipt --gate <gate_id> --command "<exact command>"` at the verified HEAD, using the same gate id and command as Phase 4. Red gates write no receipt. Phase 4 can then honor this receipt at the same HEAD (or after `.flow/`-only commits).
 2. Run phases.md 3g (completion review gate) exactly as written there - only
    its timing shifts to quiesce, never its semantics.
 

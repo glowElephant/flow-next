@@ -128,9 +128,9 @@ to the child verbatim. Wrappers, scouts, and conductors never fan out on the own
 behalf (STRATEGY.md, "The owner holds the license"). A host without nested dispatch
 degrades to serial, never errors; no capability probing. Commit ownership unchanged:
 the owner is the only committer — hand subagents disjoint surfaces or serialize — and the
-commit convention is the owner's path's (`git add -A` and the single-commit convention
+commit convention is the owner's path's (staging its changed files plus `.flow/`, and the single-commit convention
 in-host; the long-task brief's checkpoint convention when the owner is a bridged child).
 Join barrier: every dispatched subagent
 is awaited and reconciled BEFORE staging, verification, and commit — no live writer
-exists at `git add -A` time (same discipline as the wave-level workspace cleanup gate
+exists at staging time (same discipline as the wave-level workspace cleanup gate
 in [wave-join.md](wave-join.md)).

@@ -63,11 +63,11 @@ Parse the spec carefully. Identify:
 - Test requirements
 - Quick commands from parent spec (run these for verification)
 
-**Baseline check (before any edit — run the spec's Quick commands, record the result):**
+**Baseline check (before any edit — run the focused Quick commands for the code this task changes, never a full-suite gate; record the result):**
 ```bash
 # FOREGROUND RULE: run each gate suite as ONE blocking foreground Bash call (timeout 600s).
 # NEVER run_in_background + monitor - a background completion does not resume a subagent context.
-# Run the parent spec's Quick commands (the test/lint/build listed above) to establish
+# Run the focused Quick commands for the code this task changes (lint/build included) to establish
 # the pre-edit baseline, and RECORD it so a task-CAUSED failure is distinguishable from
 # an INHERITED one at review time (the impl-review "Tests" criterion judges blind otherwise):
 #   GREEN baseline → proceed.
@@ -78,9 +78,9 @@ Parse the spec carefully. Identify:
 # Never treat a pre-existing red baseline as your own success or your own failure.
 ```
 
-When the Quick commands include a full gate command (a full test suite or a smoke script), or your prompt carries `BASELINE_HANDOFF`, read [worker-baseline-reuse.md](../skills/flow-next-work/references/worker-baseline-reuse.md) before running the baseline: a green receipt or the handoff can replace that run.
+When your prompt carries `BASELINE_HANDOFF`, read [worker-baseline-reuse.md](../skills/flow-next-work/references/worker-baseline-reuse.md) before running the baseline: the handoff can replace that run.
 
-**Suite-output capture rule (Baseline and Verify):** green observation is the command exit code, not a scraped output line; re-running a suite merely to observe its result is forbidden. Run each suite once with output captured to a log (for example, `<cmd> > "$SUITE_LOG" 2>&1; suite_rc=$?; echo "suite_rc=$suite_rc"`), then read any summary from that log. Gate suites run as ONE blocking FOREGROUND Bash call with an explicit generous timeout (600s) - never `run_in_background` + a monitor: a background completion does not reliably resume a subagent context (the same Foreground rule review calls carry, applied to gate runs). In this Baseline block, apply that capture when an exit-1/2+ gate check requires the full command.
+**Suite-output capture rule (Baseline and Verify):** green observation is the command exit code, not a scraped output line; re-running a suite merely to observe its result is forbidden. Run each suite once with output captured to a log (for example, `<cmd> > "$SUITE_LOG" 2>&1; suite_rc=$?; echo "suite_rc=$suite_rc"`), then read any summary from that log. Gate suites run as ONE blocking FOREGROUND Bash call with an explicit generous timeout (600s) - never `run_in_background` + a monitor: a background completion does not reliably resume a subagent context (the same Foreground rule review calls carry, applied to gate runs).
 
 **Capture the base commit at Phase-1 end — BEFORE any edit — and PERSIST it to a file** (bash variables do NOT survive across separate tool-call Bash blocks; a later block reading a stale `$BASE_COMMIT` would expand to `..HEAD` and record blank/empty evidence):
 ```bash
@@ -208,7 +208,7 @@ Done when: every AC the task names is implemented, its enumerated error cases ha
 ## Phase 3: Commit
 
 ```bash
-git add -A
+git add -- <files you changed> .flow/
 git commit -m "feat(<scope>): <description>
 
 - <detail 1>
@@ -227,19 +227,22 @@ when the reproduction is a cheap test (defect-route.md step 4).
 
 Done when: the task's work is committed with a conventional-commit subject naming `Task: <TASK_ID>`.
 
-## Phase 4: Review (runs whenever REVIEW_MODE is not `none`)
+## Phase 4: Review (when REVIEW_MODE is not `none` and the risk rule selects the change)
 
 **Under `PARALLEL_WAVE: true` or `REVIEW_MODE: host-deferred` this phase's review dispatch does not run** ([worker-handover.md](../skills/flow-next-work/references/worker-handover.md)).
 
 **If REVIEW_MODE is `none`, skip to Phase 5** — its Verify block is then the only gate, and it still runs.
 
-**Under any other non-`none` value (`rp`, `codex`, `copilot`, `cursor`, `claude`), impl-review is invoked and a SHIP verdict received before this phase ends.** Proceeding on anything short of SHIP has broken this.
+**The risk rule in working-rules.md (Review) decides whether this change is reviewed.** A change it does not select skips to Phase 5 and records `stage: impl-review - skipped(policy: risk - <reason>)`.
+
+**Otherwise, under any other non-`none` value (`rp`, `codex`, `copilot`, `cursor`, `claude`), impl-review is invoked and a SHIP verdict received before this phase ends.** Proceeding on anything short of SHIP has broken this.
+
+**Attended, on the conductor's inline path** (a person is in the session): the handoff message comes first, then this review runs; `flowctl done` waits for its verdict.
+
 (The impl-review SHIP gate covers CODE QUALITY only. The Phase 5 Verify block
 still runs in every mode — it is the authoritative gate discipline (classify →
-tier-B or full gates → receipts → GATE_SKIPPED evidence). It is not a duplicate
-cost: a green receipt or docs-only classification resolves it in seconds, and
-when neither applies the full run is genuinely needed — the reviewer read the
-diff, it never executed the suite.)
+tier-B or focused Quick commands → GATE_SKIPPED evidence). It is not a duplicate
+cost: the reviewer read the diff, it never executed the tests.)
 
 The review is the **reviewer** tier — a verdict from the writer's own family is not an independent one. **Routing precedence, highest first: an explicit argument in the invocation, then the project routing block in the instruction file, then the agent definition's own default, then the session model.** How this harness reaches another family is its reach page's business, not yours.
 
@@ -259,14 +262,14 @@ re-resolving from config. The skill still handles everything else:
 - Receipt paths (don't pass --receipt yourself)
 - Sending to reviewer (rp, codex, copilot, cursor, or claude backend)
 - Parsing verdict (SHIP/NEEDS_WORK/MAJOR_RETHINK)
-- Fix loops until SHIP
+- One fix pass and one re-review
 
 **Foreground rule (do not background the review).** When the impl-review workflow shells a `flowctl <backend> …` review command, run it as one **blocking foreground** Bash call with a generous timeout (10 minutes; verdicts typically land in 1–7). Never launch it with `run_in_background` + a monitor — a background completion does not reliably resume your (subagent) context, and you would idle on an already-finished review. Blocking is safe: the call is bounded.
 
-**impl-review owns its internal fix loop** (fix + re-review up to `MAX_REVIEW_ITERATIONS`, default 8). **impl-review is invoked exactly once per task, and you act on the terminal verdict it returns.** A second invocation wrapping it in a re-invoke-until-SHIP loop resets the skill's iteration counter every round and makes the cap unbounded in aggregate — that has broken this.
+**impl-review owns its internal fix loop** (one fix pass and one re-review; the round cap is a safety net). **impl-review is invoked exactly once per task, and you act on the terminal verdict it returns.** A second invocation wrapping it in a re-invoke-until-SHIP loop resets the skill's iteration counter every round and makes the cap unbounded in aggregate — that has broken this.
 
 - **SHIP** → proceed to Phase 4.5.
-- **NEEDS_WORK** → the skill already fixed + re-reviewed `MAX_REVIEW_ITERATIONS` times and findings still survive. Escalate rather than re-invoke: under `SPEC_MODE` / autonomous, stop with a typed `BLOCKED: <surviving-findings summary>` (the escalation format below); interactively, surface the surviving findings to the caller.
+- **NEEDS_WORK** → the skill already fixed and re-reviewed once and findings still survive. Escalate rather than re-invoke: under `SPEC_MODE` / autonomous, stop with a typed `BLOCKED: <surviving-findings summary>` (the escalation format below); interactively, surface the surviving findings to the caller.
 - **MAJOR_RETHINK** → the design/approach is wrong, not patchable. Escalate `BLOCKED: DESIGN_CONFLICT` with the reviewer's rationale — never patch it, never re-invoke.
 
 Done when: one impl-review invocation has returned a terminal verdict, and the task either holds a SHIP or has been escalated with a typed `BLOCKED:` line.
@@ -303,17 +306,13 @@ BASE_COMMIT=$(cat .flow/tmp/base_commit)
 #   GATE_SKIPPED:<gate_id>:docs-only - cumulative diff classified tier-B (no executable paths touched)
 # Mirror regen is unaffected: mirror-source diffs never classify tier-B because the classifier
 # force-fulls plugins/flow-next/{skills,agents,commands,references,templates,hooks}/** and codex/**.
-# Exit nonzero: run the full gates exactly as today. For each passed full gate command, use the
-# same `(gate_id, exact command string)` vocabulary as the baseline and then run:
-#   <FLOWCTL> gate receipt --gate <gate_id> --command "<cmd>"
-# Receipt failure is non-blocking: log it and continue. Must pass before marking done.
+# Exit nonzero: run the focused Quick commands for the code this task changed (lint/format
+# included). Never a full-suite gate here: work's Phase 4 runs those once, at the end of the run,
+# when the repository or the user asks for them. Must pass before marking done.
 # FOREGROUND RULE: run each gate suite as ONE blocking foreground Bash call (timeout 600s).
 # NEVER run_in_background + monitor - a background completion does not resume a subagent context.
-# When this Verify block runs a full suite, run the spec's canonical full-suite Quick command
-# (in the flow-next repo that is `python3 scripts/run_tests_parallel.py`; serial fallback `--serial`)
-# and apply the Suite-output capture rule above:
-# capture output to a log, observe green from `suite_rc`, and read any summary
-# from that log; never run the suite a second time just to observe greenness.
+# Apply the Suite-output capture rule above: capture output to a log, observe green from
+# `suite_rc`, and read any summary from that log.
 ```
 If verification fails, fix and re-commit before proceeding.
 
@@ -345,7 +344,7 @@ SUMMARY_FILE="<resolved task-unique HANDOVER_SUMMARY path>"
 cat > "$SUMMARY_FILE" << 'EOF'
 <1-2 sentence summary of what was implemented>
 
-stage: impl-review - ran [<start>..<end>] | skipped(config: REVIEW_MODE=none) | skipped(policy: host-deferred - conductor owns the gate) | failed(<reason>)
+stage: impl-review - ran [<start>..<end>] | skipped(config: REVIEW_MODE=none) | skipped(policy: risk - <reason>) | skipped(policy: host-deferred - conductor owns the gate) | failed(<reason>)
 stage: implement - ran (model: <what ran>; delegated: <n>) | skipped(reach: <model> unreachable, session model used)
 EOF
 ```
@@ -373,9 +372,9 @@ BASE_COMMIT=$(cat .flow/tmp/base_commit)
 **Stage the receipt:** `done` writes the summary into the
 TRACKED task file after your Phase 3 commit - it reports the path under
 `modified_paths` (and prints a note when the file is left dirty). Commit it
-now with the standard catch-all staging (`git add -A && git commit -m
+now with the standard staging (`git add -- .flow/ && git commit -m
 "chore(flow): task receipt <TASK_ID>"` - the same staging rule as every other
-commit in this file, which also sweeps any review/gate-receipt files Phase
+commit in this file; `.flow/` also holds any review/gate-receipt files Phase
 4/5 wrote); a receipt left uncommitted on the final task of a run is lost to
 every other checkout.
 
@@ -417,11 +416,11 @@ The review/done terminal rules below apply to the standard single-worker path; t
 - **Re-anchor first** - the spec is read before anything is implemented
 - **Investigate first (standard path only)** - a task spec with investigation targets has them read before any code; on the Phase 1b bridged path the child reads them, and a worker that read them before the bridge has broken this
 - **No TodoWrite** - flowctl tracks tasks; a TodoWrite task list has broken this
-- **git add -A** - staging is never an explicit file list
+- **Staging** - the files you changed plus `.flow/`, never `git add -A`
 - **One task only** - a commit implementing a task you were not given has broken this
 - **Review before done (standard single-worker only)** - if
-  `PARALLEL_WAVE` is `false` and `REVIEW_MODE` is neither `none` nor
-  `host-deferred`, get a SHIP verdict before `flowctl done`
+  `PARALLEL_WAVE` is `false`, `REVIEW_MODE` is neither `none` nor
+  `host-deferred`, and the risk rule selects the change, get a SHIP verdict before `flowctl done`
 - **Verify terminal state** - standard single-worker `flowctl show` must report
   `done`; parallel-wave and host-deferred handovers must report `in_progress`
 - **Return points, never restates** - the return carries the task id, status, summary/evidence paths, and commit range so the conductor reads current truth; a return that restates summary content the files already carry has broken this
