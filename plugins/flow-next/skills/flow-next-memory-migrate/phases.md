@@ -101,6 +101,7 @@ Before classifying anything from a legacy file, check whether it's already been 
 
 ```bash
 if [[ -f "$MEMORY_DIR/_migrated/${filename}.bak" ]]; then
+    echo "Skipped (already migrated): ${filename}"
     # Skip this file — Phase 4 already renamed it on a prior run.
     # Surface in report as "Skipped (already migrated): <filename>"
 fi

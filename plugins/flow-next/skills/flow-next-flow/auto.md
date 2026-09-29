@@ -226,6 +226,7 @@ DRY="${PILOT_DRY_RUN:-0}"   # 1 => inspection-only: no tracker-sync dispatch, fl
 
    ```bash
    if [ "$DRY" = "0" ]; then
+     echo "DISPATCH: flow-next:flow-next-tracker-sync reconcile mode:autonomous"
      # -> dispatch: flow-next:flow-next-tracker-sync reconcile mode:autonomous   (FLOW_AUTONOMOUS=1; no-op when the bridge is inactive)
    fi
    ```
@@ -244,6 +245,7 @@ DRY="${PILOT_DRY_RUN:-0}"   # 1 => inspection-only: no tracker-sync dispatch, fl
 
    ```bash
    if [ "$DRY" = "0" ]; then
+     echo "DISPATCH: tracker wire comment-list per tracker-only issue"
      # -> dispatch per tracker-only issue: $FLOWCTL tracker wire comment-list --locator "$LOCATOR" --json
      #   LOCATOR = {"durable":issue.id,"display":issue.identifier} from the list-open row.
      # Any error or truncated listing fails closed: do not select from an
@@ -255,6 +257,7 @@ DRY="${PILOT_DRY_RUN:-0}"   # 1 => inspection-only: no tracker-sync dispatch, fl
 
    ```bash
    if [ "$DRY" = "0" ]; then
+     echo "DISPATCH: tracker wire relation-list per tracker issue"
      # For each TRACKER candidate, read its relations to add the tracker dep edges.
      # -> dispatch per tracker issue: $FLOWCTL tracker wire relation-list --locator "$LOCATOR" --json
      #   LOCATOR = {"durable":issue.id,"display":issue.identifier} from the list-open row
