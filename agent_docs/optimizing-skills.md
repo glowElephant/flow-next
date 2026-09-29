@@ -14,6 +14,10 @@ For new maintainer studies, read `~/work/agent-evals/METHODOLOGY.md` and reuse
 `lib/evalkit.py` in that private repo. Pre-register the endpoint and decision
 rule, hold model/harness/effort constant across instruction arms, use one scoring
 standard, screen then replicate, and retain negative and inconclusive results.
+A study of how skills behave in Claude Code drives the real terminal UI (the
+flow-vs-vanilla harness in that repo, `studies/flow-vs-vanilla-2026-09/harness/`),
+not the Agent SDK or `claude -p`: their shorter system prompt and smaller toolset
+change behaviour.
 Other contributors should use an equivalent documented protocol; the private
 checkout is not a plugin dependency. Keep private study paths/data out of shipped
 artifacts.
