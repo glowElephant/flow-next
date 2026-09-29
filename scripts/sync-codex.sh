@@ -2516,7 +2516,6 @@ fi
 # allowlist narrow so a newly baked primary-home path fails closed.
 is_narrative_primary_home_ref() {
   case "$1" in
-    *'sync-codex.sh rewrites it to `$HOME/.codex/scripts/flowctl` for the Codex mirror'* | \
     *'`config.toml` (`$CODEX_HOME`, default `~/.codex`)'* | \
     *'`agents/` (`$CODEX_HOME`, default `~/.codex`)'* | \
     *'**There is NO "defer to `~/.codex/config.toml`"'* | \
