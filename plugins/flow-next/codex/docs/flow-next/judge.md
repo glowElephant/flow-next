@@ -3,15 +3,22 @@
 > **Codex install note:** when YOU run a flow-next command on THIS Codex install, invoke it as `$flow-next-<name>` (or pick it from the skills dropdown) wherever this page writes `/flow-next:<name>` — and when the written name itself already starts with `flow-next-` (e.g. `/flow-next:flow-next-drive`), the prefix is not doubled: invoke `$flow-next-drive`. Passages describing OTHER hosts (Claude Code `claude -p` / `/loop` examples, Grok, Cursor, OpenCode sections) document those hosts' own syntax and are quoted verbatim — do not convert them.
 
 
-With a TypeSafe API key, flow-next answers narrow routing, task-tier, and memory
-questions in one HTTP request per decision point. Code supplies the state and
-applies fixed decision rules; the host handles uncertain answers. Existing
-review, QA, and merge gates still run according to their own contracts.
+flow-next works the same with or without a TypeSafe API key. Every decision has
+a working default path: code decides lifecycle facts, and the host decides the
+rest from the route matrix and the repository. With a key, Jev (TypeSafe's
+System One model) answers a few narrow questions in one HTTP request per
+decision point, so the host reaches the same decision faster or cheaper. Jev
+may change how long a decision takes and what it costs; it must not change
+which decision is made. Existing review, QA, and merge gates run according to
+their own contracts.
 
 ## Contents
 
 - [Enable or disable](#enable-or-disable)
+- [Where Jev decides and where it advises](#where-jev-decides-and-where-it-advises)
+- [Runs without a key](#runs-without-a-key)
 - [Presets and floors](#presets-and-floors)
+- [Memory](#memory)
 - [Exact question text](#exact-question-text)
 - [Decision order](#decision-order)
 - [Failure and transport contract](#failure-and-transport-contract)
@@ -31,52 +38,98 @@ flowctl config get judge.enabled
 flowctl config set judge.enabled false
 flowctl config set judge.enabled true
 flowctl judge --preset qa-gate --spec fn-1 --json
-flowctl memory search "windows subprocess" --rerank --json
+flowctl memory search "windows subprocess" --limit 15 --rerank --json
 ```
 
 `judge.enabled` defaults to boolean `true`; a non-boolean value warns and behaves
-as true. A missing key or `false` disables requests and preserves the existing
-fallback. The model is fixed to `jev-latest`; floors are preset constants.
+as true. A missing key or `false` disables requests and leaves the default path.
+The model is fixed to `jev-latest`; floors are preset constants.
+
+## Where Jev decides and where it advises
+
+| Decision | With a key | Host's part |
+|---|---|---|
+| Live spec lifecycle (PR tail, all done, recorded work route, direct or plan) | Code decides; Jev is not asked | None; the route is printed as `(code)` |
+| Intake route kind, `tiny` included | Jev decides at confidence >= 0.7 | May override on contrary evidence in the text or repository, saying why in one line; below the floor the host decides among the top three kinds |
+| QA under `pipeline.qa=auto`: UI-observable criteria | Jev decides at probability >= 0.5 | May override when the acceptance plainly contradicts it, saying why in one line |
+| QA under `pipeline.qa=auto`: startable target | Code resolves a documented target | None; no target is invented |
+| Research before work on a ready spec | The unfamiliar-dependency Noul sets `research_recommended` | Applies the route matrix's read-first rule |
+| Fork: observable or preference | Optional hint on the host's own fork sentence | Decides; a hint never removes a fork the host found |
+| Memory relevance | Reorders the top 15 BM25 hits; drops none | Picks the entries that apply from titles and snippets |
+| Task tier | See the tier preset below | Unchanged by this contract |
+
+A host override prints the Jev answer beside the host's choice, for example
+`Route: build (host over jev tiny 0.81: the text names three modules)`.
+
+## Runs without a key
+
+`/flow-next:flow` checks once per run whether the judge can run: the key is
+present (checked without printing it) and `judge.enabled` is not `false`. When
+it cannot, flow prints `judge: off` once and makes no intake route, fork, or
+QA judge call for the rest of the run. The live-spec route call still runs: its
+lifecycle decision and PR observation come from code and return with
+`available: false, reason: no_key`. Memory search runs the same command either
+way; without a key `--rerank` returns BM25 order and sends nothing.
+
+Without a key the host prints `Route: <route> (host)` at intake and records QA
+stage lines without a `jev` note. A judge that is on but fails keeps the same
+default path and names the reason, `jev-unavailable(<reason>)`.
 
 ## Presets and floors
 
 | Preset | Questions | Decision |
 |---|---|---|
-| `route` | Kind Choice, 12 anchored Nouls, fork pair, QA Noul | Lifecycle first; intent/brief kind at confidence >= 0.7; otherwise host with top-three candidates. |
+| `route` | Intake: kind Choice and the repro Noul; under `--explain` also eight signal Nouls and the unfamiliar-dependency Noul. Live spec: only what its lifecycle reads | Lifecycle first; intake kind at confidence >= 0.7; otherwise host with top-three candidates. |
 | `qa-gate` | UI-observable Noul | Run under `pipeline.qa=auto` only at >= 0.5 AND a startable target resolved by code. A skipped stage names the failing half. |
-| `fork-gate` | Fork-present Noul and observable/preference Choice | Below 0.5 means no fork and no question; otherwise classify at confidence >= 0.5. `none_of_the_above` or low confidence returns to the host. |
-| `memory-rerank` | One Score per BM25 hit, up to 15 | Levels `not relevant`, `tangential`, `directly relevant`; keep score >= 1.0, descending, capped at 10. Ties retain BM25 order. |
+| `fork-gate` | Fork-kind Choice on the host's fork sentence | `observable` or `product_or_preference` at confidence >= 0.5 is a hint; otherwise `host`. Never `none`. |
+| `memory-rerank` | One Score per BM25 hit, up to 15 | Reorder by score, descending; ties keep BM25 order; none dropped. |
 | `tier` | Tier Choice and two Nouls | `mechanical` at confidence >= 0.8 selects the configured fast tier; `long_running` at >= 0.8 recommends a bridge. All other answers retain the current model. |
 
-The route request carries its fork and QA questions together. A routed skill
-uses the standalone preset only when it does not already have that hop's
-answers. QA configuration other than `auto` does not request a QA judgment.
-`flowctl judge --preset qa-gate --spec <spec-id> --json` assembles the standalone
-QA input and documented target in code. No preset predicts whether review, QA, or landing will pass.
+A live route asks the unfamiliar-dependency Noul only for a ready spec headed to
+direct work or plan, and the UI-observable Noul only when all tasks are done
+and `pipeline.qa` is `auto`. Any other live route sends no request. The QA
+reference reuses the route hop's UI answer and calls the standalone preset only
+when the hop has none. `flowctl judge --preset qa-gate --spec <spec-id> --json`
+assembles the standalone QA input and documented target in code. No preset
+predicts whether review, QA, or landing will pass.
+
+## Memory
+
+Plan, workers, and the memory scout use one shape:
+
+```bash
+flowctl memory search "<task sentence>" --limit 15 --rerank --json
+```
+
+The search returns up to 15 BM25 hits. With a key, one request scores them
+and the command reorders them (`jev_score`, `jev_rank`) without dropping any;
+`--limit` applies after the reorder. The judge receives each entry's id, title,
+track, category, module, tags and snippet, never its path or BM25 score. The
+host reads titles and snippets and keeps the entries that apply, on both paths.
+Plan renders the result itself and does not spawn the memory scout to refine a
+keyless result.
 
 ## Exact question text
 
 Question IDs and instruction text below match the bundled preset registry.
-The route preset reuses the fork and QA questions shown under their standalone
-presets. `entry_N` substitutes the zero-based BM25 hit index, from 0 through 14.
+`entry_N` substitutes the zero-based BM25 hit index, from 0 through 14.
 
 ### route
 
-| ID | Type | Instruction text |
-|---|---|---|
-| `kind` | choice | Which kind of work is this starting state? Route on content and context, never on input kind. The state carries `view` with its meaning. Pick none_of_the_above when no kind fits. |
-| `reports_defect` | noul | Does the text report a defect: a bug report, console dump, crash, or failing behaviour, where the unknown is the cause and the risk is regression? |
-| `defect_has_repro` | noul | If the text reports a defect, does it carry a concrete repro (steps, a failing command, a trace with a location, a case that shows it)? Answer no when there is no defect or no repro. |
-| `structural_change_behaviour_kept` | noul | Is the text a structural change with behaviour meant to stay the same (rename, extract, inline, dedupe, move; callers to migrate or a shape to collapse) with no new behaviour named anywhere? |
-| `names_metric_and_surface` | noul | Does the text name a measured slowness or a number the user wants moved once, with a metric and a surface the user can name (a trace or a repro)? |
-| `repeated_metric_target` | noul | Does the text ask to improve one metric against a target number through repeated attempts on a harness that reruns cheaply? |
-| `read_only_question` | noul | Is the text a read-only question (how does X work, why was Y built this way, are we sure about Z) whose deliverable is an answer rather than a change? |
-| `theme_no_end_state` | noul | Is the text a theme or direction ("make X more Y") with no nameable end state, so no outcome and no scope boundary? |
-| `no_written_direction` | noul | Does the text show that no written direction exists (target problem, users, or key metrics stated nowhere; repeated arguments about what matters)? |
-| `large_idea_several_unknowns` | noul | Is the text one large singular idea with unclear boundaries and several consequential unknowns that block stating intent (too big for one capture)? |
-| `names_unfamiliar_library_or_api` | noul | Does the text name a library, service, or API that the repository does not already use (an unfamiliar dependency that needs reading first)? |
-| `tiny_one_context_change` | noul | Is the text a tiny, local, low-risk change that fits one implementation context (a one-context fix)? |
-| `intent_and_boundaries_stateable` | noul | Can the intent and the boundaries of this effort be stated now (a clear meaningful idea), without further discovery? |
+| ID | Type | Asked | Instruction text |
+|---|---|---|---|
+| `kind` | choice | intake | Which kind of work is this starting state? Route on content and context, never on input kind. The state carries `view` with its meaning. Pick none_of_the_above when no kind fits. |
+| `defect_has_repro` | noul | intake | If the text reports a defect, does it carry a concrete repro (steps, a failing command, a trace with a location, a case that shows it)? Answer no when there is no defect or no repro. |
+| `names_unfamiliar_library_or_api` | noul | live direct or plan; intake `--explain` | Does the text name a library, service, or API that the repository does not already use (an unfamiliar dependency that needs reading first)? |
+| `ui_observable_criteria` | noul | live all done, `pipeline.qa=auto` | Same text as the `qa-gate` question. |
+| `reports_defect` | noul | intake `--explain` | Does the text report a defect: a bug report, console dump, crash, or failing behaviour, where the unknown is the cause and the risk is regression? |
+| `structural_change_behaviour_kept` | noul | intake `--explain` | Is the text a structural change with behaviour meant to stay the same (rename, extract, inline, dedupe, move; callers to migrate or a shape to collapse) with no new behaviour named anywhere? |
+| `names_metric_and_surface` | noul | intake `--explain` | Does the text name a measured slowness or a number the user wants moved once, with a metric and a surface the user can name (a trace or a repro)? |
+| `repeated_metric_target` | noul | intake `--explain` | Does the text ask to improve one metric against a target number through repeated attempts on a harness that reruns cheaply? |
+| `read_only_question` | noul | intake `--explain` | Is the text a read-only question (how does X work, why was Y built this way, are we sure about Z) whose deliverable is an answer rather than a change? |
+| `theme_no_end_state` | noul | intake `--explain` | Is the text a theme or direction ("make X more Y") with no nameable end state, so no outcome and no scope boundary? |
+| `no_written_direction` | noul | intake `--explain` | Does the text show that no written direction exists (target problem, users, or key metrics stated nowhere; repeated arguments about what matters)? |
+| `large_idea_several_unknowns` | noul | intake `--explain` | Is the text one large singular idea with unclear boundaries and several consequential unknowns that block stating intent (too big for one capture)? |
 
 ### qa-gate
 
@@ -88,7 +141,6 @@ presets. `entry_N` substitutes the zero-based BM25 hit index, from 0 through 14.
 
 | ID | Type | Instruction text |
 |---|---|---|
-| `fork_present` | noul | Does the text pose a design or behaviour fork (two named alternatives to choose between) that is still open? |
 | `fork_kind` | choice | Assume an open design or behaviour fork exists. Classify what its answer depends on. |
 
 Choice criteria:
@@ -101,7 +153,13 @@ Choice criteria:
 
 | ID | Type | Instruction text |
 |---|---|---|
-| `entry_0` | score | How relevant is `entries.0` to the task in `query`? |
+| `entry_0` | score | How does the memory entry `entries.0` bear on doing the task in `query`? |
+
+Score levels, lowest first:
+
+- It concerns a different module, tool, or failure mode; it would not come up while doing this task
+- It shares this task's area or technology, but its lesson would not change how this task is done
+- It applies to this task's files, tools, or failure mode; its lesson changes how this task is done
 
 ### tier
 
@@ -139,19 +197,18 @@ For a live spec, code reads lifecycle facts before classifying text:
 5. A spec that is not ready stays with the host for refinement, plan review,
    or proceeding.
 
-Live specs never ask the kind Choice. Intent and brief views ask the thirteen
-content kinds plus `none_of_the_above`. Kind criteria copy the
+Live specs never ask the kind Choice. Intake views ask the thirteen content
+kinds plus `none_of_the_above`. Kind criteria copy the
 [route matrix](../../skills/flow-next-flow/references/route-matrix.md)'s starting-state
-and positive-signal cells verbatim, joined by a period. Lifecycle routes are
-absent from those criteria. Below the kind floor, or on `none_of_the_above`,
-the host receives only the top-three kinds and probabilities. Nouls feed code
-and the `Signal:` line, never facts for the host to reconsider.
+and positive-signal cells verbatim, joined by a period. Lifecycle routes are absent from
+those criteria. Below the kind floor, or on `none_of_the_above`, the host
+receives only the top-three kinds and probabilities. Signal Nouls feed only the
+`--explain` `Signal:` line, never facts for the host to reconsider.
 
-`flow --explain` uses that same request for `Next:`, `Route:`, `Signal:`,
-`Skip/narrow:`, and `Why not the alternatives:`. The last line names the next
-two candidates; a below-floor recommendation names all three and says the host
-decides. The two judgment hints `tiny_one_context_change` and
-`intent_and_boundaries_stateable` never determine the route.
+`flow --explain` adds `--explain` to the same request for `Next:`, `Route:`,
+`Signal:`, `Skip/narrow:`, and `Why not the alternatives:`. The last line names
+the next two candidates; a below-floor recommendation names all three and says
+the host decides.
 
 Tier selection happens before worker or scout dispatch. An explicit
 `IMPLEMENTER:` override wins. A mechanical decision changes the spawn-model
@@ -164,7 +221,7 @@ Done summaries read the model that actually ran from the worker's return.
 
 `flowctl judge` returns `available: false` and exit 0 for `no_key`, `disabled`,
 `http_<status>`, `transport`, `timeout`, `bad_answer`, or `over_budget`. The caller
-records the reason and takes its previous host, static model, or BM25
+records the reason and takes its default host, static model, or BM25
 path. A response missing a question or a sent option is `bad_answer`.
 Unknown presets and invalid state files are command errors and exit nonzero.
 See the [CLI contract](flowctl.md#judge) for the JSON envelope.
@@ -178,25 +235,27 @@ The judge itself writes neither state nor answers. Credentials never appear
 in command output, receipts, stage lines, or logs.
 
 A request sends its supplied artifact text to TypeSafe. Route state includes
-only `view`, `view_meaning`, `repo`, `intent` or `spec_title` plus `spec_body`,
+only `view`, `view_meaning`, `intent` or `spec_title` plus `spec_body`,
 `status`, `ready`, `no_plan`, task counts, PR observations, and
-`startable_target_fact` (plus the truncation marker when needed). Tier state
-contains `task_title`, `task_body`, `acceptance`, `touches_count`,
-`has_quick_commands`, and `repo`.
+`startable_target_fact` (plus the truncation marker when needed); it never
+carries the repository's path. Tier state contains `task_title`, `task_body`,
+`acceptance`, `touches_count`, `has_quick_commands`, and `repo`.
 
 Callers expose which path they took:
 
 ```text
+judge: off
+Route: work_planned (code)
 Route: defect (jev 0.91)
+Route: build (host over jev tiny 0.81: the text names three modules)
 Route: host (jev below floor: build 0.52, tiny 0.31, defect 0.10)
+Route: build (host)
 Route: host (jev-unavailable(timeout))
 stage: qa - skipped(config: pipeline.qa=auto: no UI-observable criteria (jev 0.12))
 stage: qa - ran (jev ui 0.84, target: <cmd>)
-fork-gate: none (jev 0.08)
-fork-gate: observable (jev 0.77)
-fork-gate: preference (jev 0.71)
-fork-gate: host (jev below floor)
-memory: reranked (jev, 15 -> 6)
+fork-gate: observable (host)
+fork-gate: preference (host, jev hint product_or_preference 0.71)
+memory: reranked (jev, 15 entries)
 memory: bm25 (jev-unavailable(no_key))
 Tier: mechanical (jev 0.88) -> <model>
 Tier: long_running (jev 0.86) - bridge recommended
@@ -210,15 +269,16 @@ route request, with about 2,200 input tokens for an intent and 4,000-8,000 for a
 spec body. At the evaluation's recorded rate of $46 per billion tokens, those
 input volumes cost approximately $0.00010 and $0.00018-$0.00037 respectively,
 before output tokens. These are historical evaluation measurements and cost
-estimates, not a current price quote or a production latency guarantee.
+estimates, not a current price quote or a production latency guarantee. A live
+route that its lifecycle already decides now sends no request.
 
 | Site | Evaluation result and bound |
 |---|---|
 | Clean review (retired preset; historical result) | 100/100 against the eyeball label; the regex recognized 5/12 in its comparison set. |
 | Kind | 0.95 raw agreement on 196 stable samples; the 0.7 floor gave 85% held-out coverage at 95% agreement. |
 | QA | 0.88 against a 0.71 baseline once code supplied the startable-target fact. |
-| Fork | 0.88 against 0.76; invented forks fell from 12 to 1. |
-| Memory | Precision@5 0.66 against BM25's 0.48. |
+| Fork | 0.88 against 0.76 for the fork-present and kind pair on spec text; the hint on the host's own fork sentence has not been measured. |
+| Memory | Precision@5 0.66 against BM25's 0.48, measured with the earlier score levels and floor; the reorder-only shape has not been measured. |
 | Tier | 0.91 exact agreement and 121/121 within one tier; at 0.8, mechanical 20/20 and long-running 13/13 matched labels. |
 
 These samples establish directional classification quality. They do not prove

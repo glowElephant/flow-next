@@ -45,7 +45,7 @@ The bundle carries, in fixed order and each section verbatim from the command it
 **The bundle is a floor, not a ceiling.** It replaces the discrete Phase-1 reads — it does not cap your context. Query further whenever useful:
 
 ```bash
-<FLOWCTL> memory search "<keyword>" --rerank --json   # by task keyword / module / tag
+<FLOWCTL> memory search "<task sentence>" --limit 15 --rerank --json   # BM25 order, reordered by Jev when a key is set; you pick what applies
 <FLOWCTL> memory read <entry-id>             # full entry body
 ```
 Narrow with `--track bug|knowledge`, `--category <cat>`, `--module <path>`, or `--tags "a,b"` when you have context. Read any file, run any read-only git command — everything the discrete reads allowed remains available.

@@ -1183,8 +1183,9 @@ from the environment at call time. `judge.enabled=false` disables it.
 An available result contains `success`, `available`, `preset`, the returned
 `model`, typed `answers`, `decision` (`value`, `rule`, `met`), `latency_ms`, and
 `usage`. Route and tier decisions also contain the three leading
-`candidates` as `[option, probability]` pairs. Memory decisions contain ordered
-entry IDs and scores.
+`candidates` as `[option, probability]` pairs. Memory decisions contain every
+judged entry ID and score, reordered; none is dropped. A live route whose
+lifecycle needs no judged answer sends no request.
 
 Unavailable judge answers exit 0 and name the reason. A live route still
 returns its code-computed lifecycle decision and PR observation when those
@@ -1200,7 +1201,7 @@ Reasons are `no_key`, `disabled`, `http_<status>`, `transport`, `timeout`,
 records the reason. Unknown presets, unreadable/non-JSON state files, and missing
 required state fields exit nonzero; one error names every missing field. A route
 intake state file holds only `view` and its text (`intent`, or `spec_title` plus
-`spec_body`): code assembles `view_meaning`, `repo`, `startable_target_fact`, and
+`spec_body`): code assembles `view_meaning`, `startable_target_fact`, and
 the empty lifecycle and PR facts. Requests use `jev-latest`, a 10-second timeout,
 and two retries only for HTTP 429/529, after 1 and 2 seconds. A request estimated
 over 32k tokens at four characters per token is rejected without sending.
@@ -1522,11 +1523,12 @@ superseded, never removed.
 
 `--status` defaults to `active`, which excludes **both** stale and hardened entries from default `list` / `search` results - audit-flagged advice stops polluting `memory-scout` output, and a hardened lesson now lives in an enforced gate, so re-injecting it as context is waste. Pass `--status stale`, `--status hardened`, or `--status all` to include them.
 
-`--rerank` sends up to 15 BM25 hits in one `memory-rerank` request, orders by
-Jev score (ties retain BM25 order), drops scores below 1.0, and returns at most
-10 hits. JSON adds `jev_score` and `jev_rank` to reranked matches and top-level
-`rerank: "jev"`. An unavailable judge keeps BM25 order and returns
-`rerank: "bm25"`; zero hits send no request. Plain-text output uses the memory
+`--rerank` sends up to 15 BM25 hits (without their `path` and BM25 `score`) in
+one `memory-rerank` request and reorders them by Jev score (ties retain BM25
+order); it drops none, and hits past the 15th follow in BM25 order. `--limit`
+applies after the reorder. JSON adds `jev_score` and `jev_rank` to reranked
+matches and top-level `rerank: "jev"`. An unavailable judge keeps BM25 order and
+returns `rerank: "bm25"`; zero hits send no request. Plain-text output uses the memory
 scout's `## Memory findings` table. Status filtering is unchanged.
 
 #### memory mark-stale

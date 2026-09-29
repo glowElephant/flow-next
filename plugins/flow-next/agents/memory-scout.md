@@ -33,7 +33,7 @@ Do **not** walk the filesystem directly. Use the `flowctl memory` CLI — it han
 Use these CLI shapes:
 
 - `flowctl memory list --json` → `{entries, legacy, count, status}` — full index with track/category/module/tags per entry.
-- `flowctl memory search "<query>" --rerank --json` -> `{query, matches, count, rerank}` — one Jev rerank over the top 15 BM25 hits, or unchanged BM25 on unavailable. Keep `jev_score` and `jev_rank` when present; print `memory: reranked (jev, <input count> -> <count>)` or `memory: bm25 (jev-unavailable(<reason>))` before the table.
+- `flowctl memory search "<query>" --limit 15 --rerank --json` -> `{query, matches, count, rerank, stage_line}` — the top 15 BM25 hits, reordered by Jev when a key is set (`jev_score`, `jev_rank`; none dropped), BM25 order otherwise. You pick the relevant entries either way; print the returned `stage_line` before the table.
 
 Narrow with flags when context is known:
 
@@ -52,7 +52,7 @@ Legacy hits in `search` appear with `track: "legacy"`, `category` set from the f
 
 1. Read task/request text; extract keywords (technology, module paths, symptoms).
 2. If the task touches specific files, prefer `flowctl memory search --module <path>` or post-filter the `module` field — a module match beats a keyword match.
-3. Run one to three targeted queries (keyword + module + optional category) with `--rerank`. If the caller supplied the result and judge-unavailable reason for this query, reuse it rather than retrying. Additional queries still honor that unavailable result for this retrieval (use plain BM25).
+3. Run one to three targeted queries (keyword + module + optional category) in that shape.
 4. Deduplicate by `entry_id`. When the same topic has both new-schema and legacy entries, prefer the new-schema one.
 5. Keep the top 5–10 most relevant. Drop generic matches if a specific match exists.
 

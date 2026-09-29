@@ -6,9 +6,10 @@ Add `--explain` to the same `--json` judge call Step 2 makes (never a second req
 gains an `explain` list holding the `Next:`, `Route:`, `Signal:`, `Skip/narrow:` and `Why not the
 alternatives:` lines; print them. The signal names the firing fact-grade Noul and its probability;
 the alternatives name the next two kinds and their probabilities. A below-floor result names all
-three candidates and says the host decides. When the judge is unavailable, resolve the route from
-the matrix yourself, print `Next:` and `Skip/narrow:` from that row, `Route: host
-(jev-unavailable(<reason>))`, and the reason as the `Signal:`. Then stop.
+three candidates and says the host decides. When the judge is off at intake (no call is made) or
+unavailable, resolve the route from the matrix yourself, print `Next:` and `Skip/narrow:` from that
+row, `Route: <route> (host)` or `Route: host (jev-unavailable(<reason>))`, and the reason (`judge:
+off` or the unavailable reason) as the `Signal:`. Then stop.
 
 Recommendation shape (also used by closers that recommend a next step): lead with the exact words
 or slash command to run next, then

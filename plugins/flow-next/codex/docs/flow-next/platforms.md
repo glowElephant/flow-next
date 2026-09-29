@@ -429,8 +429,8 @@ Removing the skill is trivial: `rm -rf .clawpatch/` removes both the index and t
 
 Every supported host uses the same [judge presets](judge.md) in `flowctl`.
 Export `TYPESAFE_API_KEY` into the host process environment to enable them;
-`judge.enabled=false` disables requests. Keyless hosts retain their existing
-routing, review matching, QA decisions, and memory search fallback.
+`judge.enabled=false` disables requests. Keyless hosts decide routing and QA
+themselves and read memory in BM25 order; the decisions do not depend on the key.
 
 For confident mechanical work, the conductor selects the configured fast-scout
 model through the host's spawn-model parameter and passes `IMPLEMENTER:` for a

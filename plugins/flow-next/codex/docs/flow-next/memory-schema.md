@@ -280,7 +280,7 @@ Point agents at `.flow/memory/` with a one-line note in `AGENTS.md` / `CLAUDE.md
 
 ## When enabled
 
-- **Planning**: category-aware `memory-scout` runs in parallel with other scouts, returns track/category-tagged hits and prioritizes module matches.
+- **Planning**: plan runs one `memory search "<task sentence>" --limit 15 --rerank --json` and keeps the entries that apply; with a judge key Jev only reorders the hits (see [judge](judge.md#memory)).
 - **Work**: worker reads relevant entries during re-anchor, and writes structured bug-track entries via `memory add --track bug --category <c>` on NEEDS_WORK → SHIP. Overlap scoring emits `matches`; the worker re-runs with `--update <id>` when folding into a known prior entry.
 
 Config lives in `.flow/config.json`.

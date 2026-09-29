@@ -68,7 +68,7 @@ fi
 
 When the strategy sentinel prints, read [`references/strategy-alignment.md`](references/strategy-alignment.md); it owns the two strategy sections Step 5 writes. An absent or empty STRATEGY.md means no strategy sections at all.
 
-**Memory.** When memory is enabled, follow [the direct memory path](references/judge-memory.md); an available rerank replaces only the memory-scout dispatch.
+**Memory.** When memory is enabled, run the one search in [the direct memory path](references/judge-memory.md), with or without a judge key.
 
 **Declined scope.** List `.flow/memory/declined/` once (one `<concept-slug>.md` per concept) and read any file whose concept the request touches. On a hit, cite it in `## Decision Context`, append this request as a dated line under its `## Prior requests`, and keep that scope out of the plan. Only the user reopens a declined concept: say it was declined, what would change, and wait. No directory means nothing was declined.
 
@@ -78,7 +78,6 @@ When the strategy sentinel prints, read [`references/strategy-alignment.md`](ref
 |-------|------|
 | the `repo_scout` agent | always; at SHORT it also carries docs-gap-scout's charter |
 | the `spec_scout` agent | always |
-| the `memory_scout` agent | when `memory.enabled` and the direct rerank is unavailable |
 | the `docs_gap_scout` agent | STANDARD and DEEP |
 | the `practice_scout` agent, the `docs_scout` agent | STANDARD and DEEP |
 | the `github_scout` agent | STANDARD and DEEP, when `scouts.github` |
@@ -90,7 +89,7 @@ On a Route A spec, first apply the skip rule in [`flow-next-refine/references/re
 
 When github-scout runs, it alone searches GitHub code; repo-scout stays local and the docs and practice scouts use primary documentation. On a host that does not block on dispatch, start Step 3's gap analyst as soon as the repo-grounded scouts return, reconcile the web findings when they land, and join every scout before Step 5. Blocking hosts run Steps 1, 2, 3 in order.
 
-**Scout model tiers.** Every scout above except memory-scout, and the gap analyst, is a **thinking scout** dispatch; memory-scout is a **fast scout** dispatch. Routing precedence, highest first: an explicit argument in the invocation, the project routing block in the instruction file, the agent definition's default, then the session model. Where a harness cannot honor the agent default, a thinking scout runs on the session model, never a fast one.
+**Scout model tiers.** Every scout above, and the gap analyst, is a **thinking scout** dispatch. Routing precedence, highest first: an explicit argument in the invocation, the project routing block in the instruction file, the agent definition's default, then the session model. Where a harness cannot honor the agent default, a thinking scout runs on the session model, never a fast one.
 
 Collect: file paths with line refs, code to reuse, similar prior work, project conventions, architecture and data flow, external doc links, spec dependencies in both directions, docs that must change (these go into task acceptance), and DESIGN.md tokens if repo-scout found one.
 
