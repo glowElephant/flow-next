@@ -53,7 +53,8 @@ to a pull request.
 
 Act on findings the way a careful author would: fix a finding only when it shows the change
 itself does the wrong thing in a scenario the request covers. Hardening, extra shutdown or
-error paths, broader refactors and style are follow-ups, listed in the handoff, not fixed. After
+error paths, broader refactors and style are follow-ups, listed in the handoff, not fixed. When a
+finding points at unrequested machinery your change added, remove it. After
 fixing, re-review once; do not loop.
 
 Attended: hand the result back first, in its own message, and end the turn; then start the review

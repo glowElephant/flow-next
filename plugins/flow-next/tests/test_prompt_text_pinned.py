@@ -97,8 +97,10 @@ PROMPT_HASHES = {
     # flag the underlying code; keep-list copied from the worker authoring rule).
     "INTEGRATION_AXIS_PROMPT_LINE":
         "0569edc1e9220bb2a29fb431f589baa2df2f04cd8c059f5eaade7dc5f54170cf",
+    # 7.0: review scoped to the request (four things, concrete failing scenario, P2/P3 never
+    # block, overengineering only within the change) (deliberate bump).
     "IMPL_REVIEW_PROMPT_FALLBACK":
-        "461c1e1fbe62eb8da5a26bef9542d956a18347d75a79cf00552c9540e126da2d",
+        "ff96123b45e3cddf2db9f992f2e5e902eae32fa3be88f912e4e2acd934c5abd4",
     "PLAN_QUALITY_BLOCK":
         "0cfb49bfadf0be45e5c8036950d34698b5ae3bbccf24a90564983e13d0a1192f",
     "PLAN_REVIEW_PROMPT_FALLBACK":
@@ -118,7 +120,7 @@ PROMPT_HASHES = {
     # fn-220: SPEC_SKELETON_TEMPLATE deleted; the scaffold is templates/spec.md, rendered by spec_skeleton_text().
     # fn-210.1: same comment-as-alibi finding class as impl-review.
     "STANDALONE_REVIEW_PROMPT_FALLBACK":
-        "beedb8d647f78d782b3e58ebdeb8cbace8ae7dcb5b9e432359a6627a9a255963",
+        "9d97288ea04d336475d9eff6d4ca019456ea541ef4ba3faf115908e734eb91b9",
     # Condensation of validate-pass.md, NOT a copy of it (#118).
     "VALIDATOR_TEMPLATE_FALLBACK":
         "558ab25ab09ade0e315d924e72615c76f4ac8c9348cf60cfbfd761896664a36c",
@@ -203,9 +205,10 @@ TEMPLATE_HASHES = {
         # H1 dropped its spec-provenance tag in the shipped-prose tag sweep.
         "773f026e1e6bb9988225d3a6365869f17fae092af6bf441aa53038cd3d683579",
     "plugins/flow-next/skills/flow-next-impl-review/references/impl-review-prompt.md":
-        "461c1e1fbe62eb8da5a26bef9542d956a18347d75a79cf00552c9540e126da2d",
+        # 7.0: scoped review (deliberate bump, same text as the fallback).
+        "ff96123b45e3cddf2db9f992f2e5e902eae32fa3be88f912e4e2acd934c5abd4",
     "plugins/flow-next/skills/flow-next-impl-review/references/standalone-review-prompt.md":
-        "beedb8d647f78d782b3e58ebdeb8cbace8ae7dcb5b9e432359a6627a9a255963",
+        "9d97288ea04d336475d9eff6d4ca019456ea541ef4ba3faf115908e734eb91b9",
     "plugins/flow-next/skills/flow-next-plan-review/references/plan-review-prompt.md":
         # fn-142 R1: criterion 9 Maintainability (duplication + structure, advisory)
         # and the `maintainability:` verdict block (deliberate bump).
