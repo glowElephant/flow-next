@@ -21,7 +21,7 @@ One Bash call; fill the three literals from the arguments.
 ```bash
 set -e
 FLOWCTL="${DROID_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/flowctl"
-[ -x "$FLOWCTL" ] || FLOWCTL="<plugin-root>/scripts/flowctl"   # two levels above this SKILL.md
+[ -x "$FLOWCTL" ] || FLOWCTL="<plugin-root>/scripts/flowctl"   # <plugin-root> = the directory two levels above this skill's SKILL.md file (the harness gave you that file's absolute path when the skill loaded); substitute it literally
 [ -x "$FLOWCTL" ] || FLOWCTL=".flow/bin/flowctl"
 REVIEW_ID="<task or spec id, or empty for a branch review>"
 BACKEND="<value of --review, or empty>"
@@ -39,8 +39,8 @@ git diff --shortstat "$DIFF_BASE"...HEAD
   or an instruction about the reviewers ("one reviewer", "three model families"): read
   [other-paths.md](other-paths.md) and follow it for steps 2-3, then come back to step 4.
 
-Shell state does not survive between Bash calls: restate `FLOWCTL`, `REVIEW_ID` and `DIFF_BASE`
-as literals in each block below.
+Shell state does not survive between Bash calls: each block below resolves `FLOWCTL` again and
+takes `REVIEW_ID` and `DIFF_BASE` as literals.
 
 ## 2. Codex review
 
@@ -48,7 +48,10 @@ Run each review command as one blocking foreground Bash call with a 600-second t
 run it in the background: its completion would not resume you.
 
 ```bash
-FLOWCTL="<literal>"; REVIEW_ID="<literal or empty>"; DIFF_BASE="<literal>"
+FLOWCTL="${DROID_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/flowctl"
+[ -x "$FLOWCTL" ] || FLOWCTL="<plugin-root>/scripts/flowctl"   # <plugin-root> = the directory two levels above this skill's SKILL.md file (the harness gave you that file's absolute path when the skill loaded); substitute it literally
+[ -x "$FLOWCTL" ] || FLOWCTL=".flow/bin/flowctl"
+REVIEW_ID="<literal or empty>"; DIFF_BASE="<literal>"
 ROUTE="$("$FLOWCTL" review-route ${REVIEW_ID:+"$REVIEW_ID"} --rotate-stale --json)" || { printf '%s\n' "$ROUTE" >&2; exit 1; }
 ACTION="$(jq -r '.action' <<<"$ROUTE")"; TASK_ID="$(jq -r '.task_id // empty' <<<"$ROUTE")"
 RECEIPT_PATH="$(jq -r '.receipt_path' <<<"$ROUTE")"
@@ -81,7 +84,10 @@ onto the one with the strongest evidence; leave out findings with no concrete fa
 the change. Then, in the foreground:
 
 ```bash
-"<FLOWCTL literal>" codex impl-review-fanout-finalize --rid "<rid>" --merge-plan "<plan path>" --json
+FLOWCTL="${DROID_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/flowctl"
+[ -x "$FLOWCTL" ] || FLOWCTL="<plugin-root>/scripts/flowctl"   # <plugin-root> = the directory two levels above this skill's SKILL.md file (the harness gave you that file's absolute path when the skill loaded); substitute it literally
+[ -x "$FLOWCTL" ] || FLOWCTL=".flow/bin/flowctl"
+"$FLOWCTL" codex impl-review-fanout-finalize --rid "<rid>" --merge-plan "<plan path>" --json
 ```
 
 flowctl computes the verdict (the worst draw wins; failed draws do not vote) and writes the
@@ -98,7 +104,10 @@ receipt. Report `VERDICT=<verdict>` with the kept findings; your own reading nev
   fixes and commit only the files you changed. Then re-review once, in the foreground:
 
 ```bash
-FLOWCTL="<literal>"; REVIEW_ID="<literal or empty>"; DIFF_BASE="<literal>"
+FLOWCTL="${DROID_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/flowctl"
+[ -x "$FLOWCTL" ] || FLOWCTL="<plugin-root>/scripts/flowctl"   # <plugin-root> = the directory two levels above this skill's SKILL.md file (the harness gave you that file's absolute path when the skill loaded); substitute it literally
+[ -x "$FLOWCTL" ] || FLOWCTL=".flow/bin/flowctl"
+REVIEW_ID="<literal or empty>"; DIFF_BASE="<literal>"
 ROUTE="$("$FLOWCTL" review-route ${REVIEW_ID:+"$REVIEW_ID"} --json)"
 TASK_ID="$(jq -r '.task_id // empty' <<<"$ROUTE")"; RECEIPT_PATH="$(jq -r '.receipt_path' <<<"$ROUTE")"
 "$FLOWCTL" codex impl-review ${TASK_ID:+"$TASK_ID"} --base "$DIFF_BASE" --receipt "$RECEIPT_PATH"
