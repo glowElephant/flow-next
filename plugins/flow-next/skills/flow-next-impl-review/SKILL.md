@@ -101,7 +101,9 @@ receipt. Report `VERDICT=<verdict>` with the kept findings; your own reading nev
 - `NEEDS_HUMAN`: stop and hand the reviewer's question to the person.
 - `NEEDS_WORK`: one fix pass, then one re-review. Fix only the findings working-rules says to
   fix; list the rest as follow-ups. Never ask the person which to fix. Run focused tests for the
-  fixes and commit only the files you changed. Then re-review once, in the foreground:
+  fixes and commit only the files you changed, with one `Declined #<n>: <reason>` line in the
+  commit message for each finding you listed as a follow-up (the re-review reads them). Then
+  re-review once, in the foreground:
 
 ```bash
 FLOWCTL="${DROID_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/flowctl"
