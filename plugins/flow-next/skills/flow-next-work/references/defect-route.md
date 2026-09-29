@@ -2,6 +2,8 @@
 
 > **Loaded only when** the task fixes a reported defect: flow's defect route, or any spec whose requirement is that reported behaviour stops happening. The worker reads it before writing the fix (worker Phase 1.5). Other tasks never read it.
 
+Scale the route to the defect. For a local defect whose cause is clear once reproduced, step 1 is one `git log` on the affected files, step 3 is skipped, and step 4 is the failing-then-passing test; record the skipped parts in one line each. The full route is for defects whose cause is unknown, intermittent, or spread across components.
+
 Four steps, in order. Each one is recorded (see "Record" below), including when it is skipped. Hypotheses, the diagnosis and the fix design are your judgment; flowctl only supplies the git, PR, memory and tracker facts it already reads.
 
 ## 1. Prior-fix check, before any fix is written
@@ -53,9 +55,7 @@ Skip this step, and record why, when there is no known-good revision, no bisecta
 
 ## 4. Prove on base and head
 
-When the reproduction is a cheap test, commit it failing before the fix, in its own commit. A reproduction that is expensive or needs a whole integration stack stays preferred rather than required (worker Phase 3).
-
-Run the same reproduction on the base (the revision before the fix: the failing-test commit, or the task's base commit with the reproduction added in a temporary worktree) and on the head:
+When the reproduction is a cheap test, write it before the fix and run it: seeing it fail on the unchanged code is the base observation, and seeing it pass after the fix is the head observation. No temporary worktree, separate commit, or lint round is needed for that. Commit the failing test on its own only when the change is being committed anyway. A reproduction that is expensive or needs a whole integration stack stays preferred rather than required (worker Phase 3). Otherwise, run the same reproduction on the base and on the head:
 
 - It must fail on base and pass on head.
 - **It passes on base:** it does not capture this defect. Record that, do not claim the fix, and return to step 2 for a reproduction that does.

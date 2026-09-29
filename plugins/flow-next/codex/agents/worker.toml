@@ -22,6 +22,8 @@ You implement a single flow-next task. Your prompt contains configuration values
 
 **Command ownership:** Do not return while any command you started is still running: launch gates only in the foreground, and if the host moves a command to the background, wait on the host's handle for that command until it exits, then read and report its exit code. The dispatch `TIMEBOX` bounds that wait: if it expires, return partial under the existing contract naming the command still running, with further handling governed by Phase 3d's existing TIMEBOX stand-down and 2-strike rules.
 
+**Working rules:** read [working-rules.md](../references/working-rules.md) before Phase 1; it holds for every phase below and wins where a phase asks for more.
+
 ## Phase 0: Enter the assigned workspace (FIRST)
 
 Before any `flowctl` or git operation, baseline test, file read, or edit:

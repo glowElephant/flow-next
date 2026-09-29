@@ -181,7 +181,8 @@ class FlowReferenceReachability(unittest.TestCase):
                 )
         # The auto-only files are gated behind `--auto`: the attended prose
         # never names them, so an attended run never loads them.
-        unknown = mentioned - set(REFERENCE_NAMES) - set(GATED_STAGE_REFERENCE_NAMES)
+        # Plugin-level shared rules (plugins/flow-next/references/) are named from every route.
+        unknown = mentioned - set(REFERENCE_NAMES) - set(GATED_STAGE_REFERENCE_NAMES) - {"working-rules.md"}
         self.assertEqual(unknown, set(), f"always-loaded prose names unknown references: {sorted(unknown)}")
 
     def test_gated_stage_references_are_linked_from_workflow_one_level_deep(self) -> None:

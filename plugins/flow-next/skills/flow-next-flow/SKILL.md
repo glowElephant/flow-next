@@ -68,6 +68,7 @@ With `--auto` there is no marker refusal, because `--auto` sets `FLOW_AUTONOMOUS
 
 ## Invariants (every run)
 
+- **Read [working-rules.md](../../references/working-rules.md) before the first route step and follow it on every route**: scope, tests, attended versus unattended behaviour, handoff.
 - **Route on content and context, never on input kind.** Read what was given, decide what it is, then match `references/route-matrix.md` at the route step.
 - **Ask only on a fork that is material and not observable.** Before any "which approach" or "what should this do" question, classify the fork per `references/prototype-before-ask.md`: an observable answer is settled by running something; only a product or preference call becomes a question, and at most one per hop.
 - **Never fabricate a review, QA, or completion verdict** to pass a gate. Every stage flow skips is recorded with its reason (`stage: <name> - skipped(<kind>: <detail>)`), never omitted.
