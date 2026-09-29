@@ -66,10 +66,10 @@ if OUT=$("$FLOWCTL" triage-skip --json "${TRIAGE[@]}" 2>/dev/null); then
 fi
 args=(); [ -n "$TASK_ID" ] && args+=("$TASK_ID")
 args+=(--base "$DIFF_BASE" --receipt "$RECEIPT_PATH" --json)
-# One reviewer only for a small diff in one area that touches no persisted or shared state,
-# concurrency, security or data layout. Delete this line for any of those, or for a large or
-# cross-cutting diff: they get the default three reviewers.
-args+=(--draw correctness)
+# The default is three reviewers. For a small diff in one area that touches no persisted or
+# shared state, concurrency, security or data layout, set ONE_REVIEWER=1 for a single reviewer.
+ONE_REVIEWER=0
+[ "$ONE_REVIEWER" = 1 ] && args+=(--draw correctness)
 "$FLOWCTL" codex impl-review-fanout "${args[@]}"
 ```
 
