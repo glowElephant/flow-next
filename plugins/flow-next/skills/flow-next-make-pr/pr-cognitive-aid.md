@@ -29,6 +29,8 @@ Export `tasks[].evidence.commits` are SHORT SHAs: expand with `git rev-parse` be
   `userImpact` describes user/operator changes; `blastRadius` names scope, reading order and what is unproven;
   `tradeoffs` records rejected alternatives; `openItems` records unfinished work.
 - Unevidenced work belongs in `openItems`; required PR findings belong there or in Tradeoffs.
+- Unattended runs put the run's Decisions list (defaults chosen, findings declined, reviews
+  skipped, each with its evidence; working-rules.md) in `tradeoffs`, so it reaches the PR body.
 - `proof[]` has at most 16 cells with `label` and `value` (each at most 160 characters), `sourceRefs`, and optional `outcome`.
   Use `pass` for a known green gate, `fail` for failure, `unverified` for inconclusive or never-run steps with the gap in `value`.
   A passed gate without a stored receipt cites the merge commit or pull request that carried it (a `review_receipt` ref can be its URL).
