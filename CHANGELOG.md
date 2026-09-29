@@ -4,7 +4,11 @@ All notable changes to the flow-next.
 
 Flow-Next changed shape with 5.0.0. One command, `/flow-next:flow`, reads whatever you have and picks the route, and `flow --auto` runs the same route unattended. If you are arriving from 4.x, start with [the 5.0.0 entry](#flow-next-500---2026-09-12) and [the flow skill](plugins/flow-next/skills/flow-next-flow/SKILL.md) before reading the items below.
 
-## Unreleased
+## [flow-next 6.7.0] - 2026-09-29
+
+Codex reviews and the Codex agents now run on GPT-6.1 Sol, the model Codex lists first as of 2026-09-29, and the Claude review backend can fall back to Opus 5.5 and Sonnet 5.5 before reaching the older models.
+
+**What changes when you upgrade.** Re-run `./scripts/install-codex.sh` so your generated Codex agents move to `gpt-6.1-sol`. An account that cannot serve it steps down to `gpt-6-astra`, then `gpt-6-sol`. A model you name explicitly still wins. No setup re-run is needed.
 
 ### Changed
 
