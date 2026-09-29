@@ -301,7 +301,7 @@ no terminal status with no receipt behind it.
   emit `ESCALATE: reviewer requested human review` and exit 4.
   Dispatch failure, malformed verdict, receipt failure, or retry outcome stops
   without writing completion status; dispatch/transport failures output
-  `<promise>RETRY</promise>` and never self-issue a verdict or switch backends.
+  `RETRY: no verdict (backend or transport failure)` and never self-issue a verdict or switch backends.
 
 ## Anti-patterns (Host backend)
 

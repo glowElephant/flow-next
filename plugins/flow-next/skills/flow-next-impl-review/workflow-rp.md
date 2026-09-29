@@ -149,18 +149,18 @@ source "$SETUP_FILE"
 
 # Both paths retain numeric window/context identity; CE also returns the chat.
 if [[ -z "${W:-}" || -z "${T:-}" || -z "${RP_MODE:-}" ]]; then
-  echo "<promise>RETRY</promise>"
+  echo "RETRY: no verdict (backend or transport failure)"
   exit 0
 fi
 if [[ "$RP_MODE" == "ce" && ( -z "${CHAT_ID:-}" || ! -s "$RESPONSE_FILE" ) ]]; then
-  echo "<promise>RETRY</promise>"
+  echo "RETRY: no verdict (backend or transport failure)"
   exit 0
 fi
 
 echo "Setup complete: mode=$RP_MODE W=$W T=$T"
 ```
 
-If this block fails, output `<promise>RETRY</promise>` and stop. Do not improvise.
+If this block fails, output `RETRY: no verdict (backend or transport failure)` and stop. Do not improvise.
 **Do NOT re-run setup-review** — the builder runs inside it. Re-running = double context build.
 
 ---
@@ -444,7 +444,7 @@ fi
 
 if [[ -z "$VERDICT" ]]; then
   echo "No verdict tag found in response"
-  echo "<promise>RETRY</promise>"
+  echo "RETRY: no verdict (backend or transport failure)"
   exit 0
 fi
 echo "VERDICT=$VERDICT"
@@ -457,14 +457,14 @@ if [[ -n "${REVIEW_RECEIPT_PATH:-}" ]]; then
     if ! "$FLOWCTL" review-findings attach \
       --reservation-id "$RESERVATION_ID" \
       --receipt "$REVIEW_RECEIPT_PATH" --json >/dev/null; then
-      echo "<promise>RETRY</promise>"
+      echo "RETRY: no verdict (backend or transport failure)"
       exit 0
     fi
   else
     ATTACH_ARGS=(--input "$RECEIPT_INPUT" --receipt "$REVIEW_RECEIPT_PATH"
       --review-file "$RESPONSE_FILE" --base "$REVIEW_BASE_SHA" --head "$REVIEW_HEAD_SHA")
     if ! "$FLOWCTL" review-findings attach "${ATTACH_ARGS[@]}" --json >/dev/null; then
-      echo "<promise>RETRY</promise>"
+      echo "RETRY: no verdict (backend or transport failure)"
       exit 0
     fi
   fi
@@ -477,7 +477,7 @@ if [[ "$VERDICT" == "NEEDS_HUMAN" ]]; then
 fi
 ```
 
-If no verdict tag in response, output `<promise>RETRY</promise>` and stop.
+If no verdict tag in response, output `RETRY: no verdict (backend or transport failure)` and stop.
 
 ## Optional phases (gated by flags)
 

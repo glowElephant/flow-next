@@ -1,13 +1,4 @@
-# Landing rule (routing reference 6 of 6)
-
-**Decision record**
-
-- Source: `--until=merge` or the attended landing offer.
-- Trigger: an existing PR, including one whose spec is closed.
-- Purpose: compose land for one named PR under current consent.
-- Evidence: GitHub PR state and merge commit; state never grants authority.
-- Disposition: shared by attended and unattended flow. Land owns convergence
-  and merge; make-pr closes completed specs at the PR head.
+# Landing rule
 
 ## Destination and consent
 

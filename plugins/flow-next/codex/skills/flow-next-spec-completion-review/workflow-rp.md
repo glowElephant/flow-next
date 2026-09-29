@@ -168,18 +168,18 @@ fi
 source "$SETUP_FILE"
 
 if [[ -z "${W:-}" || -z "${T:-}" || -z "${RP_MODE:-}" ]]; then
-  echo "<promise>RETRY</promise>"
+  echo "RETRY: no verdict (backend or transport failure)"
   exit 0
 fi
 if [[ "$RP_MODE" == "ce" && ( -z "${CHAT_ID:-}" || ! -s "$RESPONSE_FILE" ) ]]; then
-  echo "<promise>RETRY</promise>"
+  echo "RETRY: no verdict (backend or transport failure)"
   exit 0
 fi
 
 echo "Setup complete: mode=$RP_MODE W=$W T=$T"
 ```
 
-If this block fails, output `<promise>RETRY</promise>` and stop. Do not improvise.
+If this block fails, output `RETRY: no verdict (backend or transport failure)` and stop. Do not improvise.
 **Do NOT re-run setup-review** — the builder runs inside it. Re-running = double context build.
 
 ---
@@ -584,7 +584,7 @@ if [[ -n "${REVIEW_RECEIPT_PATH:-}" && -n "$VERDICT" ]]; then
 {"type":"completion_review","id":"$SPEC_ID","mode":"rp","verdict":"$VERDICT","base":"$REVIEW_BASE_SHA","head":"$REVIEW_HEAD_SHA","timestamp":"$ts","attempt_timestamp":""}
 EOF
   then
-    echo "<promise>RETRY</promise>"
+    echo "RETRY: no verdict (backend or transport failure)"
     exit 0
   fi
   RECEIPT_ARGS=(--receipt-target "$REVIEW_RECEIPT_PATH" --receipt-payload-file "$RECEIPT_INPUT")
@@ -624,7 +624,7 @@ fi
 
 if [[ -z "$VERDICT" ]]; then
   echo "No verdict tag found in response"
-  echo "<promise>RETRY</promise>"
+  echo "RETRY: no verdict (backend or transport failure)"
   exit 0
 fi
 echo "VERDICT=$VERDICT"
@@ -633,7 +633,7 @@ if [[ -n "${REVIEW_RECEIPT_PATH:-}" && -n "$VERDICT" ]]; then
   ATTEMPT_AT="$(printf '%s' "$RECORD_JSON" \
     | jq -r '.attempts[-1].timestamp // ""')"
   if [[ -z "$ATTEMPT_AT" ]]; then
-    echo "<promise>RETRY</promise>"
+    echo "RETRY: no verdict (backend or transport failure)"
     exit 0
   fi
   # Publish the journaled payload only — never re-derive it here.
@@ -641,7 +641,7 @@ if [[ -n "${REVIEW_RECEIPT_PATH:-}" && -n "$VERDICT" ]]; then
     --reservation-id "$RESERVATION_ID" \
     --receipt "$REVIEW_RECEIPT_PATH" \
     --json >/dev/null; then
-    echo "<promise>RETRY</promise>"
+    echo "RETRY: no verdict (backend or transport failure)"
     exit 0
   fi
   if ! jq -e --arg id "$SPEC_ID" --arg attempt_at "$ATTEMPT_AT" --arg verdict "$VERDICT" \
@@ -651,7 +651,7 @@ if [[ -n "${REVIEW_RECEIPT_PATH:-}" && -n "$VERDICT" ]]; then
      and .mode == "rp"
      and .attempt_timestamp == $attempt_at' \
     "$REVIEW_RECEIPT_PATH" >/dev/null; then
-    echo "<promise>RETRY</promise>"
+    echo "RETRY: no verdict (backend or transport failure)"
     exit 0
   fi
   echo "REVIEW_RECEIPT_WRITTEN: $REVIEW_RECEIPT_PATH"

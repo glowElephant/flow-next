@@ -454,7 +454,7 @@ run.
   prior findings in its prompt. That re-review's verdict is terminal; the
   deterministic round cap stays a safety net.
 - Dispatch, malformed-verdict, or receipt failure: output
-  `<promise>RETRY</promise>` and stop. Never self-issue a verdict or switch
+  `RETRY: no verdict (backend or transport failure)` and stop. Never self-issue a verdict or switch
   backends.
 
 ## Anti-patterns (Host backend)

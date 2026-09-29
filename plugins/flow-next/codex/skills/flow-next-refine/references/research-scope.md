@@ -2,14 +2,6 @@
 
 > Read at the Setup routing line in SKILL.md. The interview never reads this file.
 
-**Decision record**
-
-- Source: fn-238 R16, the read-first signal on the route matrix's ready-spec row.
-- Trigger: a spec or task names a library or API the repo does not already use, and nobody has read its current docs yet.
-- Purpose: resolve library versions, changed APIs, gotchas, the docs that must change, and the project memory that applies, once, into one section both refine and plan recognise, before work starts on either route.
-- Evidence: a worker that meets an unfamiliar API mid-task either guesses from training data or stops to research inside its implementation context; plan already runs the same scouts and used to keep their findings only in task bodies, where a no-plan spec never sees them.
-- Disposition: keep. One artifact (`## Resolved via Research`), one skip rule shared with plan, never run by default.
-
 ## Contract
 
 - **No questions.** The research pass asks nothing and runs no interview rounds. It reads the target, decides whether to run, dispatches the read-only scouts, and writes one section back through the shared read-back contract.

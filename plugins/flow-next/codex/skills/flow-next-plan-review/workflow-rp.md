@@ -141,11 +141,11 @@ if [[ "$SETUP_EXIT" -ne 0 ]]; then
 fi
 source "$SETUP_FILE"
 if [[ -z "${W:-}" || -z "${T:-}" || -z "${RP_MODE:-}" ]]; then
-  echo "<promise>RETRY</promise>"
+  echo "RETRY: no verdict (backend or transport failure)"
   exit 0
 fi
 if [[ "$RP_MODE" == "ce" && ( -z "${CHAT_ID:-}" || ! -s "$RESPONSE_FILE" ) ]]; then
-  echo "<promise>RETRY</promise>"
+  echo "RETRY: no verdict (backend or transport failure)"
   exit 0
 fi
 ```
@@ -375,7 +375,7 @@ printf 'VERDICT=%q\nRESERVATION_ID=%q\n' "$VERDICT" "$RESERVATION_ID" \
 ```
 
 If no verdict exists, the `record` call refunds the reservation and durably
-records the transport failure; output `<promise>RETRY</promise>` and stop.
+records the transport failure; output `RETRY: no verdict (backend or transport failure)` and stop.
 After more than `${MAX_REVIEW_TRANSPORT_FAILURES:-2}` consecutive failures it
 exits 5 / `TRANSPORT_UNHEALTHY`: stop for backend repair, never reset the review
 counter. A failed recorder must terminate this fence; no later verdict,
@@ -398,7 +398,7 @@ if [[ -n "${REVIEW_RECEIPT_PATH:-}" ]]; then
       --reservation-id "$RESERVATION_ID" \
       --receipt "$REVIEW_RECEIPT_PATH" \
       --json >/dev/null; then
-      echo "<promise>RETRY</promise>"
+      echo "RETRY: no verdict (backend or transport failure)"
       exit 0
     fi
   fi

@@ -62,7 +62,7 @@ mode, never a configured backend.
 - The coordinator never self-declares a verdict.
 - Stick to one backend for the full review/fix cycle.
 - If `REVIEW_RECEIPT_PATH` is set, every review verdict writes a receipt.
-- Any backend/transport failure outputs `<promise>RETRY</promise>` and stops;
+- Any backend/transport failure outputs `RETRY: no verdict (backend or transport failure)` and stops;
   never silently fall back to a different backend. Autonomous callers
   receive the same retry terminal and decide whether to re-enter. A no-verdict
   dispatch is refunded and recorded by flowctl; never manually reset the review
@@ -144,7 +144,7 @@ When the verdict is `NEEDS_WORK`:
 
 **Done when:** the round ends in one of exactly four states — a `SHIP` from the
 backend, a `MAJOR_RETHINK` escalated as `BLOCKED: DESIGN_CONFLICT`, a
-`<promise>RETRY</promise>` from a backend/transport failure, or flowctl's
+`RETRY: no verdict (backend or transport failure)` from a backend/transport failure, or flowctl's
 `ESCALATE:` cap refusal with the surviving findings surfaced. A round that ends
 with a `NEEDS_WORK` neither fixed in the current spec nor re-entered into the
 same backend has broken this.

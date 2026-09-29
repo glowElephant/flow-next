@@ -74,7 +74,7 @@ model family and fail closed when no cross-family pin is available.
 
 **For all backends:**
 - If `REVIEW_RECEIPT_PATH` set: write receipt after SHIP verdict (RP writes manually after fix loop; codex writes automatically via `--receipt`)
-- Any failure → output `<promise>RETRY</promise>` and stop. No-verdict
+- Any failure → output `RETRY: no verdict (backend or transport failure)` and stop. No-verdict
   transport failures are recorded and their reserved round refunded; never
   manually reset the review counter. Exit 5 / `TRANSPORT_UNHEALTHY` stops
   automatic retries until the backend is repaired.
@@ -117,7 +117,7 @@ TERMINAL_STATUS="$(printf '%s' "$TERMINAL_REVIEW_JSON" | jq -r '.status')"
 TERMINAL_EXIT="$(printf '%s' "$TERMINAL_REVIEW_JSON" | jq -r '.exit')"
 case "$TERMINAL_ACTION" in
   continue) ;;
-  retry) echo "<promise>RETRY</promise>"; exit "$TERMINAL_EXIT" ;;
+  retry) echo "RETRY: no verdict (backend or transport failure)"; exit "$TERMINAL_EXIT" ;;
   ship) echo "VERDICT=SHIP"; exit "$TERMINAL_EXIT" ;;
   superseded) echo "COMPLETION_REVIEW_STATUS=$TERMINAL_STATUS"; exit "$TERMINAL_EXIT" ;;
   escalate)

@@ -1,12 +1,4 @@
-# Review, QA, and completion-review selection (routing reference 4 of 6)
-
-**Decision record**
-
-- Source: the review-backend grammar (`docs/flowctl.md`), the `pipeline.qa` gate, work's completion-review policy, the QA freshness probe the unattended driver reads (`qa-stage.md`).
-- Trigger: a route reaches a gate - after implementation (review), at all-tasks-done (QA, completion review), before a PR (make-pr's coverage).
-- Purpose: one place naming which gate applies and from which config key or flag it is read, so flow and the stage skills agree.
-- Evidence: gate policy scattered across skills is the enumeration-site drift class; every routed or skipped stage must leave a `ran` / `skipped(reason)` line.
-- Disposition: keep. flowctl stores the values and never interprets them; whether a gate applies is judgment and stays here.
+# Review, QA, and completion-review selection
 
 ## Implementation review
 

@@ -88,7 +88,7 @@ or overlapping `**Touches:**` declaration has broken this.
 4. every dispatched task carries a `**Touches:**` declaration, and the declared
    sets are pairwise **disjoint** (`touches(A) ∩ touches(B) = ∅`, glob-aware);
 5. no task touches the always-serial set: `.flow/`, lockfiles, migration
-   dirs, codegen/generated outputs (in this repo: `plugins/flow-next/codex/**`),
+   dirs, codegen/generated outputs,
    or spec/task files.
 
 The error paths are the rule: a task with no `**Touches:**` declaration →
@@ -500,7 +500,7 @@ solely by `land.merged`).
 4. Skill re-reviews (same chat for rp, same session for codex)
 5. Repeat until SHIP
 
-Only after SHIP does control return here. If skill outputs `<promise>RETRY</promise>`, there was a backend error - retry the skill invocation.
+Only after SHIP does control return here. If skill outputs `RETRY: no verdict (backend or transport failure)`, there was a backend error - retry the skill invocation.
 
 Done when: the policy skip recorded its stage line and `completion_review_status` reads `not_required` (written by this run's CAS or already excused by a prior run), or a verdict-status CAS miss fell through to the status check without a skip line, or `completion_review_status` reads `ship` (or the gate did not apply), and the opt-in tracker comment either fired or was a documented no-op.
 

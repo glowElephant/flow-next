@@ -162,9 +162,8 @@ Rules:
   acceptance names the changed output (e.g. a deliberate prompt edit), update
   its pin/snapshot in the same commit and state what changed and why.
 - **Rename edits: spot-check every rename** against string literals, prose,
-  generated mirrors, and back-references before committing — a rename swept
-  only through code identifiers is this repo's highest-frequency banked
-  failure class (rename drift across mirrors).
+  generated copies, and back-references before committing — a rename swept
+  only through code identifiers leaves stale names behind.
 - **Debugging: a refuted hypothesis ships as a revert** — a leftover
   speculative fix is unexplained code the next reader must reverse-engineer.
 - **Lifecycle-shaped tasks** (a task adding or changing a CLI verb, lifecycle
@@ -304,8 +303,6 @@ BASE_COMMIT=$(cat .flow/tmp/base_commit)
 # Baseline check mapped; never a fixed id list (a project without a `smoke`
 # gate gets no smoke line - fabricated skip lines corrupt the evidence trail):
 #   GATE_SKIPPED:<gate_id>:docs-only - cumulative diff classified tier-B (no executable paths touched)
-# Mirror regen is unaffected: mirror-source diffs never classify tier-B because the classifier
-# force-fulls plugins/flow-next/{skills,agents,commands,references,templates,hooks}/** and codex/**.
 # Exit nonzero: run the focused Quick commands for the code this task changed (lint/format
 # included). Never a full-suite gate here: work's Phase 4 runs those once, at the end of the run,
 # when the repository or the user asks for them. Must pass before marking done.

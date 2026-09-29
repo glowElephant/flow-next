@@ -1,12 +1,4 @@
-# Prototype before ask (routing reference 5 of 6)
-
-**Decision record**
-
-- Source: the maintainer's observation that the most common unnecessary plain-text numbered prompt asks the user to predict something the agent could run.
-- Trigger: flow or a routed skill is about to ask a "which approach" or "what should this do" question.
-- Purpose: replace a class of questions with an experiment; keep the questions that only a person can answer.
-- Evidence: a fork whose answer is observable (behaviour, output, timing, layout) is settled faster and more reliably by running something than by asking someone to guess.
-- Disposition: keep. Cheap to state, cheap to follow.
+# Prototype before ask
 
 ## Classify the fork first
 

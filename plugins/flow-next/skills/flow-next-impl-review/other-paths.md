@@ -75,7 +75,7 @@ model family and fail closed when no cross-family pin is available.
 
 **For all backends:**
 - If `REVIEW_RECEIPT_PATH` set: write receipt after review (any verdict)
-- Any failure → output `<promise>RETRY</promise>` and stop
+- Any failure → output `RETRY: no verdict (backend or transport failure)` and stop
 
 **Hard invariants:**
 - **The coordinator never authors a verdict.** A SHIP with no backend response behind it has broken this.
