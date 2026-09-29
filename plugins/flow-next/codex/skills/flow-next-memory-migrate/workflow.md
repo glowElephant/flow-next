@@ -199,8 +199,6 @@ Options:
   3. Skip this entry — mark as needs-review
 ```
 
-One question at a time.
-
 **Autofix mode:**
 
 Take the mechanical default. Log the entry as `needs-review` in the report so the user can re-classify post-migration via `/flow-next:audit` or manual intervention. Never silently override on autofix without strong evidence.

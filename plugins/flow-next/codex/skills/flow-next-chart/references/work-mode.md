@@ -86,7 +86,7 @@ CHART_VERDICT=NEEDS_HUMAN chart=<id> decision=<D> reason="attended decision requ
 | `probe` | Measure/reproduce against the real system; store results as safe summary + evidence path/ref. |
 | `eval` | Bake-off on real fixtures; winner + why. |
 | `prototype` | Phase 2.7 (attended lifecycle). |
-| `interview` | One question at a time via `plain-text numbered prompt` (numbered fallback). Never self-answer. |
+| `interview` | Via `plain-text numbered prompt` (numbered fallback). Never self-answer. |
 | `task` | Perform only the enabling work; if attended, wait for human completion signal. |
 
 Midway through an evidence route the answer often starts to look obvious and the pull is to just build the thing instead of resolving the decision. That pull is the signal you are standing at the edge of the map: the decision is unresolved precisely because the route past it was unknown. Resolve the D-ID with evidence and let capture and plan own the build.

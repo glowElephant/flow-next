@@ -13,6 +13,8 @@ Takes **one unshaped idea that is too big for a single capture session and wrapp
 
 **Role**: discovery coordinator (inline skill - keep blocking questions reachable). Host agent owns grounding, interpretation, frontier judgment, evidence-route dispatch, prototype presentation, attended consent, re-charting, and the terminal verdict. flowctl owns atomic create/claim/resolve/scope/briefing/store mutations.
 
+Read [working-rules.md](../../references/working-rules.md) first; it holds for every step of this skill.
+
 ## Preamble
 
 **CRITICAL: flowctl is BUNDLED - NOT installed globally.** `which flowctl` will fail (expected). Define once; subsequent blocks (here and in `workflow.md`) use `$FLOWCTL`:
@@ -76,7 +78,7 @@ Chart mode and status mode also print one terminal line so host `/loop`/`/goal` 
 | `probe` | unattended | Measure or reproduce against the real system |
 | `eval` | unattended | Bake-off / benchmark on real fixtures; winner + why |
 | `prototype` | **attended** | Throwaway artefact + human reaction (hard gate) |
-| `interview` | **attended** | Conversation, one question at a time (default for product judgment) |
+| `interview` | **attended** | Conversation (default for product judgment) |
 | `task` | **explicit** at create | Manual work that only unblocks a decision (not implementation smuggling) |
 
 Attendance is stored and validated by flowctl for five types; `task` requires `--attendance attended|unattended`. Cost estimates and unattended gates read the stored field, never prose.

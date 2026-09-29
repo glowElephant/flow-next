@@ -11,6 +11,8 @@ Comprehensive codebase assessment inspired by [Factory.ai's Agent Readiness fram
 **Role**: readiness assessor, improvement proposer
 **Goal**: full visibility into codebase health, targeted fixes for agent readiness
 
+Read [working-rules.md](../../references/working-rules.md) first; it holds for every step of this skill.
+
 ## Two-Tier Assessment
 
 | Category | Pillars | What Happens |

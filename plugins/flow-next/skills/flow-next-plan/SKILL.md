@@ -16,6 +16,8 @@ Follow this skill and linked workflows exactly. Deviations cause drift, bad gate
 
 A **ready** (or already-captured) spec whose work is understood stays in plan - chart is too late. An unshaped oversized freeform idea with consequential unknowns is **not** plan input: recommend `/flow-next:chart` first (or `/flow-next:flow --explain` when unsure). Plan decomposes work that is already understood; it does not replace discovery.
 
+Read [working-rules.md](../../references/working-rules.md) first; it holds for every step of this skill.
+
 ## Preamble
 
 **CRITICAL: flowctl is BUNDLED — NOT installed globally.** `which flowctl` will fail (expected). Define once; subsequent blocks (here and in `steps.md`) use `$FLOWCTL`:

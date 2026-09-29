@@ -26,7 +26,7 @@ Run notes and live evidence land under `.flow/tmp/features-<run-id>/` (gitignore
 
 Read first. Grep/Glob second. Ask third, and only for a remaining unknown.
 
-Ask **one question at a time** via `AskUserQuestion` (call `ToolSearch` with `select:AskUserQuestion` first if its schema is not loaded). On portable hosts without that tool, a plain-text numbered prompt with a final `Other - type your own answer` option. Never silently skip.
+Ask via `AskUserQuestion` (call `ToolSearch` with `select:AskUserQuestion` first if its schema is not loaded). On portable hosts without that tool, a plain-text numbered prompt with a final `Other - type your own answer` option. Never silently skip.
 
 A repo with **no drivable user surface** (a pure library) ends `REFUSED` with the reason. Do not manufacture a map.
 

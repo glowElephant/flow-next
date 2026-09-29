@@ -11,6 +11,8 @@ The host authors one grounded aid object; flowctl validates, stores and renders 
 Invocation authorizes push and PR creation; `--dry-run` previews without repository writes, push, PR edits
 or memory writes. The opt-in [html-lens.md](html-lens.md) loads only behind its config gate.
 
+Read [working-rules.md](../../references/working-rules.md) first; it holds for every step of this skill.
+
 Define `FLOWCTL` from `${DROID_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/flowctl`, then
 `<plugin-root>/scripts/flowctl` (two levels above this SKILL.md), then `.flow/bin/flowctl`, choosing the first
 executable. Never assume a global install. Parse `$ARGUMENTS`: the positional token is `SPEC_ID`; reject
@@ -25,8 +27,8 @@ unknown flags and missing base values. Carry these values between tool calls:
 | `--update` | `UPDATE_MODE=1`; default 0; refresh an existing open PR |
 | `mode:autonomous` or `FLOW_AUTONOMOUS=1` | `AUTONOMOUS=1`; default 0 |
 
-Keep this skill inline so `AskUserQuestion` remains available. Resolve only missing information, one question
-at a time with a recommended option; use a numbered prompt if the tool is unavailable. `NEED_INPUT:` means ask
+Keep this skill inline so `AskUserQuestion` remains available. Ask only for missing information, with a
+recommended option; use a numbered prompt if the tool is unavailable. `NEED_INPUT:` means ask
 outside Bash and rerun with the answer. Autonomous gaps hard-error instead. Draft rules live in create-and-finalize; a complete chained layer can be ready
 under autonomy. Never merge here. Evidence, paths and requirement attribution must be grounded in the export
 and receipts, with unknowns explicit rather than invented.

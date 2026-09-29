@@ -30,6 +30,8 @@ Conduct a John Carmack-level review of spec plans.
 - When `RP_ELIGIBLE=0`: Codex CLI, GitHub Copilot CLI, Cursor CLI, Claude Code CLI, or
   host-native — rp remains accepted explicitly but errors at runtime
 
+Read [working-rules.md](../../references/working-rules.md) first; it holds for every step of this skill.
+
 ## Preamble — execute common routing exactly once
 
 Read and execute [workflow.md](workflow.md) Phase 0 once. It defines `$FLOWCTL`,
@@ -92,10 +94,9 @@ Format: `<flow-spec-id> [focus areas] [--review=<mode>]`
 
 ## Fix Loop (INTERNAL)
 
-**The fix loop never pauses for user confirmation.** Every valid finding is
-fixed and re-reviewed automatically. A loop that stops to ask, or that exits
-with a valid finding unfixed, has broken this. Never use plain-text numbered prompt in this
-loop.
+**Ask the user via plain text.** Render the options below as a numbered list `1.` … `N.`, followed by a final option `N+1. Other — type your own answer`. Print the question, then the numbered list, then **stop and wait for the user's next message before continuing**. Parse the reply as: a bare number `1`–`N+1` → that option; the literal text of an option label → that option; free text after `Other` → custom answer.
+
+**The fix loop never pauses for user confirmation**; never use plain-text numbered prompt in it. Which findings it fixes, and which it lists as follow-ups, follows the Review section of [working-rules.md](../../references/working-rules.md).
 
 `MAJOR_RETHINK` is not a fix-loop input. Surface the reviewer's rationale and
 stop with `BLOCKED: DESIGN_CONFLICT`. Only

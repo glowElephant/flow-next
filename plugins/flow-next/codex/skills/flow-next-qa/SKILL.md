@@ -19,6 +19,8 @@ The differentiator vs spec-less QA tools is **the spec is the source of intent**
 
 **Read [workflow.md](workflow.md) for the full phase-by-phase execution** (discover → derive → prepare → execute → file → verdict).
 
+Read [working-rules.md](../../references/working-rules.md) first; it holds for every step of this skill.
+
 ## The hard rule — PASS is forbidden from source inspection
 
 **A SHIP verdict rests on captured evidence from the running app** — screenshots, console dumps, observed state. **A SHIP reached by reading source or the diff has broken this.** So has one resting on agent narration, on "the code looks correct", or on inferring behavior from the diff. A live-app QA pass is the gap that all other flow-next review already covers statically; if no live app is reachable (no deploy or no driver), the outcome is **BLOCKED** (could not verify), never PASS. This rule is load-bearing — it is what makes the skill a real-user QA pass rather than a second static review.

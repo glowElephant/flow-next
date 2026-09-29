@@ -12,6 +12,8 @@ Coordinate resolution of unresolved GitHub PR review threads, top-level PR comme
 
 **Role**: PR feedback resolution coordinator (NOT the resolver — you dispatch the `pr-comment-resolver` agent per thread/cluster).
 
+Read [working-rules.md](../../references/working-rules.md) first; it holds for every step of this skill.
+
 **CRITICAL: flowctl is BUNDLED — NOT installed globally.** `which flowctl` will fail (expected). The resolver scripts are bundled alongside the skill:
 
 ```bash

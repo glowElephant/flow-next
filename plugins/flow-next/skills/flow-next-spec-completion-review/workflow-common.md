@@ -104,7 +104,7 @@ Only the file for the active backend should enter context. Do not read the other
 
 ## Fix Loop (INTERNAL)
 
-**The fix loop never pauses for user confirmation.** Every valid finding is fixed and re-reviewed automatically — the goal is complete spec compliance. A loop that stops to ask, or that exits with a valid finding unfixed, has broken this. Never use AskUserQuestion in this loop.
+**The fix loop never pauses for user confirmation**; never use AskUserQuestion in it. Which findings it fixes, and which it lists as follow-ups, follows the Review section of [working-rules.md](../../references/working-rules.md).
 
 **MAX ITERATIONS (backend-agnostic — rp, codex, copilot, cursor, claude, host):**
 The codex/copilot/cursor/claude handlers reserve a round before dispatch; the selected

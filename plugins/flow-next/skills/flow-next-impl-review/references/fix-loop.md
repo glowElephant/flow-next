@@ -6,8 +6,6 @@ enters this loop (see [../SKILL.md](../SKILL.md) § Fix Loop for the verdict
 contract, the iteration cap, and the two anti-patterns — those stay in force
 here).
 
-**The fix loop never pauses for user confirmation.** Every valid finding is fixed and re-reviewed automatically — the goal is production-grade world-class software and architecture. A loop that stops to ask, or that exits with a valid finding unfixed, has broken this. Never use AskUserQuestion in this loop.
-
 Loop internally until SHIP or the iteration cap:
 
 0. **Deep-pass phase (only if `DEEP=true`)** — see [../optional-phases.md](../optional-phases.md) § Deep-Pass Phase.

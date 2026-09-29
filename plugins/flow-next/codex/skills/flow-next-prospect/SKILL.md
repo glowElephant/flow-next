@@ -17,6 +17,8 @@ Prospect is plural ("what should we do?"). Chart is singular ("how do we get thi
 
 **Role**: idea-prospecting coordinator (sequential single-chat - generate -> critique -> rank -> write -> handoff). Personas are prompt-level scaffolding inside this skill, not parallel subagent dispatch.
 
+Read [working-rules.md](../../references/working-rules.md) first; it holds for every step of this skill.
+
 ## Preamble
 
 **CRITICAL: flowctl is BUNDLED — NOT installed globally.** `which flowctl` will fail (expected). Define once; subsequent blocks (here and in `workflow.md`) use `$FLOWCTL`:

@@ -197,7 +197,7 @@ Options:
   3. Skip this entry — mark as needs-review
 ```
 
-One question at a time. If `AskUserQuestion`'s schema isn't loaded on Claude Code, call `ToolSearch` with `select:AskUserQuestion` first.
+If `AskUserQuestion`'s schema isn't loaded on Claude Code, call `ToolSearch` with `select:AskUserQuestion` first.
 
 **Autofix mode:**
 

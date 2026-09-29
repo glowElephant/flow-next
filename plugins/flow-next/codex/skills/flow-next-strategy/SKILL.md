@@ -14,6 +14,8 @@ The document is short and structured on purpose. Good answers to a handful of sh
 
 **Date the strategy document from `date -u +%Y-%m-%d`** (run it; never assume the year).
 
+Read [working-rules.md](../../references/working-rules.md) first; it holds for every step of this skill.
+
 ## Preamble
 
 flowctl is **bundled — NOT installed globally.** `which flowctl` will fail (expected). Define once; subsequent blocks use `$FLOWCTL`:
@@ -30,7 +32,7 @@ FLOWCTL="${CODEX_HOME:-$HOME/.codex}/scripts/flowctl"
 
 Default to `plain-text numbered prompt`. Never silently skip the question.
 
-Ask one question at a time. **Free-form responses for the substantive sections** (Target problem / Our approach / Who it's for / Key metrics / Tracks). **Single-select with lead-with-recommendation only for routing decisions** (which section to revisit, include this optional section, foreign-file resolution).
+**Free-form responses for the substantive sections** (Target problem / Our approach / Who it's for / Key metrics / Tracks). **Single-select with lead-with-recommendation only for routing decisions** (which section to revisit, include this optional section, foreign-file resolution).
 
 ## Focus Hint
 

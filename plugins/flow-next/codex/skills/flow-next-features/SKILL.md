@@ -17,6 +17,8 @@ The skill validates the four-H2 shape itself. Its flowctl calls on the maintain 
 
 This skill and work's feature-map update step (entries its own change altered, [feature-map-update.md](../flow-next-work/references/feature-map-update.md)) are the only map writers; every other stage reads the map and files drift notes ([references/feature-entry-contract.md](references/feature-entry-contract.md), "Writers and drift notes").
 
+Read [working-rules.md](../../references/working-rules.md) first; it holds for every step of this skill.
+
 ## Preamble
 
 **CRITICAL: flowctl is BUNDLED - NOT installed globally.** `which flowctl` will fail (expected). Define once; subsequent blocks (here and in `maintain.md`) use `$FLOWCTL`:
@@ -77,7 +79,7 @@ printf 'MODE=%s\n' "$MODE"
 - **Interview the repo, not the user.** Surface, run command, drive mechanism, observable evidence, isolation: read them from the checkout. Ask only what cannot be observed.
 **Ask the user via plain text.** Render the options below as a numbered list `1.` … `N.`, followed by a final option `N+1. Other — type your own answer`. Print the question, then the numbered list, then **stop and wait for the user's next message before continuing**. Parse the reply as: a bare number `1`–`N+1` → that option; the literal text of an option label → that option; free text after `Other` → custom answer.
 
-- Ask **one question at a time** via `plain-text numbered prompt`. Never silently skip the question.
+- Ask via `plain-text numbered prompt`. Never silently skip the question.
 - Prefer **multiple choice** when natural options exist. Lead with the recommended option and a one-sentence rationale.
 - Do **not** ask before evidence is gathered. Observation first, questions second.
 - Multi-surface repos (web + CLI) seed **per-surface feature groups** under one index. Enumeration is observation: each feature file carries `**Surface:**`; consumers select by surface + sub-feature IDs.

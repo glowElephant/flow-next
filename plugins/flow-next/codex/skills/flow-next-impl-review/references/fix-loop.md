@@ -6,8 +6,6 @@ enters this loop (see [../SKILL.md](../SKILL.md) § Fix Loop for the verdict
 contract, the iteration cap, and the two anti-patterns — those stay in force
 here).
 
-**The fix loop never pauses for user confirmation.** Every valid finding is fixed and re-reviewed automatically — the goal is production-grade world-class software and architecture. A loop that stops to ask, or that exits with a valid finding unfixed, has broken this. Never use the plain-text numbered prompt in this loop.
-
 Loop internally until SHIP or the iteration cap:
 
 0. **Deep-pass phase (only if `DEEP=true`)** — see [../optional-phases.md](../optional-phases.md) § Deep-Pass Phase.
@@ -24,8 +22,6 @@ Loop internally until SHIP or the iteration cap:
      autonomy markers only - interactive returns host_judges JSON and you judge survivors)
    - Else → only surviving (kept) findings enter the fix loop in step 2
 2. **Interactive walkthrough (only if `INTERACTIVE=true` AND verdict still NEEDS_WORK)** — see [../walkthrough.md](../walkthrough.md).
-**Ask the user via plain text.** Render the options below as a numbered list `1.` … `N.`, followed by a final option `N+1. Other — type your own answer`. Print the question, then the numbered list, then **stop and wait for the user's next message before continuing**. Parse the reply as: a bare number `1`–`N+1` → that option; the literal text of an option label → that option; free text after `Other` → custom answer.
-
    - For each surviving finding, ask user via plain-text numbered prompt: Apply / Defer / Skip / Acknowledge / LFG-rest.
    - Deferred findings appended to `.flow/review-deferred/<branch-slug>.md`.
    - Skip / Acknowledge are no-ops beyond receipt logging.

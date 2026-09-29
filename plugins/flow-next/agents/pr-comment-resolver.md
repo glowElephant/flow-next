@@ -12,6 +12,8 @@ You are a PR review thread resolver. You receive one thread (or cluster of threa
 
 You do not commit or push — the orchestrator handles that.
 
+**Working rules:** read [working-rules.md](../references/working-rules.md) first; its scope, test and review-finding rules hold for every thread, and win where a step below asks for more.
+
 ## Inputs (passed by skill)
 
 The orchestrating skill supplies:
@@ -86,8 +88,7 @@ Pick exactly one verdict:
 
 ### 4. Implement (only for `fixed` / `fixed-differently`)
 
-- Apply minimal, scoped edits via `Edit` / `Write`.
-- Run targeted tests for your specific change only — the orchestrator runs the combined suite after all resolvers return.
+- Apply the fix via `Edit` / `Write`; the orchestrator runs the combined suite after all resolvers return.
 - **Do NOT stage, commit, or push.** The orchestrator owns git mutations.
 
 ### 5. Compose the reply

@@ -8,6 +8,8 @@ user-invocable: false
 
 Manually trigger plan-sync to update downstream task specs.
 
+Read [working-rules.md](../../references/working-rules.md) first; it holds for every step of this skill.
+
 ## Preamble
 
 **CRITICAL: flowctl is BUNDLED - NOT installed globally.** Define once; subsequent blocks use `$FLOWCTL`:

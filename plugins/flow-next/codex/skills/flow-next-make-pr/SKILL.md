@@ -11,6 +11,8 @@ The host authors one grounded aid object; flowctl validates, stores and renders 
 Invocation authorizes push and PR creation; `--dry-run` previews without repository writes, push, PR edits
 or memory writes. The opt-in [html-lens.md](html-lens.md) loads only behind its config gate.
 
+Read [working-rules.md](../../references/working-rules.md) first; it holds for every step of this skill.
+
 Define `FLOWCTL` from `${CODEX_HOME:-$HOME/.codex}/scripts/flowctl`, then
 `<plugin-root>/scripts/flowctl` (two levels above this SKILL.md), then `.flow/bin/flowctl`, choosing the first
 executable. Never assume a global install. Parse `$ARGUMENTS`: the positional token is `SPEC_ID`; reject
@@ -25,8 +27,10 @@ unknown flags and missing base values. Carry these values between prompt turns:
 | `--update` | `UPDATE_MODE=1`; default 0; refresh an existing open PR |
 | `mode:autonomous` or `FLOW_AUTONOMOUS=1` | `AUTONOMOUS=1`; default 0 |
 
-Keep this skill inline so `plain-text numbered prompt` remains available. Resolve only missing information, one question
-at a time with a recommended option; use a numbered prompt if the tool is unavailable. `NEED_INPUT:` means ask
+**Ask the user via plain text.** Render the options below as a numbered list `1.` … `N.`, followed by a final option `N+1. Other — type your own answer`. Print the question, then the numbered list, then **stop and wait for the user's next message before continuing**. Parse the reply as: a bare number `1`–`N+1` → that option; the literal text of an option label → that option; free text after `Other` → custom answer.
+
+Keep this skill inline so `plain-text numbered prompt` remains available. Ask only for missing information, with a
+recommended option; use a numbered prompt if the tool is unavailable. `NEED_INPUT:` means ask
 outside Bash and rerun with the answer. Autonomous gaps hard-error instead. Draft rules live in create-and-finalize; a complete chained layer can be ready
 under autonomy. Never merge here. Evidence, paths and requirement attribution must be grounded in the export
 and receipts, with unknowns explicit rather than invented.

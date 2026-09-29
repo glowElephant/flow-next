@@ -28,7 +28,7 @@ Read first. Grep/Glob second. Ask third, and only for a remaining unknown.
 
 **Ask the user via plain text.** Render the options below as a numbered list `1.` … `N.`, followed by a final option `N+1. Other — type your own answer`. Print the question, then the numbered list, then **stop and wait for the user's next message before continuing**. Parse the reply as: a bare number `1`–`N+1` → that option; the literal text of an option label → that option; free text after `Other` → custom answer.
 
-Ask **one question at a time** via `plain-text numbered prompt`. On portable hosts without that tool, a plain-text numbered prompt with a final `Other - type your own answer` option. Never silently skip.
+Ask via `plain-text numbered prompt`. On portable hosts without that tool, a plain-text numbered prompt with a final `Other - type your own answer` option. Never silently skip.
 
 A repo with **no drivable user surface** (a pure library) ends `REFUSED` with the reason. Do not manufacture a map.
 

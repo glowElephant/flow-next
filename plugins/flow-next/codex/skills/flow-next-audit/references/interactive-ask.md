@@ -31,7 +31,6 @@ Use `plain-text numbered prompt`.
 
 Rules:
 
-- **One question at a time.**
 - **Multiple choice** when natural.
 - **Lead with the recommendation** — don't enumerate all 6 outcomes if only 2 are plausible.
 - **One-sentence rationale** — evidence is in the report, not the question.

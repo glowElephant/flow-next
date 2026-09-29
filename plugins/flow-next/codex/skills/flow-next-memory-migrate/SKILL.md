@@ -15,6 +15,8 @@ There is no Python classifier subprocess, no `codex`/`copilot` dispatch, no fast
 
 **Read [workflow.md](workflow.md) for the full phase-by-phase execution. Read [phases.md](phases.md) for the (track, category) decision tree with mechanical baseline + override examples.**
 
+Read [working-rules.md](../../references/working-rules.md) first; it holds for every step of this skill.
+
 ## Preamble
 
 **CRITICAL: flowctl is BUNDLED — NOT installed globally.** `which flowctl` will fail (expected). Define once; subsequent blocks (here and in `workflow.md`) use `$FLOWCTL`:
@@ -65,7 +67,7 @@ In interactive mode, follow these principles:
 
 **Ask the user via plain text.** Render the options below as a numbered list `1.` … `N.`, followed by a final option `N+1. Other — type your own answer`. Print the question, then the numbered list, then **stop and wait for the user's next message before continuing**. Parse the reply as: a bare number `1`–`N+1` → that option; the literal text of an option label → that option; free text after `Other` → custom answer.
 
-- Ask **one question at a time** via `plain-text numbered prompt`. Never silently skip the question.
+- Ask via `plain-text numbered prompt`. Never silently skip the question.
 - Prefer **multiple choice** when natural options exist.
 - Lead with the **recommended option** (always the mechanical default unless the body warrants otherwise) and a one-sentence rationale.
 - Do **not** ask the user to make decisions before the entry has been read — Phase 1 reads first, asks second.

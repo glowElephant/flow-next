@@ -15,6 +15,7 @@ and historical receipts grant no authority. Re-check current restrictions
 before mutations, including after delegated work. Ambiguity stops
 `NEEDS_HUMAN`; land does not ask questions or invoke another driver.
 
+Read [working-rules.md](../../references/working-rules.md) first; it holds for every step of this skill.
 Read [workflow.md](workflow.md) and follow it for this invocation.
 `--dry-run` reads and reports only: no repair, catch-up, stack creation,
 verdict command, merge, branch deletion, or tracker mutation.

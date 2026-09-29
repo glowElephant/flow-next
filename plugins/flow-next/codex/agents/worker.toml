@@ -155,8 +155,6 @@ Read relevant code, implement the feature/fix. Follow existing patterns.
 
 Rules:
 - Use a temporary worktree to inspect another tree state, never `git stash`; follow the existing workspace-teardown rules.
-- Small, focused changes
-- Follow existing code style
 - **Never weaken a test, gate, or baseline to make a wrong implementation
   pass.** A gate you believe is wrong is `BLOCKED: TOOLING_FAILURE`, never an
   editable obstacle — gate manipulation is the failure class every green
@@ -167,10 +165,8 @@ Rules:
   generated mirrors, and back-references before committing — a rename swept
   only through code identifiers is this repo's highest-frequency banked
   failure class (rename drift across mirrors).
-- **Debugging: a refuted hypothesis ships as a revert.**
-  Belt-and-suspenders that "might help" does not ship; only the smallest
-  evidence-justified change does — a leftover speculative fix is unexplained
-  code the next reader must reverse-engineer.
+- **Debugging: a refuted hypothesis ships as a revert** — a leftover
+  speculative fix is unexplained code the next reader must reverse-engineer.
 - **Lifecycle-shaped tasks** (a task adding or changing a CLI verb, lifecycle
   step, or loop iteration): interrogate the design — what happens when it runs
   twice? crashed at any point? does it converge? An
@@ -186,21 +182,14 @@ Rules:
   (an assert, a test, a lint rule) and then deletion of the comment — prose
   guards nothing. Keep-list: license headers, external-constraint notes, lint
   suppressions with reasons, public API contracts, issue links.
-- **Build to the AC, not past it (YAGNI):** no public surface, command, config
-  knob, or public abstraction the task spec doesn't name (internal helpers
-  that are the smallest way to satisfy the ACs are implementation, not added
-  scope). If mid-implementation you
-  see a capability worth adding, note it in the done summary as a follow-up —
-  do not build it. Error handling enumerated in the ACs is not extra — it is
+- **Build to the AC:** a capability worth adding that the task spec doesn't
+  name goes in the done summary as a follow-up. Error handling enumerated in the ACs is not extra — it is
   the spec. Neither are filesystem-identity, permission, or concurrency guards
   (realpath/symlink containment, lock-guarded writes, forced excludes of
   runtime state) — never trim a guard as scope.
 - Never edit `.flow/features/`: the conductor updates the feature map at its quality phase ([feature-map-update.md](../skills/flow-next-work/references/feature-map-update.md)); when this task changes how a user reaches a mapped feature, name the changed route in the done summary. Before driving the running app (a post-change measurement, a defect route's live proof), read the map per the "Live-app stages" section of [feature-entry-contract.md](../skills/flow-next-features/references/feature-entry-contract.md).
 - Add tests if spec requires them
 - Required tests cover every error case enumerated in the ACs (R-IDs) the task satisfies; done summary references those tests. Specs with no enumerated error cases trigger nothing (not retroactive).
-- **Confirm a new test fails for the intended reason before fixing** — run it
-  red first and read why it failed; a test that never failed proves nothing
-  about the fix and banks a false regression guard.
 - **Test mass discipline:** one focused test per AC and per enumerated error
   case — coverage comes from the enumeration, not from volume. Use table-driven
   / parametrized cases instead of copy-pasted variants; do not re-test branches
@@ -212,12 +201,6 @@ Rules:
   removed checks, widened matchers, an equality degraded to a truthiness
   probe. The test-mass rule above bounds volume; this bounds strength:
   assertion weakening ships the exact bug the assertion existed to catch.
-- **Tiered runs during the loop:** while iterating, run the **focused** tests for
-  the code under change (per-task Quick commands convention). The **full** suite
-  runs exactly where the existing gates already require it (whatever the
-  spec's Quick commands and the Verify block define — full or focused per
-  gate) — never as a mid-loop reflex after every edit. This changes no gate's
-  definition; it only removes redundant mid-loop re-runs.
 - If you break something mid-implementation, fix it before continuing
 
 Done when: every AC the task names is implemented, its enumerated error cases have a focused test each, and nothing outside the AC surface was added.
