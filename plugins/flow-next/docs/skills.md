@@ -31,7 +31,6 @@ Skills below follow their lifecycle position. Flow sits above them: it picks the
 
 | Skill | Trigger | What it does |
 |---|---|---|
-| [`flow-next-pilot`](../skills/flow-next-pilot/SKILL.md) | skill stub only (command removed) | **Deprecated alias** for `/flow-next:flow --auto --tick` (removed next release) - maps `--spec <id>` to the positional id, passes `--backlog`, `--dry-run`, `--review`, `--research`, `--depth` through, prints one deprecation line to stderr, and emits the same `PILOT_VERDICT` line. |
 | [`flow-next-land`](../skills/flow-next-land/SKILL.md) | `/flow-next:land <PR> [--dry-run]` | Resolves conflicts, review threads, then CI for one named PR whose matching specs are closed at its head. Squash merges under current authorization and GitHub gates, pinned to the full head SHA; native stacks merge lowest-first, one layer per run. Runs the configured tracker touchpoint after confirmed merge and ends with `LAND_VERDICT`. Keeps no ledger and performs no local rebase or post-merge commit. |
 
 ## Knowledge & maintenance

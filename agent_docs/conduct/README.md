@@ -40,7 +40,6 @@ These pages are maintainer documentation. They are never loaded at runtime by an
 - [`make-pr.md`](make-pr.md) — `/flow-next:make-pr`, cognitive-aid PR body, or the handoff as body on a branch without a spec
 - [`resolve-pr.md`](resolve-pr.md) — `/flow-next:resolve-pr`, PR feedback resolution
 - [`land.md`](land.md) — `/flow-next:land`, one named pull request
-- [`pilot.md`](pilot.md) — `/flow-next:pilot`, the retired tick alias; no command ships for it, and the `--auto` rows live in [`flow.md`](flow.md)
 
 **Repo and state**
 

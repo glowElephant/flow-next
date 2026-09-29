@@ -1,6 +1,0 @@
-interface:
-  display_name: "Flow Pilot (deprecated alias)"
-  short_description: "Deprecated alias for flow-next-flow --auto --tick; invoke the flow skill with --auto instead"
-  brand_color: "#3B82F6"
-policy:
-  allow_implicit_invocation: false
