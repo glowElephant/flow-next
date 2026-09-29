@@ -70,7 +70,10 @@ error paths, broader refactors, style and problems that existed before the chang
 follow-ups: list them in the handoff as plain facts. Do not ask whether to fold them in, offer
 to, or suggest a command for it; the person asks if they want one. When a finding points at unrequested machinery your change added, remove it.
 After fixing, re-review once with a single reviewer looking at the fixes; do not loop. Later
-fixes, including ones the person asks for, get focused tests, not another review.
+fixes, including ones the person asks for, get focused tests, not another review. Two cases
+loop instead, fixing and re-reviewing until SHIP with flowctl's round cap as the backstop:
+an unattended run headed for a merge (`--until=merge`), and a person or project instruction
+that asks for it ("review until SHIP").
 
 Attended: hand the result back first, in its own message, and end the turn; then start the review
 in the background and report its verdict (and any fix) when it lands. Unattended: the verdict
