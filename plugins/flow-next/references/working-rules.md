@@ -11,6 +11,13 @@ unless the user or the repository's instructions ask for it.
 - Problems you find that the request does not depend on (a flaky test, junk a test run leaves
   behind, a nearby bug) are reported, not fixed. Check whether they exist before your change;
   if they do, they are not yours.
+- Files a test run or tool writes into the repository are not part of your change: remove them
+  from the diff before handing back, and mention them; do not chase their cause.
+
+## Design
+
+Before writing logic for a feature, name the data it touches and what owns each piece of state
+(which record a value belongs to, what is shared). Most wrong designs are wrong ownership.
 
 ## Tests
 
@@ -18,17 +25,31 @@ unless the user or the repository's instructions ask for it.
   instructions require it; CI owns regressions.
 - A failing test written before the fix, then passing after it, is the proof. Where that test is
   cheap, write it first. No separate lint, typecheck or commit round for it.
+- A test must be able to fail for a defect: it calls the code the way a user does and checks the
+  observed result. One that would still pass if the code returned nothing is rewritten or dropped.
+- Before handing back, run the change the way a user would (the command, the request, the page)
+  and look at the actual result, not only the unit tests.
 - Never re-run a suite only to read its output again.
 
 ## Attended and unattended
 
 - **Attended** (a person is in the session): they want fast feedback. Ask only what only they can
-  answer, one question at a time; settle anything observable by running it. Leave work
-  uncommitted unless asked. Hand discoveries back as offers ("found X, not part of this; want a
+  answer, one question at a time; settle anything observable by running it. Commit on a local
+  branch only when review needs it (review reads commits); never push or open a pull request
+  unless asked. Hand discoveries back as offers ("found X, not part of this; want a
   follow-up?").
 - **Unattended** (`--auto`): nobody is waiting. Never ask; decide from evidence, and stop only
   for a call only a human can make or an irreversible action. Fix a discovery only when it
   blocks the goal, as its own commit; list the rest as follow-ups in the final report.
+
+## Review
+
+When a review backend is configured, every implementation is reviewed, on every route: direct,
+defect, and spec work alike. Only `review=none` or a qualifying triage-skip receipt skips it;
+read the configuration rather than assuming it. Review is not deferred to a pull request. Use
+the configured backend; if it cannot run, say so instead of substituting another reviewer.
+Attended, hand back first and run the review in the background, then report the verdict when it
+lands. Unattended, the verdict gates the handoff and any merge.
 
 ## Handoff
 

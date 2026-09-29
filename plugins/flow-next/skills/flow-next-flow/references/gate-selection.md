@@ -10,7 +10,7 @@
 
 ## Implementation review
 
-Runs per `review.backend` or the invocation's `--review=<backend>` flag; `/flow-next:impl-review` resolves the backend itself. `none` skips with `skipped(config: review=none)`. A qualifying `flowctl triage-skip --base <ref>` receipt (docs-only, lockfile-only, release-chore, generated-only) records `mode: triage_skip` and satisfies the gate. Flow never lowers the gate and never fabricates a verdict.
+Runs per `review.backend` or the invocation's `--review=<backend>` flag after every implementation, on every route, including direct and defect routes; `/flow-next:impl-review` resolves the backend itself. It is never skipped as `despite unresolved risk` and never deferred to a pull request; timing follows [working-rules.md](../../../references/working-rules.md). `none` skips with `skipped(config: review=none)`. A qualifying `flowctl triage-skip --base <ref>` receipt (docs-only, lockfile-only, release-chore, generated-only) records `mode: triage_skip` and satisfies the gate. Flow never lowers the gate and never fabricates a verdict.
 
 ## Design review
 

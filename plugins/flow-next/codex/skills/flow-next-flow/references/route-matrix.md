@@ -12,7 +12,7 @@
 
 Route on content and context, never on input kind. A tracker issue, a pasted bug report, console output, a prototype, a branch, a path, and a sentence of intent all become text first: read what was given, then match the starting state. The rows are an inventory, not a precedence order: when more than one could apply, judge from intent, evidence, and current state. Each hop re-evaluates; there is no fixed conveyor. Unknown model identity needs no detector and no question: judge the spec and the execution context available.
 
-A skipped stage keeps its evidence, consent, and review contract: it is satisfied by a cheaper mechanism or recorded as `skipped(reason)`, never silently absent. Skip kind is one of `signal absent` (the stage's work is not needed) or `despite unresolved risk` (a smaller path was chosen; the contracts still apply later).
+A skipped stage keeps its evidence, consent, and review contract: it is satisfied by a cheaper mechanism or recorded as `skipped(reason)`, never silently absent. Skip kind is one of `signal absent` (the stage's work is not needed) or `despite unresolved risk` (a smaller path was chosen; the contracts still apply later). Implementation review is never skipped this way.
 
 | Starting state | Route | Positive signal | Safe skip or narrow | Skip kind |
 |---|---|---|---|---|
