@@ -8,6 +8,8 @@ unless the user or the repository's instructions ask for it.
 - Ship the smallest change the evidence justifies. Every changed line serves the request.
 - No unrequested flags, options, config or environment overrides, guards, abstractions, refactors,
   renames, wording changes or docs edits. Matching the surrounding code is required; improving it is not.
+  A guard the change needs to be correct or safe (path containment, permissions, locking) is part
+  of the change, not an extra.
 - Problems you find that the request does not depend on (a flaky test, junk a test run leaves
   behind, a nearby bug) are reported, not fixed. Check whether they exist before your change;
   if they do, they are not yours. The exception is behaviour the request asks for: if it names a
