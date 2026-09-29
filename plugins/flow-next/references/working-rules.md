@@ -45,9 +45,9 @@ failed, question the idea before trying a third.
 - **Attended** (a person is in the session): they want fast feedback. Ask only what only they can
   answer, and put related questions in one prompt rather than one per turn; settle anything
   observable by running it. Do not ask where a sensible default exists (a branch, a readiness
-  flag): take it and say so in one line. Commit on a local
-  branch only when review needs it (review reads commits); never push or open a pull request
-  unless asked. List discoveries in the handoff as follow-ups ("found X, not part of this");
+  flag): take it and say so in one line. Outside a spec build (which commits its task), commit on
+  a local branch only when review needs it (review reads commits); never push or open a pull
+  request unless asked. List discoveries in the handoff as follow-ups ("found X, not part of this");
   the person decides what to pick up.
 - **Unattended** (`--auto`): nobody is waiting. Never ask; decide from evidence, and stop only
   for a call only a human can make or an irreversible action. Fix a discovery only when it
@@ -68,8 +68,8 @@ Act on findings the way a careful author would: fix a finding only when it shows
 itself does the wrong thing in a scenario the request covers. Hardening, extra shutdown or
 error paths, broader refactors, style and problems that existed before the change are
 follow-ups: list them in the handoff as plain facts. Do not ask whether to fold them in, offer
-to, or suggest a command for it; the person asks if they want one. When a finding points at unrequested machinery your change added, remove it.
-After fixing, re-review once with a single reviewer looking at the fixes; do not loop. Later
+to, or suggest a command for it; the person asks if they want one. When a finding points at
+unrequested machinery your change added, remove it. After fixing, re-review once with a single reviewer looking at the fixes; do not loop. Later
 fixes, including ones the person asks for, get focused tests, not another review. Two cases
 loop instead, fixing and re-reviewing until SHIP with flowctl's round cap as the backstop:
 an unattended run headed for a merge (`--until=merge`), and a person or project instruction
