@@ -328,4 +328,3 @@ review gates and retired configuration.
 
 - [`flowctl.md`](flowctl.md) - full CLI reference (every command, flag, default).
 - [`platforms.md`](platforms.md) - platform-specific gotchas (Droid, Codex, OpenCode).
-- [`sync-codex.md`](sync-codex.md) - Codex mirror regeneration + validation guards.

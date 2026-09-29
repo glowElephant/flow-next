@@ -9,7 +9,7 @@ flow-next is an orchestration layer, not a single-agent workflow. The host agent
 | **A. Pipeline routing** | Which stages does this item run - refine, plan, plan review, work directly, rolling or wave, QA, how many review rounds? | Flow (attended, or unattended under `--auto`), capture's `Recommended next:` line, work's Phase 3 route and zero-task fork, the review triage gate, `flowctl review-route` | The `Recommended next:` / `Scheduling:` / `PILOT_VERDICT` lines, the triage receipt, the review ledger |
 | **B. Model routing** | Which model runs this job - the implementer, the reviewer, a scout - and from which family? | The routing block in your instruction file, `review.backend`, per-task `review:` pins, the bridge recipes, a sentence in the moment | The review receipt's `model` field, the worker dispatch prompt, the PR body's verification block |
 
-Axis A is documented below under [Pipeline routing](#pipeline-routing-who-decides-the-shape); the rest of this page is axis B. A [field case](#field-case-one-paragraph-twenty-specs) shows both axes running unattended through 38 merged pull requests, and the [setup ladder](#setup-ladder-from-nothing-to-a-standing-policy) takes a repo from zero configuration to a standing policy in five copy-paste rungs.
+Axis A is documented below under [Pipeline routing](#pipeline-routing-who-decides-the-shape); the rest of this page is axis B. The [setup ladder](#setup-ladder-from-nothing-to-a-standing-policy) takes a repo from zero configuration to a standing policy in five copy-paste rungs.
 
 The pattern this page serves: use your smartest model to orchestrate and judge, route mechanical or token-hungry work to faster/cheaper models, and pick reviewers from a different family than the writer. flow-next was built in this shape - this page maps the dials.
 
@@ -23,7 +23,6 @@ The pattern this page serves: use your smartest model to orchestrate and judge, 
 - [Deterministic routing: the parameter surfaces](#deterministic-routing-the-parameter-surfaces)
 - [Prompted orchestration: routing with judgment](#prompted-orchestration-routing-with-judgment)
 - [Pipeline routing: who decides the shape](#pipeline-routing-who-decides-the-shape)
-- [Field case: one paragraph, 38 PRs landed](#field-case-one-paragraph-38-prs-landed)
 - [Field patterns, mapped to flow-next](#field-patterns-mapped-to-flow-next)
 - [A default pipeline, expressed as tiers](#a-default-pipeline-expressed-as-tiers)
 - [Setup ladder: from nothing to a standing policy](#setup-ladder-from-nothing-to-a-standing-policy)
@@ -245,8 +244,10 @@ session by design, every re-review being a fresh subagent. Injecting when it was
 unnecessary costs bytes; not injecting after a silent resume failure costs a blind
 review, so injection is the default everywhere it is not provably unnecessary.
 
-**The first review round fans out three axis draws.** On the `codex` and
-`host` backends, the first round of a review scope is three draws of the
+**The first review round fans out three axis draws when the diff warrants it.** On
+the `codex` and `host` backends, a large or cross-cutting diff, or one touching
+persisted or shared state, concurrency, security or data layout, gets three draws in
+its first round; a small diff in one area gets one reviewer. The three are draws of the
 same reviewer - same resolved backend/model, same base prompt, each differing by
 exactly one added axis line - dispatched concurrently where the host offers
 one-message parallel dispatch, back-to-back with the degradation disclosed in the
@@ -266,7 +267,11 @@ merged prior-finding container - the harvest value is the first round, and
 re-review verifies fixes, which needs continuity, not breadth. `rp` keeps its
 single stateful chat, and `copilot` / `cursor` / `claude` keep single dispatch every round.
 The residual is real: roughly a third of validated findings eluded every draw in
-the studies, so round 2 shrinks rather than disappears.
+the studies. By default there is exactly one re-review, in the same reviewer session
+and scoped to the fix commits: the author's `Declined #<n>: <reason>` commit lines let
+the reviewer withdraw a finding, and only a problem the fixes introduced can block.
+Further rounds run only under `--until=merge` or when asked to review until SHIP,
+bounded by the round cap.
 
 **Rule of thumb: the model that writes is never the model that reviews.** Route the reviewer to a different family than your session model and blind spots stop being correlated.
 
@@ -385,25 +390,6 @@ Two more gates sit beside these: [`flowctl gate classify`](flowctl.md#gate) tier
 
 **Overriding a decider** is one surface each: `--no-plan` or `flowctl spec set-no-plan` for the fork, a task id instead of a spec id for the wave route, `--no-triage` for the gate, `--review=<backend>` or `flowctl task set-backend` for the reviewer, and a sentence for anything else ("use 1 reviewer instead of 3").
 
-<a id="field-case-one-paragraph-twenty-specs"></a>
-
-## Field case: one paragraph, 38 PRs landed
-
-One unattended run building a Linux desktop app in a private repo landed **38 pull requests**, steered by a single paragraph of standing policy with nobody in the loop. Each item was planned or worked directly by judgment, reviewed by another model family, QA'd in the running app, CI-green, and merged with a receipt.
-
-The policy steered both routing axes. The host chose the pipeline shape per item and the model per job; the build driver (pilot ticks then; `flow --auto` now) advanced the work toward pull requests, and land handled CI and review convergence through merge.
-
-| Run outcome, as of 5 September 2026 | Result |
-|---|---|
-| Pull requests landed | 38 |
-| Steering | One paragraph of standing policy, nobody in the loop |
-| Pipeline shape | Planned or worked directly, chosen by judgment per item |
-| Review | Another model family reviewed each item |
-| Live QA | Each item exercised in the running app |
-| Merge evidence | CI green and a receipt for each merged pull request |
-
-The useful pattern is the malleable pipeline. One policy can send a fully understood change directly to work and give another change a planning pass, while assigning models and verification to suit the job. Rung 5 below shows how to write that kind of standing policy for your own repo.
-
 ## Field patterns, mapped to flow-next
 
 The orchestration patterns that emerged in the wild through mid-2026 all have a direct flow-next expression - most need one config key or one sentence:
@@ -417,7 +403,7 @@ The orchestration patterns that emerged in the wild through mid-2026 all have a 
 | **Token-hungry offload** | Computer use, live-app verification, bulk analysis go to other models/agents; results come back as evidence | `/flow-next:qa` drives the app in its own context and files P0/P1/P2 findings; workers run fresh-context and return receipts |
 | **Single path** | One request, one model, done | A tier pinned in the routing block (`implementer: <model> at <effort>`); absent, the session model |
 | **Cascade** | A cheap model tries first; a gate decides whether a stronger one takes over | The value tier implements, the review verdict is the gate, and the standing permission to escalate ("if a cheaper model misses the bar, rerun on a smarter one") moves the job up. The gate is a real review with a receipt, never a classifier |
-| **Critique** | A second model criticises and the first revises | Cross-family review on every backend, three axis draws on the first round of `codex` and `host`, one fresh reviewer per re-round, a bounded round cap, and `MAJOR_RETHINK` escalating to a human instead of looping |
+| **Critique** | A second model criticises and the first revises | Cross-family review on every backend, three axis draws on the first round of `codex` and `host` for a large or risky diff, one re-review in the same reviewer session scoped to the fixes (looping to SHIP only under `--until=merge` or on request) with a bounded round cap, and `MAJOR_RETHINK` escalating to a human instead of looping |
 
 ## A default pipeline, expressed as tiers
 
@@ -593,7 +579,7 @@ review comes back NEEDS_WORK twice, stop bridging it and implement it
 yourself.
 ```
 
-The host judges each item against the paragraph and prints the reason with each decision. The field case above shows both routing axes applied across 38 merged pull requests.
+The host judges each item against the paragraph and prints the reason with each decision.
 
 ## In your repo
 

@@ -66,5 +66,5 @@ The contract covers the durable artifact surfaces named in the opening paragraph
 ## See also
 
 - [`../skills/flow-next-make-pr/workflow.md`](../../skills/flow-next-make-pr/workflow.md) - grounding and artifact authoring
-- [`../../../GLOSSARY.md`](https://github.com/gmickel/flow-next/blob/main/GLOSSARY.md) - the `Emission point` term and vocabulary discipline
+- [Glossary](https://flow-next.dev/reference/glossary/) - the `Emission point` term and vocabulary discipline
 - [`README.md`](README.md) - the docs index this page is registered in

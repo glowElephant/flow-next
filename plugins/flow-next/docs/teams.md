@@ -4,7 +4,7 @@ Agentic engineering compresses implementation from weeks to hours - and the touc
 
 The vocabulary on this page - *handover objects*, *Delegate / Review / Own*, *lifecycle steps [1]-[9]* - comes from the [AI-x-SDLC Starter-Kit methodology guide](https://github.com/gmickel/AI-x-SDLC-Starter-Kit/blob/main/guides/methodology.md). That document is the *theory*. This page is the *implementation* - the same lifecycle, mapped to concrete `flowctl` commands and `.flow/` artefacts.
 
-> **Solo dev?** You can skip most of this page. For a ready cohesive spec and a capable coding agent, start with `capture → work --no-plan → make-pr`, covered in the [root README](../../../README.md). Chart is only for one oversized/unclear idea; skip it when intent is already stateable. This page is for teams running multiple humans + multiple agents against the same repo.
+> **Solo dev?** You can skip most of this page. For a ready cohesive spec and a capable coding agent, start with `capture → work --no-plan → make-pr`, covered in [Your first 30 minutes](https://flow-next.dev/first-30-minutes/). Chart is only for one oversized/unclear idea; skip it when intent is already stateable. This page is for teams running multiple humans + multiple agents against the same repo.
 
 ---
 
@@ -67,7 +67,8 @@ flowchart LR
     Plan --> Work[/flow-next:work/]
     Work --> ImplReview[/flow-next:impl-review/]
     ImplReview -->|SHIP| SpecCompletionReview[/flow-next:spec-completion-review/]
-    ImplReview -->|NEEDS_WORK| Work
+    ImplReview -->|NEEDS_WORK| FixPass["one fix pass,<br/>one re-review of the fixes"]
+    FixPass --> SpecCompletionReview
     SpecCompletionReview -->|qa on, or auto qualifying| QA[/flow-next:qa/]
     SpecCompletionReview -->|qa off, or auto skip recorded| MakePR
     QA -.opt-in live-app QA.-> QAGate{{"live deploy + driver?<br/>YES → drive · NO → BLOCKED · no UI → N/A"}}
@@ -220,7 +221,7 @@ Branch strategy is a per-team choice:
 
 Backends: `rp` (RepoPrompt), `codex` (Codex CLI), `copilot` (GitHub Copilot CLI), `cursor` (Cursor `cursor-agent` CLI), `claude` (Claude Code CLI, `claude -p` headless and read-only), `host` (host-native cross-family reviewer subagent; bare-only), `none`. Spec-form: `backend[:model[:effort]]` - pin a backend to a concrete model id and reasoning effort (cursor folds effort into the model name - no `:effort` rung). Model ids are volatile, so this page names roles, not ids; current concrete examples live in [`docs/flowctl.md`](flowctl.md), which also documents the `flowctl review-backend` command.
 
-The review surfaces findings on five confidence anchors (0 / 25 / 50 / 75 / 100) and gates `<75` except P0 @ 50+. Findings classified `introduced` vs `pre_existing` - only `introduced` counts toward the verdict. Receipts at `.flow/review-receipts/<branch>.json` carry `unaddressed: [R-IDs]`, `suppressed_count`, `verdict_before_validate`, etc. The receipt is itself a handover artefact.
+The review surfaces findings on five confidence anchors (0 / 25 / 50 / 75 / 100) and gates `<75` except P0 @ 50+. Findings classified `introduced` vs `pre_existing` - only `introduced` counts toward the verdict. A large or cross-cutting diff, or one touching persisted or shared state, concurrency, security or data layout, gets three reviewers; anything else gets one. On `NEEDS_WORK` the author fixes what the change got wrong, commits a `Declined #<n>: <reason>` line for each finding left as a follow-up, and the same reviewer session re-reviews only the fix commits: it may withdraw a declined finding, and only a problem the fixes introduced can block. That re-review is final unless the run is `--until=merge` or someone asked to review until SHIP; then it loops, bounded by flowctl's round cap. Receipts at `.flow/review-receipts/<branch>.json` carry `unaddressed: [R-IDs]`, `suppressed_count`, `verdict_before_validate`, etc. The receipt is itself a handover artefact.
 
 Opt-in flags for hardened review: `--validate` (validator pass on `NEEDS_WORK` to drop confirmed false positives), `--deep` (security + adversarial + performance passes), `--interactive` (per-finding Apply/Defer/Skip walkthrough).
 
@@ -511,7 +512,7 @@ Add cross-model review and the PR-as-cognitive-aid surface.
 
 - Configure `flowctl review-backend` at the team level (`codex` or `copilot` is the lowest-friction starting point).
 - Run `/flow-next:plan-review` after every `/plan`. Surface gaps before they reach `/work`.
-- Run `/flow-next:impl-review` after every `/work` task. Use the SHIP/NEEDS_WORK gate to drive iteration.
+- Run `/flow-next:impl-review` after every `/work` task. A `NEEDS_WORK` verdict gets one fix pass and one re-review of the fixes; say "review until SHIP" when you want it to loop.
 - Use `/flow-next:make-pr` for every PR. The team gets used to reading the cognitive-aid body before the diff.
 
 By the end of month 1, every spec has been through the full handover chain at least once.

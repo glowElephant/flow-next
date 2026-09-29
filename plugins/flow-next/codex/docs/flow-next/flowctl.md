@@ -88,7 +88,7 @@ CLI for `.flow/` task tracking. Agents must use flowctl for all writes.
   - [triage-skip](#triage-skip)
   - [gate](#gate)
   - [rp](#rp)
-  - [Review command architecture](#review-command-architecture)
+  - [Review commands](#review-commands)
   - [codex](#codex)
   - [copilot](#copilot)
   - [cursor](#cursor)
@@ -2426,11 +2426,9 @@ flowctl rp chat-send --window "$W" --tab "$T" --message-file /tmp/review-prompt.
 flowctl rp prompt-export --window "$W" --tab "$T" --out /tmp/export.md
 ```
 
-### Review command architecture
+### Review commands
 
-All twelve `flowctl {codex,copilot,cursor,claude} {impl,plan,completion}-review` commands are thin wrappers over one driver: `cmd_backend_review(backend, kind)`. Per-backend variance (sandbox flags, session markers, argv-budget fit or stdin delivery, receipt shape) lives as hooks on `BACKEND_REGISTRY` entries, wired lazily by `_wire_backend_review_hooks`. Adding a review backend is a registry entry (hooks + models/efforts), not a new clone of the pipeline.
-
-Reviewer tallies prefer one fenced `json` block (`suppressed_count`, `classification_counts`, `unaddressed`, `deep_findings`); prose tally lines remain a logged fallback. The `<verdict>SHIP|NEEDS_WORK|MAJOR_RETHINK</verdict>` tag contract is unchanged. Plan/completion handlers self-write `*_review_status` from the verdict; the standalone `spec set-*-review-status` commands still work.
+All twelve `flowctl {codex,copilot,cursor,claude} {impl,plan,completion}-review` commands share one pipeline, so flags and receipts behave the same across backends. Each review ends in a `<verdict>SHIP|NEEDS_WORK|MAJOR_RETHINK</verdict>` tag. Plan and completion reviews write `*_review_status` from the verdict; the standalone `spec set-*-review-status` commands still work.
 
 ### codex
 
@@ -2690,7 +2688,7 @@ The fix→re-review loop is bounded by a **flowctl-owned cumulative round counte
 
 **Receipt convergence-ratchet fields (back-compatible):**
 
-- The receipt stores the prior round's review text in a `review` field. On a re-review, flowctl injects it into a **shrink-only convergence-ratchet preamble** (verify each prior finding fixed; only a NEW ≥ Major finding may block; all prior fixed + no new ≥ Major ⇒ verdict MUST be SHIP) instead of ordering a fresh blind review each round. A receipt written by older flowctl **without** the `review` field parses fine and is treated as a **fresh round-1 review** (no ratchet) - full back-compat. The **rp backend needs no injected ratchet**: its re-reviews deliberately stay in the SAME RepoPrompt chat (no `--new-chat`), so the reviewer retains genuine conversational memory of its own prior findings - the fresh-blind churn the ratchet compensates for does not occur there; on rp only the cap applies.
+- The receipt stores the prior round's review text in a `review` field. On a re-review, flowctl injects it into a **shrink-only convergence-ratchet preamble** (review the fix commits; verify each prior finding fixed, or withdraw it when the author's `Declined #<n>: <reason>` commit line holds up; only a NEW ≥ Major problem the fixes introduced may block; all prior fixed or withdrawn + no new ≥ Major ⇒ verdict MUST be SHIP) instead of ordering a fresh blind review. By default that re-review is the last round; later rounds happen only under `--until=merge` or on a request to review until SHIP. A receipt written by older flowctl **without** the `review` field parses fine and is treated as a **fresh round-1 review** (no ratchet) - full back-compat. The **rp backend needs no injected ratchet**: its re-reviews deliberately stay in the SAME RepoPrompt chat (no `--new-chat`), so the reviewer retains genuine conversational memory of its own prior findings - the fresh-blind churn the ratchet compensates for does not occur there; on rp only the cap applies.
 - **Receipt default paths are spec/task-scoped.** Plan and completion reviews default to `<repo>/.flow/tmp/plan-review-receipt-<spec>.json` and `<repo>/.flow/tmp/completion-review-receipt-<spec>.json`; impl review defaults to `/tmp/impl-review-receipt-<repo-hash>-<scope>.json`, where the scope is the task id or a hash of the branch ref for a standalone review - concurrent reviews in different repos, specs, or tasks never share a receipt. An explicit **`REVIEW_RECEIPT_PATH`** (or `--receipt`) still wins, unchanged.
 - **Codex/copilot verdict extraction is honest.** The verdict parse isolates the **final agent message** from the stream (dropping `command_execution` / `aggregated_output` tool output) and takes the **last** `<verdict>` match - a verdict literal echoed in tool output or a quoted-grammar literal in the final message can no longer beat the reviewer's real verdict.
 

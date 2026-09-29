@@ -422,9 +422,8 @@ Removing the skill is trivial: `rm -rf .clawpatch/` removes both the index and t
 
 ## See also
 
-- [`sync-codex.md`](sync-codex.md) - how the Codex mirror is generated from canonical sources; validation guards.
 - [`troubleshooting.md`](troubleshooting.md) - review-backend conflicts (custom RepoPrompt CLI instructions).
-- [`../scripts/install-codex.sh`](https://github.com/gmickel/flow-next/blob/main/scripts/install-codex.sh) - canonical install script for Codex.
+- [`scripts/install-codex.sh`](https://github.com/gmickel/flow-next/blob/main/scripts/install-codex.sh) - the Codex install script.
 
 ## Optional Jev judgment
 

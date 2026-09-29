@@ -169,6 +169,7 @@ maintenance does not require a customer release announcement.
 | Prompt optimization or an evaluation | [optimizing-skills.md](optimizing-skills.md) |
 | Documentation or changelog prose | [writing-docs.md](writing-docs.md), [releasing.md](releasing.md#changelog-writing-gate) |
 | Subsystem reference | [documentation index](../plugins/flow-next/docs/README.md) |
+| Shipped docs, Codex mirror, review internals | [docs-conventions.md](docs-conventions.md), [sync-codex.md](sync-codex.md), [review-architecture.md](review-architecture.md) |
 
 For performance/evaluation work, also read the maintainer-local notes in
 `.claude/CLAUDE.md` if present, on any host. They point to private research;

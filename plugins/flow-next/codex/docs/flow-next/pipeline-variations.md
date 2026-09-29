@@ -82,7 +82,7 @@ Invoke `/flow-next:plan-review <spec-id>` explicitly to review the spec without 
 
 ### No-plan route
 
-**Signal:** acceptance criteria and material decisions are ready, the work is cohesive, and a capable coding agent can own its implementation. This is the recommended route when task decomposition adds no coordination value. The [GLOSSARY entry](https://github.com/gmickel/flow-next/blob/main/GLOSSARY.md#no-plan-route) names it the **No-plan route**.
+**Signal:** acceptance criteria and material decisions are ready, the work is cohesive, and a capable coding agent can own its implementation. This is the recommended route when task decomposition adds no coordination value. The [glossary entry](https://flow-next.dev/reference/glossary/#no-plan-route) names it the **No-plan route**.
 
 ```mermaid
 flowchart LR

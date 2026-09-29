@@ -7,7 +7,7 @@ For a ready cohesive spec and a capable coding agent, the recommended route is *
 
 This page names the two **operating profiles** those layers serve, prices each layer in structural terms, and gives the manual invocation for people who want the capability without the standing cost. It is the source of the optionality caveat that appears at the top of each optional subsystem's page.
 
-> Adjacent, not the same: [`../../../README.md`](https://github.com/gmickel/flow-next/blob/main/README.md) is the happy path, and [`pipeline-variations.md`](pipeline-variations.md) owns the **stage** axis - which stages one piece of work runs, chosen by risk and unknowns (the docs-site page *Menu, Not a Rail* is its doctrine). This page is about which **layers** you switch on at all, and what each one costs you to keep on.
+> Adjacent, not the same: [Your first 30 minutes](https://flow-next.dev/first-30-minutes/) is the happy path, and [`pipeline-variations.md`](pipeline-variations.md) owns the **stage** axis - which stages one piece of work runs, chosen by risk and unknowns (the docs-site page *Menu, Not a Rail* is its doctrine). This page is about which **layers** you switch on at all, and what each one costs you to keep on.
 
 ## What you pay for
 
@@ -111,7 +111,7 @@ Between the two: `host` trades the second CLI for zero setup while keeping the g
 
 On the codex and host backends the first review round of a scope fans out three concurrent axis draws (correctness / contracts / integration) and merges them into one fix pass - a structural trade of parallel review passes for serial fix-and-re-review rounds. The dial is a per-invocation prose instruction, never a flag or config key, and the whole layer is optional to begin with:
 
-- **The default** - three axis draws, one merged fix pass. The right shape when agent-written diffs get merged without a human reading them line by line.
+- **The default** - three axis draws, one merged fix pass, for a large or cross-cutting diff or one touching persisted or shared state, concurrency, security or data layout; a small diff in one area already gets one reviewer. The right shape when agent-written diffs get merged without a human reading them line by line.
 - **Single-reviewer economy** - `/flow-next:work fn-12 - use 1 reviewer instead of 3` collapses the round to one draw: the lean setting for small, clean diffs, where a three-draw harvest costs extra review passes for findings one draw would surface anyway.
 - **Cross-family upgrade** - `use three different model families for the review fan-out` routes each draw to a different family, decorrelating blind spots across families as well as axes: the strongest setting for a high-stakes merge. On the codex backend the primary draw (correctness, or the first draw when correctness is not drawn) stays on codex; secondary draws may name codex, copilot, or cursor. On the host backend the per-draw model pins are unconstrained.
 
@@ -189,7 +189,7 @@ That is what makes a deliberate layer set auditable later: the difference betwee
 
 ## See also
 
-- [`../../../README.md`](https://github.com/gmickel/flow-next/blob/main/README.md) - the happy path and the 5-command quick start.
+- [Your first 30 minutes](https://flow-next.dev/first-30-minutes/) - the happy path, from install to a draft pull request.
 - [`pipeline-variations.md`](pipeline-variations.md) - the stage axis: six worked routes through the menu, selected by risk and unknowns.
 - [`orchestration.md`](orchestration.md) - which model does what, and how to change it. The routing counterpart to this page: same doctrine, applied to models rather than layers.
 - [`../skills/flow-next-flow/SKILL.md`](../../skills/flow-next-flow/SKILL.md) - `/flow-next:flow`, the attended conductor that picks the smallest sufficient route for one specific situation and runs it; `--explain` shows the route only.

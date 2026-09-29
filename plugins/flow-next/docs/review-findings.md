@@ -135,8 +135,10 @@ silently resolving it.
 
 ### Merged fan-out rounds
 
-On the codex and host backends the first review round of a scope fans out three
-axis draws that the coordinator merges into one finding set. The
+On the codex and host backends the first review round of a large or cross-cutting
+diff, or one touching persisted or shared state, concurrency, security or data
+layout, fans out three axis draws that the coordinator merges into one finding set
+(a small diff in one area gets one reviewer). The
 finalized round records ONE valid v1 container over the union of the draws'
 surviving findings, with ordinals re-assigned 1..N across that union - draw-local
 ordinals do not survive the merge, and the container is indistinguishable in
@@ -149,6 +151,13 @@ receipt's `draws[]` array, never as a field on finding items: the v1 item
 allowlist is closed, and an axis field would make the container invalid.
 
 ### The prior-finding reply grammar
+
+A `NEEDS_WORK` review gets one fix pass and one re-review by default, in the same
+reviewer session and scoped to the fix commits. The author's commit carries a
+`Declined #<n>: <reason>` line for each finding left as a follow-up; the reviewer
+may accept the reason and answer `withdrawn`, and only a problem the fixes
+introduced can block. Further rounds run only under `--until=merge` or when asked
+to review until SHIP, with flowctl's round cap as the backstop.
 
 The ratchet prompt states one machine-read line per prior finding, at the start
 of a line, echoing the ordinal the finding was rendered with:
@@ -189,12 +198,13 @@ instead.
 `not_fixed` reverts to `open` before the round's own records apply, so a
 `not-fixed` stated once and then not restated cannot look like a repeat.
 `fixed` and `withdrawn` are preserved - they are resolved terminals. This is what
-makes the surviving stall rule (`same-not-fixed-lineage`) a statement about two
-consecutive rounds rather than an echo of one.
+makes the surviving stall rule (`same-not-fixed-lineage`), which matters only when
+a run loops until SHIP, a statement about two consecutive rounds rather than an
+echo of one.
 
 Prose resolutions are invisible to the parser: a reviewer that answers the
-ratchet in prose only leaves every prior carried forward, and the loop is then
-bounded by the round cap alone.
+ratchet in prose only leaves every prior carried forward, and a looping run is
+then bounded by the round cap alone.
 
 Repeated writes preserve the former latest receipt in the latest pointer's
 sibling history directory:
@@ -421,5 +431,5 @@ Consumers should therefore:
 - [`architecture.md`](architecture.md) - receipt and history locations.
 - [`memory-schema.md`](memory-schema.md) - durable learning lifecycle.
 - [`spec-template.md`](spec-template.md) - confidence and classification rules.
-- [`../../../GLOSSARY.md`](../../../GLOSSARY.md) - canonical Receipt and
+- [Glossary](https://flow-next.dev/reference/glossary/) - canonical Receipt and
   Structured finding terms.

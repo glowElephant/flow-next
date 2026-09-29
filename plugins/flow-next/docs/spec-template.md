@@ -343,6 +343,6 @@ All review receipts may carry these optional fields; existing consumers that rea
 ## See also
 
 - [`../templates/spec.md`](../templates/spec.md) - the canonical scaffold (section list and per-section guidance).
-- [`../../../GLOSSARY.md`](../../../GLOSSARY.md) - definitions for *Spec*, *Task*, *R-ID*, *Frozen-at-handover*.
+- [Glossary](https://flow-next.dev/reference/glossary/) - definitions for *Spec*, *Task*, *R-ID*, *Frozen-at-handover*.
 - [`../skills/flow-next-refine/SKILL.md`](../skills/flow-next-refine/SKILL.md) - 3-tier discovery cascade walker.
 - [`flowctl.md`](flowctl.md) - `flowctl spec create / set-plan / export-cognitive-aid` reference.

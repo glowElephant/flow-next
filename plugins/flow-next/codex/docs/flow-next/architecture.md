@@ -318,4 +318,4 @@ The legacy `flow` plugin no longer exists; flow-next is the only plugin. Its sha
 - [`../skills/flow-next-chart/SKILL.md`](../../skills/flow-next-chart/SKILL.md) - optional pre-capture decision-map skill.
 - [`../skills/flow-next-features/SKILL.md`](../../skills/flow-next-features/SKILL.md) - seed/maintain the committed user-POV drive map.
 - [`../README.md`](https://github.com/gmickel/flow-next/blob/main/plugins/flow-next/README.md) - plugin overview.
-- [`../../../GLOSSARY.md`](https://github.com/gmickel/flow-next/blob/main/GLOSSARY.md) - Spec, Chart, D-ID, Task, Handover object, Receipt.
+- [Glossary](https://flow-next.dev/reference/glossary/) - Spec, Chart, D-ID, Task, Handover object, Receipt.
