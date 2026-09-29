@@ -30,6 +30,8 @@ failed, question the idea before trying a third.
 - Run the tests for the code you changed. Do not run the full suite unless the repository's
   instructions or the user ask for it; then run it once, at the end, not again after later fixes
   (re-check those with focused tests). CI owns regressions.
+- A check the person asks for by name (the full suite, a command, a scenario) is run as asked,
+  every time they ask; these rules never override it.
 - A failing test written before the fix, then passing after it, is the proof. Where that test is
   cheap, write it first. No separate lint, typecheck or commit round for it.
 - A test must be able to fail for a defect: it calls the code the way a user does and checks the
@@ -67,9 +69,8 @@ itself does the wrong thing in a scenario the request covers. Hardening, extra s
 error paths, broader refactors, style and problems that existed before the change are
 follow-ups: list them in the handoff as plain facts. Do not ask whether to fold them in, offer
 to, or suggest a command for it; the person asks if they want one. When a finding points at unrequested machinery your change added, remove it.
-After fixing, re-review once with a single reviewer looking at the fixes; do not loop. Fixes
-after that re-review, including ones the person asks for, are verified with focused tests, not
-another review.
+After fixing, re-review once with a single reviewer looking at the fixes; do not loop. Later
+fixes, including ones the person asks for, get focused tests, not another review.
 
 Attended: hand the result back first, in its own message, and end the turn; then start the review
 in the background and report its verdict (and any fix) when it lands. Unattended: the verdict
