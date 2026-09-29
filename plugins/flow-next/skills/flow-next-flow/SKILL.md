@@ -72,7 +72,7 @@ With `--auto` there is no marker refusal, because `--auto` sets `FLOW_AUTONOMOUS
 - **Route on content and context, never on input kind**, from `references/route-matrix.md` at the route step.
 - **Ask only on a fork that is material and not observable** (`references/prototype-before-ask.md`); at most one question per hop.
 - **Never fabricate a review, QA or completion verdict.** Every stage flow skips is recorded with its reason (`stage: <name> - skipped(<kind>: <detail>)`).
-- **Invoke stage skills; never re-implement their steps inline.** Land owns merge (only with current scoped consent, per `references/tail.md`); make-pr owns spec close. Never dispatch another flow, pilot or loop from inside a run, and never force-push.
+- **Invoke stage skills; never re-implement their steps inline.** Land owns merge (only with current scoped consent, per `references/tail.md`); make-pr owns spec close. Never dispatch another flow or a loop from inside a run, and never force-push.
 - **`--explain` writes nothing and dispatches nothing** (`references/explain.md`).
 
 ## Report shape (every stop)
