@@ -104,7 +104,7 @@ An undetectable harness resolves to the generic page and says so. **Discovery be
 | What it is | Config keys, flags, env vars, per-spec/per-task fields. Machine-resolved, same answer every time | Policy described in natural language. The host *judges* per item - conditionally, mid-run, against context no parameter can see |
 | Example | `flowctl config set review.backend codex` | "Work the three ready specs - decide per spec, by complexity, whether implementation goes out to a codex bridge or stays on the session model" |
 | Reach | Exactly the surfaces that ship (below) | Anything the host can do - including capabilities that don't exist as parameters |
-| When it wins | Headless/Ralph runs, stable team defaults, reproducibility | Per-item complexity calls, conditional escalation, one-off arrangements, inventing a routing the registry doesn't have |
+| When it wins | Headless runs, stable team defaults, reproducibility | Per-item complexity calls, conditional escalation, one-off arrangements, inventing a routing the registry doesn't have |
 
 The two compose: parameters set the floor, prompting steers above it. And either can be made durable by writing it into `CLAUDE.md` / `AGENTS.md` - the host reads your instruction files every session, and flow-next skills inherit them automatically because the host is the one executing them.
 
@@ -113,7 +113,7 @@ The two compose: parameters set the floor, prompting steers above it. And either
 The table above is really two layers with a clean seam, and knowing which layer you are talking to answers most "will this override that?" questions:
 
 - **Session steering** - your prompts and per-task pins. Top of the precedence chain, ephemeral, done the moment the task is done. Naming a model for a tier in the moment - *"implement via that CLI and review with the other family"* - just works: the agent runs the bridge for the draft and pins the named reviewer, and **nothing persists afterward** - pins and defaults resume untouched. Your `CLAUDE.md` routing prose lives in this layer too: deterministic plumbing never reads prose, but the *agent* reads it every turn and feeds explicit values downward, so a `CLAUDE.md` pipeline dominates everything the agent orchestrates by occupying the higher-precedence rung - not by editing config.
-- **Machinery steering** - config resolved by deterministic plumbing that never reads prose: `review.backend` and the per-spec/per-task backend fields. This is what unattended runs (`flow --auto`, Ralph, land ticks) and unattended gates use when nobody is prompting. Standing changes for autonomous runs belong here, not in prose.
+- **Machinery steering** - config resolved by deterministic plumbing that never reads prose: `review.backend` and the per-spec/per-task backend fields. This is what unattended runs (`flow --auto`, land ticks) and unattended gates use when nobody is prompting. Standing changes for autonomous runs belong here, not in prose.
 
 For the models that execute stages, the chain is the one stated above: **routing precedence, highest first: an explicit argument in the invocation, then the project routing block in the instruction file, then the agent definition's own default, then the session model.** The review backend resolves separately, through its own configuration grammar - see [Review backends](#review-backends--cross-model-review) for that chain; the tiers above never touch it. One consequence worth spelling out: a prompt can steer only the session it is typed in - if you want a 3am `flow --auto` run to use a different reviewer, that is a config change (`flowctl config set review.backend ...`), because at 3am there is no prompt.
 
@@ -205,7 +205,7 @@ flowctl config set review.backend codex                    # project default
 flowctl config set review.backend cursor:<model>          # cursor folds effort into the model name
 flowctl config set review.backend codex:<model>:xhigh     # explicit model + effort
 flowctl config set review.backend claude:<model>:high     # Claude Code CLI, headless and read-only (efforts low|medium|high|xhigh|max)
-flowctl config set review.maxIterations 6                 # review-round cap (env MAX_REVIEW_ITERATIONS wins; >= 1, human-only under Ralph)
+flowctl config set review.maxIterations 6                 # review-round cap (env MAX_REVIEW_ITERATIONS wins; >= 1)
 ```
 
 Precedence (highest wins): per-task `review:` / per-spec `default_review` → `FLOW_REVIEW_BACKEND` → `.flow/config.json` `review.backend` → backend-specific env → registry default. A single task can pin a different reviewer than the project default and the override routes end-to-end. The `cursor` backend reaches reviewer models from several families in one place, on your existing Cursor subscription - ask its CLI for the current list rather than copying identifiers from a document. Full grammar + registry: [`flowctl.md`](flowctl.md#review-backend).
@@ -461,7 +461,7 @@ Applies to **ad-hoc bridge reviews only** - a hand-rolled `codex exec` review wh
 - **P0-P3 severity tiers plus spec-grounded verdicts**, so an edge-case finding does not flip a ship gate. Reviewers reliably flag spec-gray edges as bugs (in the eval, behavior explicitly licensed by a plan amendment was reported as a defect by every reviewer) - severity tiers and "cite the spec line" are what keep those findings informative instead of gate-flipping.
 - Optionally **a minimal suggested fix and blast radius per finding** when no fix loop follows the review. Control runs showed this artifact is prompt-shaped: models produce it when the prompt demands it and omit it when not asked.
 
-The **packaged** `/flow-next:impl-review` prompt is deliberately NOT changed to this shape: its find-vs-fix split (the reviewer returns findings; the internal fix loop investigates and fixes, with validator and iteration caps) is by design, and its rubric already carries confidence anchors and introduced-vs-pre-existing classification. Deep-pass/validator merge math is autonomous-only (fn-113.4): under `FLOW_RALPH` / `REVIEW_RECEIPT_PATH` / `FLOW_AUTONOMOUS` flowctl mutates the receipt; interactive surfaces raw findings and the host judges.
+The **packaged** `/flow-next:impl-review` prompt is deliberately NOT changed to this shape: its find-vs-fix split (the reviewer returns findings; the internal fix loop investigates and fixes, with validator and iteration caps) is by design, and its rubric already carries confidence anchors and introduced-vs-pre-existing classification. Deep-pass/validator merge math is autonomous-only (fn-113.4): under `FLOW_AUTONOMOUS` flowctl mutates the receipt; interactive surfaces raw findings and the host judges.
 
 ## Durable routing: the routing block in your instruction file
 
@@ -482,7 +482,7 @@ Flow can carry one selected spec through landing, using land's existing converge
 
 Destination and interaction mode are independent. Default unattended flow stops before merge; a plain attended rerun with an existing PR offers landing and asks once unless current scoped authority already exists. Declining or not answering causes no landing mutation. Consent remains active across retries and waits for this spec and PR; a fresh session needs the flag again or current explicit authority. The configured tracker touchpoint follows merge; release preparation is separate. See the [landing contract](../../skills/flow-next-flow/references/tail.md).
 
-Flow invoking one land tick as its landing stage is the confined exception to driver nesting. Recursive flow, pilot, and Ralph dispatch remain prohibited; land never invokes a second driver. The route fixes the selected spec and PR, passes the PR and current authorization as ordinary arguments, and stops on an ambiguous or missing target or lost authority. A confirmed merge ends the run; a merged-PR land replay repeats only the tracker touchpoint.
+Flow invoking one land tick as its landing stage is the confined exception to driver nesting. Recursive flow and pilot dispatch remain prohibited; land never invokes a second driver. The route fixes the selected spec and PR, passes the PR and current authorization as ordinary arguments, and stops on an ambiguous or missing target or lost authority. A confirmed merge ends the run; a merged-PR land replay repeats only the tracker touchpoint.
 
 You can also compose the two standalone invocations under your own scoped policy. Both keep their existing verdict names. This default pre-merge recipe routes to land explicitly:
 
@@ -524,7 +524,7 @@ Land uses `land.patienceMinutes` after the last push only when flow authorizes t
 
 Land accepts one named PR and links its open children into a native stack before merging where supported. Only the lowest open layer merges, with a full head pin and `merge-async` on stacks. It deletes the merged branch only after no open PR targets it. Land never rebases or retargets children: where stacks are unavailable, a conflicted child needs the documented manual rebase. It retains no cascade record, patch-id evidence, pending merge UUID, or deletion list between runs. Reference: [merge one layer](../../skills/flow-next-land/workflow.md#merge-one-layer).
 
-Loop internals: [`../skills/flow-next-flow/auto.md`](../../skills/flow-next-flow/auto.md), [`../skills/flow-next-land/SKILL.md`](../../skills/flow-next-land/SKILL.md), [`ralph.md`](ralph.md) for the deprecated hardened harness.
+Loop internals: [`../skills/flow-next-flow/auto.md`](../../skills/flow-next-flow/auto.md), [`../skills/flow-next-land/SKILL.md`](../../skills/flow-next-land/SKILL.md).
 
 ## Unattended chart driving (outside the build loop)
 
@@ -619,5 +619,4 @@ Steering is broad but not unbounded - these hold no matter what the routing tabl
 - [`platforms.md`](platforms.md) - install matrix, Codex model mapping, cross-platform patterns.
 - [`flowctl.md`](flowctl.md) - `review.backend` grammar, `spec set-backend`.
 - [`running-lean.md`](running-lean.md) - which layers to run at all, what each costs, and the human-driven vs autonomous profiles.
-- [`ralph.md`](ralph.md) - autonomous-mode internals (deprecated).
 - [`teams.md`](teams.md) - the handover objects that make cross-model hand-offs safe.

@@ -176,7 +176,6 @@ class ChartPipelineSurfaces(unittest.TestCase):
         DOCS / "teams.md",
         DOCS / "README.md",
         DOCS / "orchestration.md",
-        DOCS / "ralph.md",
         DOCS / "architecture.md",
         DOCS / "flowctl.md",
         DOCS / "tracker-sync.md",
@@ -312,8 +311,10 @@ class ChartRegistryCounts(unittest.TestCase):
         # 33 dirs while the published phrases drop to the stable 31 skills /
         # 26 slash-command. fn-257 R21 retired both alias command shims, so
         # the registry inventory reads 27 commands; the stub dirs remain.
-        self.assertEqual(len(skill_dirs), 33, f"skills dirs: {skill_dirs}")
-        self.assertEqual(len(commands), 27, f"commands: {commands}")
+        # 7.0 removed ralph-init (skill + command): 32 dirs / 26 commands,
+        # published 30 skills / 25 slash-command.
+        self.assertEqual(len(skill_dirs), 32, f"skills dirs: {skill_dirs}")
+        self.assertEqual(len(commands), 26, f"commands: {commands}")
         self.assertIn("flow-next-refine", skill_dirs)
         self.assertIn("flow-next-interview", skill_dirs)
         self.assertIn("flow-next-pilot", skill_dirs)
@@ -330,7 +331,7 @@ class ChartRegistryCounts(unittest.TestCase):
         self.assertIn("features", commands)
         # the alias stubs have no shim, so they count as neither slash nor
         # phrase skills.
-        self.assertEqual(len(slash_skills), 26, f"slash skills: {slash_skills}")
+        self.assertEqual(len(slash_skills), 25, f"slash skills: {slash_skills}")
         self.assertEqual(phrase_count, 5, f"phrase skills expected 5, got {phrase_count}")
 
         expected_snippet = f"{len(commands)} commands, {len(skill_dirs)} skills"
@@ -344,11 +345,11 @@ class ChartRegistryCounts(unittest.TestCase):
 
         # Docs surfaces that publish counts
         for path, needles in (
-            (DOCS / "skills.md", ("31 skills", "26 slash-command", "5 phrase")),
-            (DOCS / "README.md", ("31 skills",)),
-            (REPO_ROOT / "README.md", ("31 skills",)),
-            (PLUGIN / "README.md", ("31 skills",)),
-            (DOCS / "teams.md", ("all 27 commands",)),
+            (DOCS / "skills.md", ("30 skills", "25 slash-command", "5 phrase")),
+            (DOCS / "README.md", ("30 skills",)),
+            (REPO_ROOT / "README.md", ("30 skills",)),
+            (PLUGIN / "README.md", ("30 skills",)),
+            (DOCS / "teams.md", ("all 26 commands",)),
         ):
             text = _read(path)
             for n in needles:

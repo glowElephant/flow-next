@@ -7,4 +7,4 @@ A correct run produces or maintains `STRATEGY.md` at the repo root — the durab
 - [ ] A `STRATEGY.md` with `generator_match: false` is left unchanged unless the user confirms a destructive rewrite through the two-step Boundaries question; the transcript shows the ask, not a silent overwrite.
 - [ ] Substantive sections (target problem, approach, persona, metrics, tracks) are asked free-form with no recommendation and no menu; lead-with-recommendation appears only on routing questions.
 - [ ] Each section is captured in at most two rounds, and a section that ends on round two carries the `<!-- worth revisiting -->` marker in the written file.
-- [ ] The run ends with the `flowctl strategy read --json` read-back, the draft shown in chat, and a single-paragraph downstream handoff naming the skills that read the doc — no extra exit summary. A run under Ralph exits 2 instead of writing at all.
+- [ ] The run ends with the `flowctl strategy read --json` read-back, the draft shown in chat, and a single-paragraph downstream handoff naming the skills that read the doc — no extra exit summary.

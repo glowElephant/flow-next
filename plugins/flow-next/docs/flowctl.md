@@ -90,13 +90,12 @@ CLI for `.flow/` task tracking. Agents must use flowctl for all writes.
   - [copilot](#copilot)
   - [cursor](#cursor)
   - [claude](#claude)
-  - [Ralph run control (repo-local after ralph-init)](#ralph-run-control-repo-local-after-ralph-init)
   - [review-deep-auto](#review-deep-auto)
   - [review-walkthrough-defer](#review-walkthrough-defer)
   - [review-walkthrough-record](#review-walkthrough-record)
   - [checkpoint](#checkpoint)
   - [status](#status)
-- [Ralph Receipts](#ralph-receipts)
+- [Review receipts](#review-receipts)
 - [JSON Output](#json-output)
 - [Error Handling](#error-handling)
 
@@ -144,7 +143,7 @@ Works out of the box for parallel branches. No setup required.
 ├── memory/                    # Opt-in categorized learnings (bug/ + knowledge/)
 ├── artifacts/                 # Opt-in HTML render lenses
 ├── review-receipts/           # Review receipt copies under .flow/
-├── receipts/                  # (gitignored) Ralph/runtime receipt scratch
+├── receipts/                  # (gitignored) runtime receipt scratch
 ├── sync-runs/                 # (gitignored) tracker-sync run receipts
 ├── pilot-runs/                # (gitignored) backlog-mode decision-log rows of flow --auto
 ├── locks/                     # (gitignored) setup-block serialization locks
@@ -327,7 +326,7 @@ flowctl spec set-completion-review-status fn-1 --status ship|needs_work|needs_hu
 
 ### spec reset-review-rounds
 
-Reset the deterministic review-round counter for a spec - the **human-only re-plan** reset path. Zeroes the spec-scoped `plan_review_rounds` (which plan AND completion reviews share); pass `--impl` to also zero every per-task `impl_review_rounds[<task-id>]`, and advances the matching hash epochs without deleting the append-only attempts ledger. Use this after an explicit re-plan to re-open the review cap; a `SHIP` verdict resets automatically, so this is only for the deliberate re-plan case. Ralph blocks this recovery command. See [codex impl-review § Deterministic review cap](#codex-impl-review) for the full cap/reset semantics.
+Reset the deterministic review-round counter for a spec - the **human-only re-plan** reset path. Zeroes the spec-scoped `plan_review_rounds` (which plan AND completion reviews share); pass `--impl` to also zero every per-task `impl_review_rounds[<task-id>]`, and advances the matching hash epochs without deleting the append-only attempts ledger. Use this after an explicit re-plan to re-open the review cap; a `SHIP` verdict resets automatically, so this is only for the deliberate re-plan case. See [codex impl-review § Deterministic review cap](#codex-impl-review) for the full cap/reset semantics.
 
 ```bash
 flowctl spec reset-review-rounds fn-1 [--impl] [--json]
@@ -343,8 +342,8 @@ artifact with `--review-type` plus `--artifact-sha256` or `--artifact-file`:
 an unchanged artifact in the current hash epoch is refused before dispatch
 with `NOT_RETRYABLE: artifact unchanged since last verdict` (exit 1), consuming
 nothing. Missing or unreadable artifact identity fails open with a warning.
-`--force` bypasses that guard and records a human-forced dispatch; Ralph blocks
-it as a human-only recovery tool.
+`--force` bypasses that guard and records a human-forced dispatch; it is a
+human-only recovery tool.
 
 `record` consumes the matching reservation only after journaling the intended
 receipt/status work. A terminal `SHIP`, `NEEDS_WORK`, `MAJOR_RETHINK`, or
@@ -1009,7 +1008,7 @@ flowctl pilot strikes clear --all [--json]
 
 ### pilot-log
 
-`flow --auto --backlog` writes per-hop decision-log rows under `.flow/pilot-runs/`. The directory is auto-gitignored and is deliberately not a `receipts/` path the ralph-guard validates, so a decision-log row never trips a Ralph receipt gate.
+`flow --auto --backlog` writes per-hop decision-log rows under `.flow/pilot-runs/`. The directory is auto-gitignored and deliberately separate from `receipts/`.
 
 ```bash
 # Append one row (called by the skill at each backlog terminal)
@@ -1080,7 +1079,7 @@ flowctl done fn-1.2 --summary "short summary" --evidence '{"commits":["abc"],"te
 ```
 
 - `--summary-file` / `--summary` - done-summary markdown (file or inline text). One of the pair is required.
-- `--evidence-json` / `--evidence` - evidence JSON (file or inline string). With neither flag the CLI records empty commit, test, and PR lists; the work and review contracts, and the Ralph guard, require evidence.
+- `--evidence-json` / `--evidence` - evidence JSON (file or inline string). With neither flag the CLI records empty commit, test, and PR lists; the work and review contracts require evidence.
 - `--range BASE..HEAD` derives `commits` and `base_commit`; unreachable commits fail with the offending SHA. Repeat `--test` for multiple commands. Interleaved task histories keep explicit evidence lists.
 - `--force` - skip the `in_progress` status check.
 - Evidence must carry at least one of `commits`, `tests`, `prs`. Keys other than those, `base_commit`, `files` and `files_touched` print a stderr warning and are not rendered.
@@ -1265,7 +1264,7 @@ flowctl config set memory.enabled false [--json]
 | `planSync.crossSpec` | bool | `false` | Cross-spec plan-sync - scan other open specs for stale references after each task (opt-in; increases sync time)* |
 | `scouts.github` | bool | `false` | Enable github-scout during planning (requires gh CLI) |
 | `review.backend` | string | `null` | Default review backend (`rp`, `codex`, `copilot`, `cursor`, `claude`, `host`, `none`), or spec form (`codex:<model>:<effort>`, `claude:<model>:<effort>` with efforts `low`/`medium`/`high`/`xhigh`/`max`, `cursor:<model>` - cursor folds effort into the model, no `:effort` rung). If unset, review commands require `--review` or `FLOW_REVIEW_BACKEND`. |
-| `review.maxIterations` | int | `8` | Cumulative review-round cap per scope. **Precedence: env `MAX_REVIEW_ITERATIONS` > this key > 8.** Minimum 1 on **both** rungs, and the cap can never be disabled: an invalid config value falls back to 8, and a **present-but-invalid** env value also stops at 8 rather than handing control to the config value it was overriding (only an absent or empty env var proceeds to the config rung). This is the knob to reach for when a review loop costs more than it is worth: **lower the cap, never re-add trend-based stall inference** (see the fn-168 decision record). Raising it is a **human** act, enforced in the consumer rather than only at the guard: in an autonomous run (Ralph / `flow --auto` / receipt harness) this key may only **lower** the cap, never raise it - whatever wrote the file and however it was written - so a bigger number cannot extend an agent's own gate. Lowering stays honored, since that is the intended knob. Additionally the guard blocks `config set` on this key (in both its leaf and parent-key JSON forms), file-tool writes to `.flow/config.json`, and a `MAX_REVIEW_ITERATIONS=` assignment, because fn-159's invariant is that the implementing agent can never reset or extend its own gate. The guard does not fire on Cursor (different hook events), where the rule degrades to prose only - same as the existing counter-reset block. |
+| `review.maxIterations` | int | `8` | Cumulative review-round cap per scope. **Precedence: env `MAX_REVIEW_ITERATIONS` > this key > 8.** Minimum 1 on **both** rungs, and the cap can never be disabled: an invalid config value falls back to 8, and a **present-but-invalid** env value also stops at 8 rather than handing control to the config value it was overriding (only an absent or empty env var proceeds to the config rung). This is the knob to reach for when a review loop costs more than it is worth: **lower the cap, never re-add trend-based stall inference** (see the fn-168 decision record). Raising it is a **human** act, enforced in the consumer rather than only at the guard: in an autonomous run (`flow --auto`) this key may only **lower** the cap, never raise it - whatever wrote the file and however it was written - so a bigger number cannot extend an agent's own gate. Lowering stays honored, since that is the intended knob. |
 | `tracker.enabled` | bool | `false` | Enable the tracker-sync bridge (see [`flowctl sync`](#flowctl-sync)). The bridge is active iff raw `tracker.enabled == true` OR raw `tracker.type ∈ {linear, github, gitlab, jira}`. |
 | `tracker.type` | string | `null` | Tracker backend: `linear`, `github`, `gitlab`, or `jira`. |
 | `tracker.specIds` | string | `flow` (merged default; **unset-detectable** on disk) | Id scheme for new specs when a tracker bridge is active: `flow` (native `fn-N`) or `tracker` (tracker-keyed `KEY-N-slug` / synthetic `gh-N` / `gl-N`). Strict enum - invalid CLI writes rejected; malformed on-disk values fail closed to `flow`. Not materialized at init so setup can ask once when a tracker is configured and the key is still absent. Skills route to `--tracker-first` / create-first when value is `tracker` and the bridge is active. See [`tracker-sync.md`](tracker-sync.md). |
@@ -1277,7 +1276,7 @@ flowctl config set memory.enabled false [--json]
 | `tracker.perTracker.repo` / `project` / `host` | string | `null` | Tracker-specific repo/project linkage. **GitHub** writes `repo` (`owner/name`). **GitLab** writes `project` (the group/sub-group/project path, e.g. `group/subgroup/project`; URL-encoded once for the API, never double-encoded) and, for self-managed hosts, `host`. Written by the `/flow-next:tracker-sync` discovery ceremony on confirmation. |
 | `tracker.perTracker.baseUrl` / `projectKey` / `authScheme` / `apiVersion` / `statusMap` / `sslVerify` | mixed | `null` / `{}` / `true` | **Jira linkage.** `baseUrl`, `projectKey`, `authScheme`, and `apiVersion` default to `null`; `statusMap` defaults to `{}`; `sslVerify` defaults to `true`. The resolver pins `tracker.resolved.destination.apiVersion` to `2` for both deployment shapes, and migration rewrites a legacy configured `3` to `2`; bodies are converted to v2 wiki markup on write and decoded to Markdown on read, which needs the Wiki Style Renderer. `baseUrl` is the site base; `projectKey` is the JQL scope; `authScheme` is `cloud-basic` or `bearer-pat`; `statusMap` maps normalized slots to Jira transition targets. `sslVerify=false` is an explicit opt-out for a self-hosted certificate. Written by the discovery ceremony on confirmation (references/jira.md). |
 | `tracker.staleAfterHours` | int | `24` | Staleness threshold (hours) consumed by `sync list-stale`. |
-| `tracker.conflictTiebreak` | string | `always-ask` | Status who-wins tiebreak: `flow-wins | tracker-wins | always-ask`. Strict enum: invalid CLI writes are rejected, and malformed persisted values return runtime `INVALID_INPUT` before status claims or lifecycle sequence work. In Ralph mode `always-ask` resolves to *queue*, not prompt. |
+| `tracker.conflictTiebreak` | string | `always-ask` | Status who-wins tiebreak: `flow-wins | tracker-wins | always-ask`. Strict enum: invalid CLI writes are rejected, and malformed persisted values return runtime `INVALID_INPUT` before status claims or lifecycle sequence work. In autonomous mode `always-ask` resolves to *queue*, not prompt. |
 | `tracker.readyState` | string | `null` | **Readiness projection (1.12.0+).** The tracker workflow state that means "ready for work" - a Linear workflow-state **name** or a **Jira status name** (both matched case-insensitive/trimmed against `status.raw`; names, not `state.type` - a custom "Ready" state is typically `type=unstarted`, indistinguishable from Todo by type alone; the Jira name is used RAW in the promoted-lane JQL, validated to exist at ceremony time), or a GitHub / GitLab **label** (pre-created at ceremony time; label present ⇒ ready, absent ⇒ not ready - a normal state, never an error). Set by the `/flow-next:tracker-sync` discovery ceremony (optional, skippable). When set, every pull-side sync projects the state onto the local spec `ready` flag - **one-way, tracker → local; the tracker is authoritative** (a local `spec ready` is overwritten on the next sync, and capture/interview's mark-ready prompt is gated off). A single scalar at the tracker top level (sibling of `conflictTiebreak`), not under `perTracker`. `null` = projection off (readiness gate dormant); clear with `flowctl config set tracker.readyState null` (the literal `null` token is stored as JSON null, not the string). |
 | `land.patienceMinutes` | int | `30` | Minutes since the last push to wait when calling flow authorizes merging without a human's current in-session merge authorization. A human's current authorization waives the wait. Unknown push time holds. |
 | `land.mergeVerdictCommand` | string or `null` | `""` | Optional command, run once per invocation after the other merge gates pass, with a 600-second bound. Exit 0 allows merging; any non-zero result, missing/unexecutable command or timeout blocks. Runs in the invoking repository without switching its checkout; judge the remote `FLOW_HEAD_SHA`, not local HEAD. Environment also supplies `FLOW_BASE_REF`, `FLOW_PR_NUMBER`, `FLOW_SPEC_ID` (empty for multiple matches), and space-separated `FLOW_SPEC_IDS`. Dry-run never executes it. Unset, null and empty disable it. See [Landing upgrade](#landing-upgrade). |
@@ -1299,7 +1298,7 @@ No auto-detect. Run `/flow-next:setup` (or `flowctl config set review.backend ..
 
 ### review-backend
 
-Resolve the active review backend spec (used by skills + Ralph). With an optional **task/spec id**, a per-task `review:` / per-spec `default_review` override wins **above env/config** (the id is canonicalized first, so short/tracker handles like `fn-74.1` / `fn-74` resolve to the slugged id). Precedence: per-task / per-epic override > `FLOW_REVIEW_BACKEND` > `.flow/config.json` `review.backend` > backend-specific env > registry default. Without an id it reads env/config only. The review skills pass the review-target id so a task's own backend override actually routes.
+Resolve the active review backend spec (used by skills). With an optional **task/spec id**, a per-task `review:` / per-spec `default_review` override wins **above env/config** (the id is canonicalized first, so short/tracker handles like `fn-74.1` / `fn-74` resolve to the slugged id). Precedence: per-task / per-epic override > `FLOW_REVIEW_BACKEND` > `.flow/config.json` `review.backend` > backend-specific env > registry default. Without an id it reads env/config only. The review skills pass the review-target id so a task's own backend override actually routes.
 
 **Prompt contents.** flowctl builds review prompts from identities, and which
 identities depends on the review kind:
@@ -1479,7 +1478,7 @@ flowctl memory add --track bug --category runtime-errors \
 # Add entry — knowledge track
 flowctl memory add --track knowledge --category conventions \
   --title "Use flowctl rp wrappers (not the direct RepoPrompt CLI)" \
-  --module ralph --tags "rp,review" \
+  --module review --tags "rp,review" \
   --applies-when "any review-backend dispatch" \
   --body-file body.md [--json]
 
@@ -1629,7 +1628,7 @@ and write nothing. `--skeleton` prints the exact authoring shape.
 
 `promote` allocates a spec via the same scan-based logic as `spec create`, inlining the spec write so the prospect-context spec lands on disk from the first byte. Idempotency guard: refuses if `promoted_to` already includes the target idea - pass `--force` to override.
 
-Exit codes: corrupt artifact on `promote` → 3 (stderr `[ARTIFACT CORRUPT: <reason>]`); duplicate idea on `promote` without `--force` → 2; Ralph-block (`REVIEW_RECEIPT_PATH` / `FLOW_RALPH=1`) on `/flow-next:prospect` → 2.
+Exit codes: corrupt artifact on `promote` → 3 (stderr `[ARTIFACT CORRUPT: <reason>]`); duplicate idea on `promote` without `--force` → 2.
 
 ### qa receipt
 
@@ -2062,7 +2061,7 @@ flowctl sync set-dep-relation <spec-id> --dep-spec <id> \
     --from-tracker-id <blocked-issue> --to-tracker-id <blocking-issue> \
     [--type blocks] [--source flow] [--json]                    # record a projected relation (idempotent)
 
-# Proof-of-work + Ralph-safe queueing
+# Proof-of-work + autonomous-safe queueing
 flowctl sync receipt <spec-id> --status STATUS [--event KEY] [--tracker-id ID] [--transport mcp|graphql|gh|glab|rest|none] [--merges-file F] [--note N] [--json]
 flowctl sync defer   <spec-id> --summary "..." [--suggested "..."] [--reason "..."] [--branch B] [--json]
 
@@ -2123,7 +2122,7 @@ base from readback, and projects status.
 - **`set-dep-relation`** records a projected blocked-by edge in the per-spec `depRelations` ledger (the `.flow/specs/<id>.json` sidecar, atomic write). `--from-tracker-id` is the **blocked** (current) issue; `--to-tracker-id` is the **blocking** (dependency) issue. The ledger entry's `key` is an opaque hash of the directed pair (never a raw issue key inline - trackers auto-linkify keys even inside HTML comments). Idempotent append (mirrors `spec add-dep`): re-recording the same directed edge is a no-op that does **not** bump `updatedAt`, so reruns are true no-ops. Self-edges are rejected. Stale ledger entries are pruned by the skill (edit the sidecar); there is no clear-dep-relation CLI.
 - **`receipt --status`** enum: `pushed | pulled | merged | updated | diverged | queued | errored | noop`. When no transport is reachable the run is a `noop` + receipt note, never a crash. **`--event <perEvent-key>`** tags the receipt with the lifecycle touchpoint it served (`work.firstClaim`, `work.done`, `capture`, `makePr`, …) - free-form, NOT enum-validated (the perEvent key set is an open extension point). Pre-flag receipts carry `event: null` and never satisfy an event-specific `sync check`.
 - **`check`** is the **read-only** end-of-skill audit. fn-141 R8 supersedes fn-57 R3 by moving deterministic tracker mutations into `flowctl tracker`; this command itself still reads only local receipts. For each event in `--events` (comma-separated perEvent keys that *triggered this run*), it reports `OK:<event>` / `MISSING:<event>` (`--json`: `{events, missing, count}`). MISSING iff the event triggered AND its `tracker.perEvent` leaf is enabled AND the bridge is active AND no receipt with a matching `event` tag and `timestamp ≥ --since` exists. Any receipt status clears (the check asserts the touchpoint *ran*); `--since` is the run-scoping lower bound (older receipts never clear); linkage is NOT a precondition (a never-linked spec that should have create-if-unlinked'd is exactly the miss this catches). **Bridge inactive → silent constant-time exit 0 before any IO**; this is the zero-overhead path for non-tracker repos. Exit 0 always; output drives agent action, not the exit code.
-- **`defer`** queues a genuine conflict to the review deferred-findings sink (`.flow/review-deferred/<branch>.md`) - **never blocks**. In Ralph mode an `always-ask` tiebreak resolves to *queue*, not prompt.
+- **`defer`** queues a genuine conflict to the review deferred-findings sink (`.flow/review-deferred/<branch>.md`) - **never blocks**. In autonomous mode an `always-ask` tiebreak resolves to *queue*, not prompt.
 - The hybrid id model (tracker-first `wor-17-slug` / `gh-123-slug` / `gl-456-slug` canonical / flow-first `fn-NN` + resolvable alias) is keyed at create/link time: `flowctl spec create --tracker-first --tracker-identifier <key-or-ref>` (see [`spec create`](#spec-create)). Skills auto-route when `tracker.specIds=tracker`. Ids never rename; resolution is case-insensitive. Details in [`tracker-sync.md`](tracker-sync.md) + [`architecture.md`](architecture.md).
 
 ### repo-map
@@ -2288,14 +2287,14 @@ Trivial-diff fast path that bypasses the configured review backend on whiteliste
 ```bash
 flowctl triage-skip --base main [--task fn-1.2] [--receipt /tmp/triage.json] [--json]
 
-# With LLM judge for ambiguous diffs (gated behind FLOW_TRIAGE_LLM=1 in Ralph)
+# With LLM judge for ambiguous diffs (gated behind FLOW_TRIAGE_LLM=1)
 flowctl triage-skip --base main --backend codex --model <model> --effort high [--json]
 
 # Whitelist-only mode (ambiguous → REVIEW)
 flowctl triage-skip --base main --no-llm [--json]
 ```
 
-Exit codes: `0` SKIP, `1` REVIEW, `2+` error. On by default in Ralph mode; opt-out via `--no-triage` or `FLOW_RALPH_NO_TRIAGE=1`.
+Exit codes: `0` SKIP, `1` REVIEW, `2+` error. Review skills opt out via `--no-triage`.
 
 Receipt schema (only on SKIP):
 ```json
@@ -2578,7 +2577,7 @@ one dispatch per round.
 2. **Build review prompt** - Uses same Carmack-level criteria as RepoPrompt (7 criteria each for plan/impl)
 3. **Run codex** - Executes `codex exec` with the prompt (or `codex exec resume` for session continuity)
 4. **Parse verdict** - Extracts `<verdict>SHIP|NEEDS_WORK|MAJOR_RETHINK</verdict>` from output
-5. **Write receipt** - If `--receipt` provided, writes JSON for Ralph gating
+5. **Write receipt** - If `--receipt` provided, writes the receipt JSON
 
 **Context hints example:**
 ```
@@ -2594,7 +2593,7 @@ References: src/middleware.py:45 (calls authenticate), tests/test_auth.py:12
 | Plan | Completeness, Feasibility, Clarity, Architecture, Risks, Scope, Testability |
 | Impl | Correctness, Simplicity, DRY, Architecture, Edge Cases, Tests, Security |
 
-**Receipt schema (Ralph-compatible):**
+**Receipt schema:**
 
 Impl review receipt:
 ```json
@@ -2643,7 +2642,7 @@ The fix→re-review loop is bounded by a **flowctl-owned cumulative round counte
   and fails open. `SHIP` and both human reset verbs (`review-rounds reset` and
   `spec reset-review-rounds`) advance the hash epoch - a post-reset re-review of
   an unchanged artifact dispatches cleanly without `--force`; `--force` bypasses
-  the guard, stamps the attempt as forced, and is blocked in Ralph.
+  the guard and stamps the attempt as forced.
 - **Early terminal:** before reserving, flowctl compares the last two
   non-truncated structured-findings digests in the current epoch. It exits `4`
   with `ESCALATE: review loop stalled (same-not-fixed-lineage)` when the
@@ -2663,8 +2662,7 @@ The fix→re-review loop is bounded by a **flowctl-owned cumulative round counte
   prints `ESCALATE:`, and exits `4`. The message includes live verdict rounds and
   refunded transport attempts. The cap resolves **env `MAX_REVIEW_ITERATIONS` >
   config [`review.maxIterations`](#flowctl-config) > 8**, clamped to `>= 1` on
-  both rungs so it can never be disabled; raising it is a human act (ralph-guard
-  blocks the config write, the config file, and the env assignment).
+  both rungs so it can never be disabled; raising it is a human act.
 - **Round-counting:** a round is consumed only when reviewer output contains
   SHIP, NEEDS_WORK, MAJOR_RETHINK, or NEEDS_HUMAN. Empty output, missing tags, timeout,
   sandbox denial, and other no-verdict exits refund the pre-dispatch reservation
@@ -2702,8 +2700,6 @@ The fix→re-review loop is bounded by a **flowctl-owned cumulative round counte
 
 **Windows users:** Codex CLI's `read-only` sandbox blocks ALL shell commands on Windows (including reads). Use `--sandbox auto` or `--sandbox danger-full-access` for Windows compatibility.
 
-**Note:** Ralph's harness under `scripts/ralph/` is scaffolded into the repo, so re-run `/flow-next:ralph-init` after a plugin update to pick up sandbox fixes there.
-
 #### codex validate
 
 Validator pass over prior review findings (`fn-32.1 --validate`). Drops confirmed false-positives in the same chat session.
@@ -2714,7 +2710,7 @@ flowctl codex validate --findings-file findings.jsonl --receipt /tmp/impl-fn-1.3
 
 `--findings-file` is JSON-Lines (one finding per line, with at least `id`). Empty/missing → no-op. Receipt drives session resume via `session_id`.
 
-**Mode split (fn-113.4).** Autonomy markers (`FLOW_RALPH=1`, `REVIEW_RECEIPT_PATH` set, or `FLOW_AUTONOMOUS=1`) keep the deterministic path: validator decisions merge into the receipt and may upgrade `NEEDS_WORK` → `SHIP` when every finding is dropped. Interactive (no markers) surfaces raw validator decisions (`host_judges: true`) and does **not** mutate the receipt; the host agent judges keep/drop and any verdict change.
+**Mode split (fn-113.4).** The autonomy marker `FLOW_AUTONOMOUS=1` keeps the deterministic path: validator decisions merge into the receipt and may upgrade `NEEDS_WORK` → `SHIP` when every finding is dropped. Interactive (no marker) surfaces raw validator decisions (`host_judges: true`) and does **not** mutate the receipt; the host agent judges keep/drop and any verdict change.
 
 #### codex deep-pass
 
@@ -2811,26 +2807,7 @@ Spec form: `claude[:model[:effort]]`; efforts are the CLI's own `low`, `medium`,
 
 **Errors.** `claude` missing from PATH → exit 2 `claude not found in PATH` before any spawn (install: [Claude Code setup](https://code.claude.com/docs/en/setup)). The CLI's `--output-format json` result is parsed strictly: a payload that is not the single `type: "result"` object, or an `is_error: true` envelope that is not the model-unavailable signature, is a transport failure with RETRY semantics - journaled as an attempt with no verdict, never a receipt. The model-unavailable signature is exact: (`is_error` true AND `api_error_status` 404 AND the result text names the selected model) OR the `[claude-code:unrecognized_model]` stderr tag; only that steps the ladder (max 2 steps, cached per CLI version), and the floor omits `--model` and `--effort`.
 
-**Fan-out.** No first-round three-draw fan-out (fn-215 R15): the fan-out subcommands stay registered under `flowctl codex` only, so `flowctl claude impl-review-fanout ...` is an argparse invalid choice. `claude` gets the fix loop and the round counter like `copilot` and `cursor`. **Ralph:** the guard recognises `flowctl claude <review> ...` exactly like the cursor spelling, so `--force` and the other human-only recovery arguments are blocked under Ralph. **Triage note:** the opt-in LLM triage judge (`FLOW_TRIAGE_LLM=1`, default off) stays `codex|copilot`; with the judge off (the default) claude reviews use the deterministic whitelist.
-
-### Ralph run control (repo-local after ralph-init)
-
-Ralph control is **not** a `flowctl` subcommand (fn-114 extraction). After `/flow-next:ralph-init`, use the project-local CLI:
-
-```bash
-./scripts/ralph/ralphctl.py status [--run <id>] [--json]
-./scripts/ralph/ralphctl.py pause  [--run <id>] [--json]
-./scripts/ralph/ralphctl.py resume [--run <id>] [--json]
-./scripts/ralph/ralphctl.py stop   [--run <id>] [--json]
-```
-
-Mechanism is **sentinel files + `progress.txt`**, not a `state.json`:
-
-- `scripts/ralph/runs/<run>/PAUSE` - present ⇒ paused
-- `scripts/ralph/runs/<run>/STOP` - present ⇒ stop requested (kept for audit)
-- `scripts/ralph/runs/<run>/progress.txt` - append-only key=value contract (`iteration=`, `spec=`, `task=`, `promise=`, terminal `completion_reason=` + `promise=COMPLETE`)
-
-`flowctl status` soft-probes `scripts/ralph/runs/` only when that directory exists (absent = zero cost; JSON always carries a `runs` array, empty when none). Control for pause/resume/stop lives only on `ralphctl.py`. See [`ralph.md`](ralph.md).
+**Fan-out.** No first-round three-draw fan-out (fn-215 R15): the fan-out subcommands stay registered under `flowctl codex` only, so `flowctl claude impl-review-fanout ...` is an argparse invalid choice. `claude` gets the fix loop and the round counter like `copilot` and `cursor`. **Triage note:** the opt-in LLM triage judge (`FLOW_TRIAGE_LLM=1`, default off) stays `codex|copilot`; with the judge off (the default) claude reviews use the deterministic whitelist.
 
 ### review-deep-auto
 
@@ -2895,16 +2872,14 @@ flowctl status [--json]
 
 Output:
 ```json
-{"success": true, "spec_count": 2, "task_count": 5, "done_count": 2, "active_runs": []}
+{"success": true, "spec_count": 2, "task_count": 5, "done_count": 2}
 ```
 
-Human-readable output shows spec/task counts and any active Ralph runs.
+Human-readable output shows spec/task counts.
 
-## Ralph Receipts
+## Review receipts
 
-RepoPrompt review receipts are written by the review skills (not flowctl commands). Codex review receipts are written by `flowctl codex impl-review` and `flowctl codex completion-review` when `--receipt` is provided. Ralph sets `REVIEW_RECEIPT_PATH` to coordinate both.
-
-See: [Ralph deep dive](ralph.md)
+RepoPrompt review receipts are written by the review skills (not flowctl commands). Backend review receipts are written by `flowctl <backend> impl-review` / `completion-review` at `--receipt`, else `REVIEW_RECEIPT_PATH`, else the scoped default path.
 
 ## JSON Output
 

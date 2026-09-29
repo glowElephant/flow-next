@@ -38,7 +38,7 @@ body:
     id: context
     attributes:
       label: Relevant context
-      description: "OS, Python version, review backend (`flowctl review-backend`), Ralph involved? Relevant `.flow/` state or receipts. Logs from `scripts/ralph/runs/` if autonomous."
+      description: "OS, Python version, review backend (`flowctl review-backend`), `flow --auto` involved? Relevant `.flow/` state or receipts."
     validations:
       required: false
   - type: checkboxes

@@ -124,7 +124,7 @@ The documentation lives at [flow-next.dev](https://flow-next.dev). The repositor
 - [Model routing](https://flow-next.dev/guides/model-routing/): four tiers, the routing block in your instruction file, and what each harness can reach.
 - [Review backends](https://flow-next.dev/reference/review-backends/): RepoPrompt, Codex, Copilot, Cursor, Claude, and host review, with the cross-family rule.
 - [Configuration](https://flow-next.dev/flowctl/configuration/): every `.flow/config.json` key, generated from the schema.
-- [Skills](https://flow-next.dev/skills/): all 31 skills and their invocation forms, and the [CLI reference](https://flow-next.dev/flowctl/cli-reference/) for `flowctl`.
+- [Skills](https://flow-next.dev/skills/): all 30 skills and their invocation forms, and the [CLI reference](https://flow-next.dev/flowctl/cli-reference/) for `flowctl`.
 - [Changelog](https://flow-next.dev/releases/changelog/): release highlights; [`CHANGELOG.md`](CHANGELOG.md) in this repository is the full record.
 - [Discord](https://discord.gg/f3DYq8AAm5) for questions, and [`CONTRIBUTING.md`](CONTRIBUTING.md) for local development and the docs-only rule.
 
@@ -132,7 +132,7 @@ The documentation lives at [flow-next.dev](https://flow-next.dev). The repositor
 
 Flow-Next's ways of working are coached and run in enterprise engineering organisations worldwide, from CAD and construction software to proptech and education, across modern monorepos, hundred-repo microservice estates, and 30-year-old legacy stacks, on GitHub Enterprise, GitLab, and Jira. A 2-3 hour structured discovery interview reliably produces 8-11 implementation-ready specs with numbered acceptance criteria, boundaries, and task breakdowns; the edge cases surface in the interview instead of the sprint. Receipts, evidence JSON, and review gates are the audit trail enterprise adoption asks for: approval checkpoints and traceability are built in.
 
-The open-source record is linkable, so it speaks in its own words: an outside contributor shipping a correct `flowctl` patch in [PR #95](https://github.com/gmickel/flow-next/pull/95), a feature in [awesome-claude-code-workflows](https://github.com/ithiria894/awesome-claude-code-workflows) for plan-first workflows, Ralph autonomous mode, and receipt-based gating ([#96](https://github.com/gmickel/flow-next/issues/96)), and a [3-OS test matrix](https://github.com/gmickel/flow-next/actions) on every push, because the field runs all three.
+The open-source record is linkable, so it speaks in its own words: an outside contributor shipping a correct `flowctl` patch in [PR #95](https://github.com/gmickel/flow-next/pull/95), a feature in [awesome-claude-code-workflows](https://github.com/ithiria894/awesome-claude-code-workflows) for plan-first workflows and receipt-based gating ([#96](https://github.com/gmickel/flow-next/issues/96)), and a [3-OS test matrix](https://github.com/gmickel/flow-next/actions) on every push, because the field runs all three.
 
 > *"I am enjoying your version of all these cool new plugins. So far yours has worked the best."*
 > [@patrickmichalina](https://github.com/gmickel/flow-next/issues/5#issuecomment-3734228766)

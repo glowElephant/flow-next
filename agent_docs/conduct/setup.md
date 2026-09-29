@@ -6,6 +6,6 @@ A correct run detects the host platform, initializes `.flow/`, asks only the sti
 - [ ] Configuration questions are built only from keys that read raw-null in `.flow/config.json`, so a re-run with everything set asks nothing it already knows and silently flips no earlier answer.
 - [ ] Docs snippets are written through `flowctl setup-block apply`, touching only the bytes inside the flow-next markers; an `ask` result prompts Keep mine / Overwrite / abort rather than replacing a customized block.
 - [ ] User-owned files — repo-root `SPEC.md`, `.flow/criteria.md` — are compared before writing, left untouched when identical, and never overwritten without an explicit answer.
-- [ ] Under any autonomy marker (`FLOW_RALPH`, `REVIEW_RECEIPT_PATH`, `FLOW_AUTONOMOUS`, `mode:autonomous`) the Ralph, model-routing, and model-pin ceremonies are skipped silently instead of blocking on a question.
+- [ ] Under any autonomy marker (`FLOW_AUTONOMOUS`, `AUTONOMOUS=1`, `mode:autonomous`) the model-routing and model-pin ceremonies are skipped silently instead of blocking on a question.
 - [ ] Nothing is copied into `.flow/`; a run that writes `.flow/bin/`, `.flow/templates/spec.md`, or `.flow/usage.md` has broken this.
 - [ ] Leftover copies from an older install are listed and deleted only on an explicit `Delete them` answer, and the closing summary states that plugin updates need no setup re-run.

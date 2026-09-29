@@ -298,7 +298,7 @@ Each finding is classified:
 - `introduced: true` - caused by this branch's diff.
 - `pre_existing: true` - broken on the base branch.
 
-Verdict gate considers only `introduced` findings. Pre-existing issues surface in a separate non-blocking "Pre-existing issues" section. Receipt carries `introduced_count` + `pre_existing_count` so Ralph stops fighting bugs it didn't introduce.
+Verdict gate considers only `introduced` findings. Pre-existing issues surface in a separate non-blocking "Pre-existing issues" section. Receipt carries `introduced_count` + `pre_existing_count` so an unattended loop stops fighting bugs it didn't introduce.
 
 ## Protected artifacts
 
@@ -308,7 +308,6 @@ Review prompts carry a hardcoded never-flag list - findings recommending deletio
 - `.flow/bin/*` (legacy flowctl copies - reviewers never advise deleting a user's committed files; removal is the user's own call at the setup / plan touchpoints)
 - `.flow/memory/*` (learnings store)
 - `docs/plans/*`, `docs/solutions/*` (when the project uses them)
-- `scripts/ralph/*` (Ralph harness)
 
 Prevents cross-model reviewers unfamiliar with flow-next conventions from proposing destructive cleanups.
 
@@ -323,7 +322,7 @@ flowctl triage-skip --base main
 # source=deterministic
 ```
 
-An optional LLM layer for ambiguous diffs is gated behind `FLOW_TRIAGE_LLM=1`. On by default in Ralph mode; opt-out via `--no-triage` or `FLOW_RALPH_NO_TRIAGE=1`.
+An optional LLM layer for ambiguous diffs is gated behind `FLOW_TRIAGE_LLM=1`; opt-out via `--no-triage`.
 
 ## Receipt schema (additive only)
 

@@ -221,7 +221,7 @@ class TestInstallCodexLegacyCleanup(unittest.TestCase):
             )
             skill_dir = custom_codex / "skills" / "flow-next-qa"
             self.assertTrue(
-                (skill_dir / "../../docs/flow-next/ralph.md").resolve().is_file(),
+                (skill_dir / "../../docs/flow-next/pipeline-variations.md").resolve().is_file(),
                 "../../docs/flow-next/ link dangles from an installed skill dir",
             )
             # And the installed prose actually carries the namespaced spelling.

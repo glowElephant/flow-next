@@ -62,7 +62,6 @@ Defaults below are read from the published schema ([`../schema/flow-config.schem
 | [Pre-capture discovery](#pre-capture-discovery) | none | manual | `/flow-next:chart`, `/flow-next:prospect` |
 | [Autonomous loops](#autonomous-loops) | none to enable; `land.patienceMinutes` sets the wait after the last push when flow authorizes without a human's in-session merge authorization (`pipeline.chainStages` is deprecated) | manual (30-minute patience) | `/flow-next:flow --auto`, `/flow-next:land <PR>` |
 | [GitHub scouts](#github-scouts) | `scouts.github` | off | ask a scout in conversation |
-| [Ralph](#ralph-deprecated) | none | off, **deprecated** | see below |
 
 ### Tracker sync
 
@@ -171,10 +170,6 @@ No config key to enable; `pilot.autonomy` (`ready` by default) only widens what 
 - **Costs:** an extra scout dispatch on planning fan-outs, and network reach into repos during a stage that otherwise reads only your checkout.
 - **Earns its keep when:** you are adopting an unfamiliar library or protocol and want prior art rather than first principles.
 - **Lean invocation:** ask for the search in conversation when a plan actually needs it.
-
-### Ralph (deprecated)
-
-**Deprecated.** `/flow-next:flow --auto` to build and `/flow-next:land <PR>` to ship, repeated by a host loop or `cron`, do what the hardened harness does, without the `scripts/ralph/` scaffold, the guard-hook registration, and the second receipt plumbing. Nothing is removed yet and existing Ralph installs keep working unchanged; new adopters should reach for `flow --auto` + land. Details and the full comparison: [`ralph.md`](ralph.md).
 
 ### Implementation offload (no layer to enable)
 

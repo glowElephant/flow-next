@@ -53,7 +53,6 @@ These pages are maintainer documentation. They are never loaded at runtime by an
 - [`memory-migrate.md`](memory-migrate.md) — `/flow-next:memory-migrate`, flat-to-categorized memory lift
 - [`tracker-sync.md`](tracker-sync.md) — `/flow-next:tracker-sync`, spec-to-tracker projection
 - [`setup.md`](setup.md) — `/flow-next:setup`, platform detection and install
-- [`ralph-init.md`](ralph-init.md) — `/flow-next:ralph-init`, repo-local Ralph harness scaffold
 - [`export-context.md`](export-context.md) — `flow-next-export-context`, review context export
 
 ## Skills without a checklist

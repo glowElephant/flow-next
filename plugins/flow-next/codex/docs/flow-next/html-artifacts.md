@@ -87,7 +87,6 @@ Generation failure is non-fatal everywhere: skip the link line, one stderr note,
 - **Current v1 stays local-only.** Committing HTML that embeds a head-bound current object would advance `HEAD` and stale its own input. The v1 lens therefore leaves `HEAD` unchanged and emits local-open guidance. Only the visibly labeled legacy fallback may use the pathspec-confined `chore(flow): pr artifact <spec-id>` commit and SHA-pinned blob link. Byte-identical fallback regeneration makes no empty commit.
 - **Failure-guarded git.** Every git step is guarded (`LENS_OK` flag): a hook rejection or stage failure degrades to no-body-line + one stderr note; the PR is still created.
 - **`--dry-run` writes nothing.** No artifact, no commit, no body line - the dry-run no-state-change promise holds.
-- **Ralph stdout contract untouched.** Under Ralph the stdout stays exactly `PR_URL=<url>`; all artifact messaging routes to stderr.
 - **No annotate loop, ever** - interactive and autonomous alike. Review conversation belongs to the code host; make-pr never opens a Lavish session and never polls.
 
 ## Viewing artifacts (the GitHub limitation)
@@ -147,4 +146,4 @@ How it actually works (verified against the real architecture - not the upstream
 
 ## Autonomous discipline
 
-`flow --auto`, Ralph, and other autonomous contexts **generate only**: they may write artifacts at the same lifecycle touchpoints but **never open a Lavish session and never poll** - an autonomous loop never blocks on a human. At most a one-line stderr note that a session has pending prompts. The guards are mechanical (in the skill snippets, gated on the non-interactive marker family - `FLOW_AUTONOMOUS`, `FLOW_RALPH`, `REVIEW_RECEIPT_PATH`, autofix mode), not prose-only. Ralph's `PR_URL=` stdout contract and all receipts are untouched by artifact generation. See [`ralph.md`](ralph.md#html-render-lenses-generate-only).
+`flow --auto` and other autonomous contexts **generate only**: they may write artifacts at the same lifecycle touchpoints but **never open a Lavish session and never poll** - an autonomous loop never blocks on a human. At most a one-line stderr note that a session has pending prompts. The guards are mechanical (in the skill snippets, gated on the non-interactive marker family - `FLOW_AUTONOMOUS`, `AUTONOMOUS=1`, `mode:autonomous`, autofix mode), not prose-only. Receipts are untouched by artifact generation.

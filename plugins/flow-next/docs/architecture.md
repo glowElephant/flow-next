@@ -21,7 +21,7 @@ Flow-next does not support standalone tasks. Every unit of work belongs to a spe
 
 Flow-next always creates a spec container (even for one-offs) so every task has a durable home for context, re-anchoring, and automation. You never have to think about it.
 
-Rationale: keeps the system simple, improves re-anchoring, makes automation (Ralph) reliable.
+Rationale: keeps the system simple, improves re-anchoring, makes automation (`flow --auto`) reliable.
 
 "One-off request" → spec with one task.
 
@@ -83,7 +83,7 @@ Rationale: keeps the system simple, improves re-anchoring, makes automation (Ral
 ├── review-receipts/       # Review receipt copies kept under .flow/
 │   └── <receipt>.json.history/
 │       └── <digest>.json  # Immutable structured-finding generations
-├── receipts/              # (auto-gitignored) Ralph/runtime receipt scratch
+├── receipts/              # (auto-gitignored) runtime receipt scratch
 ├── sync-runs/             # (auto-gitignored) tracker-sync run receipts
 ├── pilot-runs/            # (auto-gitignored) backlog-mode decision-log rows of flow --auto
 ├── locks/                 # (auto-gitignored) setup-block serialization locks
@@ -304,7 +304,7 @@ The legacy `flow` plugin was removed in flow-next 1.0.2 (commit `ffc7189`). The 
 - Install: plugin only - no external services, no config-file edits.
 - Artifacts: `.flow/specs/` (markdown + JSON sidecar), `.flow/tasks/` (markdown + JSON sidecar), optionally `.flow/charts/` (decision maps + decision records + briefings), and optionally `.flow/features/` (committed user-POV drive map).
 - Multi-user safe: scan-based IDs + soft claims (task assignee; chart decision claims).
-- Uninstall: delete `.flow/` (and `scripts/ralph/` if enabled). `GLOSSARY.md` / `STRATEGY.md` at the repo root persist by design.
+- Uninstall: delete `.flow/`. `GLOSSARY.md` / `STRATEGY.md` at the repo root persist by design.
 
 ## See also
 

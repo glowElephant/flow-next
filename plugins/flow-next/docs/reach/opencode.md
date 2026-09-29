@@ -35,7 +35,7 @@ This is OpenCode's native pin surface - the equivalent of writing a routing-bloc
 
 ## What is unavailable
 
-A dispatch-time model override (prose requests in a Task dispatch are ignored - the subagent inherits the session model), a native blocking-ask primitive (numbered-prompt fallback applies), and generated-agent `model:` frontmatter (dropped at generation; the user-defined pin above is the mechanism). Ralph is not supported.
+A dispatch-time model override (prose requests in a Task dispatch are ignored - the subagent inherits the session model), a native blocking-ask primitive (numbered-prompt fallback applies), and generated-agent `model:` frontmatter (dropped at generation; the user-defined pin above is the mechanism).
 
 ## Degradation
 

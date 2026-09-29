@@ -17,7 +17,7 @@ The files below stay in the repository because something at runtime reads them: 
 | [`reach/README.md`](reach/README.md) and the per-harness pages | The worker and work phases resolve the implementer tier through reach; the capture, make-pr, and setup skills read [`reach/codex.md`](reach/codex.md) and [`reach/cursor.md`](reach/cursor.md); the Codex installer test checks the tree |
 | [`read-back.md`](read-back.md) | Capture, plan, and refine read it before the first `.flow/` write |
 | [`pipeline-variations.md`](pipeline-variations.md) | The flow skill's [`route-matrix.md`](../../skills/flow-next-flow/references/route-matrix.md) and capture's rewrite mode cite it; the routing test scans it as a consumer of the shared routing reference |
-| [`skills.md`](skills.md) | The resolve-pr skill and the route matrix cite the backend-split heuristic; the count test pins the 31 skills table |
+| [`skills.md`](skills.md) | The resolve-pr skill and the route matrix cite the backend-split heuristic; the count test pins the 30 skills table |
 | [`tracker-sync.md`](tracker-sync.md) | Capture, make-pr, and work read the retro-fire rule; `flowctl_tracker` code and the config schema cite the fn-64 ordering rule |
 | [`memory-schema.md`](memory-schema.md) | The qa skill maps bug categories through it |
 | [`html-artifacts.md`](html-artifacts.md) | The html-lens references in capture, make-pr, and plan; the fixture-contract test reads it |
@@ -28,10 +28,9 @@ The files below stay in the repository because something at runtime reads them: 
 | [`spec-template.md`](spec-template.md) | `templates/spec.md` cites it for the scaffold rules and the auxiliary-section list |
 | [`teams.md`](teams.md) | `templates/spec.md` cites the symmetric interview pattern; the count test pins the commands table |
 | [`architecture.md`](architecture.md) | The `.flow/` layout and the review bookkeeping authority; the chart inventory and review-findings tests read it |
-| [`platforms.md`](platforms.md) | The canonical supported-platforms sentence and the platform matrix; the Cursor, Ralph, and tracker distribution tests pin its sections |
+| [`platforms.md`](platforms.md) | The canonical supported-platforms sentence and the platform matrix; the Cursor and tracker distribution tests pin its sections |
 | [`troubleshooting.md`](troubleshooting.md) | Landing upgrades, manual chain recovery, and bug report troubleshooting |
-| [`ralph.md`](ralph.md) | The `ralph-guard` hook cites it; the Ralph docs-truth test pins the opt-in and control-surface facts |
-| [`sync-codex.md`](sync-codex.md) | The Ralph docs-truth test checks no hook-generation step returns |
+| [`sync-codex.md`](sync-codex.md) | `platforms.md` and `troubleshooting.md` link it for Codex mirror regeneration and its validation guards |
 | [`glossary.md`](glossary.md) | How the repo-root `GLOSSARY.md` file is shaped, resolved, and edited with `flowctl glossary`; no site page covers the file mechanics yet |
 | [`ci-workflow-example.yml`](https://github.com/gmickel/flow-next/blob/main/plugins/flow-next/docs/ci-workflow-example.yml) | `flowctl.md` links it as the drop-in `flowctl validate --all` job; the mirror rewrites its link |
 

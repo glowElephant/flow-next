@@ -144,20 +144,10 @@ class TestPlatformsCursorSection(unittest.TestCase):
         )
 
     def test_no_stale_hook_schema_mismatch(self) -> None:
-        # Accurate: intentionally does not build Ralph; NOT "schema mismatch".
         self.assertNotRegex(
             self.cursor,
             r"(?i)hook[- ]schema\s+mismatch|schema\s+mismatch",
             "platforms.md Cursor section must not claim hook-schema mismatch",
-        )
-        self.assert_on_surface(
-            lambda text: re.search(
-                r"(?i)intentionally\s+(?:does\s+not|not)\s+(?:build|register)|"
-                r"not\s+built\s+for\s+Cursor",
-                text,
-            )
-            is not None,
-            "that Ralph is intentionally not built/registered on Cursor",
         )
 
 

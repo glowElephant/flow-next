@@ -70,9 +70,9 @@ title: Prefer flowctl rp wrappers over the direct RepoPrompt CLI
 date: 2026-04-24
 track: knowledge
 category: conventions
-module: scripts/ralph
-tags: [rp, ralph, review]
-applies_when: writing Ralph loop scripts or review shims
+module: scripts/review
+tags: [rp, review]
+applies_when: writing review shims
 ---
 ```
 
@@ -144,8 +144,8 @@ flowctl memory add \
   --track knowledge \
   --category conventions \
   --title "Prefer flowctl rp wrappers" \
-  --module scripts/ralph \
-  --tags "rp,ralph"
+  --module scripts/review \
+  --tags "rp,review"
 ```
 
 `--type pitfall|convention|decision` (the old API) still works but emits a deprecation warning. Removed in 0.36.0.
@@ -168,8 +168,8 @@ flowctl memory search "sqlite locked" --status stale     # only stale entries
 flowctl memory search "sqlite locked" --status hardened  # only hardened entries
 flowctl memory search "sqlite locked" --status all       # active + stale + hardened
 flowctl memory search "rp wrappers" \
-  --module scripts/ralph \
-  --tags "rp,ralph" \
+  --module scripts/review \
+  --tags "rp,review" \
   --limit 5
 
 flowctl memory read bug/runtime-errors/sqlite-locked-2026-04-24   # full id
@@ -278,10 +278,9 @@ Point agents at `.flow/memory/` with a one-line note in `AGENTS.md` / `CLAUDE.md
 ## When enabled
 
 - **Planning**: category-aware `memory-scout` runs in parallel with other scouts, returns track/category-tagged hits and prioritizes module matches.
-- **Work**: worker reads relevant entries during re-anchor.
-- **Ralph**: worker writes structured bug-track entries via `memory add --track bug --category <c>` on NEEDS_WORK → SHIP. Overlap scoring emits `matches`; the worker re-runs with `--update <id>` when folding into a known prior entry.
+- **Work**: worker reads relevant entries during re-anchor, and writes structured bug-track entries via `memory add --track bug --category <c>` on NEEDS_WORK → SHIP. Overlap scoring emits `matches`; the worker re-runs with `--update <id>` when folding into a known prior entry.
 
-Config lives in `.flow/config.json`, separate from Ralph's `scripts/ralph/config.env`.
+Config lives in `.flow/config.json`.
 
 ## Review findings are evidence, memory is learning
 

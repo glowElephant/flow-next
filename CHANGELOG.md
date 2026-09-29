@@ -4,6 +4,16 @@ All notable changes to the flow-next.
 
 Flow-Next changed shape with 5.0.0. One command, `/flow-next:flow`, reads whatever you have and picks the route, and `flow --auto` runs the same route unattended. If you are arriving from 4.x, start with [the 5.0.0 entry](#flow-next-500---2026-09-12) and [the flow skill](plugins/flow-next/skills/flow-next-flow/SKILL.md) before reading the items below.
 
+## Unreleased
+
+Flow-Next has one unattended mode: `/flow-next:flow --auto` (with `--until=merge` or `--tick`). The Ralph harness it replaced is gone, so there is no repo-local loop to scaffold, no guard hooks to register and no second set of receipts to keep in step.
+
+**What changes when you upgrade.** Ralph is removed. If you still run it, pin flow-next 6.6.x. Otherwise delete `scripts/ralph/` and any `ralph-guard` hook entries from your project settings, and use `/flow-next:flow --auto` for unattended runs.
+
+### Removed
+
+- **Ralph.** `/flow-next:ralph-init`, the `scripts/ralph/` harness and `ralphctl`, the `ralph-guard` hooks, setup's Ralph question, the `FLOW_RALPH`, `RALPH_ITERATION` and `FLOW_RALPH_NO_TRIAGE` variables, the Ralph-run probe in `flowctl status`, and the `flow-next-tui` run monitor.
+
 ## [flow-next 6.6.0] - 2026-09-28
 
 Plan, prime and the other scout-heavy steps get faster and cheaper: the bundled scouts now run on Sonnet 5.5, which Anthropic reports at more than 30% faster than Sonnet 5 and lower cost than Opus 5.5, scoring within about three points of Opus 5.5 on its published agentic-coding and knowledge-work benchmarks. Teams that keep `.flow/` in a planning repo and their product code in sibling clones get the full gates whenever that code changes, and the feature map ages from product commits instead of planning edits. A feature-map maintain pass now finishes on repos whose branch and commit names need a ticket key or whose host is not GitHub, and a failed push keeps the proven corrections instead of discarding them. make-pr opens its pull request from zsh as well as bash.

@@ -1,6 +1,6 @@
 # Codex Mirror Generation (`sync-codex.sh`)
 
-[`../../../scripts/sync-codex.sh`](../../../scripts/sync-codex.sh) generates the pre-built Codex files from canonical `skills/` and `agents/` sources. Output: `plugins/flow-next/codex/{skills/,agents/}` plus mirrored `templates/` and `references/` directories. **No `hooks.json`:** Ralph hooks are opt-in via ralph-init project settings (fn-114 zero-default); the script asserts the mirror ships none. The script is **idempotent** - running twice produces identical output.
+[`../../../scripts/sync-codex.sh`](../../../scripts/sync-codex.sh) generates the pre-built Codex files from canonical `skills/` and `agents/` sources. Output: `plugins/flow-next/codex/{skills/,agents/}` plus mirrored `templates/` and `references/` directories. **No `hooks.json`:** the script asserts the mirror ships none. The script is **idempotent** - running twice produces identical output.
 
 > Read the script's top-of-file comments and stage banners for the authoritative behavior. This doc gives the high-level shape and points at the validation guards.
 
@@ -28,7 +28,7 @@ The script runs in numbered stages (see banners in [`../../../scripts/sync-codex
 
 1. **Copy & patch skills** - canonical `skills/` copied to `codex/skills/`, then per-stage transforms applied (Claude-native tool names rewritten to Codex equivalents; `request_user_input` → plain-text numbered prompt per fn-45).
 2. **Convert agents** - `agents/*.md` → `codex/agents/*.toml` with per-agent reasoning effort, sandbox mode, model mapping, and nickname candidates.
-3. **Zero-default hooks** - remove any stale `codex/hooks.json`; assert absence (Ralph registration is agent-driven into project `.codex/hooks.json` via ralph-init).
+3. **Zero hooks** - remove any stale `codex/hooks.json`; assert absence.
 4. **Mirror templates/ + references/ + docs/** - canonical `templates/spec.md` copied to `codex/templates/` so the R20 discovery cascade resolves the same relative path in the mirror; canonical `references/` copied byte-identical to `codex/references/` (shared disclosure files are tool-name-agnostic, so no transform applies); canonical `docs/` copied markdown-only to the owned namespace `codex/docs/flow-next/`, and mirror skill cross-links (`../../docs/` / `../../../docs/`) gain the `flow-next/` segment so they resolve both in-repo and installed - the install replaces only that owned dir, so it can never destroy non-flow-next content under `$CODEX_HOME/docs/` (fn-202 / #363). The mirrored pages' own internal links are then rewritten by target class to the **link-closure property**: same-dir doc links stay untouched; links up-and-into installed trees (`skills/`, `templates/`, `references/`) gain one `../` for the deeper mirror location (depth-aware for `reach/` pages); links to targets outside the installed universe (repo root, the plugin README, `schema/`, `tests/`, the non-markdown `ci-workflow-example.yml`) become absolute canonical GitHub URLs computed from the canonical docs location. A validation guard hard-fails the sync on any docs-mirror link that neither resolves on disk at its mirror location nor is an absolute URL - and because the install copies these trees verbatim into the same relative layout under `$CODEX_HOME`, the repo-tree check is the install check.
 5. **Validation** - counts + drift guards (see below).
 

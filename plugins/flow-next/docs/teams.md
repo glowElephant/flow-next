@@ -23,7 +23,7 @@ The vocabulary on this page - *handover objects*, *Delegate / Review / Own*, *li
   - [Decision records](#decision-records)
   - [Strategy alignment](#strategy-alignment)
 - [Multi-developer coordination](#multi-developer-coordination)
-- [Autonomous mode (Ralph) in a team](#autonomous-mode-ralph-in-a-team)
+- [Autonomous work in a team](#autonomous-work-in-a-team)
 - [Tracker sync & Linear Diffs](#tracker-sync--linear-diffs)
 - [Standing criteria (`.flow/criteria.md`)](#standing-criteria-flowcriteriamd)
 - [What flow-next does *not* replace](#what-flow-next-does-not-replace)
@@ -212,7 +212,7 @@ Branch strategy is a per-team choice:
 | `--branch=new` (default) | Multiple in-flight specs, single dev | One PR per spec |
 | `--branch=worktree` | Parallel specs + parallel workers | Disk overhead; CI parallelism |
 
-*(+ optional tracker sync)* - `tracker.perEvent.work.firstClaim` flips the linked issue to in-progress on the first task claim; `tracker.perEvent.work.done` posts a status comment + evidence on task completion. Both on by default once the bridge is hooked up (opt-out per event); conflicts queue (never block) - see [`ralph.md`](ralph.md).
+*(+ optional tracker sync)* - `tracker.perEvent.work.firstClaim` flips the linked issue to in-progress on the first task claim; `tracker.perEvent.work.done` posts a status comment + evidence on task completion. Both on by default once the bridge is hooked up (opt-out per event); conflicts queue (never block) - see [`tracker-sync.md`](tracker-sync.md).
 
 ### [6] Cross-model code review: Handover #5
 
@@ -435,22 +435,18 @@ What `.flow/` looks like with N developers in parallel:
 - **Branch strategy.** Per-spec branch is the default (`--branch=new`). Worktrees scale to several specs in flight (`--branch=worktree`). Current-branch is for solo, single-spec work.
 - **Spec-level dependencies chain, they do not wait.** A spec whose parent (`depends_on_epics`) has every task done and its branch on origin builds as a **chain**: its branch forks from the parent's tip and its PR targets the parent's branch, so a reviewer sees only that layer's diff; on GitHub the PR is also linked into the parent's **stack**. Chains are linear (one open parent, one child at a time). Humans merge from the bottom layer up, from the stack UI or through land; a parent reworked after the child branched may leave the child needing a rebase. See the [orchestration guide](orchestration.md#chaining-the-loops).
 - **Worker isolation has two layers.** Each task runs in a fresh-context worker, preventing context bleed. Concurrent writers also need separate mutable workspaces and a conductor-owned integration step; an atomic task claim alone provides neither.
-- **Memory tree as shared state.** `.flow/memory/` is the only multi-writer surface. The convention: bug entries are auto-written by Ralph on review-loop iteration; knowledge entries (`decisions/`, `architecture-patterns/`, `conventions/`) are written by humans or by `/work` with explicit confirmation. `/flow-next:audit` reconciles drift periodically.
+- **Memory tree as shared state.** `.flow/memory/` is the only multi-writer surface. The convention: bug entries are written by `/work` and `/qa` from review and QA findings; knowledge entries (`decisions/`, `architecture-patterns/`, `conventions/`) are written by humans or by `/work` with explicit confirmation. `/flow-next:audit` reconciles drift periodically.
 - **`.flow/` lives in the repo.** Commit it. Code review it. The spec PRs and implementation PRs both touch `.flow/` - that's intentional. The team's `.flow/` evolves alongside the code.
 
 **Conflict resolution:** when two specs evolve overlapping memory entries (same `<slug>` under `bug/runtime-errors/`, for example), the second writer creates the entry with a `related_to: [first-id]` frontmatter pointer rather than overwriting. `/flow-next:audit` later surfaces the pair for Consolidate.
 
 ---
 
-<a id="autonomous-mode-ralph-in-a-team"></a>
-
 ## Autonomous work in a team
 
 Use `/flow-next:flow --auto` to drive one ready spec at a time to its draft PR. Add `--until=merge` for the selected spec to continue through land under the team's authorized merge policy, or run land independently. The configured tracker touchpoint runs after a confirmed merge; release preparation is a separate step following the repository's release documentation. Repeat the invocation per item, or run `flow --auto --tick` under a host loop where sessions are short. Keep overlapping runs in separate clones or isolated workspaces and give each a clear scope.
 
 Humans approve the intent and the conditions for merging. The spec and PR remain the handover surfaces whether the run is supervised or unattended. Use the [orchestration guide](orchestration.md#chaining-the-loops) for driver recipes.
-
-Ralph is deprecated. Existing installations retain their [reference](ralph.md); new team setups should use `flow --auto` and land.
 
 ## Tracker sync & Linear Diffs
 
@@ -497,7 +493,7 @@ The collaboration doesn't disappear. The *ceremony tax* does. Standups, refineme
 
 ## Adoption ladder
 
-Don't try to roll out all 27 commands at once. Layer them in.
+Don't try to roll out all 26 commands at once. Layer them in.
 
 ### Week 1: Prove it works
 
@@ -507,7 +503,7 @@ Turn on three commands. Use them on one spec.
 - `/flow-next:plan` - break the spec into tasks.
 - `/flow-next:work` - implement.
 
-Skip review for the first spec. Skip Ralph. The goal is to feel the lifecycle on a real piece of work.
+Skip review for the first spec. Skip `flow --auto`. The goal is to feel the lifecycle on a real piece of work.
 
 ### Month 1: Establish the pattern
 
@@ -530,7 +526,7 @@ Add the patterns that scale across multiple in-flight specs + multiple developer
 - Start writing **decision records** under `knowledge/decisions/` for load-bearing choices. The PR briefing can then explain the chosen approach and rejected alternatives from evidence.
 - Schedule periodic `/flow-next:audit` runs against `.flow/memory/`. Once a month is plenty for most teams.
 - **If the team lives in Linear, GitHub Issues, GitLab, or Jira, turn on `/flow-next:tracker-sync`.** Run the discovery ceremony - on confirmation it activates the **whole pipeline by default** (`tracker.perEvent.*`); you opt out of any event (`flowctl config set tracker.perEvent.<event> off`) rather than opt in. The spec stays the source of truth; the tracker becomes a co-editable mirror for stakeholder visibility. **Projection, not coordination** - see [`tracker-sync.md`](tracker-sync.md). (Don't confuse it with `/flow-next:sync` plan-sync.)
-- Trial **Ralph** on a single mechanical spec (test backfill, lint migration, dependency bump). Watch the morning review. Decide whether to expand.
+- Trial **`flow --auto`** on a single mechanical spec (test backfill, lint migration, dependency bump). Watch the morning review. Decide whether to expand.
 
 By the end of quarter 1, the team has crossed from *using a tool* to *running a methodology*.
 
@@ -540,7 +536,7 @@ By the end of quarter 1, the team has crossed from *using a tool* to *running a 
 
 - **Theory.** [AI-x-SDLC-Starter-Kit methodology guide](https://github.com/gmickel/AI-x-SDLC-Starter-Kit/blob/main/guides/methodology.md) - *why* the lifecycle changes, the touch-point collapse, the productivity disconnect, the cultural-debt problem.
 - **Command reference.** [`docs/flowctl.md`](flowctl.md) - every `flowctl` subcommand, every flag, every JSON shape. The [skills catalog on flow-next.dev](https://flow-next.dev/skills/) table covers the user-facing slash commands.
-- **Autonomous mode.** [docs/ralph.md](ralph.md) - Ralph architecture, configuration, morning review workflow.
+- **Autonomous mode.** [docs/orchestration.md](orchestration.md) - `flow --auto`, land, and driver recipes.
 - **CLI reference.** [docs/flowctl.md](flowctl.md) - every `flowctl` subcommand and JSON shape.
 - **Memory schema.** [`docs/memory-schema.md`](memory-schema.md) - categories, frontmatter, audit lifecycle.
 - **Glossary + strategy.** [`docs/glossary.md`](glossary.md) and [Strategy on flow-next.dev](https://flow-next.dev/skills/strategy/).

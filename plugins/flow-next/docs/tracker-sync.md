@@ -21,7 +21,7 @@ Project a flow-next spec to a tracker issue (Linear, GitHub, GitLab, or Jira) an
 - [Reconciliation: who-wins](#reconciliation-who-wins)
 - [Readiness projection: `tracker.readyState` → local `ready` flag](#readiness-projection-trackerreadystate-local-ready-flag)
 - [Dependency projection: `depends_on_epics` → tracker issue relations](#dependency-projection-depends_on_epics-tracker-issue-relations)
-- [Ralph-safe / autonomous-safe: never blocks](#ralph-safe-autonomous-safe-never-blocks)
+- [Autonomous-safe: conflicts queue](#autonomous-safe-conflicts-queue)
 - [Backlog-mode enumeration + the async question-valve (2.2.0+, fn-68)](#backlog-mode-enumeration-the-async-question-valve-220-fn-68)
 - [flowctl surface](#flowctl-surface)
 - [Chart lifecycle projection](#chart-lifecycle-projection)
@@ -297,7 +297,7 @@ projects status.
 
 The same path runs on Claude Code, Codex, Cursor, Droid, and Grok Build. A
 structured conflict or external action request returns to the tracker-sync
-skill for recovery routing. Under Ralph, any decision requiring a person queues
+skill for recovery routing. Under `flow --auto`, any decision requiring a person queues
 with `sync defer`; it never prompts.
 
 ## Linear Diffs: review the PR inside the issue
@@ -346,11 +346,11 @@ decision and implementation pointer**.
 - **Warnings, never silent drops.** A dependency spec with **no tracker link** is surfaced as a warning naming the dep spec id (and parent), in the skill report and on the `sync receipt`; the rest of the sync proceeds (item-level failure isolation). Self-edges are skipped with a warning. A dependency **cycle** in the flow graph is tolerated - each declared edge is projected as an independent direct relation, with **no** graph traversal or transitive expansion.
 - **Collision - human-removed relations are not recreated.** An edge present in the `depRelations` ledger AND still in `depends_on_epics`, but **missing remotely** (a tracker user removed the projected relation), is evaluated **before** per-side rules: it emits `sync defer` + a `queued` receipt rather than silently recreating the relation. Re-creating a human-removed relation is the explicit anti-behavior - same conservative posture as the body/status who-wins ladder.
 
-## Ralph-safe / autonomous-safe: conflicts queue
+## Autonomous-safe: conflicts queue
 
-Every run emits a receipt (`flowctl sync receipt --status …`); genuine conflicts **queue** (`flowctl sync defer …`) rather than block. In autonomous / Ralph mode an `always-ask` tiebreak resolves to **queue**, not prompt - same policy, surface-dependent delivery. Deferred conflicts land in the **review deferred-findings sink** (`.flow/review-deferred/<branch>.md`) where the human already looks for deferred work - so tracker-sync never needs `flowctl block`, never stalls the loop. See [`ralph.md`](ralph.md).
+Every run emits a receipt (`flowctl sync receipt --status …`); genuine conflicts **queue** (`flowctl sync defer …`) rather than block. In autonomous mode an `always-ask` tiebreak resolves to **queue**, not prompt - same policy, surface-dependent delivery. Deferred conflicts land in the **review deferred-findings sink** (`.flow/review-deferred/<branch>.md`) where the human already looks for deferred work - so tracker-sync never needs `flowctl block`, never stalls the loop.
 
-The Phase-0 gate recognizes the **full autonomy marker family** (2.2.0+, fn-68 R14): `FLOW_RALPH=1`, `REVIEW_RECEIPT_PATH` set, **`FLOW_AUTONOMOUS=1`, or the `mode:autonomous` token** - matching `work` / `make-pr` / `resolve-pr` / `capture`. tracker-sync was the **one** lifecycle-participating skill whose gate omitted `FLOW_AUTONOMOUS`; under the marker NO code path reaches a prompt (discovery ceremony, collision guard, genuine conflict, and `question` authoring all resolve "ask the human" to `sync defer`). This is what makes tracker-sync safe to call **per-tick from [`/flow-next:flow --auto`](../skills/flow-next-flow/SKILL.md) backlog mode** - a live prompt mid-tick would stall the whole autonomous loop.
+The Phase-0 gate recognizes the **full autonomy marker family** (2.2.0+, fn-68 R14): **`FLOW_AUTONOMOUS=1`, `AUTONOMOUS=1`, or the `mode:autonomous` token** - matching `work` / `make-pr` / `resolve-pr` / `capture`. tracker-sync was the **one** lifecycle-participating skill whose gate omitted `FLOW_AUTONOMOUS`; under the marker NO code path reaches a prompt (discovery ceremony, collision guard, genuine conflict, and `question` authoring all resolve "ask the human" to `sync defer`). This is what makes tracker-sync safe to call **per-tick from [`/flow-next:flow --auto`](../skills/flow-next-flow/SKILL.md) backlog mode** - a live prompt mid-tick would stall the whole autonomous loop.
 
 ## Backlog-mode enumeration + the async question-valve (2.2.0+, fn-68)
 
@@ -415,4 +415,3 @@ Skill surfaces and automation: [`../skills/flow-next-chart/SKILL.md`](../skills/
 - [`flowctl.md`](flowctl.md#chart) - full chart CLI + locate contract.
 - [`teams.md`](teams.md) - projection-not-coordination positioning, Symphony contrast, adoption ladder, chart handover.
 - [`architecture.md`](architecture.md) - spec-JSON `tracker` fields, widened id resolver, charts layout.
-- [`ralph.md`](ralph.md) - conflicts queue to deferred-decisions, never block.

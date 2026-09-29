@@ -7,4 +7,4 @@ A correct run projects a flow spec onto one tracker issue and reconciles body, s
 - [ ] Comment and merged-body content travels through mode `0600` temporary files that are deleted after the call, and each synthesized comment file opens with a stable, non-placeholder `evidence=<token>` line.
 - [ ] Recovery decisions branch on the envelope's `class` field rather than provider error prose, following the documented routing for `conflict`, `stale_id`, `capability`, and `external_action_required`.
 - [ ] No tracker operation changes Flow task status, and a lifecycle event leaves exactly one aggregate receipt — not a second receipt written around the facade.
-- [ ] Under the autonomous gate (`RALPH=1`), discovery, collisions, and body-merge conflicts are deferred or queued for a human; the transcript shows no `AskUserQuestion` on those paths.
+- [ ] Under the autonomous gate, discovery, collisions, and body-merge conflicts are deferred or queued for a human; the transcript shows no `AskUserQuestion` on those paths.

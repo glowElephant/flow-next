@@ -3,7 +3,7 @@
 > **Codex install note:** when YOU run a flow-next command on THIS Codex install, invoke it as `$flow-next-<name>` (or pick it from the skills dropdown) wherever this page writes `/flow-next:<name>` — and when the written name itself already starts with `flow-next-` (e.g. `/flow-next:flow-next-drive`), the prefix is not doubled: invoke `$flow-next-drive`. Passages describing OTHER hosts (Claude Code `claude -p` / `/loop` examples, Grok, Cursor, OpenCode sections) document those hosts' own syntax and are quoted verbatim — do not convert them.
 
 
-Common recovery patterns for stuck tasks, broken state, Ralph debugging, and review-backend conflicts. For deeper subsystem guides see [`flowctl.md`](flowctl.md) (CLI reference), [`ralph.md`](ralph.md) (Ralph internals), and the parent [`../README.md`](https://github.com/gmickel/flow-next/blob/main/plugins/flow-next/README.md).
+Common recovery patterns for stuck tasks, broken state, and review-backend conflicts. For deeper subsystem guides see [`flowctl.md`](flowctl.md) (CLI reference) and the parent [`../README.md`](https://github.com/gmickel/flow-next/blob/main/plugins/flow-next/README.md).
 
 ## Contents
 
@@ -12,8 +12,6 @@ Common recovery patterns for stuck tasks, broken state, Ralph debugging, and rev
 - [Pre-1.0 layout porting](#pre-10-layout-porting)
 - [Reset a stuck task](#reset-a-stuck-task)
 - [Clean up `.flow/` safely](#clean-up-flow-safely)
-- [Debug Ralph runs](#debug-ralph-runs)
-- [Receipt validation failing](#receipt-validation-failing)
 - [`flow --auto` keeps skipping a spec the board says is ready (strikes ledger)](#flow---auto-keeps-skipping-a-spec-the-board-says-is-ready-strikes-ledger)
 - [Review loop stalls, repeats unchanged work, or runs away (fn-90/fn-159)](#review-loop-stalls-repeats-unchanged-work-or-runs-away-fn-90fn-159)
 - [flowctl says my config carries removed keys, or my routing block is ignored (fn-195)](#flowctl-says-my-config-carries-removed-keys-or-my-routing-block-is-ignored-fn-195)
@@ -71,34 +69,6 @@ flowctl init
 
 Or run `/flow-next:uninstall` to clean up docs and get the commands printed for manual execution.
 
-## Debug Ralph runs
-
-```bash
-# Check run progress
-cat scripts/ralph/runs/*/progress.txt
-
-# View iteration logs
-ls scripts/ralph/runs/*/iter-*.log
-
-# Check for blocked tasks
-ls scripts/ralph/runs/*/block-*.md
-```
-
-Each Ralph run lives under `scripts/ralph/runs/<timestamp>/`. The directory contains the iteration log, receipts (review / walkthrough / blocked), and an optional `progress.txt` tail. Deep dive: [`ralph.md`](ralph.md).
-
-## Receipt validation failing
-
-```bash
-# Check receipt exists
-ls scripts/ralph/runs/*/receipts/
-
-# Verify receipt format
-cat scripts/ralph/runs/*/receipts/impl-fn-1.1.json
-# Must have: {"type":"impl_review","id":"fn-1.1",...}
-```
-
-Ralph reads receipts to decide whether to advance, retry, or block. A missing or malformed receipt freezes the loop. The bundled `flowctl validate --all` checks state-file shape; receipt-shape errors usually mean a backend wrote the file mid-iteration and the loop crashed.
-
 <a id="pilot-keeps-skipping-a-spec-the-board-says-is-ready-strikes-ledger-fn-184325"></a>
 
 ## `flow --auto` keeps skipping a spec the board says is ready (strikes ledger)
@@ -128,7 +98,7 @@ Clearing a strike **does not re-ready the spec** - the two signals are orthogona
 **Symptoms:** a plan/impl/completion review loops far more than the ~3-round cap - the field report was **~11×** on a large ticket before the reviewer and implementer converged. Most common on the **Cursor** review backend, but the underlying causes were backend-agnostic.
 
 **What was happening (root causes, now bounded):**
-- **The cap was prose-only and reset every invocation.** `MAX_REVIEW_ITERATIONS` (then default 4; now 8) was an instruction to the host LLM to keep an in-context counter - but it reset to 0 on every *fresh* review invocation (a new Ralph iteration, a new `flow --auto` hop, a human retry). The runaway was ≈ 5-6 fresh invocations × ~3 in-agent rounds. Now flowctl owns a **cumulative counter on spec state** that survives fresh invocations and **refuses at the cap** (exit `4` + `ESCALATE:`).
+- **The cap was prose-only and reset every invocation.** `MAX_REVIEW_ITERATIONS` (then default 4; now 8) was an instruction to the host LLM to keep an in-context counter - but it reset to 0 on every *fresh* review invocation (a new `flow --auto` hop, a human retry). The runaway was ≈ 5-6 fresh invocations × ~3 in-agent rounds. Now flowctl owns a **cumulative counter on spec state** that survives fresh invocations and **refuses at the cap** (exit `4` + `ESCALATE:`).
 - **Every re-review was a fresh blind review** (a churn lottery - two identical fresh Cursor reviews overlapped on only ~50% of findings, so SHIP was statistically near-unreachable within the cap). The **convergence ratchet** now renders the validated `findings.items` records (severity, classification, and status) with labeled legacy prose only as a fallback. Its shrink-only contract remains: verify each prior finding fixed; only a NEW ≥ Major finding may block; all prior fixed + no new ≥ Major ⇒ MUST SHIP.
 - **Codex/copilot verdicts could be poisoned** by a verdict literal echoed in tool output (e.g. a grep of `smoke_test.sh`'s assertions), making flowctl report SHIP while the reviewer said NEEDS_WORK - a false SHIP *or* a false NEEDS_WORK that kept a loop alive. The parse now isolates the final agent message (last-match).
 - **The ratchet asked for prior-finding resolutions without stating the machine grammar**, so a compliant-sounding reviewer answered in prose and the parser recorded nothing: every prior carried forward at `open`, the open set looked inflated, and a trend-based stall rule escalated three healthy converging loops in a row at round 2 of 8. The prompt now states the exact line grammar (and an aggregate all-clear), the parser accepts every token it advertises, and **the trend rules are gone** - see the note below on what a runaway looks like now.
@@ -136,11 +106,11 @@ Clearing a strike **does not re-ready the spec** - the two signals are orthogona
 
 **What to do if you hit the cap now:**
 - `NOT_RETRYABLE: artifact unchanged since last verdict` exits **1** before dispatch and consumes no round. Change the actual reviewed artifact, or have a human decide whether an explicit re-plan is warranted; do not blindly retry it.
-- Either `ESCALATE: review loop stalled (<rule>)` or `ESCALATE: reviewer requested human review` exits **4** and is **not retryable**. Under Ralph/autonomous it surfaces as NEEDS_HUMAN. A human should inspect the persisted receipt and findings trail, then decide whether the work needs redesign, a focused fix, or a re-plan.
-- After an explicit **re-plan** (you rewrote the spec/approach, not just patched a finding), a human can reset the counter to re-open the cap: `flowctl spec reset-review-rounds <spec-id>` (add `--impl` to also clear per-task impl-review counters). A `SHIP` verdict resets automatically. Ralph blocks reset commands and `--force`; they are never autonomous recovery tools.
+- Either `ESCALATE: review loop stalled (<rule>)` or `ESCALATE: reviewer requested human review` exits **4** and is **not retryable**. Under `flow --auto` it surfaces as NEEDS_HUMAN. A human should inspect the persisted receipt and findings trail, then decide whether the work needs redesign, a focused fix, or a re-plan.
+- After an explicit **re-plan** (you rewrote the spec/approach, not just patched a finding), a human can reset the counter to re-open the cap: `flowctl spec reset-review-rounds <spec-id>` (add `--impl` to also clear per-task impl-review counters). A `SHIP` verdict resets automatically. Reset commands and `--force` are human recovery tools, never autonomous ones.
 - **A loop that runs to the cap with no early escalation is now the expected shape for a non-compliant reviewer, not a bug.** Only one rule terminates early - the reviewer explicitly marking the same finding `not-fixed` in two consecutive rounds - and it needs the machine grammar (`Prior finding #2: not-fixed`) to fire. A reviewer that resolves priors in prose produces no such evidence, so the cap is its only bound. That is deliberate: the trend heuristics this replaced turned non-compliance into *wrong* early stalls instead of *expensive* ones. If the cost bites, **lower the cap - do not re-add trend inference** (the reasoning is recorded in `.flow/memory/knowledge/decisions/`).
-- The default is 8, resolved as env `MAX_REVIEW_ITERATIONS` > config `review.maxIterations` > 8. Tune it with `flowctl config set review.maxIterations <n>` for a persistent change; the cap remains enabled (minimum 1) and escalation remains preferable to a larger budget. Under Ralph both rungs are human-only.
-- Full semantics: [`flowctl.md` § Deterministic review cap](flowctl.md#codex-impl-review) and [`ralph.md` § Review Loops Until SHIP](ralph.md#3-review-loops-until-ship).
+- The default is 8, resolved as env `MAX_REVIEW_ITERATIONS` > config `review.maxIterations` > 8. Tune it with `flowctl config set review.maxIterations <n>` for a persistent change; the cap remains enabled (minimum 1) and escalation remains preferable to a larger budget.
+- Full semantics: [`flowctl.md` § Deterministic review cap](flowctl.md#codex-impl-review).
 
 ## flowctl says my config carries removed keys, or my routing block is ignored (fn-195)
 
@@ -270,7 +240,6 @@ Run manually in terminal (DCG blocks these from AI agents):
 
 ```bash
 rm -rf .flow/               # Core flow state
-rm -rf scripts/ralph/       # Ralph (if enabled)
 ```
 
 Or use `/flow-next:uninstall` which cleans up docs and prints commands to run. Doc cleanup removes two independent marker blocks from `CLAUDE.md`/`AGENTS.md`: the `<!-- BEGIN FLOW-NEXT -->` … `<!-- END FLOW-NEXT -->` instructions block and, if `/flow-next:setup` scaffolded one, the `<!-- flow-next:model-routing:start -->` … `<!-- flow-next:model-routing:end -->` model-routing block (removed only when its marker pair is well-formed - a damaged pair is reported and left untouched). `GLOSSARY.md` and `STRATEGY.md` at the repo root are intentionally preserved - they outlive flow-next per the survives-uninstall invariant.
@@ -361,6 +330,5 @@ review gates and retired configuration.
 ## See also
 
 - [`flowctl.md`](flowctl.md) - full CLI reference (every command, flag, default).
-- [`ralph.md`](ralph.md) - Ralph loop internals + DCG setup.
 - [`platforms.md`](platforms.md) - platform-specific gotchas (Droid, Codex, OpenCode).
 - [`sync-codex.md`](sync-codex.md) - Codex mirror regeneration + validation guards.

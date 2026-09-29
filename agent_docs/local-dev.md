@@ -22,58 +22,31 @@ every development task.
 
 ## Preferred: local marketplace install
 
-Hooks are PROJECT-level since fn-114 (ralph-init merges them into .claude/settings.json; the plugin ships none). To verify they fire:
+The plugin ships no hooks.
 
 ```bash
 # From this repo root
 /plugin marketplace add ./
 /plugin install flow-next@flow-next
-
-# Test in a project where ralph-init has registered the guard hooks
 ```
 
 ## Alternative: --plugin-dir (test scripts only)
 
 **Bug #14410:** Plugin hooks don't fire when using `--plugin-dir`. Subagents get `${CLAUDE_PLUGIN_ROOT}` literal instead of expanded path.
 
-Test scripts (`ralph_smoke_test.sh`, `ralph_e2e_rp_test.sh`) handle this by copying hooks to `.claude/hooks/` in the test repo. This workaround is only needed for automated tests using `--plugin-dir`.
-
-See `plans/ralph-e2e-notes.md` for the full setup if needed.
-
 ## Smoke tests
 
 ```bash
 plugins/flow-next/scripts/smoke_test.sh
-plugins/flow-next/scripts/ralph_smoke_test.sh
 ```
 
 The full CI-run smoke fleet is larger - per-skill suites live beside these in
 `plugins/flow-next/scripts/`: `ci_test.sh`, `audit_smoke_test.sh`,
 `glossary_smoke_test.sh`, `impl-review_smoke_test.sh`, `make-pr_smoke_test.sh`,
 `map_smoke_test.sh`, `prospect_smoke_test.sh`, `resolve-pr_smoke_test.sh`,
-`strategy_smoke_test.sh`, `plan_review_prompt_smoke.sh`, `pick_python_test.sh`.
+`strategy_smoke_test.sh`, `pick_python_test.sh`.
 `ls plugins/flow-next/scripts/*_test.sh *_smoke*.sh` is the authoritative list;
-this paragraph names the fleet so nobody assumes two suites is the whole gate.
-
-Non-RP Ralph e2e (real `claude`, no RepoPrompt): `plugins/flow-next/scripts/ralph_e2e_test.sh` (run from a non-plugin repo dir; sets its own `TEST_DIR`).
-
-**RP smoke** (RP 1.5.68+ auto-opens window with `--create`):
-```bash
-RP_SMOKE=1 TEST_DIR=/tmp/flow-next-ralph-smoke-rpN KEEP_TEST_DIR=1 \
-  plugins/flow-next/scripts/ralph_smoke_rp.sh
-```
-
-**Full RP e2e:**
-```bash
-TEST_DIR=/tmp/flow-next-ralph-e2e-rpN KEEP_TEST_DIR=1 \
-  plugins/flow-next/scripts/ralph_e2e_rp_test.sh
-```
-
-**Short RP e2e** (2 tasks, faster iteration):
-```bash
-CREATE=1 TEST_DIR=/tmp/flow-next-ralph-e2e-short-rpN \
-  plugins/flow-next/scripts/ralph_e2e_short_rp_test.sh
-```
+this paragraph names the fleet so nobody assumes one suite is the whole gate.
 
 ## Codex plain-text prompt smoke
 
@@ -208,21 +181,8 @@ Some smokes here require manual probing in a real repo (operator-level); deferre
 - CE validates and consumes the direct `context_builder` result (prompt, formatted selection, positive file/token counts, context/chat identity, and terminal review response). Do not inspect a visible compose tab, augment selection, or send a second initial chat. Classic alone uses the returned `W`/`T` with the legacy selection/chat wrappers.
 - Write receipt JSON after chat returns when `REVIEW_RECEIPT_PATH` is set.
 
-## Debug envs (optional, Ralph only)
-
-```bash
-FLOW_RALPH_CLAUDE_MODEL=claude-opus-4-6
-FLOW_RALPH_CLAUDE_DEBUG=hooks
-FLOW_RALPH_CLAUDE_VERBOSE=1
-FLOW_RALPH_CLAUDE_PERMISSION_MODE=bypassPermissions
-FLOW_RALPH_CLAUDE_NO_SESSION_PERSISTENCE=1
-```
-
 ## Logs
 
-- Ralph run logs: `scripts/ralph/runs/<run>/`
-- Verbose log: `scripts/ralph/runs/<run>/ralph.log`
-- Receipts: `scripts/ralph/runs/<run>/receipts/`
 - Claude jsonl: `~/.claude/projects/**/<session_id>.jsonl`
 
 ## Contributing scope
