@@ -263,7 +263,7 @@ With glossary proposals, ask the separate `Glossary?` question in [references/gl
 
 ### 5.9 — Mark-ready write (interactive only)
 
-With an eligible §4.2 snapshot, offer the separate `Mark ready?` question per [references/mark-ready.md](references/mark-ready.md) unless already answered: `mark-ready` writes, `keep-draft` leaves readiness unchanged. Autofix never writes readiness.
+With an eligible §4.2 snapshot, offer the separate `Mark ready?` question per [references/mark-ready.md](references/mark-ready.md) unless already answered: `mark-ready` writes, `keep-draft` leaves readiness unchanged. Autofix never writes readiness. Under `from:flow` the question is never asked: the conductor builds the spec in this session, so readiness does not matter and the spec stays as it is.
 
 ### 5.9b — No-plan write
 

@@ -29,6 +29,6 @@ unknown flags and missing base values. Carry these values between tool calls:
 
 Keep this skill inline so `AskUserQuestion` remains available. Ask only for missing information, with a
 recommended option; use a numbered prompt if the tool is unavailable. `NEED_INPUT:` means ask
-outside Bash and rerun with the answer. Autonomous gaps hard-error instead. Draft rules live in create-and-finalize; a complete chained layer can be ready
-under autonomy. Never merge here. Evidence, paths and requirement attribution must be grounded in the export
+outside Bash and rerun with the answer. Autonomous gaps hard-error instead. PRs open ready unless `--draft` or open items (rules in
+create-and-finalize); a branch without a spec takes workflow.md's no-spec path. Never merge here. Evidence, paths and requirement attribution must be grounded in the export
 and receipts, with unknowns explicit rather than invented.

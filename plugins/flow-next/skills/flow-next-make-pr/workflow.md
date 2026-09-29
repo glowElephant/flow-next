@@ -16,7 +16,9 @@ phase outputs in the same shell; do not print or reassemble its source.
 source "$(dirname "$FLOWCTL")/make-pr-preflight.sh"
 ```
 
-Exit 1 is failure; exit 2 needs human intervention; exit 3 carries `NEED_INPUT:`.
+Exit 1 is failure; exit 2 needs human intervention; exit 3 carries `NEED_INPUT:`; exit 4 (`NO_SPEC`)
+means the branch carries no spec: take the no-spec path below and skip every later phase. A repo
+without `.flow/` takes that path without running the script.
 Under `FLOW_AUTONOMOUS=1`, `AUTONOMOUS=1`, or `mode:autonomous`, never prompt: preserve the exit outcome. Attended, resolve
 only the named missing input and rerun.
 
@@ -24,6 +26,14 @@ Already-closed specs stay untouched. Otherwise completed specs close on the head
 task-less specs have no close commit and still compose interactively. For `OPEN_COUNT > 0`,
 autonomous hard-errors (exit 2). Dry-run and body-only updates never close. Under `--update` an
 existing OPEN PR is REQUIRED; closed/merged PRs do not prevent a create. Preserve `PHASE0_CONTEXT.head`.
+### No-spec path
+
+Never create a spec to open a pull request. On the default branch, first create a branch named
+for the change. Write the session's handoff (what changed, how it was verified, open items and
+follow-ups) to a temporary body file, push, and run `gh pr create` with a one-line title and that
+body file; add `--draft` only for `--draft`, and `--base` when given. Under `--update`, run
+`gh pr edit` with the body file instead; under `--dry-run`, print the body and stop. Print the PR URL.
+
 ## Phase 1: Gather inputs
 
 Capture `EXPORT_PAYLOAD` from `$FLOWCTL spec export-cognitive-aid "$SPEC_ID"

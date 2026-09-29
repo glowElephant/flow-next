@@ -430,8 +430,8 @@ class DraftMatrixTestCase(unittest.TestCase):
             # (autonomous, open_items, force, chain) -> flag
             (("0", "0", "", ""), ""),
             (("0", "2", "", ""), "--draft"),
-            (("1", "0", "", ""), "--draft"),
-            (("1", "0", "ready", ""), "--draft"),
+            (("1", "0", "", ""), ""),
+            (("1", "0", "ready", ""), ""),
             (("1", "0", "", "fn-1-parent"), ""),
             (("1", "1", "", "fn-1-parent"), "--draft"),
             (("1", "0", "draft", "fn-1-parent"), "--draft"),

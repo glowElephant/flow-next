@@ -35,10 +35,12 @@ Before writing logic for a feature, name the data it touches and what owns each 
 ## Attended and unattended
 
 - **Attended** (a person is in the session): they want fast feedback. Ask only what only they can
-  answer, one question at a time; settle anything observable by running it. Commit on a local
+  answer, and put related questions in one prompt rather than one per turn; settle anything
+  observable by running it. Do not ask where a sensible default exists (a branch, a readiness
+  flag): take it and say so in one line. Commit on a local
   branch only when review needs it (review reads commits); never push or open a pull request
-  unless asked. Hand discoveries back as offers ("found X, not part of this; want a
-  follow-up?").
+  unless asked. List discoveries in the handoff as follow-ups ("found X, not part of this");
+  the person decides what to pick up.
 - **Unattended** (`--auto`): nobody is waiting. Never ask; decide from evidence, and stop only
   for a call only a human can make or an irreversible action. Fix a discovery only when it
   blocks the goal, as its own commit; list the rest as follow-ups in the final report.
@@ -54,9 +56,12 @@ to a pull request.
 
 Act on findings the way a careful author would: fix a finding only when it shows the change
 itself does the wrong thing in a scenario the request covers. Hardening, extra shutdown or
-error paths, broader refactors and style are follow-ups, listed in the handoff, not fixed. When a
-finding points at unrequested machinery your change added, remove it. After
-fixing, re-review once with a single reviewer looking at the fixes; do not loop.
+error paths, broader refactors, style and problems that existed before the change are
+follow-ups: list them in the handoff and do not ask whether to fold them in; the person asks if
+they want one. When a finding points at unrequested machinery your change added, remove it.
+After fixing, re-review once with a single reviewer looking at the fixes; do not loop. Fixes
+after that re-review, including ones the person asks for, are verified with focused tests, not
+another review.
 
 Attended: hand the result back first, in its own message, and end the turn; then start the review
 in the background and report its verdict (and any fix) when it lands. Unattended: the verdict

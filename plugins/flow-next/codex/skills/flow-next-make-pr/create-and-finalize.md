@@ -5,9 +5,10 @@ Use rendered `BODY_FILE` unchanged, with any enabled lens line appended. Require
 nonempty content; above 65,000 characters stop with the retained file, never
 truncate. Clean temporary files on exit.
 
-Set `OPEN_ITEMS_COUNT` from spec open questions, `deferred_findings`, completion
-review `needs_work`, incomplete tasks and other unfinished authored items; QA
-findings remain advisory. Restore `CHAIN_PARENT`, `PARENT_PR`, `PARENT_PR_STATE`
+Set `OPEN_ITEMS_COUNT` from spec open questions, completion review `needs_work`,
+incomplete tasks and other unfinished authored items. Otherwise the PR opens
+ready: `deferred_findings` and follow-ups are listed in the body, not a reason to
+draft, and QA findings remain advisory. Restore `CHAIN_PARENT`, `PARENT_PR`, `PARENT_PR_STATE`
 from `PHASE0_CONTEXT`. Immediately before push check the aid artifact's head
 against HEAD; mismatch uses the labeled fallback, never stale fields.
 
