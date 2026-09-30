@@ -8,7 +8,7 @@ Flow-Next changed shape with 5.0.0. One command, `/flow-next:flow`, reads whatev
 
 Flow-Next has one unattended mode: `/flow-next:flow --auto` (with `--until=merge` or `--tick`). The Ralph harness it replaced is gone, so there is no repo-local loop to scaffold, no guard hooks to register and no second set of receipts to keep in step.
 
-**What changes when you upgrade.** Ralph is removed. If you still run it, pin flow-next 6.6.x. Otherwise delete `scripts/ralph/` and any `ralph-guard` hook entries from your project settings, and use `/flow-next:flow --auto` for unattended runs. If you turned on the HTML render lenses, read the note on them under Removed.
+**What changes when you upgrade.** Ralph is removed. If you still run it, pin flow-next 6.7.x. Otherwise delete `scripts/ralph/` and any `ralph-guard` hook entries from your project settings, and use `/flow-next:flow --auto` for unattended runs. If you turned on the HTML render lenses, read the note on them under Removed.
 
 ### Removed
 
