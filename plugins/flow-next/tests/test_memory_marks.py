@@ -265,79 +265,6 @@ class TestMarkFreshHappyPath(MemoryRepoTemplate, unittest.TestCase):
             self.assertNotIn("status", fm)
             self.assertEqual(fm["last_audited"], _today())
 
-    def test_audited_by_records_breadcrumb(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            mem = self.init_repo(Path(tmp))
-            path = _seed_stale_entry(mem)
-            result = _run(
-                Path(tmp),
-                "memory",
-                "mark-fresh",
-                "old-rule-2026-01-01",
-                "--audited-by",
-                "audit-skill",
-                "--json",
-            )
-            self.assertEqual(
-                result["audit_notes"],
-                "marked fresh (audited-by: audit-skill)",
-            )
-            fm = flowctl.parse_memory_frontmatter(path)
-            self.assertEqual(
-                fm["audit_notes"],
-                "marked fresh (audited-by: audit-skill)",
-            )
-
-    def test_body_preserved(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            mem = self.init_repo(Path(tmp))
-            path = _seed_stale_entry(mem)
-            _run(
-                Path(tmp),
-                "memory",
-                "mark-fresh",
-                "old-rule-2026-01-01",
-                "--json",
-            )
-            text = path.read_text(encoding="utf-8")
-            self.assertIn("Convention body content.", text)
-
-
-class TestMarkFreshErrors(MemoryRepoTemplate, unittest.TestCase):
-    def test_unknown_id(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            mem = self.init_repo(Path(tmp))
-            _seed_stale_entry(mem)
-            result = _run(
-                Path(tmp),
-                "memory",
-                "mark-fresh",
-                "does-not-exist",
-                "--json",
-                expect_rc=1,
-            )
-            self.assertFalse(result["success"])
-            self.assertIn("not found", result["error"])
-
-    def test_legacy_id_rejected(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            mem = self.init_repo(Path(tmp))
-            _seed_stale_entry(mem)
-            (mem / "decisions.md").write_text(
-                "## 2026-01-01 manual\nDecision body.\n", encoding="utf-8"
-            )
-            result = _run(
-                Path(tmp),
-                "memory",
-                "mark-fresh",
-                "legacy/decisions.md",
-                "--json",
-                expect_rc=1,
-            )
-            self.assertFalse(result["success"])
-            self.assertIn("legacy", result["error"].lower())
-
-
 class TestMarkFreshRoundTrip(MemoryRepoTemplate, unittest.TestCase):
     def test_stale_then_fresh_roundtrip(self) -> None:
         """mark-stale then mark-fresh leaves entry in active default."""
@@ -439,119 +366,6 @@ class TestMarkStaleHappyPath(MemoryRepoTemplate, unittest.TestCase):
                 fm["audit_notes"],
                 "src/auth.ts moved to src/middleware/auth.ts",
             )
-
-    def test_body_preserved(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            mem = self.init_repo(Path(tmp))
-            path = _seed_entry(mem)
-            _run(
-                Path(tmp),
-                "memory",
-                "mark-stale",
-                "null-deref-in-auth-2026-05-01",
-                "--reason",
-                "x",
-                "--json",
-            )
-            text = path.read_text(encoding="utf-8")
-            self.assertIn(
-                "user.role propagation issue; fix added a guard.", text
-            )
-
-    def test_audited_by_suffix(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            mem = self.init_repo(Path(tmp))
-            path = _seed_entry(mem)
-            result = _run(
-                Path(tmp),
-                "memory",
-                "mark-stale",
-                "null-deref-in-auth",
-                "--reason",
-                "code path removed",
-                "--audited-by",
-                "audit-skill",
-                "--json",
-            )
-            self.assertEqual(
-                result["audit_notes"],
-                "code path removed (audited-by: audit-skill)",
-            )
-            fm = flowctl.parse_memory_frontmatter(path)
-            self.assertIn("(audited-by: audit-skill)", fm["audit_notes"])
-
-    def test_human_output(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            mem = self.init_repo(Path(tmp))
-            _seed_entry(mem)
-            result = _run(
-                Path(tmp),
-                "memory",
-                "mark-stale",
-                "null-deref-in-auth-2026-05-01",
-                "--reason",
-                "x",
-            )
-            self.assertIn("Flagged stale", result["_stdout"])
-            self.assertIn(_today(), result["_stdout"])
-
-
-class TestMarkStaleErrors(MemoryRepoTemplate, unittest.TestCase):
-    def test_missing_reason_exits_2(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            mem = self.init_repo(Path(tmp))
-            _seed_entry(mem)
-            result = _run(
-                Path(tmp),
-                "memory",
-                "mark-stale",
-                "null-deref-in-auth-2026-05-01",
-                expect_rc=2,
-            )
-            combined = result["_stdout"] + result["_stderr"]
-            self.assertTrue(
-                re.search(r"--reason", combined),
-                f"expected argparse to mention --reason; got: {combined!r}",
-            )
-
-    def test_unknown_id(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            mem = self.init_repo(Path(tmp))
-            _seed_entry(mem)
-            result = _run(
-                Path(tmp),
-                "memory",
-                "mark-stale",
-                "does-not-exist",
-                "--reason",
-                "x",
-                "--json",
-                expect_rc=1,
-            )
-            self.assertFalse(result["success"])
-            self.assertIn("not found", result["error"])
-
-    def test_legacy_id_rejected(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            mem = self.init_repo(Path(tmp))
-            _seed_entry(mem)
-            (mem / "pitfalls.md").write_text(
-                "## 2026-01-01 manual\nLegacy entry.\n", encoding="utf-8"
-            )
-            result = _run(
-                Path(tmp),
-                "memory",
-                "mark-stale",
-                "legacy/pitfalls.md",
-                "--reason",
-                "x",
-                "--json",
-                expect_rc=1,
-            )
-            self.assertFalse(result["success"])
-            self.assertIn("legacy", result["error"].lower())
-            self.assertIn("migrate", result["error"])
-
 
 class TestMarkStaleIdempotent(MemoryRepoTemplate, unittest.TestCase):
     def test_remark_updates_audit_notes_and_last_audited(self) -> None:
@@ -853,42 +667,6 @@ class TestMarkHardenedHappyPath(MemoryRepoTemplate, unittest.TestCase):
                 # The rewritten frontmatter keeps CRLF too — no stray LF.
                 self.assertNotIn(b"\n", after.replace(b"\r\n", b""))
 
-    def test_audited_by_recorded(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            mem = self.init_repo(Path(tmp))
-            path = _seed_entry(mem)
-            result = _run(
-                Path(tmp),
-                "memory",
-                "mark-hardened",
-                "null-deref-in-auth",
-                "--gate-ref",
-                GATE_REF,
-                "--audited-by",
-                "/flow-next:audit",
-                "--json",
-            )
-            self.assertIn("(audited-by: /flow-next:audit)", result["audit_notes"])
-            fm = flowctl.parse_memory_frontmatter(path)
-            self.assertIn("(audited-by: /flow-next:audit)", fm["audit_notes"])
-
-    def test_human_output(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            mem = self.init_repo(Path(tmp))
-            _seed_entry(mem)
-            result = _run(
-                Path(tmp),
-                "memory",
-                "mark-hardened",
-                ENTRY_ID,
-                "--gate-ref",
-                GATE_REF,
-            )
-            self.assertIn("Hardened:", result["_stdout"])
-            self.assertIn(GATE_REF, result["_stdout"])
-            self.assertIn(_today(), result["_stdout"])
-
-
 class TestMarkHardenedIdempotent(MemoryRepoTemplate, unittest.TestCase):
     def test_remark_replaces_gate_ref(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -983,22 +761,6 @@ class TestMarkHardenedTransitions(MemoryRepoTemplate, unittest.TestCase):
 
 
 class TestMarkHardenedErrors(MemoryRepoTemplate, unittest.TestCase):
-    def test_missing_gate_ref_exits_2(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            mem = self.init_repo(Path(tmp))
-            _seed_entry(mem)
-            result = _run(
-                Path(tmp),
-                "memory",
-                "mark-hardened",
-                ENTRY_ID,
-                expect_rc=2,
-            )
-            combined = result["_stdout"] + result["_stderr"]
-            self.assertTrue(
-                re.search(r"--gate-ref", combined),
-                f"expected argparse to mention --gate-ref; got: {combined!r}",
-            )
 
     def test_empty_gate_ref_exits_2(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -1018,44 +780,116 @@ class TestMarkHardenedErrors(MemoryRepoTemplate, unittest.TestCase):
             self.assertIn("--gate-ref", result["error"])
             self.assertNotIn("status", flowctl.parse_memory_frontmatter(path))
 
-    def test_unknown_id(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            mem = self.init_repo(Path(tmp))
-            _seed_entry(mem)
-            result = _run(
-                Path(tmp),
-                "memory",
-                "mark-hardened",
-                "does-not-exist",
-                "--gate-ref",
-                GATE_REF,
-                "--json",
-                expect_rc=1,
-            )
-            self.assertFalse(result["success"])
-            self.assertIn("does-not-exist", result["error"])
-            self.assertIn("not found", result["error"])
+
+# --- shared per-verb behaviour (mark-fresh / mark-stale / mark-hardened) ---
+
+# The argument each verb requires besides the id.
+_VERB_ARGS = {
+    "mark-fresh": (),
+    "mark-stale": ("--reason", "x"),
+    "mark-hardened": ("--gate-ref", GATE_REF),
+}
+
+
+class TestMarkVerbTables(MemoryRepoTemplate, unittest.TestCase):
+    def test_unknown_id_fails_not_found(self) -> None:
+        for verb, seed in (
+            ("mark-fresh", _seed_stale_entry),
+            ("mark-stale", _seed_entry),
+            ("mark-hardened", _seed_entry),
+        ):
+            with self.subTest(verb=verb), tempfile.TemporaryDirectory() as tmp:
+                seed(self.init_repo(Path(tmp)))
+                result = _run(
+                    Path(tmp), "memory", verb, "does-not-exist",
+                    *_VERB_ARGS[verb], "--json", expect_rc=1,
+                )
+                self.assertFalse(result["success"])
+                self.assertIn("not found", result["error"])
+                if verb == "mark-hardened":
+                    self.assertIn("does-not-exist", result["error"])
 
     def test_legacy_id_rejected(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            mem = self.init_repo(Path(tmp))
-            _seed_entry(mem)
-            (mem / "pitfalls.md").write_text(
-                "## 2026-01-01 manual\nLegacy entry.\n", encoding="utf-8"
-            )
-            result = _run(
-                Path(tmp),
-                "memory",
-                "mark-hardened",
-                "legacy/pitfalls.md",
-                "--gate-ref",
-                GATE_REF,
-                "--json",
-                expect_rc=1,
-            )
-            self.assertFalse(result["success"])
-            self.assertIn("legacy", result["error"].lower())
-            self.assertIn("migrate", result["error"])
+        # (verb, seed, legacy file, error must also name the migrate path)
+        for verb, seed, legacy, names_migrate in (
+            ("mark-fresh", _seed_stale_entry, "decisions.md", False),
+            ("mark-stale", _seed_entry, "pitfalls.md", True),
+            ("mark-hardened", _seed_entry, "pitfalls.md", True),
+        ):
+            with self.subTest(verb=verb), tempfile.TemporaryDirectory() as tmp:
+                mem = self.init_repo(Path(tmp))
+                seed(mem)
+                (mem / legacy).write_text(
+                    "## 2026-01-01 manual\nLegacy entry.\n", encoding="utf-8"
+                )
+                result = _run(
+                    Path(tmp), "memory", verb, f"legacy/{legacy}",
+                    *_VERB_ARGS[verb], "--json", expect_rc=1,
+                )
+                self.assertFalse(result["success"])
+                self.assertIn("legacy", result["error"].lower())
+                if names_migrate:
+                    self.assertIn("migrate", result["error"])
+
+    def test_missing_required_argument_exits_2(self) -> None:
+        for verb, flag in (("mark-stale", "--reason"), ("mark-hardened", "--gate-ref")):
+            with self.subTest(verb=verb), tempfile.TemporaryDirectory() as tmp:
+                _seed_entry(self.init_repo(Path(tmp)))
+                result = _run(Path(tmp), "memory", verb, ENTRY_ID, expect_rc=2)
+                combined = result["_stdout"] + result["_stderr"]
+                self.assertTrue(
+                    re.search(flag, combined),
+                    f"expected argparse to mention {flag}; got: {combined!r}",
+                )
+
+    def test_audited_by_is_recorded(self) -> None:
+        # (verb, seed, id, verb args, expected audit_notes, exact match)
+        for verb, seed, entry, args, notes, exact in (
+            ("mark-fresh", _seed_stale_entry, "old-rule-2026-01-01", (),
+             "marked fresh (audited-by: audit-skill)", True),
+            ("mark-stale", _seed_entry, "null-deref-in-auth", ("--reason", "code path removed"),
+             "code path removed (audited-by: audit-skill)", True),
+            ("mark-hardened", _seed_entry, "null-deref-in-auth", ("--gate-ref", GATE_REF),
+             "(audited-by: audit-skill)", False),
+        ):
+            with self.subTest(verb=verb), tempfile.TemporaryDirectory() as tmp:
+                path = seed(self.init_repo(Path(tmp)))
+                result = _run(
+                    Path(tmp), "memory", verb, entry, *args,
+                    "--audited-by", "audit-skill", "--json",
+                )
+                stored = flowctl.parse_memory_frontmatter(path)["audit_notes"]
+                if exact:
+                    self.assertEqual(result["audit_notes"], notes)
+                    if verb == "mark-fresh":
+                        self.assertEqual(stored, notes)
+                    else:
+                        self.assertIn("(audited-by: audit-skill)", stored)
+                else:
+                    self.assertIn(notes, result["audit_notes"])
+                    self.assertIn(notes, stored)
+
+    def test_body_preserved(self) -> None:
+        for verb, seed, entry, body in (
+            ("mark-fresh", _seed_stale_entry, "old-rule-2026-01-01", "Convention body content."),
+            ("mark-stale", _seed_entry, "null-deref-in-auth-2026-05-01",
+             "user.role propagation issue; fix added a guard."),
+        ):
+            with self.subTest(verb=verb), tempfile.TemporaryDirectory() as tmp:
+                path = seed(self.init_repo(Path(tmp)))
+                _run(Path(tmp), "memory", verb, entry, *_VERB_ARGS[verb], "--json")
+                self.assertIn(body, path.read_text(encoding="utf-8"))
+
+    def test_human_output(self) -> None:
+        for verb, needles in (
+            ("mark-stale", ("Flagged stale",)),
+            ("mark-hardened", ("Hardened:", GATE_REF)),
+        ):
+            with self.subTest(verb=verb), tempfile.TemporaryDirectory() as tmp:
+                _seed_entry(self.init_repo(Path(tmp)))
+                result = _run(Path(tmp), "memory", verb, ENTRY_ID, *_VERB_ARGS[verb])
+                for needle in (*needles, _today()):
+                    self.assertIn(needle, result["_stdout"])
 
 
 class TestHardenedWriteValidation(MemoryRepoTemplate, unittest.TestCase):

@@ -1,4 +1,4 @@
-"""fn-126 R4 — executable Step-0 platform detection + Codex mirror guard.
+"""Executable Step-0 platform detection for every host + Codex mirror guard.
 
 Locks:
 
@@ -8,6 +8,8 @@ Locks:
       droid/claude/cursor/codex unregressed. fn-179 (#306) extends this to the
       claude-code rung: keyed on CLAUDECODE + the .claude-plugin manifest,
       placed below the hosts that prove themselves with their own signal.
+      A PLUGIN_ROOT carrying .flow-next-opencode-manifest is opencode; GROK_AGENT
+      still wins; absence of the file is not an OpenCode signal.
   (b) Codex mirror Step-0 is unconditional PLATFORM=codex — even with
       GROK_AGENT=1 and every other host signal set, the mirror returns codex.
 
@@ -134,6 +136,87 @@ def _build_cursor_install(home: Path) -> Path:
     return root
 
 
+def _build_opencode_install(home: Path) -> Path:
+    """Temp OpenCode install root carrying .flow-next-opencode-manifest."""
+    root = home / "opencode"
+    root.mkdir(parents=True, exist_ok=True)
+    (root / ".flow-next-opencode-manifest").write_text(
+        "skills/flow-next-setup/SKILL.md\n", encoding="utf-8"
+    )
+    return root
+
+
+def _build_neutral_root(home: Path) -> Path:
+    """A plugin root that is not under ~/.cursor and carries no host manifest."""
+    root = home / "plugin-src" / "flow-next"
+    root.mkdir(parents=True, exist_ok=True)
+    return root
+
+
+ROOTS = {
+    "neutral": _build_neutral_root,
+    "claude": _build_claude_install,
+    "cursor": _build_cursor_install,
+    "opencode": _build_opencode_install,
+}
+
+# (case, plugin root kind, host env, expected PLATFORM)
+CANONICAL_CASES = (
+    ("grok alone", "neutral", {"GROK_AGENT": "1"}, "grok"),
+    ("plain shell", "neutral", {}, "codex"),
+    ("droid alone", "neutral", {"DROID_PLUGIN_ROOT": "/tmp/droid-plugin"}, "droid"),
+    ("droid wins over grok", "neutral",
+     {"DROID_PLUGIN_ROOT": "/tmp/droid-plugin", "GROK_AGENT": "1"}, "droid"),
+    # CLAUDECODE is inherited by children, GROK_AGENT is set by the grok
+    # process itself: a grok child of a Claude shell is grok.
+    ("grok wins over inherited CLAUDECODE", "claude",
+     {"CLAUDECODE": "1", "GROK_AGENT": "1"}, "grok"),
+    ("cursor wins over grok", "cursor", {"CURSOR_AGENT": "1", "GROK_AGENT": "1"}, "cursor"),
+    # The env a running plugin skill sees on Claude Code: CLAUDECODE=1,
+    # CLAUDE_PLUGIN_ROOT unset.
+    ("claude-code plugin skill env", "claude", {"CLAUDECODE": "1"}, "claude-code"),
+    # CLAUDE_PLUGIN_ROOT never reaches a plugin skill's Bash env, so it must
+    # not decide the host.
+    ("CLAUDE_PLUGIN_ROOT alone", "neutral", {"CLAUDE_PLUGIN_ROOT": "/tmp/claude-plugin"}, "codex"),
+    # codex exec child of a Claude session: inherits CLAUDECODE, no
+    # .claude-plugin/plugin.json at its PLUGIN_ROOT.
+    ("inherited CLAUDECODE without claude manifest", "neutral", {"CLAUDECODE": "1"}, "codex"),
+    ("droid wins over inherited CLAUDECODE", "claude",
+     {"CLAUDECODE": "1", "DROID_PLUGIN_ROOT": "/tmp/droid"}, "droid"),
+    ("cursor wins over inherited CLAUDECODE", "cursor",
+     {"CURSOR_AGENT": "1", "CLAUDECODE": "1"}, "cursor"),
+    ("cursor alone", "cursor", {"CURSOR_AGENT": "1"}, "cursor"),
+    # Inherited CURSOR_AGENT with a non-cursor PLUGIN_ROOT is not cursor.
+    ("CURSOR_AGENT without install tree", "neutral", {"CURSOR_AGENT": "1"}, "codex"),
+    ("CURSOR_AGENT without install tree plus grok", "neutral",
+     {"CURSOR_AGENT": "1", "GROK_AGENT": "1"}, "grok"),
+    ("opencode manifest at plugin root", "opencode", {}, "opencode"),
+    ("grok wins over opencode manifest", "opencode", {"GROK_AGENT": "1"}, "grok"),
+    ("inherited CLAUDECODE with opencode manifest", "opencode", {"CLAUDECODE": "1"}, "opencode"),
+)
+
+# The Codex mirror returns codex whatever the host signals say.
+MIRROR_CASES = (
+    ("every host signal", "cursor", {
+        "GROK_AGENT": "1",
+        "CURSOR_AGENT": "1",
+        "CLAUDECODE": "1",
+        "CLAUDE_PLUGIN_ROOT": "/tmp/claude-plugin",
+        "DROID_PLUGIN_ROOT": "/tmp/droid-plugin",
+    }, "codex"),
+    ("plain", "neutral", {}, "codex"),
+)
+
+
+def _run_cases(test: unittest.TestCase, bash: str, cases) -> None:
+    for case, root_kind, host_env, expected in cases:
+        with test.subTest(case=case), tempfile.TemporaryDirectory() as td:
+            home = Path(td)
+            root = ROOTS[root_kind](home)
+            env = _clean_env(str(home), str(root), **host_env)
+            test.assertEqual(_run_detection(bash, env), expected)
+
+
 @unittest.skipUnless(_BASH, "bash required to execute the Step-0 detection fence")
 class TestCanonicalDetectionExecutable(unittest.TestCase):
     """R4: run the ACTUAL canonical Step-0 bash under controlled fixtures."""
@@ -153,102 +236,8 @@ class TestCanonicalDetectionExecutable(unittest.TestCase):
         if 'PLATFORM="codex"' not in cls.bash:
             raise AssertionError("canonical Step-0 bash missing codex fallback")
 
-    def _run(self, plugin_root: str | None = None, **host_env: str) -> str:
-        with tempfile.TemporaryDirectory() as td:
-            home = Path(td)
-            # Default plugin root: neutral path (not under ~/.cursor).
-            pr = plugin_root or str(home / "plugin-src" / "flow-next")
-            Path(pr).mkdir(parents=True, exist_ok=True)
-            env = _clean_env(str(home), pr, **host_env)
-            return _run_detection(self.bash, env)
-
-    def _run_claude_install(self, **host_env: str) -> str:
-        """Run with a PLUGIN_ROOT that carries .claude-plugin/plugin.json."""
-        with tempfile.TemporaryDirectory() as td:
-            home = Path(td)
-            root = _build_claude_install(home)
-            env = _clean_env(str(home), str(root), **host_env)
-            return _run_detection(self.bash, env)
-
-    def test_grok_agent_alone_is_grok(self) -> None:
-        self.assertEqual(self._run(GROK_AGENT="1"), "grok")
-
-    def test_plain_shell_is_codex(self) -> None:
-        self.assertEqual(self._run(), "codex")
-
-    def test_droid_wins_over_grok(self) -> None:
-        self.assertEqual(
-            self._run(DROID_PLUGIN_ROOT="/tmp/droid-plugin", GROK_AGENT="1"),
-            "droid",
-        )
-
-    def test_grok_wins_over_inherited_claudecode(self) -> None:
-        # fn-179 (#306): CLAUDECODE is inherited by children, GROK_AGENT is set
-        # by the grok process itself — a grok child of a Claude shell is grok.
-        self.assertEqual(
-            self._run_claude_install(CLAUDECODE="1", GROK_AGENT="1"),
-            "grok",
-        )
-
-    def test_cursor_wins_over_grok(self) -> None:
-        with tempfile.TemporaryDirectory() as td:
-            home = Path(td)
-            cursor_root = _build_cursor_install(home)
-            env = _clean_env(
-                str(home),
-                str(cursor_root),
-                CURSOR_AGENT="1",
-                GROK_AGENT="1",
-            )
-            self.assertEqual(_run_detection(self.bash, env), "cursor")
-
-    def test_droid_alone(self) -> None:
-        self.assertEqual(self._run(DROID_PLUGIN_ROOT="/tmp/droid-plugin"), "droid")
-
-    def test_claude_code_plugin_skill_env_is_claude_code(self) -> None:
-        # fn-179 (#306) core case: the env a running plugin skill actually sees
-        # on Claude Code — CLAUDECODE=1, CLAUDE_PLUGIN_ROOT UNSET.
-        self.assertEqual(self._run_claude_install(CLAUDECODE="1"), "claude-code")
-
-    def test_claude_plugin_root_alone_no_longer_classifies(self) -> None:
-        # The pre-#306 key is dead: it never reaches a plugin skill's Bash env,
-        # so it must not be what decides the host.
-        self.assertEqual(self._run(CLAUDE_PLUGIN_ROOT="/tmp/claude-plugin"), "codex")
-
-    def test_inherited_claudecode_without_claude_manifest_is_codex(self) -> None:
-        # codex exec child of a Claude session: inherits CLAUDECODE, resolves a
-        # Codex-home PLUGIN_ROOT with no .claude-plugin/plugin.json → codex.
-        self.assertEqual(self._run(CLAUDECODE="1"), "codex")
-
-    def test_droid_wins_over_inherited_claudecode(self) -> None:
-        self.assertEqual(
-            self._run_claude_install(CLAUDECODE="1", DROID_PLUGIN_ROOT="/tmp/droid"),
-            "droid",
-        )
-
-    def test_cursor_wins_over_inherited_claudecode(self) -> None:
-        with tempfile.TemporaryDirectory() as td:
-            home = Path(td)
-            cursor_root = _build_cursor_install(home)
-            env = _clean_env(
-                str(home), str(cursor_root), CURSOR_AGENT="1", CLAUDECODE="1"
-            )
-            self.assertEqual(_run_detection(self.bash, env), "cursor")
-
-    def test_cursor_alone(self) -> None:
-        with tempfile.TemporaryDirectory() as td:
-            home = Path(td)
-            cursor_root = _build_cursor_install(home)
-            env = _clean_env(str(home), str(cursor_root), CURSOR_AGENT="1")
-            self.assertEqual(_run_detection(self.bash, env), "cursor")
-
-    def test_cursor_agent_without_install_tree_falls_to_codex(self) -> None:
-        # Inherited CURSOR_AGENT + non-cursor PLUGIN_ROOT → codex (not cursor).
-        self.assertEqual(self._run(CURSOR_AGENT="1"), "codex")
-
-    def test_cursor_agent_without_install_plus_grok_is_grok(self) -> None:
-        # No cursor path match → fall through; GROK_AGENT then wins over else.
-        self.assertEqual(self._run(CURSOR_AGENT="1", GROK_AGENT="1"), "grok")
+    def test_detection_table(self) -> None:
+        _run_cases(self, self.bash, CANONICAL_CASES)
 
 
 @unittest.skipUnless(_BASH, "bash required to execute the mirror Step-0 detection fence")
@@ -265,28 +254,8 @@ class TestMirrorUnconditionalCodex(unittest.TestCase):
             _read(MIRROR_WF), source="codex mirror workflow"
         )
 
-    def test_mirror_returns_codex_with_every_host_signal(self) -> None:
-        with tempfile.TemporaryDirectory() as td:
-            home = Path(td)
-            cursor_root = _build_cursor_install(home)
-            env = _clean_env(
-                str(home),
-                str(cursor_root),
-                GROK_AGENT="1",
-                CURSOR_AGENT="1",
-                CLAUDECODE="1",
-                CLAUDE_PLUGIN_ROOT="/tmp/claude-plugin",
-                DROID_PLUGIN_ROOT="/tmp/droid-plugin",
-            )
-            self.assertEqual(_run_detection(self.bash, env), "codex")
-
-    def test_mirror_returns_codex_plain(self) -> None:
-        with tempfile.TemporaryDirectory() as td:
-            home = Path(td)
-            pr = home / "plugin"
-            pr.mkdir()
-            env = _clean_env(str(home), str(pr))
-            self.assertEqual(_run_detection(self.bash, env), "codex")
+    def test_mirror_detection_table(self) -> None:
+        _run_cases(self, self.bash, MIRROR_CASES)
 
 
 if __name__ == "__main__":

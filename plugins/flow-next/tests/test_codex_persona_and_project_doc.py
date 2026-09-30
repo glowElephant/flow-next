@@ -152,29 +152,13 @@ class CodexPersonaOverride(unittest.TestCase):
             flowctl.BACKEND_REGISTRY["codex"]["needs_persona_override"]
         )
 
-    def test_impl_review_prompt_carries_persona_override(self):
-        with _flow_repo() as (repo, base):
-            sent = self._run(repo, base, "impl")
-        self.assertIn("PERSONA OVERRIDE", sent)
-        self.assertIn("superseded", sent)
-
-    def test_plan_review_prompt_carries_persona_override(self):
-        with _flow_repo() as (repo, base):
-            sent = self._run(repo, base, "plan")
-        self.assertIn("PERSONA OVERRIDE", sent)
-        self.assertIn("superseded", sent)
-
-    def test_completion_review_prompt_carries_persona_override(self):
-        with _flow_repo() as (repo, base):
-            sent = self._run(repo, base, "completion")
-        self.assertIn("PERSONA OVERRIDE", sent)
-        self.assertIn("superseded", sent)
-
-    def test_persona_leads_the_prompt(self):
-        """Precedence is positional: the override must arrive FIRST."""
-        with _flow_repo() as (repo, base):
-            sent = self._run(repo, base, "impl")
-        self.assertTrue(sent.startswith("## PERSONA OVERRIDE"), sent[:80])
+    def test_every_review_kind_leads_with_the_persona_override(self):
+        # Precedence is positional: the override must arrive FIRST.
+        for kind in ("impl", "plan", "completion"):
+            with self.subTest(kind=kind), _flow_repo() as (repo, base):
+                sent = self._run(repo, base, kind)
+                self.assertTrue(sent.startswith("## PERSONA OVERRIDE"), sent[:80])
+                self.assertIn("superseded", sent)
 
 
 class CodexProjectDocSuppression(unittest.TestCase):

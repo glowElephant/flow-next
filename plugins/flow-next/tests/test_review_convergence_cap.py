@@ -208,181 +208,77 @@ class TestConvergenceRatchet(unittest.TestCase):
                     ],
                 )
 
-    def test_aggregate_all_clear_line_keeps_the_container(self):
-        """fn-168 R6/R2 recognition half: the aggregate record must not drop it.
+    def test_prior_item_resolution(self):
+        """How one round's output resolves the prior findings.
 
-        `Prior findings: all fixed` matches the broad presence detector, so
-        before this spec it forced a record/canonical mismatch and discarded the
-        container. Recognition lands here; the sweep semantics are task .2's.
+        Expected is the resulting status list, or None for the INVALID
+        sentinel (the round's findings container is discarded).
         """
-        items = flowctl._review_finding_prior_items(
-            "Prior findings: all fixed", _ratchet_prior_container(), "receipt-2"
-        )
-        self.assertIsNotNone(items)
-        self.assertEqual(len(items), 1)
-
-    def test_aggregate_sweeps_open_priors_to_fixed(self):
-        """fn-168 R2 semantics: the common "I fixed everything" round."""
-        items = flowctl._review_finding_prior_items(
-            "Prior findings: all fixed", _ratchet_prior_container(), "receipt-2"
-        )
-        self.assertEqual([item["status"] for item in items], ["fixed"])
-        self.assertEqual(items[0]["lastSeenReceiptId"], "receipt-2")
-
-    def test_aggregate_sweeps_a_previously_not_fixed_prior(self):
-        """`open`/`not_fixed` are both swept (R8 already reset the latter)."""
-        items = flowctl._review_finding_prior_items(
-            "Prior findings: all fixed",
-            _ratchet_prior_container(status="not_fixed"),
-            "receipt-2",
-        )
-        self.assertEqual([item["status"] for item in items], ["fixed"])
-
-    def test_aggregate_never_touches_withdrawn(self):
-        """`withdrawn` is a resolved terminal — re-stamping it corrupts lineage."""
-        items = flowctl._review_finding_prior_items(
-            "Prior findings: all fixed",
-            _ratchet_prior_container(status="withdrawn"),
-            "receipt-2",
-        )
-        self.assertEqual([item["status"] for item in items], ["withdrawn"])
-
-    def test_explicit_per_ordinal_record_disables_the_aggregate(self):
-        """Explicit beats implicit, enforced by parse ORDER not just documented.
-
-        A contradicting pair must resolve to the explicit line, never to the
-        aggregate's optimistic sweep.
-        """
-        items = flowctl._review_finding_prior_items(
-            "Prior findings: all fixed\nPrior finding #1: not-fixed",
-            _ratchet_prior_container(),
-            "receipt-2",
-        )
-        self.assertEqual([item["status"] for item in items], ["not_fixed"])
-
-    def test_aggregate_is_inert_with_no_prior_set(self):
-        """It never fires on an empty prior set, and never destroys the round."""
-        self.assertEqual(
-            flowctl._review_finding_prior_items(
-                "Prior findings: all fixed", None, "receipt-1"
-            ),
-            [],
-        )
-
-    def test_malformed_line_beside_an_aggregate_is_never_a_silent_all_clear(self):
-        """Recognized-but-invalid must select the INVALID sentinel.
-
-        The dangerous failure is the aggregate being honored while a stray line
-        is dropped — that would report every prior fixed on a round the parser
-        did not actually understand.
-        """
-        self.assertIsNone(
-            flowctl._review_finding_prior_items(
-                "Prior findings: all fixed\nPrior finding #1: pending",
-                _ratchet_prior_container(),
-                "receipt-2",
-            )
-        )
-
-    def test_qualified_all_clear_is_not_an_aggregate(self):
-        """fn-168 R2: a trailing qualifier must not sweep a still-open finding.
-
-        `Prior findings: all fixed except finding #2` used to match the aggregate
-        regex, and the sweep then marked the very finding the reviewer had just
-        excluded as fixed — erasing real evidence, which is strictly worse than
-        the false stall this spec removes. The line is now recognized-but-invalid.
-        """
-        for line in (
-            "Prior findings: all fixed except finding #1",
-            "Prior findings: all fixed but one remains",
-            "Prior findings: all fixed pending verification",
-        ):
-            with self.subTest(line=line):
-                self.assertFalse(
-                    flowctl._FINDINGS_PRIOR_AGGREGATE_RE.findall(line), line
-                )
-                self.assertIsNone(
-                    flowctl._review_finding_prior_items(
-                        line, _ratchet_prior_container(), "receipt-2"
-                    )
-                )
-
-    def test_plain_all_clear_tolerates_only_trailing_punctuation(self):
-        for line in (
-            "Prior findings: all fixed",
-            "Prior findings: all fixed.",
-            "Prior findings — all fixed",
-        ):
-            with self.subTest(line=line):
-                self.assertTrue(
-                    flowctl._FINDINGS_PRIOR_AGGREGATE_RE.findall(line), line
-                )
-
-    def test_unaddressed_empty_array_is_not_a_prior_findings_signal(self):
-        """fn-168 R2, the load-bearing negative.
-
-        `unaddressed` rides in the canonical closing JSON tail of EVERY review —
-        observed live in this workstream, a round-1 plan review emitted
-        `"unaddressed":["R1","R3","R6"]` before any prior finding existed, and a
-        round-3 SHIP emitted `"unaddressed":[]` with zero discussion of priors.
-        It is ambient, and it answers a different question (which spec R-IDs the
-        review left uncovered); a prior FINDING is not an R-ID, so a legitimately
-        empty array can coexist with a genuinely unfixed finding.
-
-        Sweeping priors off it would erase the only evidence stall detection has
-        left after fn-168 — `same-not-fixed-lineage` reads `not_fixed` and
-        nothing else — so every pathological loop would run to the cap with no
-        diagnostic. It must never mark a prior finding fixed.
-        """
-        output = (
+        unaddressed_tail = (
             "All prior findings have been addressed.\n\n"
             "```json\n"
             '{"classification_counts":{"introduced":0,"pre_existing":0},'
             '"unaddressed":[]}\n'
             "```\n"
         )
-        items = flowctl._review_finding_prior_items(
-            output, _ratchet_prior_container(status="not_fixed"), "receipt-2"
+        # (case, output, prior status or None for no prior set, expected)
+        rows = (
+            # The aggregate all-clear keeps the container and sweeps open and
+            # not_fixed priors to fixed; withdrawn is a resolved terminal.
+            ("aggregate_sweeps_open", "Prior findings: all fixed", "open", ["fixed"]),
+            ("aggregate_sweeps_not_fixed", "Prior findings: all fixed", "not_fixed", ["fixed"]),
+            ("aggregate_never_touches_withdrawn", "Prior findings: all fixed", "withdrawn", ["withdrawn"]),
+            # Explicit beats implicit, enforced by parse order.
+            ("explicit_record_disables_aggregate",
+             "Prior findings: all fixed\nPrior finding #1: not-fixed", "open", ["not_fixed"]),
+            # Inert on an empty prior set; never destroys the round.
+            ("aggregate_inert_without_priors", "Prior findings: all fixed", None, []),
+            # A malformed line beside an aggregate is never a silent all-clear.
+            ("malformed_beside_aggregate",
+             "Prior findings: all fixed\nPrior finding #1: pending", "open", None),
+            # A trailing qualifier must not sweep a still-open finding.
+            ("qualified_except", "Prior findings: all fixed except finding #1", "open", None),
+            ("qualified_but", "Prior findings: all fixed but one remains", "open", None),
+            ("qualified_pending", "Prior findings: all fixed pending verification", "open", None),
+            # `unaddressed` rides in every review's JSON tail and answers a
+            # different question (uncovered R-IDs); it must never mark a prior
+            # fixed. The unrepeated not_fixed is reset to open.
+            ("unaddressed_empty_array_is_not_a_signal", unaddressed_tail, "not_fixed", ["open"]),
+            # One not-fixed must not escalate a later silent round.
+            ("unrepeated_not_fixed_resets", "The prior finding looks resolved to me.", "not_fixed", ["open"]),
+            ("repeated_not_fixed_survives", "Prior finding #1: not-fixed", "not_fixed", ["not_fixed"]),
+            ("fixed_never_reopened", "No comment on priors this round.", "fixed", ["fixed"]),
+            ("withdrawn_never_reopened", "No comment on priors this round.", "withdrawn", ["withdrawn"]),
+            # An unknown status selects INVALID, never absence.
+            ("unknown_status_pending", "Prior finding #1: pending", "open", None),
+            ("unknown_status_lookalike", "Prior finding #1: not-fixedish", "open", None),
         )
-        # Carried forward, and R8 reset the unrepeated not_fixed — but NOT fixed.
-        self.assertEqual([item["status"] for item in items], ["open"])
-
-    def test_unrepeated_not_fixed_is_reset_to_open(self):
-        """fn-168 R8: one `not-fixed` must not escalate a later silent round."""
-        items = flowctl._review_finding_prior_items(
-            "The prior finding looks resolved to me.",
-            _ratchet_prior_container(status="not_fixed"),
-            "receipt-2",
+        for case, output, status, expected in rows:
+            with self.subTest(case=case):
+                container = None if status is None else _ratchet_prior_container(status=status)
+                receipt = "receipt-1" if status is None else "receipt-2"
+                items = flowctl._review_finding_prior_items(output, container, receipt)
+                if expected is None:
+                    self.assertIsNone(items)
+                else:
+                    self.assertEqual([item["status"] for item in items], expected)
+        swept = flowctl._review_finding_prior_items(
+            "Prior findings: all fixed", _ratchet_prior_container(), "receipt-2"
         )
-        self.assertEqual([item["status"] for item in items], ["open"])
+        self.assertEqual(swept[0]["lastSeenReceiptId"], "receipt-2")
 
-    def test_repeated_not_fixed_survives_as_not_fixed(self):
-        """A round that DOES restate it keeps the churn signal alive."""
-        items = flowctl._review_finding_prior_items(
-            "Prior finding #1: not-fixed",
-            _ratchet_prior_container(status="not_fixed"),
-            "receipt-2",
-        )
-        self.assertEqual([item["status"] for item in items], ["not_fixed"])
-
-    def test_resolved_terminals_are_never_reopened_by_the_reset(self):
-        for status in ("fixed", "withdrawn"):
-            with self.subTest(status=status):
-                items = flowctl._review_finding_prior_items(
-                    "No comment on priors this round.",
-                    _ratchet_prior_container(status=status),
-                    "receipt-2",
-                )
-                self.assertEqual([item["status"] for item in items], [status])
-
-    def test_out_of_vocabulary_status_stays_recognized_but_invalid(self):
-        """An unknown status must select the INVALID sentinel, never absence."""
-        for line in ("Prior finding #1: pending", "Prior finding #1: not-fixedish"):
+    def test_aggregate_regex_accepts_only_a_plain_all_clear(self):
+        for line, matches in (
+            ("Prior findings: all fixed", True),
+            ("Prior findings: all fixed.", True),
+            ("Prior findings — all fixed", True),
+            ("Prior findings: all fixed except finding #1", False),
+            ("Prior findings: all fixed but one remains", False),
+            ("Prior findings: all fixed pending verification", False),
+        ):
             with self.subTest(line=line):
-                self.assertIsNone(
-                    flowctl._review_finding_prior_items(
-                        line, _ratchet_prior_container(), "receipt-2"
-                    )
+                self.assertEqual(
+                    bool(flowctl._FINDINGS_PRIOR_AGGREGATE_RE.findall(line)), matches
                 )
 
     def test_no_prior_findings_falls_back_to_fresh_preamble(self):

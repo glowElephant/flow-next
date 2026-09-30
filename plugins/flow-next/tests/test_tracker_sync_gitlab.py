@@ -21,17 +21,13 @@ Run:
 
 from __future__ import annotations
 
-import argparse
 import importlib.util
-import io
 import json
 import os
 import shutil
-import subprocess
 import sys
 import tempfile
 import unittest
-from contextlib import redirect_stdout
 from pathlib import Path
 from typing import Any
 
@@ -73,18 +69,6 @@ class GitlabActivationConfigTestCase(unittest.TestCase):
 
     # --- R7: enum activation ------------------------------------------------
 
-    def test_gitlab_in_tracker_types(self) -> None:
-        self.assertIn("gitlab", self.flowctl.TRACKER_TYPES)
-
-    def test_activation_active_for_gitlab_type(self) -> None:
-        # `tracker.type: gitlab` flips sync active via the type path — like
-        # linear/github, case-insensitively (the predicate lowercases).
-        for ttype in ("gitlab", "GitLab", "GITLAB"):
-            self._write_config({"tracker": {"enabled": False, "type": ttype}})
-            self.assertTrue(
-                self.flowctl.tracker_sync_active(), f"type={ttype} should activate"
-            )
-
     # --- R3: config schema defaults -----------------------------------------
 
     def test_default_config_carries_gitlab_per_tracker_keys(self) -> None:
@@ -102,134 +86,6 @@ class GitlabActivationConfigTestCase(unittest.TestCase):
         # missing-key error).
         self.assertIsNone(self.flowctl.get_config("tracker.perTracker.project"))
         self.assertIsNone(self.flowctl.get_config("tracker.perTracker.host"))
-
-
-class GitlabIdentifierValidatorTestCase(unittest.TestCase):
-    """set-tracker-id identifier validation for GitLab forms (R4-identity)."""
-
-    def setUp(self) -> None:
-        self.tmpdir = Path(tempfile.mkdtemp())
-        self.prev_cwd = Path.cwd()
-        os.chdir(self.tmpdir)
-        subprocess.run(
-            ["git", "init", "-q"], cwd=self.tmpdir, check=True, capture_output=True
-        )
-        self.flowctl = _load_flowctl("flowctl_gitlab_idval_under_test")
-        self._call(func=self.flowctl.cmd_init)
-
-    def tearDown(self) -> None:
-        os.chdir(self.prev_cwd)
-        shutil.rmtree(self.tmpdir, ignore_errors=True)
-
-    def _call(self, *, func, **kwargs) -> dict:
-        kwargs.setdefault("json", True)
-        ns = argparse.Namespace(**kwargs)
-        buf = io.StringIO()
-        with redirect_stdout(buf):
-            func(ns)
-        out = buf.getvalue().strip()
-        return json.loads(out) if out else {}
-
-    def _create_spec(self, title: str) -> str:
-        return self._call(func=self.flowctl.cmd_spec_create, title=title, branch=None)["id"]
-
-    def _state(self, spec_id: str) -> dict:
-        return self._call(func=self.flowctl.cmd_sync_get_state, id=spec_id)["tracker"]
-
-    def _set_id(self, spec_id: str, tracker_id: str, **kw) -> dict:
-        return self._call(
-            func=self.flowctl.cmd_sync_set_tracker_id,
-            id=spec_id,
-            tracker_id=tracker_id,
-            identifier=kw.get("identifier"),
-            url=kw.get("url"),
-            force=kw.get("force", False),
-        )
-
-    # --- valid GitLab forms (stored display-only, not rejected) -------------
-
-    def test_nested_group_path_identifier_accepted(self) -> None:
-        # The headline GitLab widening: nested group/subgroup/project paths.
-        spec_id = self._create_spec("GitLab nested ref")
-        self._set_id(
-            spec_id,
-            "gid://gitlab/Issue/1",
-            identifier="group/subgroup/project#12",
-            url="https://gitlab.com/group/subgroup/project/-/issues/12",
-        )
-        state = self._state(spec_id)
-        self.assertEqual(state["id"], "gid://gitlab/Issue/1")
-        self.assertEqual(state["identifier"], "group/subgroup/project#12")
-
-    def test_deeply_nested_group_path_identifier_accepted(self) -> None:
-        spec_id = self._create_spec("GitLab deep ref")
-        self._set_id(spec_id, "gid-deep", identifier="a/b/c/d#5")
-        self.assertEqual(self._state(spec_id)["identifier"], "a/b/c/d#5")
-
-    def test_single_segment_group_path_identifier_accepted(self) -> None:
-        # `group/project#7` — the GitLab one-slash form (also the GitHub
-        # owner/repo shape) stays accepted.
-        spec_id = self._create_spec("GitLab single ref")
-        self._set_id(spec_id, "gid-single", identifier="group/project#7")
-        self.assertEqual(self._state(spec_id)["identifier"], "group/project#7")
-
-    def test_bare_hash_iid_identifier_accepted(self) -> None:
-        spec_id = self._create_spec("GitLab bare hash")
-        self._set_id(spec_id, "gid-bare", identifier="#34")
-        self.assertEqual(self._state(spec_id)["identifier"], "#34")
-
-    # --- invalid GitLab forms (rejected) ------------------------------------
-
-    def test_empty_trailing_segment_rejected(self) -> None:
-        # `group/#12` has an empty final path segment — not a real project path.
-        spec_id = self._create_spec("GitLab empty seg")
-        with self.assertRaises(SystemExit):
-            self._set_id(spec_id, "gid-x", identifier="group/#12")
-        self.assertIsNone(self._state(spec_id)["id"])
-
-    def test_empty_middle_segment_rejected(self) -> None:
-        spec_id = self._create_spec("GitLab mid seg")
-        with self.assertRaises(SystemExit):
-            self._set_id(spec_id, "gid-y", identifier="group//project#5")
-        self.assertIsNone(self._state(spec_id)["id"])
-
-    def test_zero_iid_with_hash_rejected(self) -> None:
-        # `#0` is not a positive issue iid (R4-identity: positive iid only).
-        spec_id = self._create_spec("GitLab zero iid")
-        with self.assertRaises(SystemExit):
-            self._set_id(spec_id, "gid-z", identifier="#0")
-        self.assertIsNone(self._state(spec_id)["id"])
-
-    def test_zero_iid_with_path_rejected(self) -> None:
-        spec_id = self._create_spec("GitLab path zero iid")
-        with self.assertRaises(SystemExit):
-            self._set_id(spec_id, "gid-pz", identifier="group/project#0")
-        self.assertIsNone(self._state(spec_id)["id"])
-
-    def test_leading_zero_iid_rejected(self) -> None:
-        spec_id = self._create_spec("GitLab leading zero")
-        with self.assertRaises(SystemExit):
-            self._set_id(spec_id, "gid-lz", identifier="#01")
-        self.assertIsNone(self._state(spec_id)["id"])
-
-    # --- regressions: existing forms unchanged ------------------------------
-
-    def test_github_owner_repo_reference_still_accepted(self) -> None:
-        spec_id = self._create_spec("GH ref still ok")
-        self._set_id(spec_id, "node-gh", identifier="octo/repo#7")
-        self.assertEqual(self._state(spec_id)["identifier"], "octo/repo#7")
-
-    def test_malformed_reference_still_rejected(self) -> None:
-        spec_id = self._create_spec("Bad ref")
-        with self.assertRaises(SystemExit):
-            self._set_id(spec_id, "node-bad", identifier="#abc")
-        self.assertIsNone(self._state(spec_id)["id"])
-
-    def test_linear_handle_still_strict(self) -> None:
-        spec_id = self._create_spec("Linear strict")
-        with self.assertRaises(SystemExit):
-            self._set_id(spec_id, "uuid-x", identifier="wor-17-slug")
-        self.assertIsNone(self._state(spec_id)["id"])
 
 
 if __name__ == "__main__":

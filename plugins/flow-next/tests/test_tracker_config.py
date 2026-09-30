@@ -238,7 +238,7 @@ class TrackerConfigTestCase(unittest.TestCase):
         self.assertTrue(self.flowctl.tracker_sync_active())
 
     def test_activation_active_for_known_type(self) -> None:
-        for ttype in ("linear", "github", "gitlab", "jira", "Linear", "GITHUB", "Jira"):
+        for ttype in ("linear", "github", "gitlab", "jira", "Linear", "GITHUB", "GitLab", "GITLAB", "Jira", "JIRA"):
             self._write_config({"tracker": {"enabled": False, "type": ttype}})
             self.assertTrue(
                 self.flowctl.tracker_sync_active(), f"type={ttype} should activate"

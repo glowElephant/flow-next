@@ -162,9 +162,6 @@ class TaskBulkCreateTestCase(unittest.TestCase):
         self._assert_tasks_unchanged(before)
         return err
 
-    def _bulk_expect_error_items(self, items: Any) -> str:
-        return self._bulk_expect_error(json.dumps(items))
-
     def _granular_create(
         self,
         *,
@@ -359,112 +356,39 @@ class TaskBulkCreateTestCase(unittest.TestCase):
 
     # --- rejection fixtures (zero writes) ------------------------------------
 
-    def test_reject_malformed_json(self) -> None:
-        err = self._bulk_expect_error("{not json")
-        self.assertIn("malformed JSON", err)
-
-    def test_reject_non_array(self) -> None:
-        err = self._bulk_expect_error(json.dumps({"title": "x"}))
-        self.assertIn("non-empty JSON array", err)
-
-    def test_reject_empty_array(self) -> None:
-        err = self._bulk_expect_error("[]")
-        self.assertIn("non-empty JSON array", err)
-
-    def test_reject_missing_title(self) -> None:
-        err = self._bulk_expect_error_items([{"description": "x"}])
-        self.assertIn("title", err)
-
-    def test_reject_empty_title(self) -> None:
-        err = self._bulk_expect_error_items([{"title": "   "}])
-        self.assertIn("non-empty", err)
-
-    def test_reject_empty_string_title(self) -> None:
-        err = self._bulk_expect_error_items([{"title": ""}])
-        self.assertIn("non-empty", err)
-
-    def test_reject_title_wrong_type_number(self) -> None:
-        err = self._bulk_expect_error_items([{"title": 12}])
-        self.assertIn("string", err)
-
-    def test_reject_title_null(self) -> None:
-        err = self._bulk_expect_error_items([{"title": None}])
-        self.assertIn("null", err)
-
-    def test_reject_priority_boolean(self) -> None:
-        err = self._bulk_expect_error_items([{"title": "T", "priority": True}])
-        self.assertIn("integer", err)
-
-    def test_reject_priority_string(self) -> None:
-        err = self._bulk_expect_error_items([{"title": "T", "priority": "1"}])
-        self.assertIn("integer", err)
-
-    def test_reject_description_number(self) -> None:
-        err = self._bulk_expect_error_items([{"title": "T", "description": 1}])
-        self.assertIn("string", err)
-
-    def test_reject_acceptance_null(self) -> None:
-        err = self._bulk_expect_error_items([{"title": "T", "acceptance": None}])
-        self.assertIn("null", err)
-
-    def test_reject_satisfies_not_array(self) -> None:
-        err = self._bulk_expect_error_items([{"title": "T", "satisfies": "R1"}])
-        self.assertIn("array", err)
-
-    def test_reject_satisfies_non_string_element(self) -> None:
-        err = self._bulk_expect_error_items([{"title": "T", "satisfies": [1]}])
-        self.assertIn("satisfies", err)
-
-    def test_reject_acceptance_number(self) -> None:
-        err = self._bulk_expect_error_items([{"title": "T", "acceptance": 5}])
-        self.assertIn("string", err)
-
-    def test_reject_deps_not_array(self) -> None:
-        err = self._bulk_expect_error_items([{"title": "T", "deps": "fn-1.1"}])
-        self.assertIn("array", err)
-
-    def test_reject_satisfies_bad_token(self) -> None:
-        err = self._bulk_expect_error_items([{"title": "T", "satisfies": ["R0"]}])
-        self.assertIn("R0", err)
-
-    def test_reject_unknown_key(self) -> None:
-        err = self._bulk_expect_error_items([{"title": "T", "extra": 1}])
-        self.assertIn("unknown key", err)
-
-    def test_reject_deps_forward_index(self) -> None:
-        err = self._bulk_expect_error_items(
-            [{"title": "A", "deps": [2]}, {"title": "B"}]
+    def test_rejected_payloads_write_nothing(self) -> None:
+        rows = (
+            ("{not json", "malformed JSON"),
+            (json.dumps({"title": "x"}), "non-empty JSON array"),
+            ("[]", "non-empty JSON array"),
+            ([{"description": "x"}], "title"),
+            ([{"title": "   "}], "non-empty"),
+            ([{"title": ""}], "non-empty"),
+            ([{"title": 12}], "string"),
+            ([{"title": None}], "null"),
+            ([{"title": "T", "priority": True}], "integer"),
+            ([{"title": "T", "priority": "1"}], "integer"),
+            ([{"title": "T", "description": 1}], "string"),
+            ([{"title": "T", "acceptance": None}], "null"),
+            ([{"title": "T", "acceptance": 5}], "string"),
+            ([{"title": "T", "satisfies": "R1"}], "array"),
+            ([{"title": "T", "satisfies": [1]}], "satisfies"),
+            ([{"title": "T", "satisfies": ["R0"]}], "R0"),
+            ([{"title": "T", "deps": "fn-1.1"}], "array"),
+            ([{"title": "T", "extra": 1}], "unknown key"),
+            # deps are 1-based indexes of EARLIER items: forward, out of
+            # range, zero and self all fail.
+            ([{"title": "A", "deps": [2]}, {"title": "B"}], "out of range"),
+            ([{"title": "A"}, {"title": "B", "deps": [99]}], "out of range"),
+            ([{"title": "A"}, {"title": "B", "deps": [0]}], "out of range"),
+            ([{"title": "A"}, {"title": "B", "deps": [2]}], "out of range"),
+            ([{"title": "A", "deps": [1.5]}], "deps"),
+            (["not-an-object"], "object"),
         )
-        self.assertIn("out of range", err)
-
-    def test_reject_deps_out_of_range_index(self) -> None:
-        err = self._bulk_expect_error_items(
-            [{"title": "A"}, {"title": "B", "deps": [99]}]
-        )
-        self.assertIn("out of range", err)
-
-    def test_reject_deps_index_zero(self) -> None:
-        err = self._bulk_expect_error_items(
-            [{"title": "A"}, {"title": "B", "deps": [0]}]
-        )
-        self.assertIn("out of range", err)
-
-    def test_reject_deps_self_index(self) -> None:
-        # 1-based index of self (item 2 → index 2) is not "earlier".
-        err = self._bulk_expect_error_items(
-            [{"title": "A"}, {"title": "B", "deps": [2]}]
-        )
-        self.assertIn("out of range", err)
-
-    def test_reject_deps_wrong_element_type(self) -> None:
-        err = self._bulk_expect_error_items(
-            [{"title": "A", "deps": [1.5]}]
-        )
-        self.assertIn("deps", err)
-
-    def test_reject_non_object_item(self) -> None:
-        err = self._bulk_expect_error_items(["not-an-object"])
-        self.assertIn("object", err)
+        for payload, needle in rows:
+            raw = payload if isinstance(payload, str) else json.dumps(payload)
+            with self.subTest(payload=raw):
+                self.assertIn(needle, self._bulk_expect_error(raw))
 
     def test_reject_from_json_with_title_flag(self) -> None:
         path = self._write("bulk.json", json.dumps([{"title": "A"}]))

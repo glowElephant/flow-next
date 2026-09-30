@@ -462,72 +462,98 @@ class RelateLedger(unittest.TestCase):
             self.assertTrue(any(r.get("status") == "queued" for r in receipts))
 
 
-class LinearRelateProbeDrain(unittest.TestCase):
-    """The probe drains BOTH relation connections before concluding absence."""
+class RelateProbeDrain(unittest.TestCase):
+    """Every provider's relate probe drains EVERY page to the shared wire cap
+    before concluding absence: a single-page probe would falsely report a
+    later-page edge absent (false human-removal queue / duplicate create)."""
+
+    @staticmethod
+    def _linear_page(other: str, *, more: bool, cursor) -> dict:
+        return ok({"data": {"issue": {
+            "id": LN_UUID,
+            "relations": {"nodes": [],
+                          "pageInfo": {"hasNextPage": False, "endCursor": None}},
+            "inverseRelations": {
+                "nodes": [{"type": "blocks", "issue": {"id": other}}],
+                "pageInfo": {"hasNextPage": more, "endCursor": cursor}},
+        }}})
+
+    @staticmethod
+    def _github_full_page(start: int) -> list:
+        return [{"number": start + i} for i in range(W._PAGE_SIZE)]
+
+    @staticmethod
+    def _gitlab_full_page(start: int) -> list:
+        return [{"iid": start + i, "link_type": "is_blocked_by"}
+                for i in range(W._PAGE_SIZE)]
+
+    def _providers(self) -> list:
+        """(name, op, probe, second-page pages, endless page, lone short page, paged-argv)."""
+        lp = self._linear_page
+        return [
+            ("linear", "relate-list",
+             lambda ex: RP._linear_edge_exists(ex, LN_UUID, LN_UUID_B),
+             [lp("other-uuid", more=True, cursor="cur-1"),
+              lp(LN_UUID_B, more=False, cursor="cur-2")],
+             lambda n: lp(f"uuid-{n}", more=True, cursor=f"cur-{n}"),
+             ok({"data": {"issue": {"id": LN_UUID, "relations": {"nodes": []},
+                                    "inverseRelations": {"nodes": []}}}}),
+             False),
+            ("github", "wire-relate-probe",
+             lambda ex: RP.github_probe(gh_cfg(), ex, from_display="#42",
+                                        to_display="#43"),
+             [ok(self._github_full_page(1000)),
+              ok([{"number": 999}, {"number": 42}])],
+             lambda n: ok(self._github_full_page(n * 1000)),
+             ok([{"number": 7}]),
+             True),
+            ("gitlab", "relate-list",
+             lambda ex: RP.gitlab_probe_pair(gl_cfg(), ex, from_display="g/p#12",
+                                             to_display="g/p#13"),
+             [ok(self._gitlab_full_page(1000)),
+              ok([{"iid": 999, "link_type": "relates_to"},
+                  {"iid": 13, "link_type": "is_blocked_by"}])],
+             lambda n: ok(self._gitlab_full_page(n * 1000)),
+             ok([{"iid": 7, "link_type": "is_blocked_by"}]),
+             True),
+        ]
 
     def test_edge_on_second_page_is_found(self) -> None:
-        # Page 1: no matching edge, inverseRelations reports hasNextPage.
-        page1 = ok({"data": {"issue": {
-            "id": LN_UUID,
-            "relations": {"nodes": [],
-                          "pageInfo": {"hasNextPage": False, "endCursor": None}},
-            "inverseRelations": {
-                "nodes": [{"type": "blocks", "issue": {"id": "other-uuid"}}],
-                "pageInfo": {"hasNextPage": True, "endCursor": "cur-1"}},
-        }}})
-        page2 = ok({"data": {"issue": {
-            "id": LN_UUID,
-            "relations": {"nodes": [],
-                          "pageInfo": {"hasNextPage": False, "endCursor": None}},
-            "inverseRelations": {
-                "nodes": [{"type": "blocks", "issue": {"id": LN_UUID_B}}],
-                "pageInfo": {"hasNextPage": False, "endCursor": "cur-2"}},
-        }}})
-        ex = fake_execute({"relate-list": [page1, page2]})
-        out = RP._linear_edge_exists(ex, LN_UUID, LN_UUID_B)
-        self.assertIs(out, True)
-        self.assertEqual([c.op for c in ex.calls],
-                         ["relate-list", "relate-list"],
-                         "cursor drain issues a second page request")
+        for name, op, probe, pages, _endless, _lone, paged in self._providers():
+            with self.subTest(provider=name):
+                ex = fake_execute({op: pages})
+                self.assertIs(probe(ex), True)
+                self.assertEqual([c.op for c in ex.calls], [op, op],
+                                 "drain issues a second page request")
+                if paged:
+                    argv = list(ex.calls[0].url_or_argv)
+                    self.assertIn(f"per_page={W._PAGE_SIZE}", argv[-1])
+                    self.assertIn("page=1", argv[-1])
 
     def test_truncated_at_cap_does_not_report_absence(self) -> None:
-        # Every page claims more with a fresh cursor; the edge never appears.
-        counter = {"n": 0}
+        for name, op, probe, _pages, endless, _lone, _paged in self._providers():
+            with self.subTest(provider=name):
+                counter = {"n": 0}
 
-        def endless(_request):
-            counter["n"] += 1
-            return ok({"data": {"issue": {
-                "id": LN_UUID,
-                "relations": {"nodes": [],
-                              "pageInfo": {"hasNextPage": False,
-                                           "endCursor": None}},
-                "inverseRelations": {
-                    "nodes": [{"type": "blocks",
-                               "issue": {"id": f"uuid-{counter['n']}"}}],
-                    "pageInfo": {"hasNextPage": True,
-                                 "endCursor": f"cur-{counter['n']}"}},
-            }}})
+                def respond(_request, endless=endless, counter=counter):
+                    counter["n"] += 1
+                    return endless(counter["n"])
 
-        ex = fake_execute({"relate-list": endless})
-        out = RP._linear_edge_exists(ex, LN_UUID, LN_UUID_B)
-        self.assertIsInstance(out, TrackerError,
-                              "a probe that cannot prove absence must not "
-                              "report absence")
-        self.assertEqual(out.cls, ErrorClass.TRANSPORT)
-        self.assertEqual(out.subtype, "truncated")
-        self.assertEqual(len(ex.calls), W._MAX_PAGES)
+                ex = fake_execute({op: respond})
+                out = probe(ex)
+                self.assertIsInstance(out, TrackerError,
+                                      "a probe that cannot prove absence must "
+                                      "not report absence")
+                self.assertIs(out.cls, ErrorClass.TRANSPORT)
+                self.assertEqual(out.subtype, "truncated")
+                self.assertEqual(len(ex.calls), W._MAX_PAGES)
 
-    def test_single_page_absence_still_reports_false(self) -> None:
-        # Both connections exhausted on page 1 → honest False, one request.
-        page = ok({"data": {"issue": {
-            "id": LN_UUID,
-            "relations": {"nodes": []},
-            "inverseRelations": {"nodes": []},
-        }}})
-        ex = fake_execute({"relate-list": [page]})
-        out = RP._linear_edge_exists(ex, LN_UUID, LN_UUID_B)
-        self.assertIs(out, False)
-        self.assertEqual(len(ex.calls), 1)
+    def test_single_short_page_absence_still_reports_false(self) -> None:
+        for name, op, probe, _pages, _endless, lone, _paged in self._providers():
+            with self.subTest(provider=name):
+                ex = fake_execute({op: [lone]})
+                self.assertIs(probe(ex), False)
+                self.assertEqual(len(ex.calls), 1)
 
 
 class GitlabRelateDegrade(unittest.TestCase):
@@ -2183,108 +2209,6 @@ class RelateReceiptFailurePreservesEvidence(unittest.TestCase):
             self.assertEqual(len(entries), 1)
             self.assertNotIn("status", entries[0],
                              "finalize is NOT rolled back")
-
-
-class GithubRelateProbeDrain(unittest.TestCase):
-    """PR #246 review wave 4: the sub_issues probe drains EVERY page to the
-    shared wire cap - a single-page probe would falsely report a later-page
-    child absent (false human-removal queue / duplicate create attempt)."""
-
-    @staticmethod
-    def _full_page(start: int) -> list:
-        return [{"number": start + i} for i in range(W._PAGE_SIZE)]
-
-    def test_child_on_second_page_is_found(self) -> None:
-        page1 = ok(self._full_page(1000))
-        page2 = ok([{"number": 999}, {"number": 42}])
-        ex = fake_execute({"wire-relate-probe": [page1, page2]})
-        out = RP.github_probe(gh_cfg(), ex, from_display="#42",
-                              to_display="#43")
-        self.assertIs(out, True)
-        self.assertEqual([c.op for c in ex.calls],
-                         ["wire-relate-probe", "wire-relate-probe"],
-                         "drain issues a second page request")
-        first = ex.calls[0]
-        argv = list(first.url_or_argv)
-        self.assertIn(f"per_page={W._PAGE_SIZE}", argv[-1])
-        self.assertIn("page=1", argv[-1])
-
-    def test_truncated_at_cap_does_not_report_absence(self) -> None:
-        counter = {"n": 0}
-
-        def endless(_request):
-            counter["n"] += 1
-            return ok(self._full_page(counter["n"] * 1000))
-
-        ex = fake_execute({"wire-relate-probe": endless})
-        out = RP.github_probe(gh_cfg(), ex, from_display="#42",
-                              to_display="#43")
-        self.assertIsInstance(out, TrackerError,
-                              "a probe that cannot prove absence must not "
-                              "report absence")
-        self.assertIs(out.cls, ErrorClass.TRANSPORT)
-        self.assertEqual(out.subtype, "truncated")
-        self.assertEqual(len(ex.calls), W._MAX_PAGES)
-
-    def test_single_short_page_absence_still_reports_false(self) -> None:
-        ex = fake_execute({"wire-relate-probe": [ok([{"number": 7}])]})
-        out = RP.github_probe(gh_cfg(), ex, from_display="#42",
-                              to_display="#43")
-        self.assertIs(out, False)
-        self.assertEqual(len(ex.calls), 1)
-
-
-class GitlabRelateProbeDrain(unittest.TestCase):
-    """PR #246 review wave 5: the GitLab issue-links probe drains EVERY page
-    to the shared wire cap - a single-page probe would falsely report a
-    later-page link absent (false human-removal queue on a ledgered edge /
-    duplicate create attempt on an unledgered one)."""
-
-    @staticmethod
-    def _full_page(start: int) -> list:
-        return [{"iid": start + i, "link_type": "is_blocked_by"}
-                for i in range(W._PAGE_SIZE)]
-
-    def test_link_on_second_page_is_found(self) -> None:
-        page1 = ok(self._full_page(1000))
-        page2 = ok([{"iid": 999, "link_type": "relates_to"},
-                    {"iid": 13, "link_type": "is_blocked_by"}])
-        ex = fake_execute({"relate-list": [page1, page2]})
-        out = RP.gitlab_probe_pair(gl_cfg(), ex, from_display="g/p#12",
-                                   to_display="g/p#13")
-        self.assertIs(out, True)
-        self.assertEqual([c.op for c in ex.calls],
-                         ["relate-list", "relate-list"],
-                         "drain issues a second page request")
-        first = ex.calls[0]
-        argv = list(first.url_or_argv)
-        self.assertIn(f"per_page={W._PAGE_SIZE}", argv[-1])
-        self.assertIn("page=1", argv[-1])
-
-    def test_truncated_at_cap_does_not_report_absence(self) -> None:
-        counter = {"n": 0}
-
-        def endless(_request):
-            counter["n"] += 1
-            return ok(self._full_page(counter["n"] * 1000))
-
-        ex = fake_execute({"relate-list": endless})
-        out = RP.gitlab_probe_pair(gl_cfg(), ex, from_display="g/p#12",
-                                   to_display="g/p#13")
-        self.assertIsInstance(out, TrackerError,
-                              "a probe that cannot prove absence must not "
-                              "report absence")
-        self.assertIs(out.cls, ErrorClass.TRANSPORT)
-        self.assertEqual(out.subtype, "truncated")
-        self.assertEqual(len(ex.calls), W._MAX_PAGES)
-
-    def test_single_short_page_absence_still_reports_false(self) -> None:
-        ex = fake_execute({"relate-list": [ok(
-            [{"iid": 7, "link_type": "is_blocked_by"}])]})
-        out = RP.gitlab_probe_pair(gl_cfg(), ex, from_display="g/p#12",
-                                   to_display="g/p#13")
-        self.assertIs(out, False)
-        self.assertEqual(len(ex.calls), 1)
 
 
 class JiraSetDirection(unittest.TestCase):

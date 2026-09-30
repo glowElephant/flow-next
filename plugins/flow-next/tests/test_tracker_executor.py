@@ -722,12 +722,6 @@ class HttpStatusBeatsGraphqlBody(unittest.TestCase):
     def test_429_with_graphql_body_is_rate_limited(self) -> None:
         self.assertIs(C.classify("linear", resp(429, self.GQL)).cls, ErrorClass.RATE_LIMITED)
 
-    def test_400_still_uses_the_graphql_document(self) -> None:
-        body = json.dumps({"errors": [{"message": "e",
-                                       "extensions": {"code": "RATELIMITED"}}]}).encode()
-        self.assertIs(C.classify("linear", resp(400, body)).cls, ErrorClass.RATE_LIMITED)
-
-
 class CredentialsNeverReachTheEnvelope(unittest.TestCase):
     """R6, end to end. The previous test exercised redact() in ISOLATION and so
     never covered the path that actually leaked: provider error text copied
