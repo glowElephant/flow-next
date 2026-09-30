@@ -128,19 +128,6 @@ class JudgeRouteTests(unittest.TestCase):
             (repo / "AGENTS.md").write_text("Launch command: `make serve`\n", encoding="utf-8")
             self.assertEqual(f.judge_startable_target(repo), "make serve")
 
-    def test_standalone_qa_assembles_target_without_pr_probe(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            repo = Path(tmp)
-            body = repo / "spec.md"
-            body.write_text("Acceptance: the modal opens.\nDev server: `pnpm dev`\n")
-            args = SimpleNamespace(preset="qa-gate", spec="fn-1", state_file=None, explain=False, json=True)
-            with patch.object(f, "get_repo_root", return_value=repo), patch.object(f, "get_flow_dir", return_value=repo), patch.object(f, "resolve_spec_id_arg", return_value="fn-1"), patch.object(f, "find_spec_md_path", return_value=body), patch.object(f, "judge_evaluate", return_value={"available": False, "reason": "no_key"}) as evaluate, patch.object(f.subprocess, "run") as process, redirect_stdout(io.StringIO()):
-                f.cmd_judge(args)
-            self.assertEqual(evaluate.call_args.args[0], "qa-gate")
-            self.assertEqual(evaluate.call_args.args[1]["startable_target_fact"], "pnpm dev")
-            self.assertEqual(evaluate.call_args.args[1]["acceptance"], body.read_text())
-            process.assert_not_called()
-
     def test_target_from_documents(self):
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp)

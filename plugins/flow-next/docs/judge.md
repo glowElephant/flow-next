@@ -2,7 +2,7 @@
 
 flow-next works the same with or without a TypeSafe API key. Every decision has
 a working default path: code decides lifecycle facts, and the host decides the
-rest from the route matrix and the repository. Routing never asks Jev. With a key, Jev (TypeSafe's
+rest from the route matrix and the repository. Routing and the QA gate never ask Jev. With a key, Jev (TypeSafe's
 System One model) answers a few narrow questions in one HTTP request per
 decision point, so the host reaches the same decision faster or cheaper. Jev
 may change how long a decision takes and what it costs; it must not change
@@ -34,7 +34,7 @@ when the key is absent.
 flowctl config get judge.enabled
 flowctl config set judge.enabled false
 flowctl config set judge.enabled true
-flowctl judge --preset qa-gate --spec fn-1 --json
+flowctl judge --preset tier --task fn-1.1 --json
 flowctl memory search "windows subprocess" --limit 15 --rerank --json
 ```
 
@@ -48,8 +48,8 @@ The model is fixed to `jev-latest`; floors are preset constants.
 |---|---|---|
 | Live spec lifecycle (PR tail, all done, recorded work route, direct or plan) | Code decides; Jev is not asked | None; the route is printed as `(code)` |
 | Intake route kind, `tiny` included | Jev is not asked | The host decides from the route matrix, so a keyless run takes the same route |
-| QA under `pipeline.qa=auto`: UI-observable criteria | Jev decides at probability >= 0.5 | May override when the acceptance plainly contradicts it, saying why in one line |
-| QA under `pipeline.qa=auto`: startable target | Code resolves a documented target | None; no target is invented |
+| QA under `pipeline.qa=auto`: UI-observable criteria | Jev is not asked | The host decides from the acceptance and the repo |
+| QA under `pipeline.qa=auto`: startable target | Code resolves a documented target; Jev is not asked | None; no target is invented |
 | Research before work on a ready spec | Jev is not asked | Applies the route matrix's read-first rule |
 | Fork: observable or preference | Optional hint on the host's own fork sentence | Decides; a hint never removes a fork the host found |
 | Memory relevance | Reorders the top 15 BM25 hits; drops none | Picks the entries that apply from titles and snippets |
@@ -57,21 +57,22 @@ The model is fixed to `jev-latest`; floors are preset constants.
 
 Routing never asks Jev: `flowctl judge --preset route --spec <id>` returns the code lifecycle
 decision and sends no request, key or no key, so a run with a key and one without take the same
-route. A host override of a QA answer prints the Jev answer beside
-the host's choice, for example `(host over jev ui 0.62: the criteria are all CLI output)`.
+route. The QA gate reads the startable target from the same route result
+(`decision.startable_target_fact`) and decides the UI half itself, so its stage line never
+carries a `jev` note.
 
 ## Runs without a key
 
 `/flow-next:flow` checks once per run whether the judge can run: the key is
 present (checked without printing it) and `judge.enabled` is not `false`. When
-it cannot, flow prints `judge: off` once and makes no fork or QA judge call for
+it cannot, flow prints `judge: off` once and makes no fork-gate call for
 the rest of the run. The live-spec route call runs either way: its lifecycle
 decision and PR observation come from code and return with
 `available: false, reason: routing_is_code`. Memory search runs the same command either
 way; without a key `--rerank` returns BM25 order and sends nothing.
 
-The host prints `Route: <route> (host)` at intake, key or no key. Without a key
-it records QA stage lines without a `jev` note. A judge that is on but fails keeps the same
+The host prints `Route: <route> (host)` at intake and records QA stage lines,
+key or no key. A judge that is on but fails keeps the same
 default path and names the reason, `jev-unavailable(<reason>)`.
 
 ## Presets and floors
@@ -79,14 +80,12 @@ default path and names the reason, `jev-unavailable(<reason>)`.
 | Preset | Questions | Decision |
 |---|---|---|
 | `route` | None; code only, never sent | The live spec's lifecycle, decided in code (see [Decision order](#decision-order)). Intake routing is the host's. |
-| `qa-gate` | UI-observable Noul | Run under `pipeline.qa=auto` only at >= 0.5 AND a startable target resolved by code. A skipped stage names the failing half. |
 | `fork-gate` | Fork-kind Choice on the host's fork sentence | `observable` or `product_or_preference` at confidence >= 0.5 is a hint; otherwise `host`. Never `none`. |
 | `memory-rerank` | One Score per BM25 hit, up to 15 | Reorder by score, descending; ties keep BM25 order; none dropped. |
 | `tier` | Tier Choice and two Nouls | `mechanical` at confidence >= 0.8 selects the configured fast tier; `long_running` at >= 0.8 recommends a bridge. All other answers retain the current model. |
 
-The QA gate calls `flowctl judge --preset qa-gate --spec <spec-id> --json`,
-which assembles the QA input and documented target in code. No preset
-predicts whether review, QA, or landing will pass.
+No preset predicts whether review, QA, or landing will pass, and none
+decides whether QA runs.
 
 ## Memory
 
@@ -108,12 +107,6 @@ keyless result.
 
 Question IDs and instruction text below match the bundled preset registry.
 `entry_N` substitutes the zero-based BM25 hit index, from 0 through 14.
-
-### qa-gate
-
-| ID | Type | Instruction text |
-|---|---|---|
-| `ui_observable_criteria` | noul | Does the spec's acceptance describe UI behaviour a user could observe on a drivable surface (a screen, a page, a window, a rendered widget), as opposed to CLI output, file contents, or library behaviour? |
 
 ### fork-gate
 
@@ -154,8 +147,7 @@ Choice criteria:
 - `intelligent`: intelligent: design judgment, a cross-module change, ambiguous or negotiable acceptance, tradeoffs a senior engineer would want to weigh; the strongest available model in the session
 - `long_running`: long_running: a multi-hour implementation spanning many files or subsystems that needs a long uninterrupted run in an isolated harness (a bridged external CLI on its own branch), not a turn in the session
 
-Required standalone state fields: `acceptance` and
-`startable_target_fact` for QA; `text` for fork; `query` and `entries` for
+Required standalone state fields: `text` for fork; `query` and `entries` for
 memory. Tier fields are listed in the transport contract below.
 
 ## Decision order
@@ -213,8 +205,8 @@ Callers expose which path they took:
 judge: off
 Route: work_planned (code)
 Route: build (host)
-stage: qa - skipped(config: pipeline.qa=auto: no UI-observable criteria (jev 0.12))
-stage: qa - ran (jev ui 0.84, target: <cmd>)
+stage: qa - skipped(config: pipeline.qa=auto: no UI-observable criteria)
+stage: qa - ran (target: <cmd>)
 fork-gate: observable (host)
 fork-gate: preference (host, jev hint product_or_preference 0.71)
 memory: reranked (jev, 15 entries)
@@ -238,7 +230,7 @@ route preset no longer sends any request.
 |---|---|
 | Clean review (retired preset; historical result) | 100/100 against the eyeball label; the regex recognized 5/12 in its comparison set. |
 | Kind (retired; historical result) | 0.95 raw agreement on 196 stable samples; the 0.7 floor gave 85% held-out coverage at 95% agreement. Retired because keyed intake routes sent small features down heavier routes than keyless runs. |
-| QA | 0.88 against a 0.71 baseline once code supplied the startable-target fact. |
+| QA (retired; historical result) | 0.88 against a 0.71 baseline once code supplied the startable-target fact. Retired because keyless runs reached the same QA decision in the same step, so the call added 2-6 s and changed nothing. |
 | Fork | 0.88 against 0.76 for the fork-present and kind pair on spec text; the hint on the host's own fork sentence has not been measured. |
 | Memory | Precision@5 0.66 against BM25's 0.48, measured with the earlier score levels and floor; the reorder-only shape has not been measured. |
 | Tier | 0.91 exact agreement and 121/121 within one tier; at 0.8, mechanical 20/20 and long-running 13/13 matched labels. |

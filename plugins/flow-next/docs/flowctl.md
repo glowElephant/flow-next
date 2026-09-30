@@ -1170,11 +1170,11 @@ The `route` preset is the exception: it is code only and never sends a request.
 ```bash
 flowctl judge --preset <name> --state-file state.json [--json]
 flowctl judge --preset route --spec <spec-id> --json
-flowctl judge --preset qa-gate --spec <spec-id> --json
 flowctl judge --preset tier --task <task-id> --json
 ```
 
-Presets: `route`, `qa-gate`, `fork-gate`, `memory-rerank`, `tier`.
+Presets: `route`, `fork-gate`, `memory-rerank`, `tier`. The retired `qa-gate`
+preset is an unknown-preset error: the QA gate never asks Jev.
 The [judge reference](judge.md) specifies their questions, required state, floors,
 route precedence, and fallback behavior. The command reads `TYPESAFE_API_KEY`
 from the environment at call time. `judge.enabled=false` disables it.
@@ -1214,10 +1214,10 @@ The command never writes state, answers, or credentials to disk.
 `--task` assembles tier inputs from the task and returns `tier_line`,
 `spawn_model` and `implementer`. Unknown tasks fail.
 
-`--spec` assembles route or QA facts from the live spec and repository. A failed
+`--spec` assembles route facts from the live spec and repository. A failed
 PR probe returns `pr_probe_failed: true` and no `decision`, so the caller
 preserves its existing failure outcome. Route decisions include `pr_ref` and
-`startable_target_fact` for reuse by the tail gate.
+`startable_target_fact`, which the tail and the `pipeline.qa=auto` gate reuse.
 
 ### config
 

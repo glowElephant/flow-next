@@ -23733,7 +23733,7 @@ def judge_route_lifecycle(state: dict) -> dict:
 
 
 def judge_route(state: dict) -> dict:
-    """Routing never asks Jev, key or no key: return the code lifecycle decision and send nothing."""
+    """Routing and the QA target never ask Jev: return the code lifecycle decision and send nothing."""
     result = {"success": True, "available": False, "preset": "route", "reason": "routing_is_code"}
     decision = judge_route_lifecycle(state)
     if decision["rule"] == "pr_probe_failed":
@@ -23746,19 +23746,7 @@ def judge_route(state: dict) -> dict:
 # --- Optional System One judge (fn-247): self-contained for copied flowctl. ---
 
 JUDGE_MODEL = "jev-latest"
-JUDGE_PRESETS = {
- 'qa-gate': {'required': ['acceptance', 'startable_target_fact'],
-             'questions': {'ui_observable_criteria': {'type': 'noul',
-                                                      'instructions': "Does the spec's acceptance "
-                                                                      'describe UI behaviour a '
-                                                                      'user could observe on a '
-                                                                      'drivable surface (a screen, '
-                                                                      'a page, a window, a '
-                                                                      'rendered widget), as '
-                                                                      'opposed to CLI output, file '
-                                                                      'contents, or library '
-                                                                      'behaviour?'}}},
- 'fork-gate': {'required': ['text'],
+JUDGE_PRESETS = {'fork-gate': {'required': ['text'],
                'questions': {'fork_kind': {'type': 'choice',
                                            'instructions': 'Assume an open design or behaviour '
                                                            'fork exists. Classify what its answer '
@@ -23853,7 +23841,7 @@ def judge_validate_state(preset: str, state: dict) -> None:
     missing = [key for key in required if key not in state]
     if missing:
         raise ValueError("missing required state field: " + ", ".join(missing))
-    text_fields = {"qa-gate": ["acceptance"], "fork-gate": ["text"],
+    text_fields = {"fork-gate": ["text"],
                    "memory-rerank": ["query"], "tier": ["task_title", "task_body", "acceptance", "repo"]}
     for key in text_fields[preset]:
         if not isinstance(state[key], str):
@@ -23941,14 +23929,7 @@ def judge_https_connection(host: str, timeout: float):
 
 def judge_decide(preset: str, state: dict, answers: dict) -> dict:
     decision = {"value": None, "rule": "", "met": False}
-    if preset == "qa-gate":
-        ui = answers["ui_observable_criteria"]["noul"]
-        target = bool(state["startable_target_fact"])
-        value = "qa_runs" if ui >= 0.5 and target else "qa_skipped"
-        decision.update(value=value, rule="ui>=0.5 AND startable target", met=value == "qa_runs")
-        if value == "qa_skipped":
-            decision["reason"] = "no UI-observable criteria" if ui < 0.5 else "no startable target"
-    elif preset == "fork-gate":
+    if preset == "fork-gate":
         # A hint on the host's own fork text; the host decides observable versus preference.
         kind = answers["fork_kind"]
         value = kind["choice"] if kind["confidence"] >= 0.5 and kind["choice"] != "none_of_the_above" else "host"
@@ -24089,13 +24070,8 @@ def cmd_judge(args: argparse.Namespace) -> None:
             # Routing is code's and the host's: a live spec's lifecycle, never a judge request.
             if not args.spec or args.state_file:
                 raise ValueError("--preset route takes --spec only; intake routing is the host's")
-        elif args.preset == "qa-gate" and args.spec:
-            flow_dir = get_flow_dir()
-            spec_id = resolve_spec_id_arg(flow_dir, args.spec, use_json=True)
-            body = find_spec_md_path(flow_dir, spec_id).read_text(encoding="utf-8")
-            state = {"acceptance": body, "startable_target_fact": judge_startable_target(get_repo_root(), body)}
         elif args.spec:
-            raise ValueError("--spec applies only to the route and qa-gate presets")
+            raise ValueError("--spec applies only to the route preset")
         if args.preset == "route":
             result = judge_route(judge_route_state({}, args.spec))
         else:
@@ -54987,7 +54963,7 @@ def main() -> None:
     p_judge = subparsers.add_parser("judge", help="Optional typed System One judgments")
     p_judge.add_argument("--preset", required=True, choices=["route", *JUDGE_PRESETS])
     p_judge.add_argument("--state-file", help="JSON state file")
-    p_judge.add_argument("--spec", help="Assemble route or QA state from a live spec")
+    p_judge.add_argument("--spec", help="Assemble route state from a live spec")
     p_judge.add_argument("--task", help="Assemble tier state from a live task")
     p_judge.add_argument("--explicit-model", help="Preserve the invocation's explicit implementer")
     p_judge.add_argument("--fast-model", help="Host's configured fast model")

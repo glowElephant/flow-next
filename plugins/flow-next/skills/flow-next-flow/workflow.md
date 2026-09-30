@@ -19,10 +19,10 @@ intent. With no argument, read [references/no-argument.md](references/no-argumen
 
 ## Step 2: Route
 
-Read [references/route-matrix.md](references/route-matrix.md). Routing never asks the judge,
-so a run with a TypeSafe key and one without take the same route. Once per run, check whether the
-judge can run for the fork and QA calls (this never prints the key); when it prints `judge: off`,
-skip those calls for the rest of the run:
+Read [references/route-matrix.md](references/route-matrix.md). Routing and the QA gate never
+ask the judge, so a run with a TypeSafe key and one without take the same route. Once per run,
+check whether the judge can run for the fork hint (this never prints the key); when it prints
+`judge: off`, skip the fork-gate call for the rest of the run:
 
 ```bash
 JUDGE=on

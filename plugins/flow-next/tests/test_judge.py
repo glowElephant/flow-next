@@ -25,7 +25,6 @@ spec.loader.exec_module(f)
 
 def state_for(preset):
     states = {
-        "qa-gate": {"acceptance": "The button opens a modal", "startable_target_fact": "npm run dev"},
         "fork-gate": {"text": "Should this be a modal or a separate page?"},
         "memory-rerank": {"query": "auth", "entries": [{"entry_id": str(i)} for i in range(15)]},
         "tier": {"task_title": "Rename field", "task_body": "Rename field in fixture", "acceptance": "Updated fixture",
@@ -151,11 +150,11 @@ class JudgeTests(unittest.TestCase):
             f.judge_evaluate("clean-review", {"body": "No findings"})
         self.connection.request.assert_not_called()
 
-    def test_qa_requires_both_halves(self):
-        for ui, target, expected, reason in [(.5, "npm run dev", "qa_runs", None), (.49, "npm run dev", "qa_skipped", "no UI-observable criteria"), (.9, None, "qa_skipped", "no startable target")]:
-            decision = f.judge_decide("qa-gate", {"startable_target_fact": target}, {"ui_observable_criteria": {"noul": ui}})
-            self.assertEqual(decision["value"], expected)
-            self.assertEqual(decision.get("reason"), reason)
+    def test_retired_qa_gate_preset_rejected(self):
+        # The QA gate never asks Jev: the host judges the UI half, code resolves the target.
+        with self.assertRaisesRegex(ValueError, "registered presets"):
+            f.judge_evaluate("qa-gate", {"acceptance": "The button opens a modal", "startable_target_fact": "npm run dev"})
+        self.connection.request.assert_not_called()
 
     def test_fork_gate_is_a_kind_hint_and_never_cancels_a_fork(self):
         self.assertEqual(list(f.judge_questions("fork-gate", state_for("fork-gate"))), ["fork_kind"])

@@ -97,22 +97,6 @@ class JudgeConsumerTests(unittest.TestCase):
             self.assertTrue(out["pr_probe_failed"])
             self.assertIsNone(out["decision"])
 
-    def test_qa_enabled_and_unavailable_apply_stage(self):
-        path = "skills/flow-next-flow/references/gate-selection.md"
-        for ui, target, runs, reason in [(0.84, "npm run dev", True, "ran"),
-                                         (0.12, "npm run dev", False, "no UI-observable criteria"),
-                                         (0.84, "", False, "no startable target")]:
-            answer = result("qa-gate", {"ui_observable_criteria": {"noul": ui}}, {"startable_target_fact": target})
-            out = execute(path, "fence:judge-qa-consumer", result=answer, target=target)
-            self.assertEqual(out["qa_runs"], runs)
-            self.assertIn(reason, out["qa_line"])
-            self.assertIn(str(ui), out["qa_line"])
-        for prior in (True, False):
-            out = execute(path, "fence:judge-qa-consumer", result={"available": False, "reason": "timeout"},
-                          host_qa_runs=prior, host_skip_reason="no drivable surface")
-            self.assertEqual(out["qa_runs"], prior)
-            self.assertIn("jev-unavailable(timeout)", out["qa_line"])
-
     def test_memory_fence_is_one_search_that_runs_without_a_key(self):
         command = fence("skills/flow-next-plan/references/judge-memory.md", "memory search")
         argv = command.strip().replace('"<task sentence>"', "").split()
