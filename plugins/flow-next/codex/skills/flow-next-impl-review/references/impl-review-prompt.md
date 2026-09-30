@@ -23,8 +23,8 @@ current state to verify implementations, and use the context hints for deeper ex
 Verification budget: verify via the Quick commands of the spec (or task) under review — the
 task file names its parent spec — / the focused suites its evidence or dispatch names, plus
 any command a specific finding needs — running the exact test a finding disputes
-is always licensed. The FULL suite belongs to the run's final gate (work Phase 4/5, rolling
-quiesce), never to a review round.
+is always licensed. Never run the FULL suite in a review round; CI
+and the project's own gate own it.
 
 Nothing is pre-truncated for you. Fetch what you need.
 
