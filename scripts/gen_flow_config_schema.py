@@ -322,17 +322,6 @@ DESCRIPTIONS: dict[str, str] = {
         "flow-next's built-in default shapes; never required and not part "
         "of the seeded defaults."
     ),
-    "artifacts": "HTML artifact mode settings (fn-62).",
-    "artifacts.html": "HTML render-lens settings.",
-    "artifacts.html.enabled": (
-        "Enable optional HTML artifacts: participating skills emit "
-        "self-contained lenses at .flow/artifacts/<spec-id>/. OFF by "
-        "default - markdown stays the sole source of truth. It costs an "
-        "extra render step on capture, plan, and make-pr plus an artifact "
-        "tree to commit or ignore; enable it when specs go to business "
-        "reviewers, or ask for a render in conversation when you need one. "
-        "See docs/running-lean.md."
-    ),
     "pipeline": "Pilot pipeline stage gates.",
     "pipeline.qa": (
         "Optional live QA stage. String-enum off | on | auto, NOT a bool; "
@@ -629,9 +618,6 @@ def _build_table() -> list[tuple[str, dict]]:
                 },
             },
         ),
-        ("artifacts", {"kind": "object", "open": False}),
-        ("artifacts.html", {"kind": "object", "open": False}),
-        ("artifacts.html.enabled", {"type": "boolean"}),
         ("pipeline", {"kind": "object", "open": False}),
         ("pipeline.qa", {"enum": ["off", "on", "auto"]}),
         ("pipeline.chainStages", {"enum": ["off", "on"]}),

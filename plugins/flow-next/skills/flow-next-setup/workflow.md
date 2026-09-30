@@ -283,8 +283,8 @@ Use the Step 2 response, without repeating shell probes or config calls:
 
 - `tools` supplies the `HAVE_RP`, `HAVE_CODEX`, `HAVE_COPILOT`, `HAVE_CURSOR`,
   `HAVE_CLAUDE`, and `HAVE_GROK` availability flags.
-- `config` supplies raw `CURRENT_BACKEND`, `CURRENT_HTML_ARTIFACTS`,
-  `CURRENT_SPEC_IDS`, and `CURRENT_QA`. Only null means unset; false is an answer.
+- `config` supplies raw `CURRENT_BACKEND`, `CURRENT_SPEC_IDS`, and
+  `CURRENT_QA`. Only null means unset; false is an answer.
 - `criteria_exists` supplies `CRITERIA_EXISTS`; symlinks count as existing.
 - `tracker_active` supplies `TRACKER_CONFIGURED` from the canonical predicate.
 
@@ -318,7 +318,6 @@ If ANY config values are already set, print a notice before asking questions:
 ```
 Current configuration:
 - Review backend: <current value, bare or spec form> (change with: flowctl config set review.backend <codex|rp|copilot|cursor|claude|host|none OR spec form like codex:<model>:xhigh, cursor:<model>, or claude:<model>:<effort>>)
-- HTML artifacts: <enabled|disabled> (change with: flowctl config set artifacts.html.enabled <true|false>)
 - Spec ids: <flow|tracker> (change with: flowctl config set tracker.specIds <flow|tracker>)
 - Live QA: <off|on|auto> (change with: flowctl config set pipeline.qa <off|on|auto>)
 ```
@@ -329,7 +328,7 @@ Only include lines for config values that are set. If no config is set, skip thi
 
 Build the questions array dynamically. **The questions array is built only from keys that read raw-null in `.flow/config.json`** (one exception: `pipeline.qa` materializes as `off` on init, so the Live QA question also treats that default as unanswered on a first setup run and never on a re-run). A re-run with everything set that asks a config question it already knows the answer to has broken this — existing config is preserved, never silently flipped. To change an already-set value, the user runs `flowctl config set <key> <value>` directly (the commands are surfaced in 6c's current-config notice).
 
-Skipped questions = config values already persisted from a prior run. Asking again would either no-op (same answer) or silently flip a deliberate user choice — both are wrong. The questions go out in two `AskUserQuestion` calls, because the tool takes at most 4 questions per call, 4 options per question, and a header of at most 12 characters: the **config call** (Review, HTML, Live QA, Spec ids — only the unset entries) and then the **files call** (Docs, Criteria, Star). Skip a call whose array is empty, so a steady re-run with all choices recorded asks nothing. Filter the files call through `optional_answers` before applying its remaining gates. **There is no routing question** — the routing block is proposed, not negotiated (Step 7).
+Skipped questions = config values already persisted from a prior run. Asking again would either no-op (same answer) or silently flip a deliberate user choice — both are wrong. The questions go out in two `AskUserQuestion` calls, because the tool takes at most 4 questions per call, 4 options per question, and a header of at most 12 characters: the **config call** (Review, Live QA, Spec ids — only the unset entries) and then the **files call** (Docs, Criteria, Star). Skip a call whose array is empty, so a steady re-run with all choices recorded asks nothing. Filter the files call through `optional_answers` before applying its remaining gates. **There is no routing question** — the routing block is proposed, not negotiated (Step 7).
 
 Available questions (include only if corresponding config is unset):
 
@@ -341,19 +340,6 @@ Available questions (include only if corresponding config is unset):
   "options": [
     {"label": "Tracker (Recommended)", "description": "Mint KEY-N-slug / gh-N / gl-N from the issue; create the tracker issue first on a fresh idea. Stops parallel fn-N collisions."},
     {"label": "Flow", "description": "Keep sequential fn-N allocation (today's default). Safer offline; collisions remain possible across parallel worktrees/clones. An explicit Flow answer is remembered — setup will not ask again."}
-  ],
-  "multiSelect": false
-}
-```
-
-**HTML question** (include if CURRENT_HTML_ARTIFACTS is empty):
-```json
-{
-  "header": "HTML",
-  "question": "Enable HTML artifact mode? Capture/plan/make-pr additionally render each spec and PR body as a self-contained HTML page under .flow/artifacts/ - nicer for humans to review in a browser. The markdown stays the source of truth; pages are regenerable any time.",
-  "options": [
-    {"label": "Yes (Recommended)", "description": "Also emit shareable HTML review pages alongside the markdown (one extra render step per capture, plan, and make-pr)"},
-    {"label": "No", "description": "Markdown-only. Zero extra steps, zero token overhead. Enable later: flowctl config set artifacts.html.enabled true"}
   ],
   "multiSelect": false
 }
@@ -562,43 +548,6 @@ Only process answers for questions that were asked (config values that were unse
 - If "Flow": `"${PLUGIN_ROOT}/scripts/flowctl" config set tracker.specIds flow --json`
 - Writing either value ends the ask-once contract: the next setup run sees a non-empty raw key and skips this question.
 
-**HTML** (if question was asked):
-- If "No": `"${PLUGIN_ROOT}/scripts/flowctl" config set artifacts.html.enabled false --json`
-- If "Yes":
-  1. `"${PLUGIN_ROOT}/scripts/flowctl" config set artifacts.html.enabled true --json`
-  2. Ask ONE follow-up via `AskUserQuestion` — track or ignore the artifact directory:
-     - **header**: `Artifacts`
-     - **question**: `Artifacts live at .flow/artifacts/<spec-id>/{spec,pr}.html (fixed paths, regenerable). Commit them or gitignore the directory?`
-     - **options**:
-       - `Commit artifacts (Recommended)` — keep `.flow/artifacts/` tracked. This is what makes make-pr blob links resolve for remote reviewers. No action needed (the auto-managed `.flow/.gitignore` block does not exclude `artifacts/`).
-       - `Gitignore` — local-open only; make-pr skips blob links. Append the pattern below the auto-managed footer in `.flow/.gitignore` (user patterns there are preserved by flowctl), guarding against duplicates:
-         ```bash
-         grep -qx 'artifacts/' .flow/.gitignore 2>/dev/null || printf 'artifacts/\n' >> .flow/.gitignore
-         # Untrack any artifacts committed before this choice so state converges (no-op when none)
-         git rm -r --cached --quiet .flow/artifacts 2>/dev/null || true
-         ```
-  3. Print the lavish-axi offer verbatim. **The skill detects and instructs; it never installs.** A transcript showing setup running `npm i -g lavish-axi` has broken this — global installs are user-consent territory, the same discipline as /flow-next:map:
-
-     ```
-     HTML artifact mode enabled.
-
-     Optional companion — lavish-axi (annotate spec artifacts in the browser; feedback
-     flows back as markdown-source edits, then the lens regenerates):
-
-       Install:   npm i -g lavish-axi
-                  (or zero-setup, per run: npx lavish-axi <artifact.html>)
-
-       Feedback model — session-spanning, pull-only: annotations queue in the global
-       ~/.lavish-axi/state.json and survive the agent session; any later agent session
-       drains the queue via the lavish-axi poll CLI. Nothing is pushed into the agent.
-
-       Lifecycle: the local server idle-stops after ~30 min; reopening the artifact
-       resumes the session. Without lavish-axi (or after idle-stop) the artifact still
-       renders as a plain static page — it is never a dependency.
-
-     flow-next never auto-installs lavish-axi.
-     ```
-
 **Live QA** (if question was asked; match on the label's leading value):
 - If "off"*: `"${PLUGIN_ROOT}/scripts/flowctl" config set pipeline.qa off --json`
 - If "on": `"${PLUGIN_ROOT}/scripts/flowctl" config set pipeline.qa on --json`
@@ -781,7 +730,6 @@ Configuration (use flowctl config set to change):
 - Plan-Sync: <enabled|disabled>
 - Plan-Sync cross-spec: <enabled|disabled>
 - GitHub scout: <enabled|disabled>
-- HTML artifacts: <enabled|disabled>
 - Spec ids: <flow|tracker|unset>   # only meaningful when a tracker is configured; tracker is the team default
 - Live QA: <off|on|auto>
 - Review backend: <host|codex|rp|copilot|cursor|claude|none>

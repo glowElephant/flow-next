@@ -132,8 +132,6 @@ When an effort is too large and unclear for a single capture session, `/flow-nex
 
 Example journeys (research-led, prototype-led reversal with supersession, multi-spec split, skip-chart) are **illustrative**, not a canonical checklist - chart has no fixed discovery phase order.
 
-> **Optional render-lens companions.** With HTML artifact mode on (`flowctl config set artifacts.html.enabled true`), the two human review surfaces gain a rendered companion: spec review gets a self-contained spec visualizer at `.flow/artifacts/<spec-id>/spec.html` (acceptance criteria with provenance chips; task DAG + R-ID coverage once planned - useful for POs/PMs reviewing handovers #1-#3) and diff review gets a read-only PR instrument at `pr.html` (churn map, R-ID → evidence table, where-to-look checklist - handover #6). The markdown artefacts above remain the record; lenses are regenerable derivations. OFF by default. See [`html-artifacts.md`](html-artifacts.md).
-
 ---
 
 ## Roles and ownership
@@ -252,7 +250,7 @@ The QA discipline (P0/P1/P2 taxonomy, evidence rules, session hygiene) is a lean
 
 `/flow-next:make-pr <spec-id>` authors one aid artifact from the spec, task evidence, review receipts, decisions, and diff. flowctl renders its short briefing: Why, What changes for a user or operator, Scope, Blast radius, Verification, Tradeoffs, and Open items. Empty sections are omitted.
 
-Scope groups files into diff-fenced trees with purposes and requirement IDs. Undescribed files collapse to a count; canonical attention means must read, while mechanical and generated changes are safe to skim. The complete walkthrough stays in the stored artifact for the HTML lens and other consumers. See [`pr-cognitive-aid.md`](pr-cognitive-aid.md) for the rendering and consumer contract.
+Scope groups files into diff-fenced trees with purposes and requirement IDs. Undescribed files collapse to a count; canonical attention means must read, while mechanical and generated changes are safe to skim. The complete walkthrough stays in the stored artifact for other consumers. See [`pr-cognitive-aid.md`](pr-cognitive-aid.md) for the rendering and consumer contract.
 
 A structural sketch appears only when structure actually changed, preferably in a diff fence. Proof cells draw their outcomes from gates that ran and their receipts; unrun steps stay unverified. Open items and Tradeoffs carry findings that the spec requires to be recorded in the PR.
 

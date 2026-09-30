@@ -80,12 +80,6 @@ class AuthoredFieldTests(unittest.TestCase):
                             flowctl.cmd_pr_cognitive_aid_render(args)
                         render.assert_called_once_with(expected)
 
-                        output = StringIO()
-                        with redirect_stdout(output):
-                            flowctl.cmd_pr_cognitive_aid_html_input(args)
-                        carrier = output.getvalue().split(">", 1)[1].split("</script>", 1)[0]
-                        self.assertEqual(json.loads(carrier), expected)
-
     def test_wrong_types_name_each_authored_field(self):
         for field in FIELDS:
             wrong_values = [None, False, 42, {}, [], ["text"]]

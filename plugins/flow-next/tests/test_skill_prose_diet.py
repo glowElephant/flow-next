@@ -115,8 +115,6 @@ class PlanDietTestCase(unittest.TestCase):
              "references/tracker-projection.md"),
             ("## Step 7", "## Step 8", "review mode is `none`",
              "references/selected-review.md"),
-            ("## Step 8.5", None, "artifacts.html.enabled",
-             "references/html-render-lens.md"),
         )
         for start, end, gate, reference in cases:
             body = section(steps, start, end) if end else steps[steps.index(start):]
@@ -134,13 +132,11 @@ class PlanDietTestCase(unittest.TestCase):
         steps = read(SKILLS / "flow-next-plan/steps.md")
         for detail in (
             "Never create one tracker issue per task",
-            "lavish-axi \"$(pwd)/.flow/artifacts",
             "Repeat until review returns `Ship`",
         ):
             self.assertNotIn(detail, steps)
         for rel, detail in (
             ("references/tracker-projection.md", "Never create one tracker issue per task"),
-            ("references/html-render-lens.md", "lavish-axi \"$(pwd)/.flow/artifacts"),
             ("references/selected-review.md", "Repeat until review returns `Ship`"),
         ):
             self.assertIn(detail, read(SKILLS / "flow-next-plan" / rel))

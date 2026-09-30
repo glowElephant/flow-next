@@ -1,4 +1,4 @@
-"""fn-257 R8: capture reads its readiness and HTML-lens gates from the one
+"""fn-257 R8: capture reads its readiness gate from the one
 config snapshot it takes, and its duplicate check compares open specs only."""
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ def _corpus() -> str:
 class CaptureConfigSnapshot(unittest.TestCase):
     def test_gate_keys_come_from_the_snapshot(self) -> None:
         corpus = _corpus()
-        for key in ("tracker.readyState", "artifacts.html.enabled"):
+        for key in ("tracker.readyState",):
             self.assertNotIn(f"config get {key}", corpus)
             self.assertIn(f".value.{key}", corpus)
 

@@ -54,7 +54,6 @@ Defaults below are read from the published schema ([`../schema/flow-config.schem
 | [Tracker sync](#tracker-sync) | `tracker.enabled` | off | `/flow-next:tracker-sync` |
 | [Live QA stage](#live-qa-stage) | `pipeline.qa` (`off \| on \| auto`) | off | `/flow-next:qa <spec>` |
 | [Cross-model review backend](#cross-model-review-backend) | `review.backend` | unset | `/flow-next:impl-review` (draw topology is prose-steered, not a knob) |
-| [HTML render lenses](#html-render-lenses) | `artifacts.html.enabled` | off | ask for a render in conversation |
 | [Plan-sync](#plan-sync) | `planSync.enabled` | **off** | `/flow-next:sync` |
 | [Memory](#memory-and-the-audit-sweep) | `memory.enabled` | **on** | `/flow-next:audit` |
 | [Pre-capture discovery](#pre-capture-discovery) | none | manual | `/flow-next:chart`, `/flow-next:prospect` |
@@ -113,15 +112,6 @@ On the codex and host backends the first review round of a scope fans out three 
 - **Cross-family upgrade** - `use three different model families for the review fan-out` routes each draw to a different family, decorrelating blind spots across families as well as axes: the strongest setting for a high-stakes merge. On the codex backend the primary draw (correctness, or the first draw when correctness is not drawn) stays on codex; secondary draws may name codex, copilot, or cursor. On the host backend the per-draw model pins are unconstrained.
 
 The worked recipes and the evidence behind the default live in [`orchestration.md`](orchestration.md#steering-the-fan-out-worked-recipes).
-
-### HTML render lenses
-
-`artifacts.html.enabled` - **off by default**. Details: [`html-artifacts.md`](html-artifacts.md).
-
-- **Automates away:** rendering a spec or a PR as a self-contained HTML page for people who will not read markdown in a terminal.
-- **Costs:** an extra render step on capture, plan, and make-pr, and an artifact tree to decide whether to commit or ignore.
-- **Earns its keep when:** you are handing a spec to a business reviewer, or a PR to someone reviewing decisions rather than diffs.
-- **Lean invocation:** ask for the render in conversation when you need one. Markdown stays the source of truth in every case, so a lens is always regenerable and never has to exist in advance.
 
 ### Plan-sync
 

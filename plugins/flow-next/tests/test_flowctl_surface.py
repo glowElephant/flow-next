@@ -142,7 +142,6 @@ pilot strikes clear
 pilot strikes list
 pilot-log append
 pr-cognitive-aid current
-pr-cognitive-aid html-input
 pr-cognitive-aid render
 pr-cognitive-aid validate
 pr-cognitive-aid write

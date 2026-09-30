@@ -75,7 +75,7 @@ date -u +%Y-%m-%dT%H:%M:%SZ > "${TMPDIR:-/tmp}/flow-capture-anchor-${SPEC_ID}"
 
 When `READY_RESET=true` (the spec WAS ready), Phase 6's rewrite footer carries a one-line reset announcement. When `false`, no readiness line is printed — never announce a reset that didn't happen (zero noise for never-ready specs).
 
-§5.4–§5.10 (branch name, tracker sync, glossary, readiness, HTML lens) run exactly as on the new-spec branch.
+§5.4–§5.9b (branch name, tracker sync, glossary, readiness, no-plan) run exactly as on the new-spec branch.
 
 ---
 

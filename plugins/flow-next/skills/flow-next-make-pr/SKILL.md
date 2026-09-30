@@ -9,7 +9,7 @@ allowed-tools: AskUserQuestion, Read, Bash, Grep, Glob, Write, Edit, Task
 The host authors one grounded aid object; flowctl validates, stores and renders the briefing. Read
 [workflow.md](workflow.md), then its reached references. No extra model call or hand-assembled sections.
 Invocation authorizes push and PR creation; `--dry-run` previews without repository writes, push, PR edits
-or memory writes. The opt-in [html-lens.md](html-lens.md) loads only behind its config gate.
+or memory writes.
 
 Read [working-rules.md](../../references/working-rules.md) first; it holds for every step of this skill.
 

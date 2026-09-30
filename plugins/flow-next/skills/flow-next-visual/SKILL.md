@@ -13,8 +13,6 @@ Restate one thing visually, in compact markdown, on one screen. The structure IS
 
 **Read-only.** This skill reads state and responds. It never writes files, never mutates flow state, never commits, never runs a workflow. (If the user asks to save a digest, that is an ordinary Write with ordinary consent — not a mode of this skill.)
 
-Rich HTML render lenses are a different register and stay where they are (`artifacts.html.enabled`); this skill never produces or replaces them.
-
 ## Preamble
 
 flowctl is bundled with the plugin (not on PATH). Define once; subsequent blocks use `$FLOWCTL`:

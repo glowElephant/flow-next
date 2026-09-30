@@ -738,15 +738,6 @@ class MarkdownAndBudgetTests(unittest.TestCase):
                 first_body_line = rendered.splitlines()[2]
                 self.assertNotEqual(first_body_line, thesis)
 
-    def test_html_input_is_lossless_and_script_safe(self) -> None:
-        value = artifact()
-        value["changeWalkthrough"]["thesis"] = "</script><script>alert('&')</script>"
-        carrier = flowctl.render_pr_cognitive_aid_html_input(value)
-        self.assertNotIn("</script><script>", carrier)
-        self.assertIn("\\u003c/script\\u003e", carrier)
-        encoded = carrier.split(">", 1)[1].rsplit("</script>", 1)[0]
-        self.assertEqual(json.loads(encoded), value)
-
     def test_validation_plus_render_p95_under_100_ms_for_30_warm_runs(self) -> None:
         maximum_normal = json.loads(GOLDEN.read_text(encoding="utf-8"))
         metadata = json.loads(GOLDEN_META.read_text(encoding="utf-8"))
@@ -810,10 +801,6 @@ class MakePrIntegrationTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
         self.assertLess(
             workflow.index("## Phase 1.5: Structured PR cognitive-aid"),
-            workflow.index("## Phase 1.5b: HTML render lens"),
-        )
-        self.assertLess(
-            workflow.index("## Phase 1.5b: HTML render lens"),
             workflow.index("## Phase 2:"),
         )
         self.assertIn(
@@ -827,34 +814,6 @@ class MakePrIntegrationTests(unittest.TestCase):
         self.assertIn("--op reconcile", finalize)
         self.assertIn("sync check", finalize)
         self.assertIn("Retro-fire", finalize)
-
-    def test_html_off_only_disables_the_optional_html_lens(self) -> None:
-        workflow = (
-            REPO_ROOT
-            / "plugins/flow-next/skills/flow-next-make-pr/workflow.md"
-        ).read_text(encoding="utf-8")
-        # Branch disclosure moved the per-mode expected-behavior list off the
-        # always-loaded workflow into a maintainer-only reference; the workflow
-        # must still name it.
-        self.assertIn("references/manual-smoke.md", workflow)
-        smoke = (
-            REPO_ROOT
-            / "plugins/flow-next/skills/flow-next-make-pr"
-            / "references/manual-smoke.md"
-        ).read_text(encoding="utf-8")
-        html_off = next(
-            line
-            for line in smoke.splitlines()
-            if "`artifacts.html.enabled` unset/false" in line
-        )
-        self.assertIn("Phase 1.5b performs one config read", html_off)
-        self.assertIn("no `pr.html` write or commit", html_off)
-        self.assertIn(
-            "Phase 1.5 still persists the structured PR cognitive-aid",
-            html_off,
-        )
-        self.assertNotIn("no `.flow/artifacts/` write", html_off)
-        self.assertNotIn("byte-identical body vs pre-feature", html_off)
 
 
 # --- Changed-path and batched-object tests for cognitive-aid glossary diffs ---

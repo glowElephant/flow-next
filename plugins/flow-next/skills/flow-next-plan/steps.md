@@ -302,12 +302,4 @@ if [ "$ACTIVE" = "1" ]; then
 fi
 ```
 
-When it prints, read [`references/next-steps-menu.md`](references/next-steps-menu.md); it owns the menu, its recommendation line, and when Step 8.5 runs. Under autonomy there is no menu: run Step 8.5 directly.
-
-## Step 8.5: HTML render lens (opt-in)
-
-```bash
-HTML_LENS=$(jq -r 'if .value.artifacts.html.enabled == true then "true" else "false" end' "${TMPDIR:-/tmp}/flow-plan-config-<suffix>.json" 2>/dev/null || echo false)
-```
-
-When false, unset or malformed, skip this step entirely. When true, read and follow [`references/html-render-lens.md`](references/html-render-lens.md).
+When it prints, read [`references/next-steps-menu.md`](references/next-steps-menu.md); it owns the menu and its recommendation line. Under autonomy there is no menu.

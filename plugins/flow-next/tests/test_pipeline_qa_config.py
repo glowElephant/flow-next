@@ -14,11 +14,9 @@ stores it like any other value and never interprets it (the attended
 conductor reads it; pilot treats it as off). The default `"off"` keeps
 pilot's stage set + behavior byte-for-byte unchanged.
 
-Unlike the `artifacts` block, `pipeline` is NOT in
-`_INIT_UNMATERIALIZED_BLOCKS`: there is no setup-ceremony
-include-only-if-unset question gated on a `--raw` null probe, so it
-materializes into config.json on init like the `work.*` / `land.*` blocks.
-Mirrors test_artifacts_config.py / test_land_config.py.
+There is no setup-ceremony include-only-if-unset question gated on a
+`--raw` null probe for `pipeline`, so it materializes into config.json on
+init like the `land.*` block. Mirrors test_land_config.py.
 """
 
 from __future__ import annotations
@@ -166,9 +164,8 @@ class PipelineQaConfigTestCase(unittest.TestCase):
         self.assertEqual(self._run_config_get_cli("pipeline.qa")["value"], "on")
 
     # ── init materializes the pipeline block (NOT exempt) ────────────────
-    # Unlike artifacts, `pipeline` is NOT in _INIT_UNMATERIALIZED_BLOCKS —
-    # there is no setup-ceremony `--raw` null probe for it, so init writes it
-    # into config.json like work.*/land.*.
+    # There is no setup-ceremony `--raw` null probe for `pipeline`, so init
+    # writes it into config.json like land.*.
 
     def test_fresh_init_materializes_pipeline_block(self) -> None:
         out = self._run_init_cli()
@@ -205,13 +202,11 @@ class PipelineQaConfigTestCase(unittest.TestCase):
     def test_pipeline_block_does_not_clash_with_existing_blocks(self) -> None:
         defaults = self.flowctl.get_default_config()
         # pipeline.* is its own top-level block, distinct from
-        # land.*, artifacts.*, and memory.* — no shared keys leak across.
+        # land.* and memory.* — no shared keys leak across.
         self.assertIn("pipeline", defaults)
         self.assertIn("land", defaults)
-        self.assertIn("artifacts", defaults)
         self.assertNotIn("qa", defaults["land"])
-        self.assertNotIn("qa", defaults["artifacts"])
-        self.assertNotIn("html", defaults["pipeline"])
+        self.assertNotIn("qa", defaults["memory"])
 
     def test_setting_pipeline_key_does_not_clobber_other_defaults(self) -> None:
         self._run_config_set_cli("pipeline.qa", "on")
@@ -220,9 +215,6 @@ class PipelineQaConfigTestCase(unittest.TestCase):
         )
         self.assertEqual(
             self._run_config_get_cli("land.patienceMinutes")["value"], 30
-        )
-        self.assertIs(
-            self._run_config_get_cli("artifacts.html.enabled")["value"], False
         )
 
     # ── fn-219: pipeline.chainStages (R1) ────────────────────────────────

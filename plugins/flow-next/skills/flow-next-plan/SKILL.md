@@ -91,12 +91,11 @@ When the sentinel prints, read [`references/setup-questions.md`](references/setu
 
 ## Workflow
 
-Read [steps.md](steps.md) and follow each step in order. Its optional paths (readiness warning, Route A, tracker-first mint, tracker projection, review, next-steps menu, HTML lens) load their references only when the step's condition holds.
+Read [steps.md](steps.md) and follow each step in order. Its optional paths (readiness warning, Route A, tracker-first mint, tracker projection, review, next-steps menu) load their references only when the step's condition holds.
 
 **Step 1 launches every scout in the depth-appropriate set, in ONE parallel Task call.** A plan whose research skipped a scout in its tier, or ran the set sequentially, has broken this.
 
 ## Output
 
 - Spec: `.flow/specs/<spec-id>.json` + `.md`; tasks: `.flow/tasks/<spec-id>.M.json` + `.md`.
-- Render lens, only when `artifacts.html.enabled`: `.flow/artifacts/<spec-id>/spec.html` (Step 8.5).
 - No code changes and no plan files outside `.flow/`.

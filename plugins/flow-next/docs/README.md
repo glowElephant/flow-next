@@ -17,7 +17,6 @@ The pages below ship with the plugin because skills, agents, and templates read 
 | [`skills.md`](skills.md) | Every shipped skill in one table, and the backend-split heuristic |
 | [`tracker-sync.md`](tracker-sync.md) | Projecting specs to Linear, GitHub, GitLab, or Jira |
 | [`memory-schema.md`](memory-schema.md) | The `.flow/memory/` entry schema, tracks, and categories |
-| [`html-artifacts.md`](html-artifacts.md) | The optional HTML rendering of specs and PR artifacts |
 | [`pr-cognitive-aid.md`](pr-cognitive-aid.md) | The stored PR walkthrough and its rendered briefing |
 | [`review-findings.md`](review-findings.md) | The structured review findings contract |
 | [`judge.md`](judge.md) | Optional Jev judgment: presets and API key handling |

@@ -78,7 +78,7 @@ Rationale: keeps the system simple, improves re-anchoring, makes automation (`fl
 │   │   ├── workflow/
 │   │   └── best-practices/
 │   └── legacy/            # (optional) archived flat files after migrate
-├── artifacts/             # HTML lenses + immutable PR cognitive-aid generations
+├── artifacts/             # Immutable PR cognitive-aid generations
 │   └── <spec-id>/pr-cognitive-aid/<artifactId>.json
 ├── review-receipts/       # Review receipt copies kept under .flow/
 │   └── <receipt>.json.history/

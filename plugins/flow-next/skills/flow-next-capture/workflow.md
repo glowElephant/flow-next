@@ -278,20 +278,6 @@ fi
 
 Best-effort: a refusal (the spec already has tasks, reachable only on a `--rewrite` of a planned spec) prints that notice and the run continues.
 
-### 5.10 — HTML render lens (opt-in)
-
-```bash
-ACTIVE=0
-# From the preamble root snapshot (same literal path) — not a config get call.
-VAL="$(jq -r 'if .value.artifacts.html.enabled == true then "true" else "false" end' "${TMPDIR:-/tmp}/flow-capture-config-<suffix>.json" 2>/dev/null)" || ACTIVE=1   # parse ERROR ⇒ ACTIVE (fail open)
-[ "$VAL" = "true" ] && ACTIVE=1
-if [ "$ACTIVE" = "1" ]; then
-  echo "GATE ACTIVE — STOP. Read references/html-lens.md before continuing."
-fi   # default branch: bare no-op — NO link, NO read path
-```
-
-On the sentinel, follow [references/html-lens.md](references/html-lens.md). Silent: no artifact, no output.
-
 ---
 
 ## Phase 6: Close
@@ -325,7 +311,7 @@ Recommended next: <the §2.8 judgment, in plan-vs-no-plan.md's shape>
 
 - `Tracker sync:` prints only when the bridge is active.
 - `Recommended next:` is mandatory unless `/flow-next:flow` dispatched the run: the §2.8 line from [`plan-vs-no-plan.md`](../flow-next-flow/references/plan-vs-no-plan.md) with the spec id filled in, in this host's command spelling (route-matrix.md's host command form). It is a recommendation, never a readiness write or permission to execute. Under `from:flow`, omit it: the conductor's stop report owns the next step.
-- Gate-owned lines follow only when their step ran: `Glossary: added N term(s) (…)` (§5.8), `Readiness: marked ready` (§5.9), `No-plan: field set (flow --auto/work take the direct route)` or the refusal notice (§5.9b), `Artifact: .flow/artifacts/<SPEC_ID>/spec.html (render lens - regenerable; markdown is the record)` (§5.10).
+- Gate-owned lines follow only when their step ran: `Glossary: added N term(s) (…)` (§5.8), `Readiness: marked ready` (§5.9), and `No-plan: field set (flow --auto/work take the direct route)` or the refusal notice (§5.9b).
 
 A rewrite and a split change the first line and repeat the block per spec; `references/rewrite-mode.md` and `references/split-proposal.md` own those variants.
 

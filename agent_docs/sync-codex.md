@@ -11,7 +11,7 @@ Run after modifying any of:
 - `plugins/flow-next/skills/**` - skill workflow files (canonical sources)
 - `plugins/flow-next/agents/**` - agent `.md` files (converted to `.toml`)
 - `plugins/flow-next/templates/spec.md` - canonical scaffold mirrored into `codex/templates/` for R20 relative-path resolution
-- `plugins/flow-next/references/**` - shared disclosure files (e.g. `html-artifacts.md`) mirrored byte-identical into `codex/references/` (tool-name-agnostic by contract; no rewrite pass touches them)
+- `plugins/flow-next/references/**` - shared reference files (e.g. `working-rules.md`) mirrored byte-identical into `codex/references/` (tool-name-agnostic by contract; no rewrite pass touches them)
 - `plugins/flow-next/docs/**` - doc pages mirrored (markdown only, `reach/` included) into the owned namespace `codex/docs/flow-next/`; mirror skill cross-links gain the matching `flow-next/` segment, and the mirrored pages' own internal links are rewritten to the **link-closure property** - every link either resolves on disk within the mirror or is an absolute GitHub URL (`install-codex.sh` replaces ONLY `$CODEX_HOME/docs/flow-next/` - never loose files or siblings under `$CODEX_HOME/docs/`, which a user or another package may own)
 
 There is no plugin-level `hooks/hooks.json`. Do not re-add a hooks stage.

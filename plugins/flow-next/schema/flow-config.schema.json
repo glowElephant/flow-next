@@ -619,25 +619,6 @@
         }
       }
     },
-    "artifacts": {
-      "description": "HTML artifact mode settings (fn-62).",
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "html": {
-          "description": "HTML render-lens settings.",
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "enabled": {
-              "description": "Enable optional HTML artifacts: participating skills emit self-contained lenses at .flow/artifacts/<spec-id>/. OFF by default - markdown stays the sole source of truth. It costs an extra render step on capture, plan, and make-pr plus an artifact tree to commit or ignore; enable it when specs go to business reviewers, or ask for a render in conversation when you need one. See docs/running-lean.md.",
-              "type": "boolean",
-              "default": false
-            }
-          }
-        }
-      }
-    },
     "pipeline": {
       "description": "Pilot pipeline stage gates.",
       "type": "object",

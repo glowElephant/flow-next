@@ -1418,20 +1418,6 @@ def get_default_config() -> dict:
         # DISTINCT namespace and are untouched.
         # One named PR: only the merge command and push-anchored patience remain.
         "land": {"patienceMinutes": 30, "mergeVerdictCommand": ""},
-        # fn-62.1 — optional HTML artifact mode (render lenses), seeded so
-        # `config get artifacts.html.enabled` returns False (NOT null) on a
-        # fresh repo via the defaults MERGE (load_flow_config), NOT by
-        # persisting the key into config.json: `init` deliberately skips
-        # this block (see _init_persisted_defaults) so the setup ceremony's
-        # include-only-if-unset `--raw` probe still reads null until the
-        # user explicitly decides. OFF by default: with it off,
-        # participating skills load no reference file, write no artifacts,
-        # and open no Lavish session. flowctl only stores/serves the knob —
-        # generation is agentic (the skills read the disclosure reference);
-        # artifacts live at the fixed deterministic paths
-        # .flow/artifacts/<spec-id>/{spec,pr}.html (never timestamped —
-        # Lavish keys sessions on the absolute path).
-        "artifacts": {"html": {"enabled": False}},
         # fn-72.2 — optional QA pipeline stage gate, seeded so
         # `config get pipeline.qa` returns the enum string "off" (NOT null)
         # on a fresh repo via the defaults MERGE. STRING-ENUM (off|on|auto),
@@ -1443,8 +1429,7 @@ def get_default_config() -> dict:
         # honours it (live QA only for a drivable spec with a startable
         # target, otherwise skipped(reason)); flowctl stores the value and
         # never interprets it. OFF by default: pilot's stage set + behavior
-        # are byte-for-byte unchanged with it off. This is NOT in
-        # _INIT_UNMATERIALIZED_BLOCKS - it materializes on init like
+        # are byte-for-byte unchanged with it off. It materializes on init like
         # work.*/land.*; setup's Live QA question therefore keys on a first
         # setup run rather than a `--raw` null probe. flowctl only
         # stores/serves the knob; the QA stage is host-agent skill wiring
@@ -1493,26 +1478,18 @@ def get_default_config() -> dict:
         # the skill's built-in default applies; flowctl only stores/serves
         # it (no judgment, no enum-validation — the class vocabulary is the
         # skill's, an open extension point). Like pipeline.* / work.* /
-        # land.*, this materializes on init (NOT in
-        # _INIT_UNMATERIALIZED_BLOCKS — no setup-ceremony `--raw` null probe).
+        # land.*, this materializes on init (no setup-ceremony `--raw` null
+        # probe).
         "pilot": {"autonomy": "ready", "gateClasses": []},
     }
 
 
-# Config blocks `flowctl init` must NOT materialize into .flow/config.json.
-# The setup ceremony (flow-next-setup workflow.md Step 6) gates its
-# include-only-if-unset questions on `config get <key> --raw` returning null
-# (= "user never decided"). Step 1 runs `init` BEFORE that detection, so any
-# default `init` persists would permanently suppress the question. Reads are
-# unaffected: load_flow_config() merges get_default_config() over the file,
-# so merged `config get` still returns the seeded default.
-# Scoped to fn-62's artifacts block only — the older ask-at-setup keys
-# (memory.enabled, planSync.enabled, scouts.github) predate this and keep
-# their materialize-on-init behavior unchanged.
-_INIT_UNMATERIALIZED_BLOCKS = ("artifacts",)
-
-# Leaf keys (dotted paths) that must stay absent from the on-disk file after
-# init so setup can detect "never asked" via `config get <key> --raw` → null.
+# Leaf keys (dotted paths) `flowctl init` must NOT materialize into
+# .flow/config.json. The setup ceremony gates its include-only-if-unset
+# questions on `config get <key> --raw` returning null (= "user never
+# decided"), and setup runs `init` BEFORE that detection, so a persisted
+# default would permanently suppress the question. Reads are unaffected:
+# load_flow_config() merges get_default_config() over the file.
 # MERGED defaults still apply (see get_default_config / get_default_tracker_config).
 # fn-134.2: tracker.specIds — see get_default_tracker_config comment for the
 # materialization decision (DO NOT materialize; unset must be detectable).
@@ -1566,14 +1543,11 @@ def _with_tracker_spec_ids_normalized(cfg: dict) -> dict:
 def _init_persisted_defaults() -> dict:
     """Defaults `cmd_init` writes/merges into config.json.
 
-    Equal to get_default_config() minus _INIT_UNMATERIALIZED_BLOCKS and
-    _INIT_UNMATERIALIZED_LEAVES, so the raw-file presence of those keys stays
-    a faithful "explicitly set" provenance signal for the setup ceremony's
-    `--raw` probe.
+    Equal to get_default_config() minus _INIT_UNMATERIALIZED_LEAVES, so the
+    raw-file presence of those keys stays a faithful "explicitly set"
+    provenance signal for the setup ceremony's `--raw` probe.
     """
     defaults = get_default_config()
-    for block in _INIT_UNMATERIALIZED_BLOCKS:
-        defaults.pop(block, None)
     for leaf in _INIT_UNMATERIALIZED_LEAVES:
         parts = leaf.split(".")
         cur = defaults
@@ -1745,7 +1719,7 @@ def _snapshot_raw_probe(snapshot: ConfigSnapshot, key: str):
     return _tree_probe(snapshot.raw, key)
 
 
-# --- advisory for config keys removed by flow-98 and fn-195 ----------------
+# --- advisory for removed config keys -------------------------------------
 #
 # The packaged codex-delegation subsystem is gone (flow-98), and with it the
 # six `work.delegate*` keys; the model-pin role map and its staleness stamp
@@ -1754,7 +1728,9 @@ def _snapshot_raw_probe(snapshot: ConfigSnapshot, key: str):
 # them entirely - but silence would leave the user believing the machinery is
 # still wired. Routing now lives in the /flow-next:setup model-routing block
 # (CLAUDE.md / AGENTS.md) plus the `flowctl usage` recipes, and the advisory
-# points there.
+# points there. 7.0 removed the opt-in HTML render lenses and with them
+# `artifacts.html.enabled`; existing .flow/artifacts/<id>/*.html files are
+# the user's and are left alone.
 #
 # ONE line per invocation, naming every removed key found - never one line
 # per key, never per phase, never a failure.
@@ -1783,6 +1759,7 @@ REMOVED_CONFIG_KEYS: tuple[str, ...] = (
     "land.cleanReviewCommentPattern",
     "land.requestReviewers",
     "land.patienceMinutesAfterReview",
+    "artifacts.html.enabled",
 )
 
 _removed_config_advisory_printed = False
@@ -1812,10 +1789,15 @@ def removed_config_keys_note(keys: list[str]) -> str:
     guidance = []
     if any(key.startswith("land.") for key in keys):
         guidance.append("See docs/flowctl.md#landing-upgrade for landing replacements.")
-    if any(not key.startswith("land.") for key in keys):
+    if any(key.startswith(("work.", "models.")) for key in keys):
         guidance.append(
             "Routing uses the model-routing block /flow-next:setup writes into "
             "CLAUDE.md / AGENTS.md plus the recipes in `flowctl usage`."
+        )
+    if "artifacts.html.enabled" in keys:
+        guidance.append(
+            "The HTML render lenses are gone; ask for a visual digest "
+            "(/flow-next:visual) or an HTML page in conversation instead."
         )
     return (
         f"note: .flow/config.json still carries removed "
@@ -3172,7 +3154,7 @@ def cmd_setup_status(args: argparse.Namespace) -> None:
     version = next((data.get("version") for name in manifests
                     if (data := read_object(plugin / name)).get("version")), None)
     config = {}
-    for key in ("review.backend", "artifacts.html.enabled", "tracker.specIds", "pipeline.qa"):
+    for key in ("review.backend", "tracker.specIds", "pipeline.qa"):
         value = raw
         for part in key.split("."):
             value = value.get(part) if isinstance(value, dict) else None
@@ -20111,7 +20093,7 @@ FLOW_GITIGNORE_AUTO_PATTERNS = [
     # class as receipts/; a `git add -A` must never commit them.
     "review-fanout/",
     # Head-bound aid generations and their writer lock stay per-clone. Keep
-    # HTML lenses, other artifact kinds, and measurement records trackable.
+    # other artifact kinds and measurement records trackable.
     "artifacts/*/pr-cognitive-aid/*.json",
     "artifacts/*/pr-cognitive-aid/.write.lock",
 ]
@@ -30573,45 +30555,6 @@ def cmd_pr_cognitive_aid_render(args: argparse.Namespace) -> None:
             code=3,
         )
     print(render_pr_cognitive_aid_markdown(result["artifact"]), end="")
-
-
-def render_pr_cognitive_aid_html_input(artifact: Any) -> str:
-    """Return an HTML-safe, lossless semantic carrier for the validated v1 object."""
-    artifact = validate_pr_cognitive_aid(artifact)
-    encoded = json.dumps(
-        artifact, ensure_ascii=False, separators=(",", ":"), sort_keys=True
-    )
-    encoded = (
-        encoded.replace("&", "\\u0026")
-        .replace("<", "\\u003c")
-        .replace(">", "\\u003e")
-    )
-    return (
-        '<script id="flow-next-pr-cognitive-aid" '
-        'type="application/json">'
-        f"{encoded}</script>\n"
-    )
-
-
-def cmd_pr_cognitive_aid_html_input(args: argparse.Namespace) -> None:
-    artifact = _pr_aid_read_input(args.file, use_json=False)
-    try:
-        artifact = _pr_aid_object(artifact, "pr_cognitive_aid")
-        base_sha = _pr_aid_sha(artifact.get("baseSha"), "baseSha")
-        head_sha = _pr_aid_sha(artifact.get("headSha"), "headSha")
-        expected_diff_files = _pr_aid_live_diff_files(
-            get_repo_root(), base_sha, head_sha
-        )
-        errors: list[str] = []
-        artifact = _expand_pr_cognitive_aid_input(
-            artifact, expected_diff_files, _errors=errors
-        )
-        artifact = validate_pr_cognitive_aid(
-            artifact, expected_diff_files=expected_diff_files, _errors=errors
-        )
-        print(render_pr_cognitive_aid_html_input(artifact), end="")
-    except PrCognitiveAidValidationError as exc:
-        error_exit(str(exc), use_json=False, code=2)
 
 
 # Backward-compat alias (T2 layers the deprecation warning).
@@ -43656,7 +43599,7 @@ def pilot_snapshot(spec_arg: str | None = None) -> dict:
                 commit = subprocess.run(["git", "log", "-1", "--format=%s%n%P", sha], cwd=repo,
                                         capture_output=True, text=True, check=False)
                 lines = commit.stdout.splitlines()
-                if commit.returncode or not lines or not re.match(r"^chore\(flow\): (qa verdict|pr artifact) ", lines[0]):
+                if commit.returncode or not lines or not re.match(r"^chore\(flow\): qa verdict ", lines[0]):
                     break
                 sha = lines[1].split()[0] if len(lines) > 1 and lines[1].split() else None
         chain = evaluate_spec_chain(flow_dir, sid, use_json=True, remote_heads=remote_heads)
@@ -57720,12 +57663,6 @@ def main() -> None:
     p_pr_aid_validate.add_argument("--file", required=True, help="JSON file or -")
     p_pr_aid_validate.add_argument("--json", action="store_true", help="JSON output")
     p_pr_aid_validate.set_defaults(func=cmd_pr_cognitive_aid_validate)
-    p_pr_aid_html_input = pr_aid_sub.add_parser(
-        "html-input",
-        help="Emit a lossless HTML-safe semantic carrier for one validated artifact",
-    )
-    p_pr_aid_html_input.add_argument("--file", required=True, help="JSON file or -")
-    p_pr_aid_html_input.set_defaults(func=cmd_pr_cognitive_aid_html_input)
     for command, handler, help_text in (
         (
             "write",

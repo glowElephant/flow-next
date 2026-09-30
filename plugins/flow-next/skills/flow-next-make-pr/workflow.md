@@ -44,21 +44,11 @@ empty task summaries. Only the host aborts for nonempty criteria ALL in `tasks_s
 ## Phase 1.5: Structured PR cognitive-aid
 
 Read [pr-cognitive-aid.md](pr-cognitive-aid.md) and execute it on every entry path, including dry-run and
-update, before optional HTML or body delivery.
-## Phase 1.5b: HTML render lens (opt-in)
-
-```bash
-HTML_LENS=$("$FLOWCTL" config get artifacts.html.enabled --json | jq -r 'if .value == true then "true" else "false" end')
-[[ "$DRY_RUN" == "1" ]] && HTML_LENS=false
-```
-
-When true, read [html-lens.md](html-lens.md) in full and execute it end-to-end. When false,
-do not read `html-lens.md` or the shared disclosure reference; emit no artifact, commit, body line or output. The lens is
-unchanged; retain its optional Render lens line when it succeeds.
+update, before body delivery.
 ## Phase 2: Deliver the briefing
 
-Use rendered `BODY_FILE` unchanged; append the enabled lens line before `Ref` / Stack lines.
-The renderer's numbered groups and linked file lists supply the structural sketch; the lens's old summary-block references mean this position.
+Use rendered `BODY_FILE` unchanged, before `Ref` / Stack lines.
+The renderer's numbered groups and linked file lists supply the structural sketch.
 
 For dry-run, print `BODY_FILE` and stop. Otherwise read [create-and-finalize.md](create-and-finalize.md) and
 complete it.

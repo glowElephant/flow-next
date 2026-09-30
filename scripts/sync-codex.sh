@@ -191,9 +191,8 @@ if [ -d "$PLUGIN_DIR/templates" ]; then
   cp -R "$PLUGIN_DIR/templates" "$CODEX_DIR/"
 fi
 
-# Mirror canonical references dir (fn-62.2: shared disclosure files such as
-# references/html-artifacts.md, loaded by skills only when the matching config
-# gate is on). Same shape as the templates copy above: skills cite the file by
+# Mirror canonical references dir (fn-62.2: shared files such as
+# references/working-rules.md). Same shape as the templates copy above: skills cite the file by
 # repo-relative path; in the mirror, `../../references/<name>.md` from
 # `codex/skills/<name>/<file>.md` resolves to `codex/references/<name>.md`.
 # Reference files are tool-name-agnostic by contract, so NO rewrite pass below

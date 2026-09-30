@@ -8,7 +8,6 @@ import io
 import json
 import os
 from pathlib import Path
-import re
 import shlex
 import subprocess
 import sys
@@ -261,22 +260,6 @@ if [[ "$DRY_RUN" != 1 && "$UPDATE_MODE" != 1 ]]; then gh pr create; fi
         self.assertEqual((self.root / "create-head").read_text(encoding="utf-8").strip(), before)
         self.assertEqual(json.loads((self.root / "create-spec.json").read_text(encoding="utf-8"))["status"], "open")
         self.assertFalse(json.loads((self.root / "context.json").read_text(encoding="utf-8"))["spec_closed"])
-
-    def test_r2_html_fallback_preserves_closed_head(self):
-        self.call("spec_close", id=self.spec_id)
-        self.git("add", self.spec_rel, self.task_rel)
-        self.git("commit", "-qm", "Closed")
-        before = self.git("rev-parse", "HEAD")
-        artifact = self.repo / f".flow/artifacts/{self.spec_id}/pr.html"
-        artifact.parent.mkdir(parents=True, exist_ok=True)
-        artifact.write_text("<html>Fallback lens</html>")
-        lens = WORKFLOW.with_name("html-lens.md").read_text(encoding="utf-8")
-        fence = next(f for f in re.findall(r"```bash\n(.*?)\n\s*```", lens, re.S) if "LENS_OK=true" in f)
-        env = dict(os.environ, SPEC_ID=self.spec_id, HTML_AID_STATUS="missing", PHASE0_CONTEXT=json.dumps({"spec_closed": True, "head": before}))
-        result = subprocess.run(["bash", "-c", "set -e\n" + fence + '\nprintf "%s" "$LINK_MODE"'], cwd=self.repo, env=env, capture_output=True, text=True)
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(self.git("rev-parse", "HEAD"), before)
-        self.assertEqual(result.stdout, "local")
 
     def test_r2_head_move_stops_before_push(self):
         fence = next(f for f in (SCRIPTS / "make-pr-create.sh").read_text(encoding="utf-8").split("# end:block") if "PUSH_OUT=$(git push" in f)

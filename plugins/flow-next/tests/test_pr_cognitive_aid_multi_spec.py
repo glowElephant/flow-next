@@ -53,7 +53,7 @@ class MultiSpecArtifactTests(unittest.TestCase):
         self.assertEqual(flowctl.render_pr_cognitive_aid_markdown(old),
                          flowctl.render_pr_cognitive_aid_markdown(single))
 
-    def test_qualified_coverage_and_html(self):
+    def test_qualified_coverage_and_sparse_expansion(self):
         value = multi_artifact()
         self.assertEqual(flowctl.validate_pr_cognitive_aid(value, expected_spec_id=SPEC_ID), value)
         with self.assertRaisesRegex(flowctl.PrCognitiveAidValidationError, "specId:"):
@@ -77,9 +77,8 @@ class MultiSpecArtifactTests(unittest.TestCase):
             output = StringIO()
             with mock.patch.object(flowctl, "_pr_aid_live_diff_files", return_value=artifact_diff_files(value)), \
                  mock.patch.object(flowctl, "_pr_aid_blob_prefix", return_value=None), redirect_stdout(output):
-                flowctl.cmd_pr_cognitive_aid_html_input(argparse.Namespace(file=str(path)))
-            embedded = output.getvalue().split(">", 1)[1].split("</script>", 1)[0]
-            self.assertEqual(json.loads(embedded), value)
+                flowctl.cmd_pr_cognitive_aid_validate(argparse.Namespace(file=str(path), json=True))
+            self.assertEqual(json.loads(output.getvalue())["artifact"], value)
 
     def test_tracker_sibling_validates_and_renders(self):
         value = json.loads(json.dumps(multi_artifact()).replace("fn-250", "wor-17"))

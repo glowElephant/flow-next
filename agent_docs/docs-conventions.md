@@ -24,7 +24,6 @@ content.
 | [`skills.md`](../plugins/flow-next/docs/skills.md) | The resolve-pr skill and the route matrix cite the backend-split heuristic; the count test pins the 30 skills table |
 | [`tracker-sync.md`](../plugins/flow-next/docs/tracker-sync.md) | Capture, make-pr, and work read the retro-fire rule; `flowctl_tracker` code and the config schema cite the dependency-projection ordering rule |
 | [`memory-schema.md`](../plugins/flow-next/docs/memory-schema.md) | The qa skill maps bug categories through it |
-| [`html-artifacts.md`](../plugins/flow-next/docs/html-artifacts.md) | The html-lens references in capture, make-pr, and plan; the fixture-contract test reads it |
 | [`pr-cognitive-aid.md`](../plugins/flow-next/docs/pr-cognitive-aid.md) | The consumer contract for the stored PR walkthrough and its rendered briefing |
 | [`review-findings.md`](../plugins/flow-next/docs/review-findings.md) | The structured findings contract; its test pins the schema fields, bounds, and identity grammar |
 | [`judge.md`](../plugins/flow-next/docs/judge.md) | The setup workflow links it for key handling; the config schema descriptions point at it |

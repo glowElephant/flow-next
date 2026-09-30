@@ -317,8 +317,7 @@ fi
 # References (shared disclosure files — fn-62.2)
 # ====================
 # Skills resolve `${CLAUDE_PLUGIN_ROOT}/references/<name>.md` at runtime
-# (e.g. references/html-artifacts.md, loaded only when the matching config
-# gate is on). Mirrored by sync-codex.sh into $CODEX_SRC/references/ —
+# (e.g. references/working-rules.md). Mirrored by sync-codex.sh into $CODEX_SRC/references/ —
 # byte-identical to canonical (reference files are tool-name-agnostic).
 if [ -d "$CODEX_SRC/references" ]; then
     for ref in "$CODEX_SRC/references/"*.md; do

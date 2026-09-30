@@ -118,6 +118,8 @@ note: .flow/config.json still carries removed key(s): models.roles, models.verif
 
 **This is expected, not an error.** The role map (`models.roles`) and its staleness stamps (`models.verifiedAt` / `models.verifiedWith`), like the `work.delegate*` keys, are removed - flowctl reads none of them. The advisory prints at most once per invocation, on the config and work entry points only, and never blocks. Delete the keys when convenient.
 
+`artifacts.html.enabled` gets the same note: the HTML render lenses are removed. Use `/flow-next:visual` for a quick visual digest or ask for an HTML page in conversation. Old `.flow/artifacts/<spec-id>/spec.html` and `pr.html` files are yours; flowctl never touches them, and you can delete them.
+
 **Routing not taking effect?** Routing is prose read by the agent, not config parsed by flowctl, so check in this order:
 
 - **The block is in the file the host actually reads** (`CLAUDE.md` on Claude Code / Droid / Grok, `AGENTS.md` on Codex / Cursor / Grok - see [`platforms.md`](platforms.md)), and its lines are **uncommented**. `/flow-next:setup` writes every line commented out on purpose; nothing routes until you uncomment one.

@@ -31,8 +31,8 @@ content. A moved head, missing artifact, or failed validation requires composing
 again.
 
 Aid generations and their `.write.lock` files are ignored by the managed
-`.flow/.gitignore` block after `flowctl init` refreshes it. HTML lenses and
-other artifact kinds remain trackable. Already tracked aid files require a
+`.flow/.gitignore` block after `flowctl init` refreshes it. Other artifact
+kinds remain trackable. Already tracked aid files require a
 one-time maintainer untracking step; flowctl never removes them from the index.
 
 Ignored aids are per-clone state. A PR created on another host or clone has no
@@ -59,7 +59,6 @@ Membership requires a spec newly done at HEAD and at least one of its task files
 The undeclared-requirements abort applies only to the host; sibling requirements remain visible as uncovered.
 Under several specs, an undeclared row tag appears only when its group cites a spec that declares requirements.
 Land selects specs by branch name. With no match, it reads recursive git trees at the head and the base: newly done specs qualify only with a task entry new or changed against base. Truncated reads need human attention. Land repairs the pull request it is given; merging requires session merge authorization. A null push date falls back to the head's earliest check-suite creation time, then committer date.
-The HTML lens fallback inputs read the host spec only.
 Two listed specs sharing a number within the same ID prefix cannot be qualified unambiguously.
 
 ## Sparse authoring
@@ -83,10 +82,10 @@ Each `changeWalkthrough.proof[]` cell also accepts an additive optional
 A verification step nobody ran is a proof cell with outcome `unverified`;
 its `value` explains the gap. Cells without an outcome remain valid, preserving
 artifacts stored before this addition. Invalid outcomes are rejected with the
-cell's path. All four input entry points below preserve the authored fields
+cell's path. All three input entry points below preserve the authored fields
 and proof-cell outcomes during sparse expansion and storage.
 
-Validate, write, render --file, and html-input --file accept rows with only
+Validate, write, and render --file accept rows with only
 judgment fields. Missing `changeType`, `additions`, and `deletions` are filled
 from the bound diff. An omitted `diffUrl` becomes
 `/<owner>/<repo>/blob/<headSha>/<path>`, with the path URL-encoded and slashes
@@ -139,21 +138,14 @@ same-record source. Preserve:
 - file-level `sourceRefs`, `rIds`, and `taskIds`;
 - optional `kept` and `verify` groups as first-class semantics.
 
-GitHub Markdown is the canonical hosted-review rendering. The optional HTML
-render lens consumes the same exact validated v1 object when one is available
-and uses it as the authoritative source for the fields above. HTML may enrich
-navigation, collapse state, and bounded inline-diff display; it may not
-reclassify files, reorder groups, invent badges, or blend stale and legacy
-data. The lens embeds the lossless output of
-`flowctl pr-cognitive-aid html-input --file <validated-object>` so consumers can
-recover and compare the exact JSON object. It remains local-only and leaves
-`HEAD` unchanged; committing that HTML to the reviewed branch would immediately
-stale its own head-bound input. Raw diff text is not stored in the object.
+GitHub Markdown is the canonical hosted-review rendering. Any other consumer
+reads the same validated v1 object and treats it as the authoritative source
+for the fields above: it may enrich navigation, but it may not reclassify
+files, reorder groups, invent badges, or blend stale and legacy data. Raw diff
+text is not stored in the object.
 
 Full validation rules, bounds, and fallback behavior are defined by the
-[`pr-cognitive-aid` flowctl commands](flowctl.md#pr-cognitive-aid). The HTML
-presentation boundary remains documented in
-[`html-artifacts.md`](html-artifacts.md).
+[`pr-cognitive-aid` flowctl commands](flowctl.md#pr-cognitive-aid).
 
 ## Markdown briefing
 
@@ -214,8 +206,7 @@ remain neutralized, including mentions (`@name`), which would ping a user. Issue
 Artifact ID, base SHA and head SHA appear together in one invisible HTML
 comment. File statistics, repeated provenance, review plans and generated-by
 footers stay out of the visible briefing. The complete stored artifact remains
-available to the HTML lens and other consumers; neither its lossless
-`html-input` output nor the lens changes with the markdown briefing.
+available to other consumers and does not change with the markdown briefing.
 
 ## Canonical fixture and downstream vendoring
 

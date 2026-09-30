@@ -143,8 +143,8 @@ class PilotAutonomyConfigTestCase(_FlowctlTmpRepo):
         self.assertFalse(value == "backlog")
 
     def test_fresh_init_materializes_pilot_block(self) -> None:
-        # Like work.*/land.*/pipeline.* (NOT in _INIT_UNMATERIALIZED_BLOCKS),
-        # init persists the pilot block into config.json.
+        # Like land.*/pipeline.*, init persists the pilot block into
+        # config.json.
         self.assertEqual(
             self._read_config().get("pilot"),
             {"autonomy": "ready", "gateClasses": []},

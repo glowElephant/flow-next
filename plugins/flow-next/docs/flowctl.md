@@ -141,7 +141,7 @@ Works out of the box for parallel branches. No setup required.
 │   ├── fn-N-briefing*.md      # Immutable briefing packages for capture
 │   └── .transactions/         # (gitignored) multi-file mutation WAL
 ├── memory/                    # Opt-in categorized learnings (bug/ + knowledge/)
-├── artifacts/                 # Opt-in HTML render lenses
+├── artifacts/                 # PR cognitive-aid generations
 ├── review-receipts/           # Review receipt copies under .flow/
 ├── receipts/                  # (gitignored) runtime receipt scratch
 ├── sync-runs/                 # (gitignored) tracker-sync run receipts
@@ -1281,7 +1281,6 @@ flowctl config set memory.enabled false [--json]
 | `tracker.readyState` | string | `null` | **Readiness projection.** The tracker workflow state that means "ready for work" - a Linear workflow-state **name** or a **Jira status name** (both matched case-insensitive/trimmed against `status.raw`; names, not `state.type` - a custom "Ready" state is typically `type=unstarted`, indistinguishable from Todo by type alone; the Jira name is used RAW in the promoted-lane JQL, validated to exist at ceremony time), or a GitHub / GitLab **label** (pre-created at ceremony time; label present ⇒ ready, absent ⇒ not ready - a normal state, never an error). Set by the `/flow-next:tracker-sync` discovery ceremony (optional, skippable). When set, every pull-side sync projects the state onto the local spec `ready` flag - **one-way, tracker → local; the tracker is authoritative** (a local `spec ready` is overwritten on the next sync, and capture/refine's mark-ready prompt is gated off). A single scalar at the tracker top level (sibling of `conflictTiebreak`), not under `perTracker`. `null` = projection off (readiness gate dormant); clear with `flowctl config set tracker.readyState null` (the literal `null` token is stored as JSON null, not the string). |
 | `land.patienceMinutes` | int | `30` | Minutes since the last push to wait when calling flow authorizes merging without a human's current in-session merge authorization. A human's current authorization waives the wait. Unknown push time holds. |
 | `land.mergeVerdictCommand` | string or `null` | `""` | Optional command, run once per invocation after the other merge gates pass, with a 600-second bound. Exit 0 allows merging; any non-zero result, missing/unexecutable command or timeout blocks. Runs in the invoking repository without switching its checkout; judge the remote `FLOW_HEAD_SHA`, not local HEAD. Environment also supplies `FLOW_BASE_REF`, `FLOW_PR_NUMBER`, `FLOW_SPEC_ID` (empty for multiple matches), and space-separated `FLOW_SPEC_IDS`. Dry-run never executes it. Unset, null and empty disable it. See [Landing upgrade](#landing-upgrade). |
-| `artifacts.html.enabled` | bool | `false` | **Optional HTML artifact mode.** Enable with `flowctl config set artifacts.html.enabled true`: participating skills (capture, plan, make-pr) load the shared render-lens reference and emit self-contained HTML artifacts at the fixed paths `.flow/artifacts/<spec-id>/spec.html` / `pr.html` (regenerable lenses, never timestamped - markdown stays the sole source of truth and artifacts are never parsed back as state). **OFF by default** - with it off, no reference file loads, no artifacts are written, no Lavish session opens; behavior is byte-identical to markdown-only. flowctl only stores the knob; generation is skill-side. |
 | `pipeline.qa` | `off \| on \| auto` | `off` | **Optional live QA stage.** Set with `flowctl config set pipeline.qa <off\|on\|auto>`; what each value does, and the skip line a skipped stage records, is in [`gate-selection.md`](../skills/flow-next-flow/references/gate-selection.md), which attended flow and `flow --auto` both read. This is a **string-enum** knob, **NOT a bool**; **any other value, including bool `true`, is OFF**. flowctl only stores the knob; the QA stage is host-agent skill wiring (no new subcommand/engine). |
 | `pipeline.chainStages` | `off \| on` | `off` | **Deprecated; removal is scheduled for a later release.** A long-horizon `flow --auto` run already runs `qa` and `make-pr` as consecutive hops, so the key has nothing left to chain there. It is honoured in tick mode (`flow --auto --tick`) and ignored with one stderr notice in long-horizon mode. The tick-mode semantics for this release: enable with `flowctl config set pipeline.chainStages on` - a **string-enum** knob in the `pipeline.qa` register, **NOT a bool**: only the literal `on` activates it; `off`, `null`, bool `true`, or any other value is OFF, and a snapshot read error resolves to off (fail-closed: the safe degradation is the one-stage tick). The chain table is closed and has one row, `qa → make-pr`. With it `on`, a tick whose `qa` stage verified a fresh terminal `qa_outcome` (SHIP, NA, BLOCKED, or NEEDS_WORK - exactly the set the unchained next tick would make-pr on) dispatches `make-pr` in the same tick instead of waiting for the next driver interval and a full re-anchor; the terminal line reads `stage=qa+make-pr` and carries make-pr's verdict, and `--dry-run` reports `chain=<off|on>` plus a precondition-checked `would-chain=`. `plan → plan-review` is deliberately NOT a row: the plan dispatch already embeds the plan-review loop, so a successful plan tick already classifies `work` next and there is no idle interval to remove. Nothing else chains - `plan-review → work` and `work → qa`/`make-pr` cross a stage that can fail into human territory. **OFF by default** - with it off the tick is byte-for-byte unchanged; with `pipeline.qa` off the switch has nothing to chain, so it earns its keep only on repos running the QA stage. No gate, verdict, or merge license changes: the chained PR opens as make-pr opens any PR; landing requires separate scoped authority through flow's merge destination or standalone land. flowctl only stores the knob; the chain is host-agent skill wiring. |
 | `chart.maxDecisions` | int | `12` | **Chart size ceiling.** Charting-time only: `chart create --initial-map-file` refuses past this count without `--force-size --reason` (audited: actor, ceiling, proposed count, timestamp, reason). Later sharpening from Open Questions may grow past it. |
@@ -1390,7 +1389,6 @@ Validate, persist, select, or render the portable PR cognitive-aid v1 object:
 
 ```bash
 flowctl pr-cognitive-aid validate --file aid.json [--json]
-flowctl pr-cognitive-aid html-input --file aid.json
 flowctl pr-cognitive-aid write <spec-id> --file aid.json \
   --base-sha <sha> --head-sha <sha> [--diff-files diff.json] [--json]
 flowctl pr-cognitive-aid current <spec-id> \
@@ -1400,12 +1398,8 @@ flowctl pr-cognitive-aid render <spec-id> \
 flowctl pr-cognitive-aid render --file aid.json
 ```
 
-`validate` is read-only. `html-input` validates and emits one lossless,
-HTML-safe `<script type="application/json">` semantic carrier. The optional
-HTML lens embeds that block verbatim so consumers can extract and compare the
-exact v1 object rather than infer parity from presentation markup. `write`
-validates and atomically creates one immutable
-generation at
+`validate` is read-only. `write` validates and atomically creates one
+immutable generation at
 `.flow/artifacts/<spec-id>/pr-cognitive-aid/<artifactId>.json`; it never
 overwrites an existing generation. `current` returns a labeled
 `current|absent|stale|unsupported|invalid` selection and exposes no artifact on

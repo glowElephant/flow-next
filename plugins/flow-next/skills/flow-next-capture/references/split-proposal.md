@@ -35,7 +35,7 @@ Body composition rules:
 - **Cross-cutting requirements** (one constraint governing several specs, e.g. shared middleware) are duplicated into every spec they constrain — never allocated to a single spec, which would create an implicit dependency.
 - **User-stated process requirements** (tests green, docs updated) are honored per spec — carried in each spec's body prose or Quick commands, not as counted R-IDs (they were excluded from the §2.5 count for the same reason). When the repo has `.flow/criteria.md`, note that a recurring process statement is standing-criterion material.
 - **After all creates, record the edges**: `"$FLOWCTL" spec add-dep <dependent-id> <dependency-id> --json` per proposed edge.
-- §5.4–§5.10 follow after all creates and edges: one editor offer for the set, then the remaining follow-ups per spec. The readiness question may cover the set explicitly; one answer applies to all named specs or none, never to an unnamed sibling.
+- §5.4–§5.9b follow after all creates and edges: one editor offer for the set, then the remaining follow-ups per spec. The readiness question may cover the set explicitly; one answer applies to all named specs or none, never to an unnamed sibling.
 - Phase 6 lists every created id plus the dependency edges.
 
 Autofix never reaches this branch (it records the proposal instead).
