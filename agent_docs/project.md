@@ -95,8 +95,7 @@ correctness-only rules are explained in `ruff.toml`. Do not add or remove a
 rule merely to make a diff pass; document evidence for a policy change there.
 Do not use unsafe fixes or lint fixes on generated `.flow/` and `codex/` copies.
 Never enable lint rules that rewrite prompt strings (ISC, Q, UP032, COM, W291,
-D). Intentional prompt changes update `test_prompt_text_pinned.py` in the same
-commit with a wording-change rationale; lint/refactor work must not alter them.
+D); lint/refactor work must not alter prompt text.
 
 The four extracted review prompt fallbacks are byte-identical template mirrors.
 `VALIDATOR_TEMPLATE_FALLBACK` and `DEEP_PASSES_FALLBACK` are intentional

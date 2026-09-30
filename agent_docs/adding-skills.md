@@ -89,8 +89,7 @@ repositories. Write for that reader.
 
 Tests cover behaviour, not sentences: executed fences, flowctl output, generated-mirror parity,
 verdict grammar and field names. Sentence-level prose assertions, live-file sizes and hashes of
-skill prose are not added, and existing ones are being retired. Deliberate changes to the review
-prompt text are tracked in `test_prompt_text_pinned.py` until that retirement lands.
+skill prose are not added.
 
 ## Structuring a skill
 

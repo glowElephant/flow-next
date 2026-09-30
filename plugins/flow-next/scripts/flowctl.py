@@ -27451,7 +27451,7 @@ def cmd_criteria_list(args: argparse.Namespace) -> None:
 
 # Static instruction wrapper for the completion-review criteria injection.
 # Rendered ONLY when .flow/criteria.md exists and parses (zero-cost-absent).
-# Prompt text: pinned in test_prompt_text_pinned.py. Composed from the shared
+# Composed from the shared
 # heading constants so injection, parser, and .1's zero-cost test cannot drift.
 _GLOBAL_CRITERIA_BLOCK_TEMPLATE = GLOBAL_CRITERIA_HEADING + """
 
@@ -39836,7 +39836,7 @@ VALIDATOR_TEMPLATE_REL = (
 # hand-written condensation of that template, authored alongside it in #118 -
 # NOT a copy, and NOT drift. Do not expand it to match the template: that is a
 # prompt change, and it is the exact mistake reverted in #245. Keep it
-# semantically faithful; test_prompt_text_pinned.py pins the bytes.
+# semantically faithful.
 VALIDATOR_TEMPLATE_FALLBACK = """# Validator prompt (fn-32.1 --validate)
 
 You are validating review findings for false positives. For each finding below,
