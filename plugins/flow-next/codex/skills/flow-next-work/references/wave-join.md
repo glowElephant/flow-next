@@ -102,10 +102,12 @@ two passes:
    head. The host chooses that context and isolation mechanism; it must not use
    the wave target's later `HEAD` when peer commits extend it. Apply the existing
    bounded fix loop, integrate any review-fix commits onto the target branch,
-   and append them to that task's evidence.
+   and append them to that task's evidence. When the risk rule does not select
+   the change, record `stage: impl-review - skipped(policy: risk - <reason>)` in
+   the task's summary instead.
 
-After every successful task has the required SHIP verdict (or review is `none`)
-and all review-fix commits are integrated:
+After every successful task has the required SHIP verdict (or review is `none` or
+skipped by the risk rule) and all review-fix commits are integrated:
 
 4. run the existing Phase 5 Verify contract once on the final integrated target
    **immediately before tasks are marked done**. This verification is mandatory

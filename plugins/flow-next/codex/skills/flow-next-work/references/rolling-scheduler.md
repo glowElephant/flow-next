@@ -286,7 +286,9 @@ Before accepting the return or integrating, apply [multi-task.md Phase 3d](multi
    the thin-wrapper-subagent pattern from the project's orchestration
    guidance - do not wait for the verdict here.** The task transitions to the
    `(review)` in-flight state, still holding its slot. When `REVIEW_MODE` is
-   `none`, skip to the SHIP branch of the review-completion event below.
+   `none`, or the risk rule does not select the change (record
+   `stage: impl-review - skipped(policy: risk - <reason>)`), skip to the SHIP
+   branch of the review-completion event below.
 3. Recompute admission at 3a NOW.
 
 **Degraded serial-review path:** a host with no concurrent-dispatch primitive

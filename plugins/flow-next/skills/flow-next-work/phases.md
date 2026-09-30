@@ -242,8 +242,10 @@ here, inline.** Print `Scheduling: inline (single task)`.
    `stage: impl-review - ...` line), then run `$FLOWCTL done <task-id> --range
    "<base_commit>..HEAD" --test "<command you ran>" --summary-file .flow/tmp/<task-id>-summary.md
    --json` with the base read from `.flow/tmp/base_commit`.
-7. **Completion review.** Skip it when the spec has this one task, its review reached SHIP (or a recorded override), and
-   every spec R-ID is in the task's `satisfies`: run `$FLOWCTL spec
+7. **Completion review**, only once every task in the spec is done. A task-id run whose spec
+   still has unfinished tasks runs none: it commits the task receipt (the command below) and
+   finishes. Skip it when the spec has this one task, its review reached SHIP (or a recorded
+   override), and every spec R-ID is in the task's `satisfies`: run `$FLOWCTL spec
    set-completion-review-status <spec-id> --status not_required --if-current unknown --json` and
    note `stage: completion-review - skipped(policy: single-task, per-task SHIP covers spec
    surface)`. Otherwise invoke `flow-next:flow-next-spec-completion-review <spec-id>` with the same
