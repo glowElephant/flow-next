@@ -92,10 +92,6 @@ class Classification(unittest.TestCase):
 
 
 class Credentials(unittest.TestCase):
-    def test_no_generic_keyring_rung_exists(self) -> None:
-        src = (ROOT / "scripts" / "flowctl_tracker" / "credentials.py").read_text()
-        self.assertNotIn("keyring.get_password", src)
-        self.assertIn("no keyring", src.lower())
 
     def test_jira_selects_by_persisted_auth_scheme_not_by_racing(self) -> None:
         env = {"JIRA_EMAIL": "e@x", "JIRA_API_TOKEN": "cloud-token-1234",

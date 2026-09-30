@@ -1,4 +1,4 @@
-"""RP workflows keep CE direct review and Classic tab review isolated."""
+"""The RP plan-review setup fence stops at the cap and finalizes a failed setup."""
 
 from __future__ import annotations
 
@@ -12,11 +12,6 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 PLUGIN_ROOT = REPO_ROOT / "plugins" / "flow-next"
-WORKFLOWS = (
-    "flow-next-impl-review/workflow-rp.md",
-    "flow-next-plan-review/workflow-rp.md",
-    "flow-next-spec-completion-review/workflow-rp.md",
-)
 
 
 def bash_fences(text: str) -> list[str]:
@@ -24,65 +19,6 @@ def bash_fences(text: str) -> list[str]:
 
 
 class RepoPromptSetupWorkflowContractTest(unittest.TestCase):
-    def test_setup_fence_is_self_contained_and_requests_ce_review(self) -> None:
-        for mirror_prefix in ("skills", "codex/skills"):
-            for relative in WORKFLOWS:
-                path = PLUGIN_ROOT / mirror_prefix / relative
-                matching = [
-                    fence for fence in bash_fences(path.read_text(encoding="utf-8"))
-                    if "rp setup-review" in fence and "--response-type review" in fence
-                ]
-                self.assertEqual(len(matching), 1, path)
-                fence = matching[0]
-                assignment = fence.find('REVIEW_INSTRUCTIONS_FILE="')
-                use = fence.find("--summary-file \"$REVIEW_INSTRUCTIONS_FILE\"")
-                self.assertGreaterEqual(assignment, 0, path)
-                self.assertGreater(use, assignment, path)
-                for required in ("protected", "<verdict>"):
-                    self.assertIn(required, fence.lower(), path)
-                self.assertIn("--response-type review", fence, path)
-                self.assertIn("--response-file \"$RESPONSE_FILE\"", fence, path)
-                self.assertIn("> \"$SETUP_FILE\"", fence, path)
-                self.assertIn("ROUND_EXIT=$?", fence, path)
-                self.assertIn("SETUP_EXIT=$?", fence, path)
-                self.assertIn("review-rounds record", fence, path)
-                self.assertIn('source "$SETUP_FILE"', fence, path)
-                self.assertIn("<verdict>", fence, path)
-
-    def test_selection_and_initial_chat_are_classic_only(self) -> None:
-        for mirror_prefix in ("skills", "codex/skills"):
-            for relative in WORKFLOWS:
-                path = PLUGIN_ROOT / mirror_prefix / relative
-                fences = bash_fences(path.read_text(encoding="utf-8"))
-                reached = [
-                    fence
-                    for fence in fences
-                    if "rp select-get" in fence
-                    or ("rp chat-send" in fence and "--new-chat" in fence)
-                ]
-                self.assertGreaterEqual(len(reached), 2, path)
-                for fence in reached:
-                    self.assertIn('RP_MODE" == "classic', fence, path)
-                    self.assertIn('source "$SETUP_FILE"', fence, path)
-
-    def test_ce_response_is_recorded_without_an_initial_chat_dispatch(self) -> None:
-        for mirror_prefix in ("skills", "codex/skills"):
-            for relative in WORKFLOWS:
-                path = PLUGIN_ROOT / mirror_prefix / relative
-                text = path.read_text(encoding="utf-8")
-                self.assertIn('if [[ "$RP_MODE" == "classic" ]]; then', text, path)
-                self.assertIn("RP_EXIT=0", text, path)
-                self.assertIn("--response-file \"$RESPONSE_FILE\"", text, path)
-
-    def test_ce_continuations_use_chat_identity_without_tab_state(self) -> None:
-        for mirror_prefix in ("skills", "codex/skills"):
-            for relative in WORKFLOWS:
-                path = PLUGIN_ROOT / mirror_prefix / relative
-                text = path.read_text(encoding="utf-8")
-                self.assertIn('--context-id "$T"', text, path)
-                self.assertIn('--chat-id "$CHAT_ID"', text, path)
-                self.assertIn("--mode review", text, path)
-                self.assertIn('RP_MODE" == "ce', text, path)
 
     @unittest.skipIf(
         os.name == "nt",

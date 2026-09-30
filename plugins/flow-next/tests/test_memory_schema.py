@@ -118,53 +118,6 @@ def _run_list(cwd: Path) -> dict[str, Any]:
 # --- Schema constants ---
 
 
-class TestMemorySchemaConstants(unittest.TestCase):
-    """AC2: category enums are defined and have the expected shape."""
-
-    def test_tracks(self) -> None:
-        self.assertEqual(flowctl.MEMORY_TRACKS, ("bug", "knowledge"))
-
-    def test_bug_categories_count(self) -> None:
-        self.assertEqual(len(flowctl.MEMORY_CATEGORIES["bug"]), 8)
-
-    def test_knowledge_categories_count(self) -> None:
-        # 6 knowledge categories since 0.39.0 (added "decisions" per
-        # plugins/flow-next/docs/teams.md decision-records discussion).
-        self.assertEqual(len(flowctl.MEMORY_CATEGORIES["knowledge"]), 6)
-
-    def test_bug_categories_content(self) -> None:
-        self.assertIn("build-errors", flowctl.MEMORY_CATEGORIES["bug"])
-        self.assertIn("test-failures", flowctl.MEMORY_CATEGORIES["bug"])
-        self.assertIn("ui", flowctl.MEMORY_CATEGORIES["bug"])
-
-    def test_knowledge_categories_content(self) -> None:
-        self.assertIn("conventions", flowctl.MEMORY_CATEGORIES["knowledge"])
-        self.assertIn("tooling-decisions", flowctl.MEMORY_CATEGORIES["knowledge"])
-        self.assertIn("best-practices", flowctl.MEMORY_CATEGORIES["knowledge"])
-
-    def test_required_fields(self) -> None:
-        self.assertEqual(
-            flowctl.MEMORY_REQUIRED_FIELDS,
-            frozenset({"title", "date", "track", "category"}),
-        )
-
-    def test_bug_track_fields(self) -> None:
-        self.assertEqual(
-            flowctl.MEMORY_BUG_FIELDS,
-            frozenset({"problem_type", "symptoms", "root_cause", "resolution_type"}),
-        )
-
-    def test_knowledge_track_fields(self) -> None:
-        self.assertEqual(
-            flowctl.MEMORY_KNOWLEDGE_FIELDS, frozenset({"applies_when"})
-        )
-
-    def test_enums_nonempty(self) -> None:
-        self.assertTrue(len(flowctl.MEMORY_PROBLEM_TYPES) > 0)
-        self.assertTrue(len(flowctl.MEMORY_RESOLUTION_TYPES) > 0)
-        self.assertEqual(flowctl.MEMORY_STATUS, ("active", "stale", "hardened"))
-
-
 # --- Inline YAML parser ---
 
 

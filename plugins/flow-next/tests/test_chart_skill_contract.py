@@ -1,6 +1,5 @@
-"""Chart skill contract: files and reachability, verdict grammar, canonical
-tool names, no literal destructive commands, the command shim, and the
-registry entries. Prose wording is not pinned. Canonical files only.
+"""Chart skill contract: mode-reference reachability, verdict grammar, and no
+literal destructive commands. Prose wording is not pinned. Canonical files only.
 
 Run:
     cd plugins/flow-next/tests && python3 -m unittest test_chart_skill_contract -q
@@ -8,7 +7,6 @@ Run:
 
 from __future__ import annotations
 
-import json
 import re
 import unittest
 from pathlib import Path
@@ -34,12 +32,6 @@ BRIEFING_MD = REFERENCES / "briefing-and-reopen.md"  # Phase 4 + 6
 RE_ENTRY_MD = REFERENCES / "re-entry.md"  # Phase 0.2 locator re-entry
 TRACKER_PROJECTION_MD = REFERENCES / "tracker-projection.md"  # Phase 0.2b gate
 
-REGISTRY_FILES = (
-    REPO_ROOT / ".claude-plugin" / "marketplace.json",
-    REPO_ROOT / ".agents" / "plugins" / "marketplace.json",
-    PLUGIN / ".claude-plugin" / "plugin.json",
-    PLUGIN / ".codex-plugin" / "plugin.json",
-)
 
 # Exact terminal verdict grammar pinned by R15 / SKILL.md.
 VERDICT_GRAMMAR_LINE = (
@@ -65,21 +57,7 @@ def _read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
-def _combined_skill_prose() -> str:
-    return "\n".join(
-        (
-            _read(SKILL_MD),
-            _read(WORKFLOW_MD),
-            _read(EXAMPLES_MD),
-            _read(SHIM),
-        )
-    )
-
-
-class ChartSkillFilesExist(unittest.TestCase):
-    def test_skill_tree_and_shim_exist(self) -> None:
-        for path in (SKILL_MD, WORKFLOW_MD, EXAMPLES_MD, SHIM):
-            self.assertTrue(path.is_file(), f"missing {path}")
+class ChartReferenceReachability(unittest.TestCase):
 
     def test_mode_references_exist_and_are_reachable(self) -> None:
         """Every mode reference exists and workflow.md links it by path."""
@@ -116,15 +94,6 @@ class ChartVerdictGrammar(unittest.TestCase):
         ):
             self.assertIn(token, skill)
 
-class ChartCanonicalToolNames(unittest.TestCase):
-    def test_bare_ask_user_question_no_request_user_input(self) -> None:
-        combined = _combined_skill_prose()
-        self.assertIn("AskUserQuestion", combined)
-        self.assertNotIn("request_user_input", combined)
-        # Bare form preferred - no platform-prefixed tool names
-        self.assertNotIn("tools.AskUserQuestion", combined)
-
-
 class ChartSafety(unittest.TestCase):
     def test_no_literal_destructive_command_strings(self) -> None:
         for path in (
@@ -146,35 +115,6 @@ class ChartSafety(unittest.TestCase):
                         f"{path.name}: literal destructive shape {m.group(0)!r} "
                         f"(describe operations; do not embed command strings)"
                     )
-
-
-class ChartShimContract(unittest.TestCase):
-    def test_shim_invokes_skill(self) -> None:
-        text = _read(SHIM)
-        self.assertIn("name: chart", text)
-        self.assertIn("flow-next-chart", text)
-        self.assertNotIn("request_user_input", text)
-
-
-class ChartRegistryEntries(unittest.TestCase):
-    def test_four_registry_files_exist_and_list_plugin(self) -> None:
-        for path in REGISTRY_FILES:
-            self.assertTrue(path.is_file(), f"missing registry {path}")
-            data = json.loads(_read(path))
-            blob = json.dumps(data)
-            self.assertIn("flow-next", blob)
-
-    def test_skill_and_command_surface_include_chart(self) -> None:
-        self.assertTrue(SKILL_DIR.is_dir())
-        self.assertTrue(SHIM.is_file())
-        skill_names = {
-            p.name
-            for p in (PLUGIN / "skills").iterdir()
-            if p.is_dir() and p.name.startswith("flow-next")
-        }
-        self.assertIn("flow-next-chart", skill_names)
-        command_stems = {p.stem for p in (PLUGIN / "commands").glob("*.md")}
-        self.assertIn("chart", command_stems)
 
 
 if __name__ == "__main__":

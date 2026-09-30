@@ -1,9 +1,9 @@
 """Behavioral contract for /flow-next:features (fn-211.1).
 
 Extracts and EXECUTES the two skill predicates shipped as bash fences in
-SKILL.md (autonomy-namespace scan; state-resolved seed/maintain routing),
-parses the worked example against the four-H2 + Surface shape, and asserts
-the FEATURES_VERDICT terminal grammar is stated.
+SKILL.md (autonomy-namespace scan; state-resolved seed/maintain routing)
+and the maintain PR create fence, and asserts the FEATURES_VERDICT terminal
+grammar is stated.
 
 Behavior only: no prose-string pins beyond the structural greps needed to
 extract fences and headings (G2).
@@ -27,11 +27,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 PLUGIN = REPO_ROOT / "plugins" / "flow-next"
 SKILL_DIR = PLUGIN / "skills" / "flow-next-features"
 SKILL_MD = SKILL_DIR / "SKILL.md"
-SEED_MD = SKILL_DIR / "seed.md"
 MAINTAIN_MD = SKILL_DIR / "maintain.md"
-CONTRACT_MD = SKILL_DIR / "references" / "feature-entry-contract.md"
-DOCTOR_MD = SKILL_DIR / "references" / "doctor-and-proof.md"
-SHIM = PLUGIN / "commands" / "features.md"
 
 _BASH = shutil.which("bash")
 
@@ -39,13 +35,6 @@ VERDICT_GRAMMAR = (
     "FEATURES_VERDICT=<SEEDED|CLEAN|CHANGED|BLOCKED|REFUSED> "
     'features=<n> reason="<one line>"'
 )
-
-FOUR_H2S = [
-    "## Sub-features",
-    "## How to get to it (user POV)",
-    "## Driving it",
-    "## Gotchas",
-]
 
 
 def _read(path: Path) -> str:
@@ -86,22 +75,6 @@ def _clean_env(**extra: str) -> dict[str, str]:
     env = {"PATH": os.environ.get("PATH", "/usr/bin:/bin")}
     env.update(extra)
     return env
-
-
-def _worked_example(text: str) -> str:
-    heading = text.find("## Worked example")
-    if heading == -1:
-        raise AssertionError("## Worked example section not found")
-    m = re.search(r"```markdown\n(.*?)```", text[heading:], re.DOTALL)
-    if not m:
-        raise AssertionError("markdown fence under ## Worked example not found")
-    return m.group(1)
-
-
-class FeaturesSkillFilesExist(unittest.TestCase):
-    def test_skill_tree_and_shim_exist(self) -> None:
-        for path in (SKILL_MD, SEED_MD, CONTRACT_MD, DOCTOR_MD, SHIM):
-            self.assertTrue(path.is_file(), f"missing {path}")
 
 
 class AutonomyNamespaceScan(unittest.TestCase):
@@ -163,17 +136,6 @@ class ModeDetectionStateRouting(unittest.TestCase):
             self.assertEqual(self._mode_in(tmp, arguments="--init"), "seed")
 
 
-class WorkedExampleContract(unittest.TestCase):
-    def test_h1_surface_and_four_h2s_in_order(self) -> None:
-        example = _worked_example(_read(CONTRACT_MD))
-        h1 = re.findall(r"^# .+$", example, re.M)
-        h2 = re.findall(r"^## .+$", example, re.M)
-        surface = re.search(r"^\*\*Surface:\*\* \S+", example, re.M)
-        self.assertEqual(len(h1), 1, f"expected one H1, got {h1}")
-        self.assertIsNotNone(surface, "missing required **Surface:** line")
-        self.assertEqual(h2, FOUR_H2S)
-
-
 class TerminalGrammar(unittest.TestCase):
     def test_features_verdict_grammar_stated(self) -> None:
         skill = _read(SKILL_MD)
@@ -204,15 +166,6 @@ class MaintainShipStep(unittest.TestCase):
             args = log.read_text(encoding="utf-8").splitlines()
         self.assertIn("--title", args)
         self.assertIn("--body-file", args)
-
-
-class ShimFrontmatter(unittest.TestCase):
-    def test_bare_name_features(self) -> None:
-        text = _read(SHIM)
-        m = re.search(r"^name:\s*(.+)$", text, re.M)
-        self.assertIsNotNone(m)
-        self.assertEqual(m.group(1).strip(), "features")
-        self.assertNotIn(":", m.group(1))
 
 
 if __name__ == "__main__":

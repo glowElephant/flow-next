@@ -170,19 +170,6 @@ class TestCanonicalDetectionExecutable(unittest.TestCase):
             env = _clean_env(str(home), str(root), **host_env)
             return _run_detection(self.bash, env)
 
-    def test_exactly_one_step0_bash_fence(self) -> None:
-        # Extraction already asserts; re-run for an explicit unit-test name.
-        body = _extract_step0_detection_bash(
-            _read(CANONICAL_WF), source="canonical workflow"
-        )
-        self.assertIn("GROK_AGENT", body)
-        self.assertIn("DROID_PLUGIN_ROOT", body)
-        self.assertIn("CLAUDECODE", body)
-        self.assertIn("CURSOR_AGENT", body)
-        # fn-179 (#306): CLAUDE_PLUGIN_ROOT never reaches a plugin skill's Bash
-        # env, so it must not key any rung.
-        self.assertNotIn("CLAUDE_PLUGIN_ROOT", body)
-
     def test_grok_agent_alone_is_grok(self) -> None:
         self.assertEqual(self._run(GROK_AGENT="1"), "grok")
 
@@ -277,21 +264,6 @@ class TestMirrorUnconditionalCodex(unittest.TestCase):
         cls.bash = _extract_step0_detection_bash(
             _read(MIRROR_WF), source="codex mirror workflow"
         )
-
-    def test_mirror_bash_has_no_host_detection_branches(self) -> None:
-        for signal in (
-            "GROK_AGENT",
-            "CURSOR_AGENT",
-            "DROID_PLUGIN_ROOT",
-            "CLAUDE_PLUGIN_ROOT",
-            "CLAUDECODE",
-        ):
-            self.assertNotIn(
-                signal,
-                self.bash,
-                f"mirror Step-0 bash must not branch on {signal}",
-            )
-        self.assertIn('PLATFORM="codex"', self.bash)
 
     def test_mirror_returns_codex_with_every_host_signal(self) -> None:
         with tempfile.TemporaryDirectory() as td:

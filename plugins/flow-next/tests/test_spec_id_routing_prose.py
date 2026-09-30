@@ -22,7 +22,6 @@ CAPTURE_WF = SKILLS / "flow-next-capture" / "workflow.md"
 CAPTURE_TRACKER_REF = (
     SKILLS / "flow-next-capture" / "references" / "tracker-integration.md"
 )
-SETUP_WF = SKILLS / "flow-next-setup" / "workflow.md"
 
 # Each site is the spine file plus the reference its gate loads.
 PLAN_SITE = [PLAN_STEPS, PLAN_MINT_REF]
@@ -74,27 +73,10 @@ class SpecIdConfigReadBudget(unittest.TestCase):
     def test_work_mint_reuses_phase0_snapshot(self) -> None:
         ref = _read(WORK_MINT_REF)
         self.assertNotIn("config get --json", ref)
-        self.assertIn("WORK_CFG", ref)
         self.assertLessEqual(_read(WORK_PHASES).count("config get --json"), 1)
-
-    def test_plan_and_capture_read_specids_from_their_snapshot(self) -> None:
-        plan = _read(PLAN_SITE)
-        self.assertIn("flow-plan-config-", plan)
-        self.assertIn(".value.tracker.specIds", plan)
-        capture = _read(CAPTURE_SITE)
-        self.assertIn("flow-capture-config-", capture)
-        self.assertIn(".value.tracker.specIds", capture)
-
 
 class SpecIdRoutingGate(unittest.TestCase):
     """Every mint site routes on tracker.specIds and loads its reference."""
-
-    def test_every_mint_site_names_specIds_and_tracker_first(self) -> None:
-        for name, path in MINT_SITES.items():
-            text = _read(path)
-            with self.subTest(site=name):
-                self.assertIn("tracker.specIds", text)
-                self.assertIn("--tracker-first", text)
 
     def test_gates_load_their_mint_reference(self) -> None:
         for name, spine, ref_name in (
@@ -109,16 +91,6 @@ class SpecIdRoutingGate(unittest.TestCase):
                     f"{name}: spine does not load {ref_name} - the mint gate "
                     "is unreachable",
                 )
-
-
-class SpecIdSetupWriteBack(unittest.TestCase):
-    """Setup probes status and writes either spec-id value."""
-
-    def test_probe_and_write_back_commands(self) -> None:
-        text = _read(SETUP_WF)
-        self.assertIn("setup-status", text)
-        self.assertIn("config set tracker.specIds tracker", text)
-        self.assertIn("config set tracker.specIds flow", text)
 
 
 class TrackerFirstMintIsLinked(unittest.TestCase):

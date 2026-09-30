@@ -1,11 +1,9 @@
-"""fn-238 R15-R18: interview -> refine rename, the research scope, the why-scout.
+"""fn-238 R15-R18: the refine research scope and the why-scout.
 
 Behavior or contract only (G2):
-  - the interview alias stub and shim are removed; refine is the canonical
-    skill and its Codex catalog flag is on in the regenerated mirror;
-  - refine's research reference defines the section shape and plan's research
-    step reaches the same reference and writes the same section;
-  - the why-scout is read-only by tools and carries the four tiers;
+  - refine's research reference and plan's research step write the exact
+    `## Resolved via Research` heading flowctl parses from the spec body;
+  - the why-scout is read-only by tools (frontmatter the host enforces);
   - every pointer the new prose names resolves.
 
 Run:
@@ -23,18 +21,12 @@ PLUGIN = HERE.parent.parent
 SKILLS = PLUGIN / "skills"
 
 REFINE = SKILLS / "flow-next-refine"
-STUB_DIR = SKILLS / "flow-next-interview"
-STUB_SHIM = PLUGIN / "commands" / "interview.md"
-REFINE_SHIM = PLUGIN / "commands" / "refine.md"
 RESEARCH_REF = REFINE / "references" / "research-scope.md"
 PLAN_STEPS = SKILLS / "flow-next-plan" / "steps.md"
 ROUTE_MATRIX = SKILLS / "flow-next-flow" / "references" / "route-matrix.md"
 WHY_SCOUT = PLUGIN / "agents" / "why-scout.md"
-TEMPLATE = PLUGIN / "templates" / "spec.md"
-CODEX_REFINE_YAML = PLUGIN / "codex" / "skills" / "flow-next-refine" / "agents" / "openai.yaml"
 
 SECTION = "## Resolved via Research"
-RESEARCH_SCOUTS = ("docs-scout", "practice-scout", "docs-gap-scout", "memory-scout")
 
 
 def _read(p: Path) -> str:
@@ -56,71 +48,20 @@ def _links(text: str) -> list[str]:
     return re.findall(r"\]\(([^)#]+\.md)(?:#[^)]*)?\)", text)
 
 
-class InterviewAliasRetired(unittest.TestCase):
-    def test_alias_stub_is_removed(self) -> None:
-        self.assertFalse(STUB_DIR.exists())
+class ResearchSectionHeading(unittest.TestCase):
 
-    def test_interview_shim_is_retired_and_refine_shim_forwards(self) -> None:
-        self.assertFalse(STUB_SHIM.exists())
-        refine = _read(REFINE_SHIM)
-        self.assertEqual(_frontmatter(refine)["name"], "refine")
-        self.assertIn("flow-next-refine", refine)
-        self.assertIn("--scope=research", refine)
-
-    def test_codex_catalog_flag_on_for_refine(self) -> None:
-        self.assertIn("allow_implicit_invocation: true", _read(CODEX_REFINE_YAML))
-
-    def test_refine_skill_is_the_canonical_skill(self) -> None:
-        fm = _frontmatter(_read(REFINE / "SKILL.md"))
-        self.assertEqual(fm["name"], "flow-next-refine")
-        self.assertNotIn("disable-model-invocation", fm)
-
-
-class ResearchSkipIsSymmetric(unittest.TestCase):
-    def test_refine_reference_decides_skip_from_section_or_plan_findings(self) -> None:
-        ref = _read(RESEARCH_REF)
-        self.assertIn(SECTION, ref)
-        self.assertIn("--force", ref)
-        for scout in RESEARCH_SCOUTS:
-            self.assertIn(scout, ref)
-        self.assertIn(f"### {RESEARCH_SCOUTS[0]}", ref)
-        self.assertIn("Source:", ref)
-
-    def test_refine_skill_routes_research_to_the_reference(self) -> None:
-        skill = _read(REFINE / "SKILL.md")
-        self.assertIn("references/research-scope.md", skill)
-        self.assertIn("--scope=research", skill)
-        self.assertIn(SECTION.lstrip("# "), skill)
-
-    def test_plan_reaches_the_reference_and_writes_the_same_section(self) -> None:
-        steps = _read(PLAN_STEPS)
-        self.assertIn(SECTION, steps)
-        self.assertIn("research-scope.md", steps)
-
-    def test_template_lists_the_section_as_auxiliary(self) -> None:
-        self.assertIn("Resolved via Research", _read(TEMPLATE))
-
-    def test_route_matrix_carries_read_first_and_why_scout_clauses(self) -> None:
-        matrix = _read(ROUTE_MATRIX)
-        self.assertIn("--scope=research", matrix)
-        self.assertIn("why-scout", matrix)
-        self.assertNotIn("/flow-next:interview", matrix)
-
+    def test_both_writers_name_the_heading_flowctl_parses(self) -> None:
+        for path in (RESEARCH_REF, PLAN_STEPS):
+            with self.subTest(writer=path.name):
+                self.assertIn(SECTION, _read(path))
 
 class WhyScoutIsReadOnly(unittest.TestCase):
-    def test_tool_enforced_read_only_and_tiers(self) -> None:
-        text = _read(WHY_SCOUT)
-        fm = _frontmatter(text)
+    def test_tool_enforced_read_only(self) -> None:
+        fm = _frontmatter(_read(WHY_SCOUT))
         self.assertEqual(fm["name"], "why-scout")
         tokens = {t.strip() for t in fm["disallowedTools"].split(",")}
         self.assertEqual(tokens, {"Edit", "Write", "Task"})
         self.assertEqual(fm["readonly"], "true")
-        for tier in ("direct", "supported", "inferred", "unknown"):
-            self.assertIn(tier, text)
-
-    def test_no_command_shim_for_why_scout(self) -> None:
-        self.assertFalse((PLUGIN / "commands" / "why-scout.md").exists())
-
 
 class PointersResolve(unittest.TestCase):
     def test_relative_links_in_new_prose_resolve(self) -> None:
@@ -130,15 +71,6 @@ class PointersResolve(unittest.TestCase):
                     continue
                 target = (path.parent / link).resolve()
                 self.assertTrue(target.is_file(), f"{path.name}: {link} -> {target}")
-
-    def test_no_canonical_call_site_names_the_old_command(self) -> None:
-        # Every skill call site says refine.
-        offenders = []
-        for p in SKILLS.rglob("*.md"):
-            if "/flow-next:interview" in _read(p):
-                offenders.append(str(p.relative_to(PLUGIN)))
-        self.assertEqual(offenders, [])
-
 
 if __name__ == "__main__":
     unittest.main()

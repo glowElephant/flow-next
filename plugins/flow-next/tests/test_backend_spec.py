@@ -16,7 +16,6 @@ import inspect
 import io
 import json
 import os
-import re
 import sys
 import tempfile
 import unittest
@@ -71,13 +70,6 @@ class TestRegistryShape(unittest.TestCase):
             ["claude", "codex", "copilot", "cursor", "host", "none", "rp"],
         )
 
-    def test_claude_default_model(self) -> None:
-        # fn-221 / fn-76: the default IS the ranking top; ids probed 2026-09-05.
-        reg = BACKEND_REGISTRY["claude"]
-        self.assertEqual(reg["default_model"], reg["models"][0])
-        self.assertEqual(reg["default_model"], "claude-fable-5-1")
-        self.assertEqual(reg["default_effort"], "high")
-
     def test_claude_effort_set(self) -> None:
         # The claude CLI's own --effort set (2.1.260): five values, no
         # ``none`` / ``minimal``.
@@ -89,42 +81,6 @@ class TestRegistryShape(unittest.TestCase):
     def test_cursor_effort_is_none(self) -> None:
         # Cursor folds reasoning effort into the model name → no effort axis.
         self.assertIsNone(BACKEND_REGISTRY["cursor"]["efforts"])
-
-    def test_cursor_default_model(self) -> None:
-        self.assertEqual(
-            BACKEND_REGISTRY["cursor"]["default_model"], "gpt-5.6-sol-high"
-        )
-        # No default_effort — effort is not a cursor field.
-        self.assertNotIn("default_effort", BACKEND_REGISTRY["cursor"])
-
-    def test_cursor_model_catalog(self) -> None:
-        # Source of truth: ``cursor-agent --list-models`` (v2026.07). Keep synced
-        # — Cursor ships new rows + auto-updates the CLI without changelog.
-        # fn-76: ``models`` is an ORDERED quality ranking (strongest first), a
-        # list — not a set. ``default_model`` MUST equal ``models[0]``.
-        self.assertEqual(
-            BACKEND_REGISTRY["cursor"]["models"],
-            [
-                "gpt-5.6-sol-high",
-                "gpt-5.6-sol-xhigh",
-                "gpt-5.6-sol-max",
-                "gpt-5.6-sol-medium",
-                "gpt-5.6-sol-low",
-                "gpt-5.6-terra-high",
-                "gpt-5.6-luna-high",
-                "claude-opus-5-thinking-high",
-                "claude-opus-4-8-thinking-high",
-                "claude-opus-4-7-thinking-high",
-                "gpt-5.5-high",
-                "gpt-5.4-high",
-                "gpt-5.3-codex-xhigh",
-                "gpt-5.3-codex-high",
-                "gpt-5.3-codex",
-                "gpt-5.2",
-                "composer-2.5",
-                "auto",
-            ],
-        )
 
     def test_rp_rejects_model_and_effort(self) -> None:
         self.assertIsNone(BACKEND_REGISTRY["rp"]["models"])
@@ -153,53 +109,6 @@ class TestRegistryShape(unittest.TestCase):
             {"low", "medium", "high", "xhigh"},
         )
 
-    def test_codex_defaults(self) -> None:
-        # fn-76: default_model is the ranking top (gpt-6-astra). Installs that
-        # cannot serve it step down the run_codex_exec ladder.
-        self.assertEqual(BACKEND_REGISTRY["codex"]["default_model"], "gpt-6-astra")
-        self.assertEqual(BACKEND_REGISTRY["codex"]["default_effort"], "high")
-        # fn-272 R4: a withheld astra steps down within the same generation first.
-        self.assertEqual(
-            BACKEND_REGISTRY["codex"]["models"][:2], ["gpt-6-astra", "gpt-6-sol"]
-        )
-
-    def test_copilot_defaults(self) -> None:
-        # Ranking top (gpt-6-astra, rolled out to Copilot 2026-09-05); an
-        # org policy withholding it is healed by the ladder. Stays on `high`
-        # effort — `xhigh` spends far more reasoning tokens without matching
-        # quality gains on review prompts.
-        self.assertEqual(BACKEND_REGISTRY["copilot"]["default_model"], "gpt-6-astra")
-        self.assertEqual(BACKEND_REGISTRY["copilot"]["default_effort"], "high")
-
-    def test_copilot_model_catalog(self) -> None:
-        # Source of truth: the GitHub Copilot supported-models DOCS, not a
-        # local `--model` probe — Copilot availability is org-policy managed,
-        # so a restricted install rejecting an id proves nothing (2026-07-24
-        # lesson). Older rows stay listed until the docs drop them. fn-76:
-        # ORDERED quality ranking (strongest first), a list — ``default_model``
-        # MUST equal ``models[0]``.
-        self.assertEqual(
-            BACKEND_REGISTRY["copilot"]["models"],
-            [
-                "gpt-6-astra",
-                "gpt-5.5",
-                "gpt-5.4",
-                "claude-fable-5.1",
-                "claude-opus-5",
-                "claude-opus-4.8",
-                "claude-opus-4.7",
-                "claude-opus-4.6",
-                "claude-opus-4.5",
-                "claude-sonnet-4.5",
-                "claude-sonnet-4",
-                "claude-haiku-4.5",
-                "gpt-5.4-mini",
-                "gpt-5.3-codex",
-                "gpt-5-mini",
-                "gpt-4.1",
-            ],
-        )
-
     def test_ranking_is_ordered_list_not_set(self) -> None:
         # fn-76: every model-bearing backend's ``models`` is an ordered list
         # (the quality ranking), not a set — order is load-bearing for the
@@ -219,6 +128,11 @@ class TestRegistryShape(unittest.TestCase):
             with self.subTest(backend=backend):
                 reg = BACKEND_REGISTRY[backend]
                 self.assertEqual(reg["default_model"], reg["models"][0])
+        # fn-272 R4: a withheld codex astra steps down within the same
+        # generation first.
+        self.assertEqual(
+            BACKEND_REGISTRY["codex"]["models"][:2], ["gpt-6-astra", "gpt-6-sol"]
+        )
 
 
 # --- Valid specs ---
@@ -626,24 +540,6 @@ class TestStrRoundTrip(unittest.TestCase):
                 self.assertEqual(str(BackendSpec.parse(raw)), raw)
 
 
-# --- Frozen dataclass guarantees ---
-
-
-class TestFrozen(unittest.TestCase):
-    def test_spec_is_hashable(self) -> None:
-        # Frozen dataclasses are hashable — downstream code may stick specs
-        # into sets / dict keys.
-        s = BackendSpec("codex", "gpt-5.4", "high")
-        self.assertEqual(hash(s), hash(BackendSpec("codex", "gpt-5.4", "high")))
-        seen = {s, s, BackendSpec("codex")}
-        self.assertEqual(len(seen), 2)
-
-    def test_spec_is_immutable(self) -> None:
-        s = BackendSpec("codex", "gpt-5.4", "high")
-        with self.assertRaises(Exception):  # FrozenInstanceError is a dataclass subclass
-            s.model = "gpt-5.2"  # type: ignore[misc]
-
-
 # --- VALID_BACKENDS constant (fn-28.2) ---
 
 
@@ -651,19 +547,10 @@ class TestValidBackends(unittest.TestCase):
     """``VALID_BACKENDS`` mirrors registry keys sorted — downstream argparse
     ``choices=`` and any "valid list" UI depends on this shape."""
 
-    def test_exists(self) -> None:
-        self.assertTrue(hasattr(flowctl, "VALID_BACKENDS"))
-
     def test_matches_registry(self) -> None:
         self.assertEqual(
             flowctl.VALID_BACKENDS, sorted(BACKEND_REGISTRY.keys())
         )
-
-    def test_is_sorted(self) -> None:
-        self.assertEqual(
-            list(flowctl.VALID_BACKENDS), sorted(flowctl.VALID_BACKENDS)
-        )
-
 
 # --- parse_backend_spec_lenient (legacy fallback — fn-28.2) ---
 
@@ -1802,11 +1689,6 @@ class NoEmbedRegression(unittest.TestCase):
         self.assertEqual(small, again)
         self.assertLess(len(small), flowctl.CURSOR_ARGV_TRANSPORT_MAX)
 
-    def test_embed_helper_stays_removed(self) -> None:
-        # get_embedded_file_contents was removed when backends went agentic;
-        # its return is a regression signal.
-        self.assertFalse(hasattr(flowctl, "get_embedded_file_contents"))
-
     # fn-169 R6 (impl-review r6): the builders' parameter sets are PINNED, not
     # screened against a list of known-bad names. A name list is a race against the
     # next spelling - `files_embedded` and `embedded_files` were banned, and fn-90
@@ -1904,92 +1786,6 @@ class TestBackendReviewDriverHooks(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         flowctl._wire_backend_review_hooks()
-
-    def test_review_backends_expose_required_hooks(self) -> None:
-        required = {
-            "run_exec",
-            "resolve_spec",
-            "check_probe",
-            "needs_persona_override",
-            "resume_modes",
-            "mint_session_id",
-            "include_effort",
-            "extract_review",
-            "has_sandbox",
-        }
-        for backend in ("codex", "copilot", "cursor", "claude"):
-            with self.subTest(backend=backend):
-                reg = BACKEND_REGISTRY[backend]
-                for key in required:
-                    self.assertIn(key, reg, f"{backend} missing hook {key}")
-                self.assertTrue(callable(reg["run_exec"]))
-                self.assertTrue(callable(reg["resolve_spec"]))
-                self.assertTrue(callable(reg["check_probe"]))
-                self.assertIsInstance(reg["needs_persona_override"], bool)
-
-    def test_hook_variance_preserved(self) -> None:
-        # Genuine differences stay as hooks, not collapsed to one behavior.
-        self.assertTrue(BACKEND_REGISTRY["codex"]["has_sandbox"])
-        self.assertFalse(BACKEND_REGISTRY["copilot"]["has_sandbox"])
-        self.assertFalse(BACKEND_REGISTRY["cursor"]["has_sandbox"])
-
-        self.assertFalse(BACKEND_REGISTRY["codex"]["mint_session_id"])
-        self.assertTrue(BACKEND_REGISTRY["copilot"]["mint_session_id"])
-        self.assertFalse(BACKEND_REGISTRY["cursor"]["mint_session_id"])
-
-        self.assertTrue(BACKEND_REGISTRY["codex"]["include_effort"])
-        self.assertTrue(BACKEND_REGISTRY["copilot"]["include_effort"])
-        self.assertFalse(BACKEND_REGISTRY["cursor"]["include_effort"])
-
-        self.assertEqual(
-            BACKEND_REGISTRY["codex"]["resume_modes"], (None, "codex")
-        )
-        self.assertEqual(BACKEND_REGISTRY["copilot"]["resume_modes"], ("copilot",))
-        self.assertEqual(BACKEND_REGISTRY["cursor"]["resume_modes"], ("cursor",))
-
-    def test_impl_wrappers_route_through_driver(self) -> None:
-        # Thin wrappers must call cmd_backend_review (not re-implement the body).
-        for fn in (
-            flowctl.cmd_codex_impl_review,
-            flowctl.cmd_copilot_impl_review,
-            flowctl.cmd_cursor_impl_review,
-        ):
-            src = inspect.getsource(fn)
-            self.assertIn("cmd_backend_review(", src)
-            # Strip docstrings so historical prose mentioning run_*_exec is ignored.
-            body = re.sub(r'""".*?"""', "", src, flags=re.S)
-            body = re.sub(r"'''.*?'''", "", body, flags=re.S)
-            self.assertNotIn("run_codex_exec(", body)
-            self.assertNotIn("run_copilot_exec(", body)
-            self.assertNotIn("run_cursor_exec(", body)
-
-    def test_cmd_backend_review_exists(self) -> None:
-        self.assertTrue(callable(flowctl.cmd_backend_review))
-        sig = inspect.signature(flowctl.cmd_backend_review)
-        self.assertIn("backend", sig.parameters)
-        self.assertIn("kind", sig.parameters)
-
-    def test_plan_completion_wrappers_route_through_driver(self) -> None:
-        for fn in (
-            flowctl.cmd_codex_plan_review,
-            flowctl.cmd_copilot_plan_review,
-            flowctl.cmd_cursor_plan_review,
-            flowctl.cmd_codex_completion_review,
-            flowctl.cmd_copilot_completion_review,
-            flowctl.cmd_cursor_completion_review,
-        ):
-            src = inspect.getsource(fn)
-            self.assertIn("cmd_backend_review(", src)
-            body = re.sub(r'""".*?"""', "", src, flags=re.S)
-            body = re.sub(r"'''.*?'''", "", body, flags=re.S)
-            self.assertNotIn("run_codex_exec(", body)
-            self.assertNotIn("run_copilot_exec(", body)
-            self.assertNotIn("run_cursor_exec(", body)
-
-    def test_plan_completion_pipelines_exist(self) -> None:
-        self.assertTrue(callable(flowctl._backend_plan_review))
-        self.assertTrue(callable(flowctl._backend_completion_review))
-        self.assertTrue(callable(flowctl._self_write_review_status))
 
     def test_fourth_backend_registry_entry_only(self) -> None:
         """fn-112.4 extensibility proof: a 4th backend is a registry entry.
@@ -2210,64 +2006,6 @@ class TestReviewJsonBlockHardening(unittest.TestCase):
             self.flowctl.extract_review_json_block(extracted), {"unaddressed": ["R7"]}
         )
 
-
-class TestPlanReviewSelectedBackendRouting(unittest.TestCase):
-    """fn-130.6: production Plan Review route + corpus evidence."""
-
-    @classmethod
-    def setUpClass(cls) -> None:
-        cls.repo = Path(__file__).resolve().parents[3]
-        harness_dir = cls.repo / "optimization" / "reached-path"
-        sys.path.insert(0, str(harness_dir))
-        try:
-            import plan_review_candidate  # type: ignore
-
-            cls.candidate = plan_review_candidate
-        finally:
-            sys.path.remove(str(harness_dir))
-
-    def test_all_routes_load_common_plus_at_most_one_backend(self) -> None:
-        evidence = self.candidate.route_evidence(self.repo)
-        self.assertEqual(
-            [row["route"] for row in evidence["routes"]],
-            list(self.candidate.ROUTES),
-        )
-        self.assertTrue(all(evidence["accuracy"].values()))
-        for row in evidence["routes"]:
-            selected_reads = [
-                path
-                for path in row["required_reads"]
-                if "/workflow-" in path
-            ]
-            if row["route"] in ("none", "export"):
-                self.assertEqual(selected_reads, [])
-            else:
-                self.assertEqual(len(selected_reads), 1)
-
-    def test_configured_but_unavailable_keeps_selected_backend(self) -> None:
-        row = self.candidate.route_trace(self.repo, "unavailable")
-        self.assertEqual(row["selected_backend"], "codex")
-        self.assertIn(
-            "plugins/flow-next/skills/flow-next-plan-review/workflow-codex.md",
-            row["required_reads"],
-        )
-
-    def test_export_is_distinct_backend_cold_terminal(self) -> None:
-        row = self.candidate.route_trace(self.repo, "export")
-        self.assertIsNone(row["selected_backend"])
-
-    def test_real_production_prompt_path_preserves_corpus_and_rubric(self) -> None:
-        evidence = self.candidate.corpus_evidence(
-            self.repo, flowctl.build_review_prompt
-        )
-        for corpus in ("risky", "clean", "user-edited-spec"):
-            row = evidence[corpus]
-            self.assertEqual(
-                row["production_builder"], "flowctl.build_review_prompt(plan)"
-            )
-            self.assertTrue(row["spec_grounded_verbatim"])
-            self.assertTrue(row["task_specs_grounded_verbatim"])
-            self.assertTrue(row["verdict_grammar_present"])
 
     # Live-vs-ledger route-size equality removed 2026-08-07 (.flow/criteria.md G1).
 

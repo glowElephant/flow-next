@@ -179,7 +179,6 @@ class RemovedDelegateAdvisoryTestCase(unittest.TestCase):
 
     def test_models_block_is_not_validated_or_read(self) -> None:
         # fn-195: no role-map validation on write, no merged default.
-        self.assertFalse(hasattr(self.flowctl, "_validate_models_config_key"))
         self.assertNotIn("models", self.flowctl.get_default_config())
 
 

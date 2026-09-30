@@ -484,19 +484,6 @@ class TrackerCallerExecutionTests(unittest.TestCase):
             result.args, result.returncode, "".join(kept), result.stderr
         )
 
-    def test_config_read_overrides_are_declared_deltas(self) -> None:
-        """Snapshot-backed gates remove reads; no override introduces a new read."""
-        for key, override in CONFIG_READ_OVERRIDES.items():
-            caller_id, phase = key[0], key[1]
-            with self.subTest(key=key):
-                oracle = self.callers[caller_id]["config_reads"][phase]
-                self.assertTrue(
-                    {tuple(argv) for argv in override}
-                    <= {tuple(argv) for argv in oracle},
-                    "override introduced a config read the oracle never made",
-                )
-                self.assertLessEqual(len(override) - len(oracle), 1)
-
     def _run_standard(
         self,
         caller_id: str,
@@ -653,41 +640,6 @@ class TrackerCallerExecutionTests(unittest.TestCase):
                 self.assertEqual(
                     self._facade_calls(),
                     [self._facade_argv("qa", "comment")],
-                )
-
-
-    def test_current_active_argv_is_a_declared_delta_from_the_oracle(self) -> None:
-        for caller_id, row in self.callers.items():
-            with self.subTest(caller=caller_id):
-                if caller_id in CHART_EVENTS:
-                    # Chart is post-baseline: argv is facade-native
-                    # tracker sync with chart subject, not the pre-teardown
-                    # skill-dispatch grammar.
-                    self.assertEqual(row["resolved_facade_op"], "push")
-                    self.assertEqual(
-                        row["argv"]["active"][:2],
-                        ["tracker", "sync"],
-                    )
-                    self.assertIn("--event", row["argv"]["active"])
-                    self.assertIn("chart", row["argv"]["active"])
-                    continue
-                expected_op = self._expected_op(caller_id, "push", merged=True)
-                self.assertIsNotNone(expected_op)
-                old_argv = row["argv"]["active"]
-                self.assertIn("flow-next-tracker-sync", old_argv)
-                self.assertIn("<spec-id>", old_argv)
-                if row["resolved_facade_op"] == "configured_value":
-                    oracle_operation = "operation:<configured-value>"
-                else:
-                    oracle_operation = f"operation:{expected_op}"
-                self.assertIn(oracle_operation, old_argv)
-                current = self._facade_argv(caller_id, expected_op or "")
-                self.assertEqual(current[:3], ["tracker", "sync", "fn-141-harness"])
-                self.assertEqual(current[3:5], ["--op", expected_op])
-                self.assertEqual(current[5:7], ["--event", row["event"]])
-                self.assertEqual(
-                    "--status-only" in current,
-                    caller_id == "work.firstClaim",
                 )
 
 

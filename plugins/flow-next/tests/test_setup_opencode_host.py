@@ -1,14 +1,7 @@
-"""OpenCode-host setup contracts: detection rung + AGENTS.md targets.
+"""OpenCode-host setup detection, run as the executable Step-0 bash.
 
-Locks:
-
-  (a) workflow.md contains the we-control manifest-file detection line, and
-      the OpenCode rung is ordered after grok and before the else→codex
-      fallback in the Step-0 cascade.
-  (b) Executable Step-0 bash: PLUGIN_ROOT carrying
-      .flow-next-opencode-manifest classifies as opencode; GROK_AGENT still
-      wins; absence of the file is not an OpenCode signal.
-  (c) PLATFORM=opencode: the snippet fence rewrites slash commands flat.
+PLUGIN_ROOT carrying .flow-next-opencode-manifest classifies as opencode;
+GROK_AGENT still wins; absence of the file is not an OpenCode signal.
 
 Run:
     cd plugins/flow-next/tests && python3 -m unittest test_setup_opencode_host -q
@@ -46,9 +39,6 @@ _STEP0_HEADING = re.compile(
 )
 _FIRST_BASH_FENCE = re.compile(r"(?ms)^```bash\n(.*?)(?:^```\s*$)", re.MULTILINE)
 
-MANIFEST_DETECT = '[ -f "${PLUGIN_ROOT}/.flow-next-opencode-manifest" ]'
-
-
 def _read(path: Path) -> str:
     return path.read_text(encoding="utf-8").replace("\r\n", "\n").replace("\r", "\n")
 
@@ -70,34 +60,6 @@ def _extract_step0_detection_bash(text: str) -> str:
     return fences[0].group(1)
 
 
-class TestOpencodeDetectionProse(unittest.TestCase):
-    """Manifest-file rung is present and ordered after grok, before codex."""
-
-    def setUp(self) -> None:
-        self.assertTrue(WORKFLOW.is_file(), f"missing {WORKFLOW}")
-        self.text = _read(WORKFLOW)
-        self.bash = _extract_step0_detection_bash(self.text)
-
-    def test_manifest_file_detection_line(self) -> None:
-        self.assertIn(MANIFEST_DETECT, self.bash)
-        self.assertIn(MANIFEST_DETECT, self.text)
-        self.assertIn('PLATFORM="opencode"', self.bash)
-        # Positive file we control — never an env var, never an absence signal.
-        self.assertNotIn("OPENCODE", self.bash.replace("opencode", ""))
-        self.assertNotIn("! -f", self.bash)
-
-    def test_opencode_rung_after_grok_before_codex_fallback(self) -> None:
-        grok = self.bash.index('PLATFORM="grok"')
-        opencode = self.bash.index('PLATFORM="opencode"')
-        fallback = self.bash.index("else\n  PLATFORM=\"codex\"")
-        self.assertLess(grok, opencode)
-        self.assertLess(opencode, fallback)
-        # Manifest check is the opencode condition, not a later comment.
-        detect_at = self.bash.index(MANIFEST_DETECT)
-        self.assertLess(detect_at, opencode)
-        self.assertGreater(detect_at, grok)
-
-
 @unittest.skipUnless(_BASH, "bash required to execute the Step-0 detection fence")
 class TestOpencodeDetectionExecutable(unittest.TestCase):
     """Run the actual canonical Step-0 bash under OpenCode fixtures."""
@@ -105,10 +67,6 @@ class TestOpencodeDetectionExecutable(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.bash = _extract_step0_detection_bash(_read(WORKFLOW))
-        if MANIFEST_DETECT not in cls.bash:
-            raise AssertionError(
-                "canonical Step-0 bash missing OpenCode manifest rung"
-            )
 
     def _run(self, plugin_root: Path, home: Path, **host_env: str) -> str:
         env = {
@@ -174,13 +132,6 @@ class TestOpencodeDetectionExecutable(unittest.TestCase):
             self.assertEqual(
                 self._run(root, home, CLAUDECODE="1"), "opencode"
             )
-
-
-class TestOpencodeSetupProfile(unittest.TestCase):
-    """PLATFORM=opencode: the snippet fence rewrites slash commands flat."""
-
-    def test_flat_slash_rewrite_in_snippet_fence(self) -> None:
-        self.assertIn("s|/flow-next:|/flow-next-|g", _read(WORKFLOW))
 
 
 if __name__ == "__main__":

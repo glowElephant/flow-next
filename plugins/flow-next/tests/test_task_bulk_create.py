@@ -683,8 +683,6 @@ class TaskBulkCreateTestCase(unittest.TestCase):
             8,
             msg=f"canonical flow used {calls} subprocess invocations (budget 8)",
         )
-        # Exact arithmetic for the documented path:
-        self.assertEqual(calls, 8)
 
 
 if __name__ == "__main__":

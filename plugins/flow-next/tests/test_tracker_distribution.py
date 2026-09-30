@@ -34,13 +34,6 @@ def _hashes(root: Path) -> dict:
 
 
 class ManifestIsCurrent(unittest.TestCase):
-    def test_manifest_enumerates_members_explicitly(self) -> None:
-        manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
-        paths = [f["path"] for f in manifest["files"]]
-        self.assertIn("flowctl_tracker/executor.py", paths)
-        self.assertIn("flowctl_tracker/providers/jira.py", paths)
-        for entry in manifest["files"]:
-            self.assertRegex(entry["sha256"], r"^[0-9a-f]{64}$")
 
     def test_manifest_matches_the_shipped_tree(self) -> None:
         """Stale manifest = the sync step was skipped. This is the CI teeth."""

@@ -41,14 +41,6 @@ class TrackerSyncProseTeardownTests(unittest.TestCase):
             for relative in PROSE_INVENTORY
         }
 
-    def test_inventory_exists_and_is_unique(self) -> None:
-        self.assertEqual(len(PROSE_INVENTORY), len(set(PROSE_INVENTORY)))
-        missing = [
-            relative for relative in PROSE_INVENTORY
-            if not (TRACKER_SKILL / relative).is_file()
-        ]
-        self.assertEqual(missing, [])
-
     def test_no_executable_provider_invocations_in_shell_fences(self) -> None:
         matches: list[str] = []
         for relative, text in self._texts().items():

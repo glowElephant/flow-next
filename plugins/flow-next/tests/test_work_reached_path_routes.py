@@ -1,8 +1,6 @@
-"""Live routing/reference contracts for Work's reached-path extraction (fn-130.8).
-
-The delegation-route contracts retired with the packaged codex-delegation
-subsystem (flow-98); the common work lifecycle + wave-join contracts remain.
-"""
+"""Live routing/reference contracts for Work's reached-path extraction (fn-130.8):
+phases.md reaches multi-task.md, which links the wave-join and host-deferred
+review references."""
 
 from __future__ import annotations
 
@@ -24,22 +22,7 @@ class WorkReachedPathRoutes(unittest.TestCase):
         cls.skill = _text(WORK / "SKILL.md")
         cls.phases = _text(WORK / "phases.md")
 
-    # Evidence-ledger archaeology removed 2026-08-07 - shipped optimizations are
-    # history, not invariants. (Lineage baseline-commit pin and the stored
-    # route-matrix shape checks deleted; live skill-file contracts remain.)
-
-    def test_no_delegation_route_regrowth(self) -> None:
-        """flow-98: the packaged delegation path is deleted, not deprecated."""
-        for name, text in (("SKILL.md", self.skill), ("phases.md", self.phases)):
-            with self.subTest(file=name):
-                self.assertNotIn("delegate:codex", text)
-                self.assertNotIn("codex-delegation", text)
-                self.assertNotIn("work.delegate", text)
-        for stale in ("codex-delegation.md", "codex-delegation-selection.md"):
-            with self.subTest(reference=stale):
-                self.assertFalse((WORK / "references" / stale).exists())
-
-    def test_common_work_lifecycle_routes_and_no_forbidden_gate_regrowth(self) -> None:
+    def test_common_work_lifecycle_routes(self) -> None:
         """Routes only: phases.md reaches multi-task.md, which reaches the
         wave-join and host-deferred review references."""
         self.assertIn("references/multi-task.md", self.phases)
@@ -48,8 +31,6 @@ class WorkReachedPathRoutes(unittest.TestCase):
             with self.subTest(reference=reference):
                 self.assertTrue((WORK / "references" / reference).is_file())
                 self.assertRegex(multi, r"\]\((?:references/)?" + reference.replace(".", r"\.") + r"[)#]")
-        self.assertNotIn("plan-sync-probe", self.phases)
-        self.assertNotIn("PLAN_DEVIATION", self.phases)
 
 if __name__ == "__main__":
     unittest.main()

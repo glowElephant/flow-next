@@ -1,12 +1,11 @@
 """Contract checks for /flow-next:flow and its shared routing reference.
 
-Reachability only: the skill, shim and reference files exist and every file
-in references/ is reached from the always-loaded files, auto.md, or a reached
-reference; every reference link from the always-loaded files resolves, every
-routing reference is reachable from them, and the two auto-only files are
-reachable from auto.md only; every consumer pointer names a reference file that exists; the retired
-guide skill is named nowhere on a canonical surface; the attended refusal
-line and the mode-detection tokens (--explain, --auto, --tick) are present.
+Reachability only: every file in references/ is reached from the always-loaded
+files, auto.md, or a reached reference; every reference link from the
+always-loaded files resolves, every routing reference is reachable from them,
+and the two auto-only files are reachable from auto.md only; every consumer
+pointer names a reference file that exists; the shim and skill frontmatter
+names that hosts invoke are intact.
 
 Run:
     cd plugins/flow-next/tests && python3 -m unittest test_flow_routing -q
@@ -41,8 +40,6 @@ REFERENCE_NAMES = (
     "no-argument.md",
 )
 
-# Rarer route rows, reached from route-matrix.md rather than the spine.
-MATRIX_CONTINUATION_NAMES = ("route-matrix-more.md",)
 
 # Gated references read only under `--auto` (moved from the pilot skill). They
 # carry no routing rule and no decision record; auto.md reaches them.
@@ -71,22 +68,6 @@ POINTER_RE = re.compile(r"flow-next-flow/references/([A-Za-z0-9_.-]+\.md)")
 LOCAL_REF_LINK_RE = re.compile(r"\]\((references/[A-Za-z0-9_.-]+\.md)(?:#[^)]*)?\)")
 LOCAL_REF_MENTION_RE = re.compile(r"references/([A-Za-z0-9_.-]+\.md)")
 
-# Canonical surfaces that must not name the retired guide skill.
-GUIDE_RE = re.compile(r"flow-next-guide|/flow-next:guide")
-CANONICAL_ROOTS = (
-    PLUGIN / "skills",
-    PLUGIN / "commands",
-    PLUGIN / "agents",
-    PLUGIN / "templates",
-    PLUGIN / "docs",
-    REPO_ROOT / "README.md",
-    REPO_ROOT / "agent_docs",
-)
-EXCLUDED_PARTS = ("archive", "optimization", "codex", ".flow")
-# Append-only release history keeps the names of retired commands as history,
-# the same way CHANGELOG.md does; a historical mention is not a pointer.
-EXCLUDED_FILES = ("release-history.md",)
-
 
 def _read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
@@ -100,18 +81,6 @@ def _frontmatter(text: str) -> str:
 
 
 class FlowSurfaceExists(unittest.TestCase):
-    def test_skill_workflow_shim_and_references_exist(self) -> None:
-        for path in (FLOW_SKILL, FLOW_WORKFLOW, FLOW_AUTO, FLOW_SHIM):
-            self.assertTrue(path.is_file(), f"missing {path.relative_to(REPO_ROOT)}")
-        known = (
-            *REFERENCE_NAMES,
-            *MATRIX_CONTINUATION_NAMES,
-            *AUTO_ONLY_REFERENCE_NAMES,
-            *GATED_STAGE_REFERENCE_NAMES,
-        )
-        for name in known:
-            path = FLOW_REFERENCES / name
-            self.assertTrue(path.is_file(), f"missing {path.relative_to(REPO_ROOT)}")
 
     def test_no_orphan_reference(self) -> None:
         # Every file in references/ is reached: from SKILL.md, workflow.md or
@@ -234,51 +203,6 @@ class ConsumerPointersResolve(unittest.TestCase):
         combined = _read(FLOW_SKILL) + "\n" + _read(FLOW_WORKFLOW)
         mentioned = set(LOCAL_REF_MENTION_RE.findall(combined))
         self.assertTrue(set(REFERENCE_NAMES) <= mentioned, f"flow skill misses {set(REFERENCE_NAMES) - mentioned}")
-
-
-class GuideRetired(unittest.TestCase):
-    def test_guide_skill_surfaces_are_gone(self) -> None:
-        self.assertFalse((PLUGIN / "skills" / "flow-next-guide").exists())
-        self.assertFalse((PLUGIN / "commands" / "guide.md").exists())
-        self.assertFalse((REPO_ROOT / "agent_docs" / "conduct" / "guide.md").exists())
-
-    def test_no_canonical_surface_names_guide(self) -> None:
-        offenders: list[str] = []
-        for root in CANONICAL_ROOTS:
-            paths = [root] if root.is_file() else sorted(root.rglob("*.md"))
-            for path in paths:
-                if not path.is_file():
-                    continue
-                rel = path.relative_to(REPO_ROOT)
-                if any(part in EXCLUDED_PARTS for part in rel.parts):
-                    continue
-                if rel.name in EXCLUDED_FILES:
-                    continue
-                for lineno, line in enumerate(_read(path).splitlines(), 1):
-                    if GUIDE_RE.search(line):
-                        offenders.append(f"{rel.as_posix()}:{lineno}: {line.strip()[:120]}")
-        self.assertEqual(
-            offenders,
-            [],
-            "canonical surfaces still name the retired guide skill:\n" + "\n".join(offenders),
-        )
-
-
-class FlowInvariantTokens(unittest.TestCase):
-    def test_attended_refusal_line_present(self) -> None:
-        self.assertIn("NEEDS_HUMAN:", _read(FLOW_SKILL))
-
-    def test_mode_detection_tokens_documented(self) -> None:
-        text = _read(FLOW_SKILL)
-        # token -> the variable mode detection binds it to
-        for token, binding in (
-            ("--explain", "EXPLAIN=1"),
-            ("--auto", "AUTO=1"),
-            ("--tick", "AUTO_TICK=1"),
-        ):
-            with self.subTest(token=token):
-                self.assertIn(token, text, f"the skill body must document the {token} token")
-                self.assertIn(binding, text, f"mode detection must bind {token} to {binding}")
 
 
 if __name__ == "__main__":

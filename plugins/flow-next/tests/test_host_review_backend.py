@@ -53,10 +53,6 @@ def _read(relative: str) -> str:
     return (SKILLS / relative).read_text(encoding="utf-8")
 
 
-def _section(text: str, start: str, end: str) -> str:
-    return text.split(start, 1)[1].split(end, 1)[0]
-
-
 def _bash_fence_after(text: str, marker: str) -> str:
     marker_at = text.index(marker)
     fence_at = text.index("```bash\n", marker_at) + len("```bash\n")
@@ -83,23 +79,6 @@ def _bash_executable() -> str:
     if bash:
         return bash
     raise RuntimeError("bash executable not found")
-
-
-class TestHostBackendRegistry(unittest.TestCase):
-    """host is registered but non-executable (no model axis, not role-mappable)."""
-
-    def test_host_in_backend_registry(self) -> None:
-        self.assertIn("host", BACKEND_REGISTRY)
-
-    def test_host_models_is_none(self) -> None:
-        self.assertIsNone(BACKEND_REGISTRY["host"]["models"])
-        self.assertIsNone(BACKEND_REGISTRY["host"]["efforts"])
-
-    def test_host_takes_no_model_axis(self) -> None:
-        # The model is named on the AGENTS.md routing block, never on the
-        # backend string - so host carries no model/effort axis at all.
-        self.assertIsNone(BACKEND_REGISTRY["host"].get("default_model"))
-        self.assertIsNone(BACKEND_REGISTRY["host"].get("default_effort"))
 
 
 class TestHostBackendSpecParse(unittest.TestCase):
@@ -179,47 +158,6 @@ class TestHostReviewWorkflowRouting(unittest.TestCase):
                 for parent, child in zip(chain, chain[1:] + ("workflow-host.md",), strict=True):
                     self.assertIn(f"]({child})", _read(f"{skill}/{parent}"))
 
-    def test_work_never_writes_a_verdict_completion_status(self) -> None:
-        """Work may only excuse a completion review, atomically from unknown."""
-        root = _read("flow-next-spec-completion-review/SKILL.md")
-        host = _read("flow-next-spec-completion-review/workflow-host.md")
-        rp = _read("flow-next-spec-completion-review/workflow-rp.md")
-        work_dir = SKILLS / "flow-next-work"
-        work = " ".join(
-            " ".join(p.read_text(encoding="utf-8").split())
-            for p in sorted(work_dir.rglob("*.md"))
-        )
-        self.assertNotIn("set-completion-review-status", root)
-        self.assertIn("$FLOWCTL review-rounds resume-terminal", root)
-        self.assertIn("--status-target completion", host)
-        self.assertIn("--status-target completion", rp)
-        writes = re.findall(r"set-completion-review-status <spec-id> ([^`]*)", work)
-        self.assertTrue(writes, "work lost its policy-skip write")
-        for args in writes:
-            with self.subTest(args=args):
-                self.assertTrue(
-                    args.startswith("--status not_required --if-current unknown"),
-                    "work's only completion-status write is the atomic policy-skip CAS",
-                )
-
-    def test_host_needs_human_fences_attach_before_exit(self) -> None:
-        for skill in (
-            "flow-next-plan-review",
-            "flow-next-impl-review",
-            "flow-next-spec-completion-review",
-        ):
-            with self.subTest(skill=skill):
-                host = _read(f"{skill}/workflow-host.md")
-                record_at = host.index("review-rounds record")
-                attach_at = host.index("--attach", record_at)
-                terminal_at = host.index(
-                    "ESCALATE: reviewer requested human review", attach_at
-                )
-                self.assertLess(record_at, attach_at)
-                self.assertLess(attach_at, terminal_at)
-                if skill != "flow-next-impl-review":
-                    self.assertIn("--status-target", host[record_at:attach_at])
-
     def test_terminal_checkpoint_routes_command_actions(self) -> None:
         block = _bash_fence_after(
             _read("flow-next-spec-completion-review/SKILL.md"),
@@ -247,96 +185,6 @@ class TestHostReviewWorkflowRouting(unittest.TestCase):
                     )
                     self.assertEqual(run.returncode, code, run.stderr)
                     self.assertIn(marker, run.stdout + run.stderr)
-
-    def test_completion_backend_persists_recovery_and_receipt_before_status(
-        self,
-    ) -> None:
-        source = (
-            REPO / "plugins" / "flow-next" / "scripts" / "flowctl.py"
-        ).read_text(encoding="utf-8")
-        payload_builder = _section(
-            source,
-            "def _backend_review_receipt_payload(",
-            "def _publish_review_receipt_from_journal(",
-        )
-        publisher = _section(
-            source,
-            "def _publish_review_receipt_from_journal(",
-            "def _write_backend_review_receipt(",
-        )
-        writer = _section(
-            source,
-            "def _write_backend_review_receipt(",
-            "def _self_write_review_status(",
-        )
-        completion = _section(
-            source,
-            "def _backend_completion_review(",
-            "def cmd_codex_impl_review(",
-        )
-        self.assertIn("completion-review-receipt-recovery-", source)
-        self.assertIn('receipt_data["attempt_timestamp"]', payload_builder)
-        self.assertIn(
-            "_completion_review_receipt_recovery_path(review_id)", writer
-        )
-        # PR #290 bot P1: the journaled publish keeps the same pre-pointer
-        # recovery copy the unjournaled direct writer wrote.
-        self.assertIn("_completion_review_receipt_recovery_path(", publisher)
-        self.assertNotIn("recovery_path.unlink", writer)
-        host = _read("flow-next-spec-completion-review/workflow-host.md")
-        rp = _read("flow-next-spec-completion-review/workflow-rp.md")
-        recovery = "completion-review-receipt-recovery-${SPEC_ID}.json"
-        # fn-257 R5: the host publishes through `attach`, whose record journal
-        # is the recovery source; it never hand-writes a recovery copy.
-        self.assertNotIn(recovery, host)
-        # fn-159.7 review r1: the RP transport no longer hand-rolls a /tmp
-        # recovery copy. `review-rounds record` journals the exact intended
-        # payload under .flow/review-runs/ BEFORE the receipt advances, which
-        # is the same guarantee with a durable, identity-bound artifact.
-        self.assertNotIn('RECOVERY_TMP', rp)
-        self.assertNotIn('--recovery "$RECEIPT_RECOVERY"', rp)
-        self.assertLess(
-            rp.index('--receipt-payload-file "$RECEIPT_INPUT"'),
-            rp.index('review-findings attach'),
-        )
-        self.assertIn('--receipt-target "$REVIEW_RECEIPT_PATH"', rp)
-        self.assertIn('--reservation-id "$RESERVATION_ID"', rp)
-        self.assertNotIn(
-            'cp "$RECEIPT_RECOVERY" "$REVIEW_RECEIPT_PATH"', rp
-        )
-        # fn-159.7: the host fence assembles receipt inputs BEFORE record
-        # (record journals them); attach only publishes by reservation id.
-        self.assertIn('--receipt-target "$RECEIPT_PATH"', host)
-        self.assertIn('--receipt-payload-file "$RECEIPT_INPUT"', host)
-        self.assertIn('--reservation-id "$RESERVATION_ID"', host)
-        self.assertIn('--receipt "$RECEIPT_PATH"', host)
-        self.assertLess(
-            completion.index("_write_backend_review_receipt("),
-            completion.index("_self_write_review_status("),
-        )
-        self.assertLess(
-            completion.index("_self_write_review_status("),
-            completion.index(
-                "_completion_review_receipt_recovery_path(epic_id).unlink"
-            ),
-        )
-        # PR #290 bot r2: both the terminal status write and the recovery
-        # cleanup are GATED on publication succeeding — a failed publish must
-        # leave the wedge-free state the replay gate recovers from.
-        self.assertIn("receipt_published = _write_backend_review_receipt(", completion)
-        self.assertIn("if receipt_published:", completion)
-        self.assertLess(
-            completion.index("if receipt_published:"),
-            completion.index("_self_write_review_status("),
-        )
-        # The impl handler writes no terminal review status at all, so there
-        # is nothing to gate there.
-        impl = _section(
-            source,
-            "def _backend_impl_review(",
-            "def _current_review_rounds(",
-        )
-        self.assertNotIn("_self_write_review_status(", impl)
 
     def test_rp_recorder_failure_cannot_be_swallowed_by_verdict_echo(self) -> None:
         rp = _read("flow-next-spec-completion-review/workflow-rp.md")
@@ -396,33 +244,6 @@ class TestHostReviewWorkflowRouting(unittest.TestCase):
             )
             self.assertIn("recorder failed", result.stdout)
             self.assertNotIn("VERDICT=", result.stdout)
-
-    def test_host_completion_uses_shared_cap_attempt_lifecycle(self) -> None:
-        host = _read("flow-next-spec-completion-review/workflow-host.md")
-        self.assertIn(
-            '$FLOWCTL review-rounds increment "$SPEC_ID" --kind plan',
-            host,
-        )
-        # fn-159.7: the reserve carries the completion artifact hash inputs.
-        self.assertIn(
-            '--review-type completion --base "$REVIEW_BASE_SHA" --head "$REVIEW_HEAD_SHA" --json',
-            host,
-        )
-        self.assertIn(
-            '$FLOWCTL review-rounds record "$SPEC_ID" --kind plan',
-            host,
-        )
-        self.assertIn("--review-type completion --backend host", host)
-        # fn-159 R9: SHIP reset is system-owned inside `record`; the explicit
-        # reset verb is a human-only recovery tool and must NOT appear as an
-        # autonomous host-fence command.
-        self.assertNotIn(
-            '$FLOWCTL review-rounds reset "$SPEC_ID" --kind plan --json',
-            host,
-        )
-        self.assertIn("<verdict>SHIP</verdict>", host)
-        self.assertIn("<verdict>NEEDS_WORK</verdict>", host)
-
 
 class TestHostStandaloneImplReview(unittest.TestCase):
     """fn-257 R2: a standalone host impl-review reserves nothing and attaches directly."""

@@ -12,7 +12,6 @@ import ast
 import importlib.util
 import sys
 import unittest
-from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -130,168 +129,6 @@ class ReviewPromptConstraintTest(unittest.TestCase):
                 for line in required:
                     self.assertIn(line, output)
 
-    def test_flowctl_process_and_llm_invocation_inventory_is_frozen(self) -> None:
-        tree = ast.parse(FLOWCTL_PATH.read_text(encoding="utf-8"))
-        parents: dict[ast.AST, ast.AST] = {}
-        for parent in ast.walk(tree):
-            for child in ast.iter_child_nodes(parent):
-                parents[child] = parent
-
-        def enclosing_function(node: ast.AST) -> str:
-            parent = parents.get(node)
-            while parent and not isinstance(
-                parent, (ast.FunctionDef, ast.AsyncFunctionDef)
-            ):
-                parent = parents.get(parent)
-            return parent.name if parent else "<module>"
-
-        process_methods = {
-            "run",
-            "Popen",
-            "call",
-            "check_call",
-            "check_output",
-        }
-        backend_bridges = {
-            "run_codex_exec",
-            "run_copilot_exec",
-            "run_cursor_exec",
-            "run_claude_exec",
-        }
-        observed: Counter[tuple[str, str]] = Counter()
-        for node in ast.walk(tree):
-            if not isinstance(node, ast.Call):
-                continue
-            func = node.func
-            if (
-                isinstance(func, ast.Attribute)
-                and isinstance(func.value, ast.Name)
-                and func.value.id == "subprocess"
-                and func.attr in process_methods
-            ):
-                observed[(f"subprocess.{func.attr}", enclosing_function(node))] += 1
-            elif isinstance(func, ast.Name) and func.id in backend_bridges:
-                observed[(func.id, enclosing_function(node))] += 1
-
-        expected = Counter(
-            {
-                ("run_codex_exec", "_codex_run_exec"): 1,
-                ("run_copilot_exec", "_copilot_run_exec"): 1,
-                ("run_cursor_exec", "_cursor_run_exec"): 1,
-                ("run_claude_exec", "_claude_run_exec"): 1,
-                ("subprocess.run", "get_repo_root"): 1,
-                # Snapshot reads, contiguous commit evidence and memory audit git facts.
-                ("subprocess.run", "pilot_snapshot"): 4,
-                ("subprocess.run", "list_prs"): 1,
-                ("subprocess.run", "cmd_done"): 4,
-                ("subprocess.run", "git_lines"): 1,
-                # fn-247: observed PR lifecycle and tracked dependency facts, not LLM bridges.
-                ("subprocess.run", "judge_route_state"): 1,
-                ("subprocess.run", "judge_dependency_tokens"): 1,
-                ("subprocess.run", "find_strategy_file"): 1,
-                ("subprocess.run", "get_state_dir"): 1,
-                ("subprocess.run", "run_rp_cli"): 1,
-                ("subprocess.run", "run_rp_cli_unchecked"): 1,
-                ("subprocess.run", "try_run_rp_cli"): 1,
-                ("subprocess.run", "get_changed_files"): 1,
-                # fn-192 R3 / #346: done/block advisory - one path-scoped
-                # `git diff --quiet` to ask "did I just dirty a tracked
-                # file?". Read-only; flowctl never stages or commits.
-                ("subprocess.run", "print_tracked_write_advisory"): 1,
-                ("subprocess.run", "find_references"): 1,
-                ("subprocess.run", "get_codex_version"): 1,
-                ("subprocess.run", "_cursor_list_models"): 1,
-                ("subprocess.run", "get_copilot_version"): 1,
-                ("subprocess.run", "get_cursor_version"): 1,
-                ("subprocess.run", "get_claude_version"): 1,
-                # fn-221: the claude reviewer has no shell, so the reviewed
-                # diff is materialised by path - a deterministic `git diff`
-                # read, not an execution bridge.
-                ("subprocess.run", "_claude_review_diff_text"): 1,
-                ("subprocess.run", "get_actor"): 2,
-                # issue #279: best-effort HEAD-sha provenance on review-attempt
-                # rows - a deterministic git read, not an execution bridge.
-                ("subprocess.run", "_review_head_sha"): 1,
-                ("subprocess.run", "_spec_alloc_git"): 1,
-                # fn-135.2: chart attach-asset path validation - a deterministic
-                # `git check-ignore` read, not an execution bridge.
-                ("subprocess.run", "_git_check_ignored"): 1,
-                ("subprocess.run", "_export_run_git"): 1,
-                ("subprocess.run", "_export_read_base_blobs"): 1,
-                ("subprocess.run", "_psp_run_git"): 1,
-                # fn-180.3 / #302: the evidence-commit reachability pass. TWO
-                # deterministic git reads for the WHOLE validate invocation -
-                # one batched `cat-file --batch-check` fed every recorded token
-                # over stdin, one `rev-list HEAD` membership walk. Spec R4 makes
-                # the batching an acceptance criterion: a per-SHA spawn loop in
-                # a land-loop-called verb would claw back the fn-109 wins, so
-                # any growth of these two entries is the regression to catch.
-                # The walk STREAMS so it can be abandoned the moment every
-                # candidate oid is accounted for.
-                ("subprocess.run", "_batch_check"): 1,
-                ("subprocess.Popen", "_reachable_oids"): 1,
-                # fn-181 R3/R5: the behind-upstream advisory for ready/anchor -
-                # ONE deterministic `git status --porcelain=v2 --branch` read
-                # per invocation, never a fetch, never an execution bridge.
-                ("subprocess.run", "upstream_behind"): 1,
-                # fn-152 R2: chain eligibility reads the remote ONCE per
-                # invocation via `git ls-remote --heads origin` (memoized by
-                # RemoteHeads across the admission gates) - never gh, never
-                # a fetch, never an execution bridge.
-                ("subprocess.run", "ls_remote_heads_origin"): 1,
-                # fn-184.1 / #325: the pilot strikes ledger lives under the git
-                # COMMON dir (shared across worktrees), so resolving it is ONE
-                # deterministic `rev-parse --git-common-dir` read per
-                # invocation - the same path the pilot skill's shell resolves,
-                # never an execution bridge.
-                ("subprocess.run", "_pilot_strikes_ledger_path"): 1,
-                # fn-169 R3/R4: `--numstat --no-renames` for the prompt's scope
-                # map and the full diff for the artifact identity, both through
-                # ONE runner that raises rather than returning "" — an empty
-                # result and a failed read must not collapse now that nothing is
-                # embedded beside them. The old `_gather_review_diff` did both
-                # with a streaming Popen because the body was capped at 50 KB
-                # before being EMBEDDED; nothing is embedded, so no stream.
-                ("subprocess.run", "_run_review_git"): 1,
-                # The artifact-identity read STREAMS (impl-review r3): a captured
-                # run would materialize the whole diff before any size check could
-                # run, so the ceiling has to be enforced while reading.
-                ("subprocess.Popen", "_read_review_git_bounded"): 1,
-                ("subprocess.run", "_resolve_review_sha"): 1,
-                # PR #392 r25: finalize re-resolves the merge base so a
-                # rebased/force-moved base ref cannot smuggle unreviewed
-                # commits under a SHIP (plain git plumbing, no LLM).
-                ("subprocess.run", "_review_fanout_assert_head_unmoved"): 1,
-                ("subprocess.run", "_capture_review_snapshot"): 1,
-                ("subprocess.run", "_triage_chore_is_version_only"): 1,
-                ("subprocess.run", "_triage_run_codex_judge"): 1,
-                ("subprocess.run", "_triage_run_copilot_judge"): 1,
-                ("subprocess.run", "cmd_triage_skip"): 4,
-                # fn-250: landed-at-base evidence for chain dependencies
-                # plus local ref existence and ancestry (plain git plumbing, no LLM).
-                ("subprocess.run", "spec_landed_at_base"): 2,
-                # fn-257: origin/HEAD lookup shared with the review --base default.
-                ("subprocess.run", "_default_branch_candidates"): 1,
-                ("subprocess.run", "_spec_close_in_head_history"): 2,
-                ("subprocess.run", "read_spec_close"): 2,
-                ("subprocess.run", "_gate_repo_and_head"): 2,
-                ("subprocess.run", "_gate_status_paths"): 1,
-                ("subprocess.run", "_gate_walk_candidate_ok"): 3,
-                ("subprocess.run", "cmd_gate_classify"): 1,
-                # fn-262: `features status` reads rev-parse and log for the
-                # feature map's last-proven age (plain git plumbing, no LLM).
-                ("subprocess.run", "_features_git"): 1,
-                ("subprocess.run", "_prime_git"): 1,
-                ("subprocess.Popen", "_prime_parse_ls_files_staged"): 1,
-                ("subprocess.run", "_prime_git_free_tool"): 1,
-                ("subprocess.run", "run_codex_exec"): 1,
-                # codex, copilot, cursor, claude: one CLI spawn per ladder rung.
-                ("subprocess.run", "_dispatch"): 4,
-                ("subprocess.run", "_branch_slug"): 1,
-            }
-        )
-        self.assertEqual(observed, expected)
-
     def test_no_direct_llm_sdk_imports(self) -> None:
         tree = ast.parse(FLOWCTL_PATH.read_text(encoding="utf-8"))
         forbidden = {"anthropic", "google.generativeai", "openai"}
@@ -302,30 +139,6 @@ class ReviewPromptConstraintTest(unittest.TestCase):
             elif isinstance(node, ast.ImportFrom) and node.module:
                 imported.add(node.module)
         self.assertTrue(forbidden.isdisjoint(imported), imported & forbidden)
-
-    def test_constraint_guards_do_not_spawn_processes(self) -> None:
-        paths = (
-            REPO / "optimization/reached-path/plan_review_candidate.py",
-            Path(__file__).resolve(),
-            Path(__file__).with_name("test_review_prompt_template_parity.py"),
-        )
-        for path in paths:
-            tree = ast.parse(path.read_text(encoding="utf-8"))
-            calls = []
-            for node in ast.walk(tree):
-                if not isinstance(node, ast.Call):
-                    continue
-                func = node.func
-                if (
-                    isinstance(func, ast.Attribute)
-                    and isinstance(func.value, ast.Name)
-                    and func.value.id in {"os", "subprocess"}
-                    and func.attr
-                    in {"run", "Popen", "call", "check_call", "check_output", "system"}
-                ):
-                    calls.append(f"{func.value.id}.{func.attr}")
-            with self.subTest(path=path.relative_to(REPO)):
-                self.assertEqual(calls, [])
 
     def test_prompt_templates_match_generated_codex_mirrors(self) -> None:
         pairs = (

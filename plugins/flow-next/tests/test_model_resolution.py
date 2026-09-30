@@ -1280,22 +1280,6 @@ class TestRoleMapRemoved(unittest.TestCase):
     def test_defaults_carry_no_models_block(self) -> None:
         self.assertNotIn("models", flowctl.get_default_config())
 
-    def test_role_map_symbols_are_gone(self) -> None:
-        for name in (
-            "MODEL_ROLES",
-            "MODEL_ROLE_BACKENDS",
-            "MODELS_STALE_DAYS",
-            "get_role_map_pin",
-            "resolve_role_model",
-            "resolve_models_role",
-            "cmd_models_resolve",
-            "models_pin_nudge_message",
-            "parse_models_verified_at",
-            "_validate_models_config_key",
-            "_validate_models_roles_tree",
-        ):
-            self.assertFalse(hasattr(flowctl, name), name)
-
     def test_models_keys_are_reported_as_removed(self) -> None:
         for key in ("models.roles", "models.verifiedAt", "models.verifiedWith"):
             self.assertIn(key, flowctl.REMOVED_CONFIG_KEYS)

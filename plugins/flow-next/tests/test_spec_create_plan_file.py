@@ -501,14 +501,9 @@ class SpecCreatePlanFileTestCase(unittest.TestCase):
             "--json",
             stdin=PLAN_BODY,
         )
-        self.assertNotEqual(proc.returncode, 0)
-        # argparse mutual-exclusion surfaces on stderr.
-        combined = (proc.stdout or "") + (proc.stderr or "")
-        self.assertTrue(
-            "not allowed with" in combined
-            or "mutually exclusive" in combined.lower()
-            or proc.returncode != 0
-        )
+        # argparse mutual exclusion: usage error, nothing written.
+        self.assertEqual(proc.returncode, 2)
+        self.assertIn("not allowed with", proc.stderr)
 
 
 if __name__ == "__main__":

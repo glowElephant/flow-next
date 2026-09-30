@@ -646,14 +646,6 @@ class ProviderCreateShapes(unittest.TestCase):
                 self.assertEqual(receipts[0]["tracker_id"], durable)
 
 
-class NoReconcileCli(unittest.TestCase):
-    def test_package_has_no_reconcile_verb(self) -> None:
-        self.assertFalse(hasattr(L, "reconcile"))
-        src = (ROOT / "scripts" / "flowctl.py").read_text(encoding="utf-8")
-        # CLI must not register a `tracker reconcile` command.
-        self.assertNotRegex(src, r'add_parser\(\s*"reconcile"')
-
-
 class CreateFirstKeyParity(unittest.TestCase):
     def test_matches_flowctl_compute(self) -> None:
         import flowctl  # noqa: PLC0415

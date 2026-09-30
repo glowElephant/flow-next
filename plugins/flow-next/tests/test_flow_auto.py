@@ -1,13 +1,10 @@
-"""`flow --auto` retires the pilot skill - behaviour and contract pins (R13).
+"""`flow --auto` behaviour and contract checks (R13).
 
 The unattended driver lives in `skills/flow-next-flow/auto.md`, read only when
 flow's mode detection parsed the exact `--auto` token; `--tick` runs one hop.
-The `flow-next-pilot` alias stub and its command shim are removed. Everything here is a contract token or a real code path
-(G2): the verdict grammar for both shapes, the retired alias, the
-classification pointers resolving to routing files that exist, the tick-only
-chain gate, the QA `auto` read, the zero-task route recording, the refusal
-inversion, and executable runs of the argument-parse fence and the hard-guard
-fence. No sentence pins, no size or hash baselines.
+Covered here: the verdict grammar for both shapes, reference mentions that
+resolve, and executable runs of the argument-parse, hard-guard, snapshot and
+make-pr verify fences. No sentence pins, no size or hash baselines.
 
 Run:
     cd plugins/flow-next/tests && python3 -m unittest test_flow_auto -q
@@ -28,19 +25,14 @@ from pathlib import Path
 PLUGIN = Path(__file__).resolve().parent.parent
 
 FLOW_DIR = PLUGIN / "skills" / "flow-next-flow"
-FLOW_SKILL = FLOW_DIR / "SKILL.md"
 AUTO_MD = FLOW_DIR / "auto.md"
 FLOW_REFERENCES = FLOW_DIR / "references"
-PILOT_SHIM = PLUGIN / "commands" / "pilot.md"
-PILOT_STUB = PLUGIN / "skills" / "flow-next-pilot" / "SKILL.md"
 
 VERDICT_GRAMMAR_LINE = (
     "PILOT_VERDICT=<ADVANCED|NO_WORK|DEFERRED_TO_LAND|BLOCKED|NEEDS_HUMAN> "
     'spec=<id> stage=<stage> reason="<one line>"'
 )
 CHAINED_TICK_TOKEN = "qa+make-pr"
-CLASSIFY_POINTERS = ("route-matrix.md", "plan-vs-no-plan.md", "gate-selection.md")
-QA_AUTO_SKIP_TOKEN = "skipped(config: pipeline.qa=auto:"
 
 LOCAL_REF_MENTION_RE = re.compile(r"references/([A-Za-z0-9_.-]+\.md)")
 PARSED_VARS = (
@@ -57,18 +49,10 @@ _POSIX_BASH = unittest.skipIf(
     sys.platform == "win32" or shutil.which("bash") is None,
     "executable fence tests need a POSIX bash",
 )
-_GIT = unittest.skipIf(shutil.which("git") is None, "hard-guard fence needs git")
 
 
 def _read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
-
-
-def _section(text: str, start: str, end: str) -> str:
-    """Slice from the `start` heading up to the `end` heading."""
-    i = text.index(start)
-    j = text.index(end, i)
-    return text[i:j]
 
 
 def _fence_from(text: str, first_line: str) -> str:
@@ -96,70 +80,18 @@ class VerdictGrammar(unittest.TestCase):
         self.assertIn('PILOT_VERDICT=NO_WORK spec=<id> stage=- reason="already merged', _read(AUTO_MD))
 
 
-class PilotAliasRetired(unittest.TestCase):
-    """(2) The pilot alias stub and its command shim are removed."""
-
-    def test_alias_stub_and_command_shim_are_retired(self) -> None:
-        self.assertFalse(PILOT_STUB.exists())
-        self.assertFalse(PILOT_SHIM.exists())
-
-
-class ClassificationPointers(unittest.TestCase):
-    """(3) Classification reads the routing reference; the stage table is gone."""
+class ReferenceMentions(unittest.TestCase):
 
     def test_every_reference_mention_resolves(self) -> None:
         for name in sorted(set(LOCAL_REF_MENTION_RE.findall(_read(AUTO_MD)))):
             with self.subTest(reference=name):
                 self.assertTrue((FLOW_REFERENCES / name).is_file(), f"auto.md names references/{name}, missing")
 
-    def test_classify_section_names_the_three_routing_files(self) -> None:
-        classify = _section(_read(AUTO_MD), "## Phase 2 - CLASSIFY", "## Phase 3")
-        for name in CLASSIFY_POINTERS:
-            with self.subTest(reference=name):
-                self.assertIn(f"references/{name}", classify)
-
-
-class QaAutoUnderAuto(unittest.TestCase):
-    """(5) `pipeline.qa=auto` takes effect under `--auto`."""
-
-    def test_auto_flag_and_skip_line_token(self) -> None:
-        text = _read(AUTO_MD)
-        self.assertIn(QA_AUTO_SKIP_TOKEN, text)
-
-
-class ZeroTaskRouteRecording(unittest.TestCase):
-    """(6) A zero-task ready spec gets its route recorded and echoed."""
-
-    def test_route_recording_verbs_and_echo(self) -> None:
-        # workflow.md Step 2 owns the recording verbs; auto.md Phase 2 adds the
-        # signal echo and reads the same rule.
-        workflow = _read(FLOW_DIR / "workflow.md")
-        for token in ("spec set-no-plan", "spec clear-no-plan"):
-            with self.subTest(token=token):
-                self.assertIn(token, workflow)
-        classify = _section(_read(AUTO_MD), "## Phase 2 - CLASSIFY", "## Phase 3")
-        for token in ("route: direct -", "route: plan -", "references/plan-vs-no-plan.md"):
-            with self.subTest(token=token):
-                self.assertIn(token, classify)
-
-
-class RefusalInversion(unittest.TestCase):
-    """(7) Attended flow refuses under every autonomy marker; `--auto` does
-    not, because it sets FLOW_AUTONOMOUS for the stages it dispatches."""
-
-    def test_attended_skill_pins_the_line_and_the_marker_family(self) -> None:
-        text = _read(FLOW_SKILL)
-        self.assertIn("NEEDS_HUMAN:", text)
-        for marker in ("FLOW_AUTONOMOUS", "AUTONOMOUS=1", "mode:autonomous"):
-            with self.subTest(marker=marker):
-                self.assertIn(marker, text)
+class HardGuardFence(unittest.TestCase):
+    """The hard-guard and snapshot fences, run for real."""
 
     def _hard_guard_fence(self) -> str:
         return _fence_from(_read(AUTO_MD), '# fence:pilot-guards')
-
-    def test_auto_consumes_snapshot_guards(self) -> None:
-        fence = self._hard_guard_fence()
-        self.assertIn('.guards.dirty', fence)
 
     @_POSIX_BASH
     @unittest.skipUnless(shutil.which("jq"), "requires jq")
@@ -250,10 +182,19 @@ class ArgumentParseFence(unittest.TestCase):
 
     @_POSIX_BASH
     def test_fence_exports_every_parsed_variable(self) -> None:
-        fence = self._fence()
+        # Dispatched stages read these from the environment: run the fence and
+        # check a child process sees every parsed variable.
+        res = subprocess.run(
+            ["bash", "-c", self._fence() + "\nenv"],
+            capture_output=True,
+            text=True,
+            env={**os.environ, "ARGUMENTS": "fn-1 --tick"},
+        )
+        self.assertEqual(res.returncode, 0, res.stderr)
+        exported = {line.split("=", 1)[0] for line in res.stdout.splitlines() if "=" in line}
         for var in PARSED_VARS:
             with self.subTest(var=var):
-                self.assertRegex(fence, rf"(?m)^export .*\b{var}\b")
+                self.assertIn(var, exported)
 
     @_POSIX_BASH
     def test_argument_shapes(self) -> None:

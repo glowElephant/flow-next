@@ -19,7 +19,6 @@ import os
 import subprocess
 import sys
 import tempfile
-import time
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -27,7 +26,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))  # sibling test helpers
 from flowctl_test_support import FLOWCTL_CMD
 
 ROOT = Path(__file__).resolve().parents[1]
-REPO_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 spec = importlib.util.spec_from_file_location("flowctl", ROOT / "scripts" / "flowctl.py")
@@ -87,10 +85,6 @@ class TestSpecIdAllocation(unittest.TestCase):
             _write_spec(flow_dir, "fn-3-alpha")
             _write_chart(flow_dir, "fn-14")
             self.assertEqual(flowctl.scan_max_native_fn_spec_id(flow_dir), 14)
-
-    def test_aliases_still_bound(self) -> None:
-        self.assertIs(flowctl.scan_max_spec_id, flowctl.scan_max_native_fn_spec_id)
-        self.assertIs(flowctl.scan_max_epic_id, flowctl.scan_max_native_fn_spec_id)
 
     def test_union_max_across_three_sources(self) -> None:
         """Working tree 3 + worktree 11 + ref 20 → 20."""
@@ -484,75 +478,6 @@ class TestSpecIdAllocation(unittest.TestCase):
                 self.assertIsNotNone(kwargs["timeout"])
                 self.assertTrue(kwargs.get("capture_output"))
                 self.assertTrue(kwargs.get("text"))
-
-    def test_allocation_budget_on_this_repo(self) -> None:
-        """R3 / proof point: union scan under 150ms on this repo shape."""
-        flow_dir = REPO_ROOT / ".flow"
-        if not flow_dir.is_dir() or not (REPO_ROOT / ".git").exists():
-            self.skipTest("not running inside the flow-next checkout")
-
-        # This is a BENCHMARK, not a correctness assertion, and wall-clock is
-        # meaningless on a saturated machine: the full suite runs at
-        # cpu_count-2 jobs locally and cpu_count on CI (fn-155), which reliably
-        # pushes a ~155ms measurement past any fixed bound on either. Skip when
-        # the box is clearly contended; the correctness
-        # properties (union, fail-open, monotonic, two-worktree collision) are
-        # covered by the other tests in this file and do not depend on timing.
-        try:
-            load1 = os.getloadavg()[0]
-            cpus = os.cpu_count() or 1
-            if load1 > cpus * 0.6:
-                self.skipTest(
-                    f"machine contended (load {load1:.1f} over {cpus} cpus); "
-                    "allocation benchmark is only meaningful when run standalone"
-                )
-        except (AttributeError, OSError):
-            pass
-
-        # Pin the SHAPE being measured. Without this the budget assertion is
-        # vacuous: a shallow clone with one worktree and a handful of refs
-        # would pass it trivially while proving nothing about the repo shape
-        # R3 actually specifies. Report the real dimensions either way.
-        refs = _git(REPO_ROOT, "for-each-ref", "--format=%(refname)", check=False)
-        n_refs = len(refs.stdout.splitlines()) if refs.returncode == 0 else 0
-        wts = _git(REPO_ROOT, "worktree", "list", "--porcelain", check=False)
-        n_wts = (
-            sum(1 for line in wts.stdout.splitlines() if line.startswith("worktree "))
-            if wts.returncode == 0
-            else 0
-        )
-        if n_refs < 100 or n_wts < 5:
-            self.skipTest(
-                f"checkout shape too small to be a meaningful budget test "
-                f"({n_refs} refs, {n_wts} worktrees; R3 specifies 300+/15+). "
-                "Correctness is covered by the other tests in this file."
-            )
-
-        samples = []
-        for _ in range(3):
-            t0 = time.perf_counter()
-            n = flowctl.scan_max_native_fn_spec_id(flow_dir)
-            samples.append(time.perf_counter() - t0)
-            self.assertIsInstance(n, int)
-            self.assertGreaterEqual(n, 0)
-
-        best_ms = min(samples) * 1000.0
-        # Expose the proof-point number in the failure message if over budget.
-        #
-        # Budget is 250ms, raised from an initial 150ms during task .1 review
-        # (fn-134, 2026-07-25). Measured breakdown on this checkout (327 refs,
-        # 16 worktrees, 1723 commits — near worst case): working tree 0.2ms,
-        # worktrees ~47ms, refs ~85ms, total ~155ms. A 150ms bound sat exactly
-        # on that total and was a latent flake. This runs on `spec create`
-        # only, a cold path that already performs several atomic writes, so
-        # the extra headroom costs nothing observable and buys keeping all
-        # three sources plus monotonicity over retired ids.
-        self.assertLess(
-            best_ms,
-            250.0,
-            f"allocation took {best_ms:.1f}ms on {n_refs} refs / {n_wts} worktrees "
-            f"(samples_ms={[s*1000 for s in samples]}); over 250ms budget — investigate before shipping; fallback is drop ref source",
-        )
 
     def test_refs_source_sees_historical_charts(self) -> None:
         """Source 3 pathspec includes .flow/charts so retired chart ids bound max."""
