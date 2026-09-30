@@ -2,11 +2,13 @@
 # Implementation review: other backends, flags and steering
 
 Reached from [SKILL.md](SKILL.md) for any backend other than codex, for `--deep`, `--validate`,
-`--interactive` or `--no-triage`, and for an instruction about reviewer topology. `BACKEND`,
+`--interactive`, `--no-triage`, `FLOW_VALIDATE_REVIEW=1` or `FLOW_REVIEW_DEEP=1`, and for an
+instruction about reviewer topology. `BACKEND`,
 `FLOWCTL`, `REVIEW_ID` and `DIFF_BASE` come from SKILL.md's setup; do not resolve the backend again.
-The verdict handling in SKILL.md §4 applies on every path.
+The backend's workflow file and the Fix Loop below own the verdict handling; of SKILL.md §4
+(the codex fast path) only its `OVERRIDDEN:` line ending an unattended loop applies here.
 
-**Workflow is backend-split. Read [workflow-common.md](workflow-common.md) for Phase 0 (backend detection + philosophy + trivial-diff triage), then read ONLY the file matching your active backend. The opt-in `--deep`/`--validate`/`--interactive` phase detail (including the phase-ordering matrix) lives in [optional-phases.md](optional-phases.md), loaded only when a flag fires:**
+**Workflow is backend-split. Read ONLY the file matching your active backend; [workflow-common.md](workflow-common.md) holds the philosophy, the trivial-diff triage and the `RP_ELIGIBLE` probe. The opt-in `--deep`/`--validate`/`--interactive` phase detail (including the phase-ordering matrix) lives in [optional-phases.md](optional-phases.md), loaded only when a flag fires:**
 
 - `BACKEND=codex` → [workflow-codex.md](workflow-codex.md)
 - `BACKEND=copilot` → [workflow-copilot.md](workflow-copilot.md)
@@ -20,17 +22,18 @@ Do not load the others — only the active backend's file is needed. Each backen
 Conduct a John Carmack-level review of implementation changes on the current branch.
 
 **Role**: Code Review Coordinator (NOT the reviewer)
-**Backends** (branch on the Phase 0 `RP_ELIGIBLE` probe):
+**Backends** (branch on the `RP_ELIGIBLE` probe):
 - When `RP_ELIGIBLE=1`: RepoPrompt (rp), Codex CLI (codex), GitHub Copilot CLI (copilot), Cursor CLI (cursor), Claude Code CLI (claude), or host-native (`host`)
 - When `RP_ELIGIBLE=0`: Codex CLI (codex), GitHub Copilot CLI (copilot), Cursor CLI (cursor), Claude Code CLI (claude), or host-native (`host`) — rp is macOS-only; never list it in guidance you surface (`--review=rp` stays accepted)
 
 Read [working-rules.md](../../references/working-rules.md) first; it holds for every step of this skill.
 
-## Preamble — execute Phase 0 exactly once
+## Preamble — the `RP_ELIGIBLE` probe
 
-**The executable Phase 0 lives in [workflow-common.md](workflow-common.md) §"Phase 0: Backend Detection" — Read it and execute it ONCE, before any other bash in this skill.** It defines `$FLOWCTL` (bundled — NOT installed globally; `which flowctl` fails, expected), probes `RP_ELIGIBLE`, resolves `$BACKEND` via the single `flowctl review-backend` call, and handles the ASK / `none` cases. Every later bash block here (triage, deep-pass selection) uses the `$FLOWCTL` it defines. Never invoke `flowctl review-backend` a second time in the same run.
-
-Exception: a `--review=<backend>` argument (see Backend Selection below) wins — when present, set `BACKEND` from the flag and skip Phase 0's `review-backend` call + ASK handling (still run its `$FLOWCTL` / `RP_ELIGIBLE` setup lines).
+SKILL.md's setup already resolved `$BACKEND` and handled ASK / `none`; never run
+[workflow-common.md](workflow-common.md) Phase 0's `review-backend` call or ASK handling again.
+Run only its `$FLOWCTL` and `RP_ELIGIBLE` setup lines (the `RP_ELIGIBLE` probe decides which
+backends you may name below), then parse the flags in Step 0.
 
 When `RP_ELIGIBLE=0` (not macOS, no supported RepoPrompt CLI), never *steer* the user toward rp: every backend summary, recommendation, or override hint you surface presents only the runnable configured backends `codex`, `copilot`, `cursor`, `claude`, `host` (plus `none`). `export` is not an impl-review mode at all — a manual export review lives in `/flow-next:plan-review --review=export`; never present it here. Suppression is not a ban: an explicit `--review=rp`, `FLOW_REVIEW_BACKEND=rp`, or `review.backend=rp` still resolves to rp and errors at runtime via `require_rp_cli()`.
 
@@ -56,9 +59,9 @@ Check $ARGUMENTS for:
 
 If found, use that backend and skip all other detection.
 
-### Otherwise: Phase 0 resolves it
+### Otherwise: SKILL.md resolved it
 
-No `--review` flag → `$BACKEND` comes from [workflow-common.md](workflow-common.md) Phase 0 (executed once per the Preamble): the single `flowctl review-backend "$REVIEW_ID"` call with ASK handling included. Do not re-resolve here.
+No `--review` flag → `$BACKEND` comes from SKILL.md's setup: the single `flowctl review-backend "$REVIEW_ID"` call with ASK handling included. Do not re-resolve here.
 
 ### Backend detail (model / effort / spec grammar) — on demand
 
@@ -228,7 +231,7 @@ only when a triage result needs justifying or auditing.
 
 ### Step 1: Load Backend Workflow
 
-1. `$BACKEND` was already resolved by workflow-common.md Phase 0 (Preamble) — do NOT re-run it.
+1. `$BACKEND` was already resolved by SKILL.md's setup — do NOT re-run it.
 2. Read **only** the file for that backend, per the routing table at the top of this file.
 
 **Do not read the other backend files.** Each is self-contained for its backend; loading the others wastes context.

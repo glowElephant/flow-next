@@ -48,7 +48,7 @@ fi
 # leave the bash positional `${1}`: a Bash-prompt turn does not populate `$1`, so it would be
 # empty and the per-task `review:` override would silently fall back to the project
 # default. Empty ONLY for a genuine standalone no-spec diff review.
-REVIEW_ID="<fn-N.M task or fn-N spec id from \$ARGUMENTS, or empty for a standalone diff>"
+REVIEW_ID="<fn-N.M task id from \$ARGUMENTS, or empty for a spec or branch review>"
 # Text output is bare backend name for back-compat grep. The same command in --json mode returns
 # {backend, spec, model, effort, source} — use that if you need the model / effort resolved.
 BACKEND=$($FLOWCTL review-backend "$REVIEW_ID")

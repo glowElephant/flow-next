@@ -10,9 +10,9 @@ You coordinate; the configured backend reviews. Never author a verdict yourself,
 backend for the whole review. Read [working-rules.md](../../references/working-rules.md) first:
 its Review section decides which findings you fix.
 
-Arguments: `[task or spec id] [--base <commit>] [--review=<backend>] [--deep[=passes]]
+Arguments: `[task id] [--base <commit>] [--review=<backend>] [--deep[=passes]]
 [--validate] [--interactive] [--no-triage] [focus areas]`. Without `--base` the whole branch is
-reviewed against main.
+reviewed against main. A spec or branch review passes no id.
 
 ## 1. Setup
 
@@ -23,7 +23,7 @@ set -e
 FLOWCTL="${CODEX_HOME:-$HOME/.codex}/scripts/flowctl"
 [ -x "$FLOWCTL" ] || FLOWCTL="<plugin-root>/scripts/flowctl"   # <plugin-root> = the directory two levels above this skill's SKILL.md file (the harness gave you that file's absolute path when the skill loaded); substitute it literally
 [ -x "$FLOWCTL" ] || FLOWCTL=".flow/bin/flowctl"
-REVIEW_ID="<task or spec id, or empty for a branch review>"
+REVIEW_ID="<task id, or empty for a spec or branch review>"
 BACKEND="<value of --review, or empty>"
 DIFF_BASE="<value of --base, or empty>"
 [ -n "$BACKEND" ] || BACKEND=$("$FLOWCTL" review-backend "$REVIEW_ID")
@@ -36,8 +36,11 @@ git diff --shortstat "$DIFF_BASE"...HEAD
 - `none`: no review; say so.
 - `export`: refuse; manual export review lives in `/flow-next:plan-review --review=export`.
 - Any other backend than `codex`, any of `--deep`, `--validate`, `--interactive`, `--no-triage`,
-  or an instruction about the reviewers ("one reviewer", "three model families"): read
-  [other-paths.md](other-paths.md) and follow it for steps 2-3, then come back to step 4.
+  `FLOW_VALIDATE_REVIEW=1` or `FLOW_REVIEW_DEEP=1` in the environment, or an instruction about
+  the reviewers ("one reviewer", "three model families"): read [other-paths.md](other-paths.md)
+  and follow it and the backend's workflow file to the end. That file owns the verdict, fix and
+  re-review handling; of step 4, only the `OVERRIDDEN:` line ending an unattended loop applies,
+  never its fix pass or codex re-review.
 
 Shell state does not survive between Bash calls: each block below resolves `FLOWCTL` again and
 takes `REVIEW_ID` and `DIFF_BASE` as literals.
@@ -96,7 +99,7 @@ receipt. Report `VERDICT=<verdict>` with the kept findings; your own reading nev
 Finalize before you change or commit anything: a commit moves HEAD past the reviewed head,
 flowctl refuses the round, and the retry is a full fresh review instead of the scoped re-review.
 
-## 4. Act on the verdict
+## 4. Act on the verdict (codex path)
 
 - `SHIP`: done. Report the verdict and any follow-ups.
 - `MAJOR_RETHINK`: the approach is wrong. Stop with `BLOCKED: DESIGN_CONFLICT` and the
@@ -122,9 +125,9 @@ TASK_ID="$(jq -r '.task_id // empty' <<<"$ROUTE")"; RECEIPT_PATH="$(jq -r '.rece
   findings, never start a second fix pass, unless working-rules.md's review loop applies (an
   unattended run, or a request to review until SHIP). In that loop, fix and re-review the same
   way until SHIP or an `ESCALATE:` (round cap or stall). When the reviewer keeps only findings
-  you declined under working-rules.md's rule, end the loop and print `OVERRIDDEN: <n> declined
-  findings` with each finding and both sides' reasons after `VERDICT=NEEDS_WORK`; the caller
-  completes the task on it.
+  you declined under working-rules.md's rule, all below Major, end the loop and print
+  `OVERRIDDEN: <n> declined findings` with each finding and both sides' reasons after
+  `VERDICT=NEEDS_WORK`; the caller completes the task on it.
 
 If a review command ends without a verdict (a transport error), retry it once. `ESCALATE:`,
 `TRANSPORT_UNHEALTHY`, `NOT_RETRYABLE:` and other refusals end this review: report the message
