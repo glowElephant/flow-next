@@ -159,8 +159,8 @@ A `NEEDS_WORK` review gets one fix pass and one re-review by default, in the sam
 reviewer session and scoped to the fix commits. The author's commit carries a
 `Declined #<n>: <reason>` line for each finding left as a follow-up; the reviewer
 may accept the reason and answer `withdrawn`, and only a problem the fixes
-introduced can block. Further rounds run only under `--until=merge` or when asked
-to review until SHIP, with flowctl's round cap as the backstop.
+introduced can block. Unattended runs (`flow --auto`, any destination) and a request
+to review until SHIP loop further, with flowctl's round cap and stall check as the backstop.
 
 The ratchet prompt states one machine-read line per prior finding, at the start
 of a line, echoing the ordinal the finding was rendered with:

@@ -93,7 +93,7 @@ Clearing a strike **does not re-ready the spec** - the two signals are orthogona
 **Symptoms:** a plan/impl/completion review runs many more rounds than expected before the reviewer and implementer converge, most often on the **Cursor** review backend.
 
 **How it is bounded:**
-- **One fix pass, one re-review by default.** A `NEEDS_WORK` verdict gets one fix pass and one scoped re-review, and that re-review's verdict is terminal. A longer loop runs only under `/flow-next:flow --until=merge` or when you ask for review until SHIP.
+- **One fix pass, one re-review by default.** A `NEEDS_WORK` verdict gets one fix pass and one scoped re-review, and that re-review's verdict is terminal. Unattended runs (`/flow-next:flow --auto`, with or without `--until=merge`) loop until SHIP instead, and so does a run where you ask for review until SHIP; the author may end that loop over declined hardening or scope-creep findings below Major, recording each in the pull request.
 - **The cap is enforced by flowctl, not prose.** A cumulative counter on spec state survives fresh invocations (a new `flow --auto` hop, a human retry) and **refuses at the cap** (exit `4` + `ESCALATE:`).
 - **Re-reviews are not fresh blind reviews.** The **convergence ratchet** renders the validated `findings.items` records (severity, classification, and status), with labeled legacy prose only as a fallback. Its contract is shrink-only: verify each prior finding fixed; only a NEW ≥ Major finding may block; all prior fixed + no new ≥ Major ⇒ MUST SHIP.
 - **Verdict parsing reads the final agent message only** (last match), so a verdict literal echoed in tool output cannot produce a false SHIP or a false NEEDS_WORK.

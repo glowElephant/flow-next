@@ -273,8 +273,9 @@ The residual is real: roughly a third of validated findings eluded every draw in
 the studies. By default there is exactly one re-review, in the same reviewer session
 and scoped to the fix commits: the author's `Declined #<n>: <reason>` commit lines let
 the reviewer withdraw a finding, and only a problem the fixes introduced can block.
-Further rounds run only under `--until=merge` or when asked to review until SHIP,
-bounded by the round cap.
+Unattended runs (`flow --auto`, any destination) and a request to review until SHIP loop
+further, bounded by the round cap and the stall check; the author may end that loop over
+declined findings below Major, recording each disagreement in the pull request.
 
 **Rule of thumb: the model that writes is never the model that reviews.** Route the reviewer to a different family than your session model and blind spots stop being correlated.
 
