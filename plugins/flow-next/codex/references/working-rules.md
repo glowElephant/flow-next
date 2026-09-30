@@ -49,7 +49,8 @@ failed, question the idea before trying a third.
   and look at the actual result, not only the unit tests. That includes each error case and
   boundary the request names: give the bad value or the missing key the way a user would and
   read the message they would get.
-- Never re-run a suite only to read its output again.
+- Save a slow run's full output to a file (never only through `tail` or `grep`) and read it
+  from there; never re-run a suite only to read its output again.
 
 ## Attended and unattended
 
