@@ -214,7 +214,7 @@ class PipelineQaConfigTestCase(unittest.TestCase):
             self._run_config_get_cli("land.mergeVerdictCommand")["value"], ""
         )
         self.assertEqual(
-            self._run_config_get_cli("land.patienceMinutes")["value"], 30
+            self._run_config_get_cli("land.patienceMinutes")["value"], 10
         )
 
     # ── fn-219: pipeline.chainStages (R1) ────────────────────────────────
