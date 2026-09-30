@@ -44,6 +44,13 @@ class JudgeProxyTests(unittest.TestCase):
                 self.assertEqual(c.host, "api.typesafe.ai")
                 self.assertIsNone(c._tunnel_host)
 
+    def test_no_proxy_entry_with_a_port_applies_to_that_port(self):
+        for entry, bypassed in (("api.typesafe.ai:443", True), (".typesafe.ai:443", True),
+                                ("api.typesafe.ai:8443", False)):
+            with self.subTest(entry=entry):
+                c = self.connect(HTTPS_PROXY="http://127.0.0.1:3128", NO_PROXY=entry)
+                self.assertEqual(c._tunnel_host is None, bypassed)
+
 
 if __name__ == "__main__":
     unittest.main()

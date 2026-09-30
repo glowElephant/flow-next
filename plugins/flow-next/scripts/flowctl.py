@@ -23911,10 +23911,16 @@ def judge_https_connection(host: str, timeout: float):
 
     proxy = os.environ.get("HTTPS_PROXY") or os.environ.get("https_proxy") or ""
     no_proxy = os.environ.get("NO_PROXY") or os.environ.get("no_proxy") or ""
+    entries = []
+    for item in no_proxy.split(","):
+        # A "host:port" entry applies only to that port (as urllib's proxy_bypass_environment).
+        name, sep, port = item.strip().lower().rpartition(":")
+        if not (sep and port.isdigit()):
+            name, port = item.strip().lower(), ""
+        if name and port in ("", "443"):
+            entries.append(name.lstrip("."))
     excluded = any(
-        entry == "*" or host == entry.lstrip(".") or host.endswith("." + entry.lstrip("."))
-        for entry in (item.strip().lower() for item in no_proxy.split(","))
-        if entry
+        entry == "*" or host == entry or host.endswith("." + entry) for entry in entries
     )
     if not proxy or excluded:
         return http.client.HTTPSConnection(host, timeout=timeout)
