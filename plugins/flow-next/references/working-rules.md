@@ -5,7 +5,9 @@ unless the user or the repository's instructions ask for it.
 
 ## Scope
 
-- Ship the smallest change the evidence justifies. Every changed line serves the request.
+- Ship the smallest change the evidence justifies. Every changed line serves the request. When
+  the cause you fix also breaks a sibling case in the same code (the same fallback, the same
+  parser branch), fix it there too: that is the smallest correct change, not scope creep.
 - No unrequested flags, options, config or environment overrides, guards, abstractions, refactors,
   renames, wording changes or docs edits. Matching the surrounding code is required; improving it is not.
   A guard the change needs to be correct or safe (path containment, permissions, locking) is part
