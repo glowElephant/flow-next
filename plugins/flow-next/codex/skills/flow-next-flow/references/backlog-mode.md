@@ -472,7 +472,7 @@ Backlog reads use `$FLOWCTL tracker wire list-open --json`, `comment-list --loca
 - **No daemon / polling loop / trigger / webhook / cron / parallel-worktree.** One
   item per run - the next invocation (a human, a host `/loop` · `/goal`) owns repetition. The standing
   control-plane role (scheduler, cloud environments, triggers, multi-agent at
-  scale) is mergefoundry / flow-swarm's, not flow-next's. If this file
+  scale) belongs to an orchestrator above flow-next, not to flow-next. If this file
   ever starts describing a standing process, that is drift - remove it.
 - **Never authors a spec.** `capture`/`refine` are human-gated; a needs-spec gap
   is surfaced, never auto-written (may augment an obvious blank in an *existing*
