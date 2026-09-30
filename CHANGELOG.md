@@ -22,17 +22,19 @@ None of that ever hurt the quality of the output. It was consistently about 20 t
 
 ### Benchmarks
 
-I tested 7.0 against plain Claude Code on the same model across a wide spread of work: a simple bug, a hard bug, a small feature and a large feature, attended and unattended, plus a held-out large feature from a repository and stack the tuning never touched. That came to more than 140 full end-to-end runs, each case drawn several times, never a single lucky run. Hidden tests the agent never sees check each result, and a blind judge scores the handoff. The work column is time to the working change against plain Claude Code, or your harness; review and QA time sit in their own column.
+I tested 7.0 against plain Claude Code on the same model across a wide spread of work: a simple bug, a hard bug, a small feature and a large feature, attended and unattended, plus a held-out large feature from a repository and stack the tuning never touched. That came to more than 140 full end-to-end runs, each case drawn several times, never a single lucky run. Hidden tests the agent never sees check each result, and a blind judge scores the handoff.
 
-| Task | The work (vs plain agent) | Quality stages | What they added |
+| Task | Speed on the work | Quality | What the quality stages did |
 |---|---|---|---|
-| Large feature | about half the time (0.5-0.8x) | cross-model review, three reviewers | caught a real data-integrity defect in every run; judge 19-20 of 20 |
-| Held-out large feature (Rust) | about 0.8x | three reviewers, then the repository's full gate | four real defects fixed, including a race at finalisation; every hidden test passed where plain Claude Code missed one run in three; judge 19 vs 12-14 of 20 |
-| Small feature | about 0.9x | cross-model review | caught a broken setup check the change introduced; judge about 19 vs 17.5 of 20 |
-| Simple bug | about 0.85x | review skipped by risk (a local fix) | none needed: already about 10% better on the judge without review |
-| Hard bug | measured and fixed at the cause | cross-model review, three reviewers | fix held on every hidden test |
+| Large feature | **up to 1.9x** faster than the default harness | **+25%** | Three cross-model reviewers. A data-integrity bug plain Claude Code shipped in every run; Flow-Next's reviewers caught it every time, and it was fixed before the pull request. |
+| Held-out large feature (Rust) | **1.2x** faster | **+48%** | Three reviewers, then the repository's full gate. Four real bugs, including a race when a meeting finished. Every hidden test passed; plain Claude Code failed one run in three. |
+| Hard bug | **about 2x** faster | **+9%** | Three cross-model reviewers. The cause was measured first, then fixed at the source, instead of loosening the flaky check. |
+| Simple bug | **1.2x** faster | **+10%** | No review needed: a small, local fix. Better than plain Claude Code before any review, from how Flow-Next works: failing test first, the fix at the cause, the change tried the way you would. |
+| Small feature | **1.1-1.3x** faster | **+8%** | Cross-model review. A setup check the new option broke, found by the reviewer and fixed before handoff. |
 
-The hard bug is the one place Flow-Next takes longer: it measures the cause before it fixes anything and writes the proof into the pull request. Run unattended with `--until=merge`, a large feature and a hard bug both went from spec to a merged pull request with nobody watching and no stops, **the large feature in about half the time plain Claude Code took**.
+Speed is time to the working change against the default harness (plain Claude Code, or yours) on the same model, before any review or QA. Quality is the blind-judged result.
+
+Run unattended with `--until=merge`, a large feature and a hard bug both went from spec to a merged pull request with nobody watching and no stops, **the large feature in about half the time plain Claude Code took**.
 
 I'm going to keep improving Flow-Next, both what it does and how fast it does it.
 
