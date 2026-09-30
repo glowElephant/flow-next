@@ -47,10 +47,11 @@ failed, question the idea before trying a third.
   cheap, write it first. No separate lint, typecheck or commit round for it.
 - A test must be able to fail for a defect: it calls the code the way a user does and checks the
   observed result. One that would still pass if the code returned nothing is rewritten or dropped.
-- Before handing back, run the change the way a user would (the command, the request, the page)
-  and look at the actual result, not only the unit tests. That includes each error case and
-  boundary the request names: give the bad value or the missing key the way a user would and
-  read the message they would get.
+- Before handing back, when the change has a way a user meets it (the command, the request, the
+  page), run it that way and look at the actual result. A test that already feeds the user's exact
+  input through the entry point the user uses is that run; a change with no user-facing entry is
+  proven by its tests. Either way, cover each error case and boundary the request names: give the
+  bad value or the missing key the way a user would and read the message they would get.
 - When a change defers, batches or caches work that used to happen at once, try the case where
   the process stops before the deferred work runs, and check every stated guarantee still holds.
 - Save a slow run's full output to a file (never only through `tail` or `grep`) and read it
