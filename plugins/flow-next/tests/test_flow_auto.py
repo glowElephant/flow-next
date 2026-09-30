@@ -32,7 +32,6 @@ VERDICT_GRAMMAR_LINE = (
     "PILOT_VERDICT=<ADVANCED|NO_WORK|DEFERRED_TO_LAND|BLOCKED|NEEDS_HUMAN> "
     'spec=<id> stage=<stage> reason="<one line>"'
 )
-CHAINED_TICK_TOKEN = "qa+make-pr"
 
 LOCAL_REF_MENTION_RE = re.compile(r"references/([A-Za-z0-9_.-]+\.md)")
 PARSED_VARS = (
@@ -69,7 +68,6 @@ class VerdictGrammar(unittest.TestCase):
         text = _read(AUTO_MD)
         self.assertIn(VERDICT_GRAMMAR_LINE, text)
         self.assertRegex(text, r"stage=[a-z-]+(?:\+[a-z-]+){2,}", "long-horizon runs join every dispatched stage with +")
-        self.assertIn(f"stage={CHAINED_TICK_TOKEN}", text, "the chained tick keeps its stage token")
         self.assertIn("--tick", text)
         # TRIAGED stays explain-only: never in the live grammar line.
         self.assertNotIn("PILOT_VERDICT=<ADVANCED|TRIAGED", text)
@@ -264,6 +262,21 @@ class MakePrVerifyProbe(unittest.TestCase):
                 script = f"PR_VERIFY_FAILED=0\nPR_VERIFY_JSON={body!r}\n{line}\nprintf '%s|%s' \"$OPEN_PR_URL\" \"$PR_VERIFY_FAILED\""
                 out = subprocess.run(["bash", "-c", script], capture_output=True, text=True, check=True).stdout
                 self.assertEqual(out, f"{url}|{failed}")
+
+    @_POSIX_BASH
+    def test_make_pr_verify_probe_flags_a_gh_failure(self) -> None:
+        # A failing gh must set PR_VERIFY_FAILED=1 rather than yield an empty
+        # URL that reads as a healthy no-advance strike.
+        text = _read(AUTO_MD)
+        fence = _fence_from(text, "PR_VERIFY_FAILED=0\n")
+        with tempfile.TemporaryDirectory() as tmp:
+            gh = Path(tmp) / "gh"
+            gh.write_text("#!/bin/sh\nexit 1\n")
+            gh.chmod(0o755)
+            env = {**os.environ, "PATH": f"{tmp}{os.pathsep}{os.environ['PATH']}", "BRANCH_NAME": "b"}
+            out = subprocess.run(["bash", "-c", fence + 'printf "%s" "$PR_VERIFY_FAILED"'],
+                                 capture_output=True, text=True, env=env, check=True).stdout
+        self.assertEqual(out, "1")
 
 
 if __name__ == "__main__":

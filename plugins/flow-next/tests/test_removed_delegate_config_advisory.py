@@ -9,7 +9,8 @@ invocation naming them and pointing at the agentic route (the
 
 7.0 removed the HTML render lenses; `artifacts.html.enabled` gets the same
 advisory, pointing at /flow-next:visual or an HTML page asked for in
-conversation.
+conversation. `pipeline.chainStages` gets it too: `flow --auto` already runs
+QA then make-pr as consecutive hops.
 
 Pinned here: presence detection is raw-file-only, the advisory is one line
 per invocation (never one per key), it goes to stderr so `--json` stays
@@ -66,6 +67,7 @@ LEGACY_CONFIG = {
         "verifiedWith": {"codex": "0.144"},
     },
     "artifacts": {"html": {"enabled": True}},
+    "pipeline": {"qa": "off", "chainStages": "on"},
 }
 
 
@@ -176,6 +178,15 @@ class RemovedDelegateAdvisoryTestCase(unittest.TestCase):
         payload, err = self._config_get("artifacts.html.enabled")
         self.assertIs(payload["value"], True)
         self.assertIn("artifacts.html.enabled", err)
+
+    def test_chain_stages_key_has_no_default_and_warns(self) -> None:
+        self.assertEqual(self.flowctl.get_default_config()["pipeline"], {"qa": "off"})
+        self._write_config({"pipeline": {"qa": "on", "chainStages": "on"}})
+        payload, err = self._config_get("pipeline.qa")
+        self.assertEqual(payload["value"], "on")
+        self.assertEqual(err.count("\n"), 1)
+        self.assertIn("pipeline.chainStages", err)
+        self.assertIn("consecutive hops", err)
 
     def test_models_block_is_not_validated_or_read(self) -> None:
         # fn-195: no role-map validation on write, no merged default.

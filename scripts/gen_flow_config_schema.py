@@ -331,17 +331,6 @@ DESCRIPTIONS: dict[str, str] = {
         "flowctl stores the value and never interprets it. See "
         "docs/running-lean.md."
     ),
-    "pipeline.chainStages": (
-        "Deprecated; removal is scheduled for a later release. "
-        "String-enum, NOT a bool: only the literal on activates; "
-        "any other value, including bool true, is OFF. It is honoured only "
-        "under flow --auto --tick (and the pilot alias), where a tick that "
-        "completed the qa stage with a fresh terminal verdict runs make-pr "
-        "in the same tick - the one closed chain pair (qa -> make-pr). A "
-        "long-horizon flow --auto run ignores it with one stderr notice, "
-        "because the hop loop already runs make-pr as the next hop. See "
-        "docs/running-lean.md."
-    ),
     "chart": (
         "Chart discovery settings (fn-135): size ceiling at charting time "
         "and stale-claim recovery threshold."
@@ -620,7 +609,6 @@ def _build_table() -> list[tuple[str, dict]]:
         ),
         ("pipeline", {"kind": "object", "open": False}),
         ("pipeline.qa", {"enum": ["off", "on", "auto"]}),
-        ("pipeline.chainStages", {"enum": ["off", "on"]}),
         ("chart", {"kind": "object", "open": False}),
         ("chart.maxDecisions", {"type": "integer"}),
         ("chart.claimStaleAfter", {"type": "number"}),

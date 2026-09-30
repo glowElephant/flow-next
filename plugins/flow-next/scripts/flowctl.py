@@ -1434,16 +1434,7 @@ def get_default_config() -> dict:
         # setup run rather than a `--raw` null probe. flowctl only
         # stores/serves the knob; the QA stage is host-agent skill wiring
         # (no new subcommand/engine).
-        # fn-219 — pipeline.chainStages: same STRING-ENUM (off|on) and same
-        # STRICT positive read (ONLY the literal "on" activates; "off" /
-        # null / bool `true` / a typo = OFF). With it on, a pilot tick that
-        # completed `qa` runs `make-pr` in the same tick — the one closed
-        # chain pair; OFF keeps the one-stage-per-tick contract byte-for-byte.
-        # Read once per tick from pilot's root config snapshot; a snapshot
-        # read error resolves to off (fail-closed). Materializes on init
-        # beside `qa`; an upgrade init adds the leaf without touching a
-        # user-set sibling (defaults MERGE).
-        "pipeline": {"qa": "off", "chainStages": "off"},
+        "pipeline": {"qa": "off"},
         "judge": {"enabled": True},
         # fn-135.9 — chart discovery size ceiling and stale-claim threshold.
         # Seeded so `config get chart.maxDecisions` / `chart.claimStaleAfter`
@@ -1730,7 +1721,9 @@ def _snapshot_raw_probe(snapshot: ConfigSnapshot, key: str):
 # (CLAUDE.md / AGENTS.md) plus the `flowctl usage` recipes, and the advisory
 # points there. 7.0 removed the opt-in HTML render lenses and with them
 # `artifacts.html.enabled`; existing .flow/artifacts/<id>/*.html files are
-# the user's and are left alone.
+# the user's and are left alone. 7.0 also removed `pipeline.chainStages`:
+# a long-horizon `flow --auto` already runs qa then make-pr as consecutive
+# hops, and `--tick` runs one hop.
 #
 # ONE line per invocation, naming every removed key found - never one line
 # per key, never per phase, never a failure.
@@ -1760,6 +1753,7 @@ REMOVED_CONFIG_KEYS: tuple[str, ...] = (
     "land.requestReviewers",
     "land.patienceMinutesAfterReview",
     "artifacts.html.enabled",
+    "pipeline.chainStages",
 )
 
 _removed_config_advisory_printed = False
@@ -1798,6 +1792,10 @@ def removed_config_keys_note(keys: list[str]) -> str:
         guidance.append(
             "The HTML render lenses are gone; ask for a visual digest "
             "(/flow-next:visual) or an HTML page in conversation instead."
+        )
+    if "pipeline.chainStages" in keys:
+        guidance.append(
+            "`flow --auto` already runs QA then make-pr as consecutive hops."
         )
     return (
         f"note: .flow/config.json still carries removed "

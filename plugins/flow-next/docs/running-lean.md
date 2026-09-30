@@ -57,7 +57,7 @@ Defaults below are read from the published schema ([`../schema/flow-config.schem
 | [Plan-sync](#plan-sync) | `planSync.enabled` | **off** | `/flow-next:sync` |
 | [Memory](#memory-and-the-audit-sweep) | `memory.enabled` | **on** | `/flow-next:audit` |
 | [Pre-capture discovery](#pre-capture-discovery) | none | manual | `/flow-next:chart`, `/flow-next:prospect` |
-| [Autonomous loops](#autonomous-loops) | none to enable; `land.patienceMinutes` sets the wait after the last push when flow authorizes without a human's in-session merge authorization (`pipeline.chainStages` is deprecated) | manual (10-minute patience) | `/flow-next:flow --auto`, `/flow-next:land <PR>` |
+| [Autonomous loops](#autonomous-loops) | none to enable; `land.patienceMinutes` sets the wait after the last push when flow authorizes without a human's in-session merge authorization | manual (10-minute patience) | `/flow-next:flow --auto`, `/flow-next:land <PR>` |
 | [GitHub scouts](#github-scouts) | `scouts.github` | off | ask a scout in conversation |
 
 ### Tracker sync
@@ -148,7 +148,6 @@ No config key to enable; `pilot.autonomy` (`ready` by default) only widens what 
 - **Costs:** this is the autonomous profile itself, so it inherits the profile's gates: the layers above stop being optional in the way they are optional for you at a keyboard, because they are what replace you.
 - **Earns its keep when:** there is a queue of blessed, fully specified work and nobody who wants to sit through it.
 - **Lean invocation:** `/flow-next:work` is the human-driven equivalent and needs no loop primitive at all.
-- **Optional idle removal:** a long-horizon `flow --auto` run removes every driver re-anchor between stages by construction, so `pipeline.chainStages` is deprecated; it still runs `make-pr` in the same tick as a fresh terminal `qa` verdict under `--tick` and is ignored with one notice in long-horizon mode.
 
 ### GitHub scouts
 

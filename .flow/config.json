@@ -21,7 +21,6 @@
     "gateClasses": []
   },
   "pipeline": {
-    "chainStages": "off",
     "qa": "off"
   },
   "planSync": {
