@@ -31,7 +31,8 @@ existing OPEN PR is REQUIRED; closed/merged PRs do not prevent a create. Preserv
 Never create a spec to open a pull request. On the default branch, first create a branch named
 for the change. Write the session's handoff (what changed, how it was verified, open items and
 follow-ups) to a temporary body file, push, and run `gh pr create` with a one-line title and that
-body file; add `--draft` only for `--draft`, and `--base` when given. Under `--update`, run
+body file; add `--draft` for `--draft` or when the handoff lists an open item (a call left for
+the person, an open QA finding; follow-ups alone never draft), and `--base` when given. Under `--update`, run
 `gh pr edit` with the body file instead; under `--dry-run`, print the body and stop. Print the PR URL.
 
 ## Phase 1: Gather inputs

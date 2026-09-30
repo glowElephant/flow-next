@@ -41,7 +41,7 @@ Export `tasks[].evidence.commits` are SHORT SHAs: expand with `git rev-parse` be
   metric and target, baseline to final with the percent change, attempt counts (kept, reverted, inconclusive), the kept commits in order,
   the harness proof, the final gate, and the best untried idea. A value the record lacks renders `unverified` with the gap; an unmet target is `unverified`, never `pass`.
 - QA receipts use `qa_outcome`, not the projected `verdict`: SHIP maps to pass,
-  NEEDS_WORK to fail, BLOCKED/NA to unverified with their reason. Open findings go in `openItems`, advisory only.
+  NEEDS_WORK to fail, BLOCKED/NA to unverified with their reason. Open findings go in `openItems` and make the PR a draft; QA never blocks it.
   Verify head freshness against code, allowing only leading QA-receipt and spec-close bookkeeping commits;
   stale/malformed receipts cannot justify a pass.
 - At most 11 ordered `groups[]`: optional `problem`, optional `principle`, 1–7 `step`,

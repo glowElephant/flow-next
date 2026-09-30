@@ -94,7 +94,10 @@ unrequested machinery your change added, remove it.
 Attended, the person wants fast feedback: after fixing, re-review once with a single reviewer
 looking at the fixes, and do not loop. Later fixes, including ones the person asks for, get focused
 tests, not another review. Hand the result back first, in its own message, and end the turn; then
-start the review in the background and report its verdict (and any fix) when it lands.
+start the review in the background and report its verdict (and any fix) when it lands. If the
+re-review still finds the change wrong, give the person the remaining findings with the
+reviewer's reasons and leave the task open until they decide; when they accept it as is, record
+an `OVERRIDDEN:` line with their words and complete the task.
 
 Unattended (`--auto`, with or without `--until=merge`), nobody is there to decide what is left, so
 aim for the best result: fix, re-review the fixes, and repeat until SHIP, with flowctl's round cap

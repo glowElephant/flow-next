@@ -235,7 +235,7 @@ here, inline.** Print `Scheduling: inline (single task)`.
    `$flow-next-impl-review <task-id> --base <base_commit> --review=<mode>` in the
    background and report its verdict when it lands; unattended, run it and wait. `done` waits for
    SHIP, or for an `OVERRIDDEN:` line from an unattended loop (its declined findings go in the
-   summary and the Decisions list). Not selected: record `stage: impl-review - skipped(policy: risk - <reason>)`. When a
+   summary and the Decisions list) or from the person accepting an attended `NEEDS_WORK`. Not selected: record `stage: impl-review - skipped(policy: risk - <reason>)`. When a
    review went NEEDS_WORK then SHIP on a non-trivial fix and memory is enabled, capture the lesson
    per [references/worker-memory-capture.md](references/worker-memory-capture.md).
 6. **Done.** Write a short summary to `.flow/tmp/<task-id>-summary.md` (what changed, and one

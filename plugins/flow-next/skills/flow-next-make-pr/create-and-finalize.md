@@ -6,9 +6,10 @@ nonempty content; above 65,000 characters stop with the retained file, never
 truncate. Clean temporary files on exit.
 
 Set `OPEN_ITEMS_COUNT` from spec open questions, completion review `needs_work`,
-incomplete tasks and other unfinished authored items. Otherwise the PR opens
-ready: `deferred_findings` and follow-ups are listed in the body, not a reason to
-draft, and QA findings remain advisory. Restore `CHAIN_PARENT`, `PARENT_PR`, `PARENT_PR_STATE`
+incomplete tasks, open findings on a `NEEDS_WORK` or `BLOCKED` QA receipt, a call
+the run left for the person (working-rules.md, Unattended) and other unfinished
+authored items. Otherwise the PR opens ready: `deferred_findings` and follow-ups
+are listed in the body, not a reason to draft. Restore `CHAIN_PARENT`, `PARENT_PR`, `PARENT_PR_STATE`
 from `PHASE0_CONTEXT`. Immediately before push check the aid artifact's head
 against HEAD; mismatch uses the labeled fallback, never stale fields.
 
