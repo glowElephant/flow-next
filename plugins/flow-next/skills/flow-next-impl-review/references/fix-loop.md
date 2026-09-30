@@ -40,6 +40,6 @@ One fix pass, then one re-review:
      prompt.
    - **RP Classic**: `$FLOWCTL rp chat-send --window "$W" --tab "$T" --message-file <literal re-review path from workflow-rp.md's fix loop>` (NO `--new-chat`; stdout redirected to the same literal response file, Read once)
    - **RepoPrompt CE**: `$FLOWCTL rp chat-send --window "$W" --context-id "$T" --chat-id "$CHAT_ID" --mode review --message-file <literal re-review path>` (`T` is the canonical context binding, not visible-tab projection; NO `--tab`; same response-file rule)
-7. **Stop.** The re-review's verdict is terminal: `SHIP` completes; `NEEDS_WORK` surfaces its surviving findings to the caller, never a second fix pass
+7. **Stop.** The re-review's verdict is terminal unless working-rules.md's review loop applies (an unattended run, or a request to review until SHIP): `SHIP` completes; `NEEDS_WORK` surfaces its surviving findings to the caller, never a second fix pass
 
 **RP re-reviews stay in the same chat.** `--new-chat` belongs to the first review only — a re-review carrying it drops the reviewer's context and has broken this.

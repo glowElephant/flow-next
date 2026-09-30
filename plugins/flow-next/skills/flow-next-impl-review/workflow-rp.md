@@ -497,7 +497,7 @@ See [optional-phases.md](optional-phases.md) "Phase ordering & flag-combination 
 
 **Committed code changes land before every re-review.** A re-review dispatched with no change since the last verdict has broken this — the reviewer just returns NEEDS_WORK again.
 
-**One fix pass, one re-review** (other-paths.md § Fix Loop); the re-review's verdict is terminal. **MAX ITERATIONS** (**${MAX_REVIEW_ITERATIONS:-8}**, default 8) stays as a safety net: the `review-rounds increment` gate (step 6 below and Phase 3) enforces this deterministically across fresh invocations: at the cap it refuses with an `ESCALATE:` marker + exit 4, which is NOT retryable — surface it and stop.
+**One fix pass, one re-review** (other-paths.md § Fix Loop); the re-review's verdict is terminal unless working-rules.md's review loop applies (an unattended run, or a request to review until SHIP). **MAX ITERATIONS** (**${MAX_REVIEW_ITERATIONS:-8}**, default 8) stays as a safety net: the `review-rounds increment` gate (step 6 below and Phase 3) enforces this deterministically across fresh invocations: at the cap it refuses with an `ESCALATE:` marker + exit 4, which is NOT retryable — surface it and stop.
 
 If verdict is NEEDS_WORK:
 
@@ -633,7 +633,7 @@ If verdict is NEEDS_WORK:
    `rp chat-send` exit code, capture and check `RECORD_EXIT`, and publish by
    reservation id. Then Read the file once for the re-review's verdict and findings.
    A nonzero recorder exit stops the round before any verdict/control path.
-7. **Stop.** The re-review's verdict is terminal; surface surviving findings to the caller
+7. **Stop.** The re-review's verdict is terminal unless working-rules.md's review loop applies (an unattended run, or a request to review until SHIP); surface surviving findings to the caller
 
 **Anti-pattern**: Re-adding already-selected files before re-review. RP auto-refreshes; re-adding can cause issues.
 

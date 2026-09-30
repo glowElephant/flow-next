@@ -80,15 +80,23 @@ itself does the wrong thing in a scenario the request covers. Hardening, extra s
 error paths, broader refactors, style and problems that existed before the change are
 follow-ups: list them in the handoff as plain facts. Do not ask whether to fold them in, offer
 to, or suggest a command for it; the person asks if they want one. When a finding points at
-unrequested machinery your change added, remove it. After fixing, re-review once with a single
-reviewer looking at the fixes; do not loop. Later fixes, including ones the person asks for, get
-focused tests, not another review. Two cases loop instead, fixing and re-reviewing until SHIP with flowctl's round cap as the backstop:
-an unattended run headed for a merge (`--until=merge`), and a person or project instruction
-that asks for it ("review until SHIP").
+unrequested machinery your change added, remove it.
 
-Attended: hand the result back first, in its own message, and end the turn; then start the review
-in the background and report its verdict (and any fix) when it lands. Unattended: the verdict
-gates the handoff and any merge.
+Attended, the person wants fast feedback: after fixing, re-review once with a single reviewer
+looking at the fixes, and do not loop. Later fixes, including ones the person asks for, get focused
+tests, not another review. Hand the result back first, in its own message, and end the turn; then
+start the review in the background and report its verdict (and any fix) when it lands.
+
+Unattended (`--auto`, with or without `--until=merge`), nobody is there to decide what is left, so
+aim for the best result: fix, re-review the fixes, and repeat until SHIP, with flowctl's round cap
+as the backstop (reaching it is a stop). A person or project instruction that asks for it ("review
+until SHIP") loops the same way. In the loop, decline hardening, scope creep and problems that
+existed before the change, one `Declined #<n>: <reason>` line each in the fix commit. If the
+reviewer keeps only findings like that, all below Major, end the loop yourself: report the
+override and list each disagreement, with both sides' reasons, in the Decisions list and the pull
+request. Never end it over a finding that shows a stated requirement broken; fix that. The verdict
+stays the reviewer's: the receipt keeps it, and you never write a SHIP. The loop's end (SHIP, or a
+recorded override) gates the handoff and any merge.
 
 ## Pull requests and follow-ups
 

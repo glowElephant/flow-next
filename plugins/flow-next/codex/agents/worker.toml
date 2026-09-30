@@ -265,10 +265,11 @@ re-resolving from config. The skill still handles everything else:
 
 **Foreground rule (do not background the review).** When the impl-review workflow shells a `flowctl <backend> …` review command, run it as one **blocking foreground** Bash call with a generous timeout (10 minutes; verdicts typically land in 1–7). Never launch it with `run_in_background` + a monitor — a background completion does not reliably resume your (subagent) context, and you would idle on an already-finished review. Blocking is safe: the call is bounded.
 
-**impl-review owns its internal fix loop** (one fix pass and one re-review; the round cap is a safety net). **impl-review is invoked exactly once per task, and you act on the terminal verdict it returns.** A second invocation wrapping it in a re-invoke-until-SHIP loop resets the skill's iteration counter every round and makes the cap unbounded in aggregate — that has broken this.
+**impl-review owns its internal fix loop** (one fix pass and one re-review attended; unattended it loops until SHIP; the round cap is a safety net). **impl-review is invoked exactly once per task, and you act on the terminal verdict it returns.** A second invocation wrapping it in a re-invoke-until-SHIP loop resets the skill's iteration counter every round and makes the cap unbounded in aggregate — that has broken this.
 
 - **SHIP** → proceed to Phase 4.5.
-- **NEEDS_WORK** → the skill already fixed and re-reviewed once and findings still survive. Escalate rather than re-invoke: under `SPEC_MODE` / autonomous, stop with a typed `BLOCKED: <surviving-findings summary>` (the escalation format below); interactively, surface the surviving findings to the caller.
+- **NEEDS_WORK** with an `OVERRIDDEN:` line → treat as SHIP: proceed to Phase 4.5 with the declined findings in the evidence and the Decisions list.
+- **NEEDS_WORK** → the skill already fixed and re-reviewed and findings still survive. Escalate rather than re-invoke: under `SPEC_MODE` / autonomous, stop with a typed `BLOCKED: <surviving-findings summary>` (the escalation format below); interactively, surface the surviving findings to the caller.
 - **MAJOR_RETHINK** → the design/approach is wrong, not patchable. Escalate `BLOCKED: DESIGN_CONFLICT` with the reviewer's rationale — never patch it, never re-invoke.
 
 Done when: one impl-review invocation has returned a terminal verdict, and the task either holds a SHIP or has been escalated with a typed `BLOCKED:` line.

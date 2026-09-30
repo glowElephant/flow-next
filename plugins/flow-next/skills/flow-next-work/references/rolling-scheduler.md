@@ -312,6 +312,7 @@ default shape.
   `done` records its skip stage line); verify `done`; run the 3d.1 tracker
   touchpoint; THEN free the slot and recompute admission at 3a. done(N) fires only
   on SHIP(N).
+- **NEEDS_WORK** with an `OVERRIDDEN:` line → as SHIP above. A `NEEDS_WORK` that impl-review reports with an `OVERRIDDEN:` line (an unattended loop ended over declined findings, working-rules.md) completes the task like SHIP: record the declined findings in the evidence and the Decisions list.
 - **NEEDS_WORK** → TERMINAL. impl-review returns NEEDS_WORK only after its
   own internal fix loop and churn cap are exhausted; the worker
   contract is exactly one impl-review invocation per task, then typed

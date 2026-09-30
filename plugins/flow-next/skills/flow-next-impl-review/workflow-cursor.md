@@ -67,7 +67,7 @@ If `VERDICT=NEEDS_WORK`:
 2. Fix code and run tests
 3. Commit fixes
 4. Re-run step 2 (receipt enables session continuity when `mode == "cursor"`)
-5. The re-review's verdict is terminal ([other-paths.md](other-paths.md) § Fix Loop): never start a second fix pass; surface surviving findings to the caller.
+5. The re-review's verdict is terminal ([other-paths.md](other-paths.md) § Fix Loop) unless working-rules.md's review loop applies (an unattended run, or a request to review until SHIP): never start a second fix pass; surface surviving findings to the caller.
 
 ## Step 4: Receipt
 

@@ -241,7 +241,7 @@ Follow the phases in the per-backend file end-to-end. Each file owns its own Ide
 
 **The fix loop never pauses for user confirmation**; never use AskUserQuestion in it. Which findings it fixes, and which it lists as follow-ups, follows the Review section of [working-rules.md](../../references/working-rules.md).
 
-**One fix pass, one re-review.** Fix those findings, commit, then re-review once with a single reviewer. That re-review's verdict is terminal: never start a second fix pass. The round cap below stays as a safety net.
+**One fix pass, one re-review.** Fix those findings, commit, then re-review once with a single reviewer. That re-review's verdict is terminal unless working-rules.md's review loop applies (an unattended run, or a request to review until SHIP): never start a second fix pass. The round cap below stays as a safety net.
 
 **MAJOR_RETHINK is NOT a fix-loop input.** Every backend can emit `MAJOR_RETHINK` (a valid verdict tag), but it means the *design/approach* is wrong — not something to patch finding-by-finding. Do NOT enter the fix loop on it. Escalate immediately: surface the reviewer's rationale to the caller and stop with a typed **`BLOCKED: DESIGN_CONFLICT`**. A re-approach is a human/worker decision, never an ad-hoc patch. Only `NEEDS_WORK` drives the loop below.
 

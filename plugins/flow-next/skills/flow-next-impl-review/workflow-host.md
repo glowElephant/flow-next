@@ -457,8 +457,8 @@ run.
   relevant tests/lints, and commit the fixes before re-review. Then repeat Steps 1–4
   once with **one new** read-only subagent (never a second fan-out — the fan-out is
   first-round only), the same cross-family rules, and the full merged
-  prior findings in its prompt. That re-review's verdict is terminal; the
-  deterministic round cap stays a safety net.
+  prior findings in its prompt. That re-review's verdict is terminal
+  unless working-rules.md's review loop applies (an unattended run, or a request to review until SHIP); the deterministic round cap stays a safety net.
 - Dispatch, malformed-verdict, or receipt failure: output
   `RETRY: no verdict (backend or transport failure)` and stop. Never self-issue a verdict or switch
   backends.
