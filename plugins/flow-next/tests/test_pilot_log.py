@@ -44,7 +44,7 @@ class TestPilotLogCounter(unittest.TestCase):
     def run_dir(self) -> Path:
         return self.root / ".flow" / "pilot-runs"
 
-    def _append(self, raw_id: str = "fn-scale") -> dict:
+    def _append(self, raw_id: str = "fn-scale", reason: str | None = None) -> dict:
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
             flowctl.cmd_pilot_log_append(
@@ -53,10 +53,28 @@ class TestPilotLogCounter(unittest.TestCase):
                     action="advanced",
                     stage="work",
                     cost_tokens=None,
+                    reason=reason,
                     json=True,
                 )
             )
         return json.loads(output.getvalue())
+
+    def _row(self, tick: int) -> dict:
+        for path in self.run_dir.glob("pilot-*.json"):
+            row = json.loads(path.read_text(encoding="utf-8"))
+            if row["tick"] == tick:
+                return row
+        raise AssertionError(f"no row for tick {tick}")
+
+    def test_row_carries_the_reason_only_when_given(self) -> None:
+        reason = "chained on fn-1-parent; work: 1 task done"
+        first = self._append(reason=reason)["tick"]
+        self.assertEqual(self._row(first)["reason"], reason)
+        second = self._append()["tick"]
+        self.assertEqual(
+            set(self._row(second)),
+            {"tick", "id", "action", "stage", "costTokens", "timestamp"},
+        )
 
     def test_steady_state_reads_one_historical_witness_not_full_history(self) -> None:
         for _ in range(40):

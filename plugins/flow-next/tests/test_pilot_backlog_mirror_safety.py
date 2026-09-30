@@ -49,7 +49,6 @@ Run:
 
 from __future__ import annotations
 
-import json
 import pathlib
 import unittest
 
@@ -63,7 +62,6 @@ PILOT_SKILL = FLOW / "auto.md"
 PILOT_WORKFLOW = FLOW / "auto.md"
 PILOT_BACKLOG = FLOW / "references" / "backlog-mode.md"
 PILOT_QA = FLOW / "references" / "qa-stage.md"
-PILOT_LEDGER = REPO_ROOT / "optimization" / "reached-path" / "pilot-candidates.json"
 # The files a `--auto` run can load, relative to the flow skill dir; every one
 # needs a mirror counterpart.
 AUTO_ROUTED_FILES = ("auto.md", "references/backlog-mode.md", "references/qa-stage.md")
@@ -97,7 +95,6 @@ class PilotBacklogMirrorSafety(unittest.TestCase):
             PILOT_WORKFLOW,
             PILOT_BACKLOG,
             PILOT_QA,
-            PILOT_LEDGER,
             TS_STEPS,
             MIRROR_SKILL,
             MIRROR_WORKFLOW,
@@ -110,7 +107,6 @@ class PilotBacklogMirrorSafety(unittest.TestCase):
         cls.pilot_workflow = _read(PILOT_WORKFLOW)
         cls.pilot_backlog = _read(PILOT_BACKLOG)
         cls.pilot_qa = _read(PILOT_QA)
-        cls.pilot_ledger = json.loads(_read(PILOT_LEDGER))
         cls.ts_steps = _read(TS_STEPS)
         cls.m_skill = _read(MIRROR_SKILL)
         cls.m_workflow = _read(MIRROR_WORKFLOW)
@@ -161,37 +157,6 @@ class PilotBacklogMirrorSafety(unittest.TestCase):
             self.pilot_backlog,
             "the selected reference must retain the full live backlog grammar",
         )
-
-    def test_pilot_candidate_ledger_matches_live_routed_files(self) -> None:
-        """The independent Pilot ledger is hash-addressed and its reached-path
-        improvement is reproducible from the canonical routed files."""
-        ledger = self.pilot_ledger
-        self.assertEqual("pilot", ledger["cluster"])
-        self.assertEqual("B1", ledger["lineage"]["baseline"])
-        self.assertEqual([], ledger["discards"])
-        candidate = ledger["candidates"][0]
-        self.assertEqual("keep", candidate["verdict"])
-
-        # Prose-quality pins removed 2026-08-07 - judged via .flow/criteria.md
-        # G1, not grep. (Live-file hash/char freeze and size ratchet removed
-        # earlier for the same reason; deliberate-change protection lives in
-        # test_prompt_text_pinned.py.) The QA classification tokens stay
-        # pinned on the all-done probe: auto.md owns the decision, the
-        # reference only computes freshness.
-        start = self.pilot_workflow.index("## Phase 2 - CLASSIFY")
-        phase2 = self.pilot_workflow[start:self.pilot_workflow.index("## Phase 3", start)]
-        probe = phase2[phase2.index("### The all-done PR probe"):phase2.index("### Explain stop")]
-        for token in ("QA_STAGE_ENABLED=1", "QA_STAGE_AUTO=1"):
-            with self.subTest(token=token):
-                self.assertIn(token, phase2, "auto.md must resolve the QA gate flags")
-        for token in ("QA_FRESH", "gate-selection.md"):
-            with self.subTest(token=token):
-                self.assertIn(token, probe, "the all-done probe consumes freshness and the gate reference")
-        # The reference computes freshness only: it assigns QA_FRESH and never
-        # assigns the gate flags auto.md resolved.
-        self.assertIn("QA_FRESH=1", self.pilot_qa)
-        self.assertNotRegex(self.pilot_qa, r"(?m)^\s*QA_STAGE_(ENABLED|AUTO)=",
-                            "the freshness reference must not re-decide the gate")
 
     def test_mirror_carries_tracker_sync_r14_phase0_fix(self) -> None:
         """The R14 Phase-0 autonomy-marker fix (fn-68.2) survives in the

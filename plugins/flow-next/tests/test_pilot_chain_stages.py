@@ -161,25 +161,6 @@ class VerdictGrammarTestCase(unittest.TestCase):
             self.assertIn('--action "$ACTION" --stage make-pr ${COST_TOKENS:+--cost-tokens "$COST_TOKENS"}', text, path)
 
     @_POSIX_BASH
-    def test_make_pr_verify_probe_parse_failure_is_flagged(self):
-        # Executable: run the verify parse fence against valid, empty, and
-        # malformed probe output. A malformed body must set PR_VERIFY_FAILED=1
-        # (jq is the status-bearing command — no trailing `head` masks it);
-        # a valid body yields the first OPEN url; no OPEN row yields "" with
-        # the flag still 0 (the healthy-no-advance path).
-        cases = {
-            '[{"state":"CLOSED","url":"c"},{"state":"OPEN","url":"https://x/1"}]': ("https://x/1", "0"),
-            '[{"state":"CLOSED","url":"c"}]': ("", "0"),
-            '{not json': ("", "1"),
-        }
-        for path in AUTO_MDS:
-            line = next(l for l in read(path).splitlines() if l.startswith("OPEN_PR_URL=$(printf"))
-            for body, (url, failed) in cases.items():
-                script = f"PR_VERIFY_FAILED=0\nPR_VERIFY_JSON={body!r}\n{line}\nprintf '%s|%s' \"$OPEN_PR_URL\" \"$PR_VERIFY_FAILED\""
-                out = subprocess.run(["bash", "-c", script], capture_output=True, text=True, check=True).stdout
-                self.assertEqual(out, f"{url}|{failed}", f"{path}: {body}")
-
-    @_POSIX_BASH
     def test_chain_gate_fence_exits_zero_and_chains_only_under_tick(self):
         # Executable: the gate fence must resolve off/on AND exit 0 either way
         # (a trailing `[ ... ] && X=1` returns 1 on the default-off path).

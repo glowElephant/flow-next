@@ -28,7 +28,7 @@ QA_WORKFLOW = (
     / "flow-next-qa"
     / "workflow.md"
 )
-CORPUS = REPO / "optimization" / "reached-path" / "fixtures" / "review-findings" / "v1"
+CORPUS = Path(__file__).resolve().parent / "fixtures" / "review-findings" / "v1"
 SPEC = importlib.util.spec_from_file_location("flowctl_findings_receipts", FLOWCTL_PATH)
 assert SPEC and SPEC.loader
 FLOWCTL = importlib.util.module_from_spec(SPEC)

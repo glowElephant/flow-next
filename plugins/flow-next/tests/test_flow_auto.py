@@ -305,5 +305,25 @@ class ArgumentParseFence(unittest.TestCase):
         self.assertIn("--review", stderr)
 
 
+class MakePrVerifyProbe(unittest.TestCase):
+    @unittest.skipIf(shutil.which("jq") is None, "verify fence needs jq")
+    @_POSIX_BASH
+    def test_make_pr_verify_probe_parse_failure_is_flagged(self) -> None:
+        # A malformed body must set PR_VERIFY_FAILED=1 (jq is the
+        # status-bearing command); a valid body yields the first OPEN url; no
+        # OPEN row yields "" with the flag still 0.
+        cases = {
+            '[{"state":"CLOSED","url":"c"},{"state":"OPEN","url":"https://x/1"}]': ("https://x/1", "0"),
+            '[{"state":"CLOSED","url":"c"}]': ("", "0"),
+            '{not json': ("", "1"),
+        }
+        line = next(l for l in _read(AUTO_MD).splitlines() if l.startswith("OPEN_PR_URL=$(printf"))
+        for body, (url, failed) in cases.items():
+            with self.subTest(body=body):
+                script = f"PR_VERIFY_FAILED=0\nPR_VERIFY_JSON={body!r}\n{line}\nprintf '%s|%s' \"$OPEN_PR_URL\" \"$PR_VERIFY_FAILED\""
+                out = subprocess.run(["bash", "-c", script], capture_output=True, text=True, check=True).stdout
+                self.assertEqual(out, f"{url}|{failed}")
+
+
 if __name__ == "__main__":
     unittest.main()

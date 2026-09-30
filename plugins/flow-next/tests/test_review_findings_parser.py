@@ -12,7 +12,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO / "plugins" / "flow-next" / "scripts"))
 FLOWCTL_PATH = REPO / "plugins" / "flow-next" / "scripts" / "flowctl.py"
-CORPUS = REPO / "optimization" / "reached-path" / "fixtures" / "review-findings" / "v1"
+CORPUS = Path(__file__).resolve().parent / "fixtures" / "review-findings" / "v1"
 SPEC = importlib.util.spec_from_file_location("flowctl_findings_test", FLOWCTL_PATH)
 assert SPEC and SPEC.loader
 FLOWCTL = importlib.util.module_from_spec(SPEC)
