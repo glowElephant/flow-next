@@ -131,7 +131,7 @@ class TestRegistryShape(unittest.TestCase):
         # fn-272 R4: a withheld codex astra steps down within the same
         # generation first.
         self.assertEqual(
-            BACKEND_REGISTRY["codex"]["models"][:2], ["gpt-6-astra", "gpt-6-sol"]
+            BACKEND_REGISTRY["codex"]["models"][:3], ["gpt-6.1-sol", "gpt-6-astra", "gpt-6-sol"]
         )
 
 

@@ -29,6 +29,16 @@ Flow-Next has one unattended mode: `/flow-next:flow --auto` (with `--until=merge
 
 - **The Copilot reviewer is read-only now.** It ran with `--allow-all-tools`, which Copilot needs for a non-interactive run, and that also let it edit files and run any shell command in your checkout. It now runs with `--deny-tool write --deny-tool shell`, the same read-only tools the Claude reviewer gets.
 
+## [flow-next 6.7.0] - 2026-09-29
+
+Codex reviews and the Codex agents now run on GPT-6.1 Sol, the model Codex lists first as of 2026-09-29, and the Claude review backend can fall back to Opus 5.5 and Sonnet 5.5 before reaching the older models.
+
+**What changes when you upgrade.** Re-run `./scripts/install-codex.sh` so your generated Codex agents move to `gpt-6.1-sol`. An account that cannot serve it steps down to `gpt-6-astra`, then `gpt-6-sol`. A model you name explicitly still wins. No setup re-run is needed.
+
+### Changed
+
+- **Codex reviews and the generated Codex agents run on GPT-6.1 Sol.** Reviews through the Codex backend now default to `gpt-6.1-sol` at high effort, stepping down to `gpt-6-astra` and then `gpt-6-sol` when an account cannot serve it. The generated Codex scouts, flow-gap-analyst, plan-sync and quality-auditor move from `gpt-6-sol` to `gpt-6.1-sol` at the same efforts; re-run `./scripts/install-codex.sh` to pick them up. The Claude review backend now steps down from Fable 5.1 through Opus 5.5, Opus 5, Sonnet 5.5 and Sonnet 5; a Claude Code older than 2.1.284 does not recognize the 5.5 ids and steps past them. A model you name explicitly still wins.
+
 ## [flow-next 6.6.0] - 2026-09-28
 
 Plan, prime and the other scout-heavy steps get faster and cheaper: the bundled scouts now run on Sonnet 5.5, which Anthropic reports at more than 30% faster than Sonnet 5 and lower cost than Opus 5.5, scoring within about three points of Opus 5.5 on its published agentic-coding and knowledge-work benchmarks. Teams that keep `.flow/` in a planning repo and their product code in sibling clones get the full gates whenever that code changes, and the feature map ages from product commits instead of planning edits. A feature-map maintain pass now finishes on repos whose branch and commit names need a ticket key or whose host is not GitHub, and a failed push keeps the proven corrections instead of discarding them. make-pr opens its pull request from zsh as well as bash.
