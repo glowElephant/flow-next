@@ -234,14 +234,15 @@ here, inline.** Print `Scheduling: inline (single task)`.
    attended, hand the result back first, then run
    `$flow-next-impl-review <task-id> --base <base_commit> --review=<mode>` in the
    background and report its verdict when it lands; unattended, run it and wait. `done` waits for
-   SHIP. Not selected: record `stage: impl-review - skipped(policy: risk - <reason>)`. When a
+   SHIP, or for an `OVERRIDDEN:` line from an unattended loop (its declined findings go in the
+   summary and the Decisions list). Not selected: record `stage: impl-review - skipped(policy: risk - <reason>)`. When a
    review went NEEDS_WORK then SHIP on a non-trivial fix and memory is enabled, capture the lesson
    per [references/worker-memory-capture.md](references/worker-memory-capture.md).
 6. **Done.** Write a short summary to `.flow/tmp/<task-id>-summary.md` (what changed, and one
    `stage: impl-review - ...` line), then run `$FLOWCTL done <task-id> --range
    "<base_commit>..HEAD" --test "<command you ran>" --summary-file .flow/tmp/<task-id>-summary.md
    --json` with the base read from `.flow/tmp/base_commit`.
-7. **Completion review.** Skip it when the spec has this one task, its review reached SHIP, and
+7. **Completion review.** Skip it when the spec has this one task, its review reached SHIP (or a recorded override), and
    every spec R-ID is in the task's `satisfies`: run `$FLOWCTL spec
    set-completion-review-status <spec-id> --status not_required --if-current unknown --json` and
    note `stage: completion-review - skipped(policy: single-task, per-task SHIP covers spec

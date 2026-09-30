@@ -66,8 +66,9 @@ failed, question the idea before trying a third.
 - **Unattended** (`--auto`): nobody is waiting. Never ask; decide from evidence, and stop only
   for a call only a human can make or an irreversible action. A human call that does not block
   the rest of the work (refreshing a frozen fixture, a requirement only CI can prove) goes in the
-  pull request as an open item, on a draft pull request; finish the rest instead of stopping. Fix a discovery only when it
-  blocks the goal, as its own commit; list the rest as follow-ups in the final report. Keep a
+  pull request as an open item, on a draft pull request; finish the rest instead of stopping.
+  Fix a discovery only when it blocks the goal, as its own commit; list the rest as follow-ups
+  in the final report. Keep a
   Decisions list in the final report and the pull request body: each default you chose, finding
   you declined and review you skipped, with the evidence behind it.
 
@@ -94,7 +95,7 @@ start the review in the background and report its verdict (and any fix) when it 
 
 Unattended (`--auto`, with or without `--until=merge`), nobody is there to decide what is left, so
 aim for the best result: fix, re-review the fixes, and repeat until SHIP, with flowctl's round cap
-as the backstop (reaching it is a stop). A person or project instruction that asks for it ("review
+and stall check as the backstop (an `ESCALATE:` from either is a stop). A person or project instruction that asks for it ("review
 until SHIP") loops the same way. In the loop, decline hardening, scope creep and problems that
 existed before the change, one `Declined #<n>: <reason>` line each in the fix commit. If the
 reviewer keeps only findings like that, all below Major, end the loop yourself: report the

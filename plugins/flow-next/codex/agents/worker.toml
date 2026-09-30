@@ -254,14 +254,14 @@ $flow-next-impl-review <TASK_ID> --base $BASE_COMMIT --review=$REVIEW_MODE
 Pass `--review=$REVIEW_MODE` so an explicit run-wide `work --review=<backend>` override reaches
 the review — `REVIEW_MODE` holds the backend resolved for THIS task (the explicit run override if
 given, else the **task-aware** backend from `review-backend "$TASK_ID"`, which already honors the
-task's own `review:` override; see phases.md §3c). impl-review cannot see the worker prompt variable
+task's own `review:` override; see the work skill's references/multi-task.md §3c). impl-review cannot see the worker prompt variable
 otherwise, so passing it propagates the correct explicit-or-per-task precedence rather than
 re-resolving from config. The skill still handles everything else:
 - Scoped diff (BASE_COMMIT..HEAD, not main..HEAD)
 - Receipt paths (don't pass --receipt yourself)
 - Sending to reviewer (rp, codex, copilot, cursor, or claude backend)
 - Parsing verdict (SHIP/NEEDS_WORK/MAJOR_RETHINK)
-- One fix pass and one re-review
+- One fix pass and one re-review attended; unattended, the loop until SHIP
 
 **Foreground rule (do not background the review).** When the impl-review workflow shells a `flowctl <backend> …` review command, run it as one **blocking foreground** Bash call with a generous timeout (10 minutes; verdicts typically land in 1–7). Never launch it with `run_in_background` + a monitor — a background completion does not reliably resume your (subagent) context, and you would idle on an already-finished review. Blocking is safe: the call is bounded.
 
@@ -272,7 +272,7 @@ re-resolving from config. The skill still handles everything else:
 - **NEEDS_WORK** → the skill already fixed and re-reviewed and findings still survive. Escalate rather than re-invoke: under `SPEC_MODE` / autonomous, stop with a typed `BLOCKED: <surviving-findings summary>` (the escalation format below); interactively, surface the surviving findings to the caller.
 - **MAJOR_RETHINK** → the design/approach is wrong, not patchable. Escalate `BLOCKED: DESIGN_CONFLICT` with the reviewer's rationale — never patch it, never re-invoke.
 
-Done when: one impl-review invocation has returned a terminal verdict, and the task either holds a SHIP or has been escalated with a typed `BLOCKED:` line.
+Done when: one impl-review invocation has returned a terminal verdict, and the task either holds a SHIP (or a recorded `OVERRIDDEN:` override) or has been escalated with a typed `BLOCKED:` line.
 
 ## Phase 4.5: Auto-capture on successful fix (after NEEDS_WORK → SHIP)
 

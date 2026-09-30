@@ -418,7 +418,7 @@ durable-park semantics are owned by `auto.md`).
 selected-and-advanced with **no pre-gate** - the agent never sets the ready flag
 itself and never asks before acting on a clean item. This is the point of backlog
 mode: the human's promotion (ready flag / board move) is the consent; everything
-downstream of a workable spec runs unattended to the draft PR.
+downstream of a workable spec runs unattended to the pull request.
 
 **Optional force-gate.** The sibling config key **`pilot.gateClasses: [<class>…]`**
 (an array - NOT `pilot.autonomy.gate`; a scalar and an object cannot share the
@@ -476,9 +476,9 @@ Backlog reads use `$FLOWCTL tracker wire list-open --json`, `comment-list --loca
   ever starts describing a standing process, that is drift - remove it.
 - **Never authors a spec.** `capture`/`refine` are human-gated; a needs-spec gap
   is surfaced, never auto-written (may augment an obvious blank in an *existing*
-  spec only - never create one). The span is *workable spec → draft PR*, not
-  *ticket → draft PR*.
-- **Backlog mode grants no merge authority.** The default terminus is `make-pr` (draft). A current scoped merge destination may invoke land through `tail.md`; land owns convergence and merge gates.
+  spec only - never create one). The span is *workable spec → pull request*, not
+  *ticket → pull request*.
+- **Backlog mode grants no merge authority.** The default terminus is `make-pr`. A current scoped merge destination may invoke land through `tail.md`; land owns convergence and merge gates.
 - **Never sets the ready flag / never promotes.** Readiness is the human's explicit
   signal; the agent's completeness read can only *withhold*, never *force* or
   *promote*.
