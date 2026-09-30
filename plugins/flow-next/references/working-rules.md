@@ -64,7 +64,9 @@ failed, question the idea before trying a third.
   request unless asked. List discoveries in the handoff as follow-ups ("found X, not part of this");
   the person decides what to pick up.
 - **Unattended** (`--auto`): nobody is waiting. Never ask; decide from evidence, and stop only
-  for a call only a human can make or an irreversible action. Fix a discovery only when it
+  for a call only a human can make or an irreversible action. A human call that does not block
+  the rest of the work (refreshing a frozen fixture, a requirement only CI can prove) goes in the
+  pull request as an open item, on a draft pull request; finish the rest instead of stopping. Fix a discovery only when it
   blocks the goal, as its own commit; list the rest as follow-ups in the final report. Keep a
   Decisions list in the final report and the pull request body: each default you chose, finding
   you declined and review you skipped, with the evidence behind it.
