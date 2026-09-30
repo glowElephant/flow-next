@@ -27,7 +27,7 @@ I tested 7.0 against plain Claude Code on the same model across a wide spread of
 | Task | Speed on the work | Quality | What the quality stages did |
 |---|---|---|---|
 | Large feature | **up to 1.9x** faster than the default harness | **+25%** | Three cross-model reviewers. A data-integrity bug plain Claude Code shipped in every run; Flow-Next's reviewers caught it every time, and it was fixed before the pull request. |
-| Held-out large feature (Rust) | **1.2x** faster | **+48%** | Three reviewers, then the repository's full gate. Four real bugs, including a race when a meeting finished. Every hidden test passed; plain Claude Code failed one run in three. |
+| Held-out large feature (Rust) | **1.2x** faster | **+48%** | Three reviewers, then the repository's full gate. Four real bugs, including a race when a long-running job finished. Every hidden test passed; plain Claude Code failed one run in three. |
 | Hard bug | **about 2x** faster | **+9%** | Three cross-model reviewers. The cause was measured first, then fixed at the source, instead of loosening the flaky check. |
 | Simple bug | **1.2x** faster | **+10%** | No review needed: a small, local fix. Better than plain Claude Code before any review, from how Flow-Next works: failing test first, the fix at the cause, the change tried the way you would. |
 | Small feature | **1.1-1.3x** faster | **+8%** | Cross-model review. A setup check the new option broke, found by the reviewer and fixed before handoff. |
