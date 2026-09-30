@@ -66,7 +66,7 @@ Invoke the stage skill by name with its normal arguments, passing `--review=<bac
   saved spec for review. A request to capture or review only never authorizes work.
 - **Defect reproduction**, when the report does not say where the problem is and `.flow/features/`
   exists: read [references/defect-intake.md](references/defect-intake.md) first.
-- **Work** runs `flow-next:flow-next-work <spec-id>`; a recorded `no_plan` pre-answers its fork.
+- **Work** runs `$flow-next-work <spec-id>`; a recorded `no_plan` pre-answers its fork.
   Pick the branch rather than letting work ask: `--branch=current` on a branch other than the
   default, else `--branch=new`, unless the user named one. State the choice in one line.
 - **QA** follows gate-selection.md; a skip is recorded, never silent.
@@ -85,7 +85,7 @@ Advance on observed state, never on a stage's narration.
 
 A pick among options a stage produced (prospect's candidates, chart's capture-or-split, refine's
 choices) is asked inline, one per hop, and the run continues. Otherwise stop at the first of: the PR
-exists (without landing authority), a decision a stage handed to the person, or a blocking question
+exists (without landing authority), a decision a stage handed to the person, or a plain-text numbered prompt
 that is not a pick. At a PR boundary apply tail.md. Print the report shape from SKILL.md: one
 `stage:` line per stage reached (a skipped stage with its reason), inline picks on the `Route taken`
 line, then `Next:` in the host's command form.
