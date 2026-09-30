@@ -44,6 +44,9 @@ spec to direct or plan. When `decision.met` is true, use `decision.value`. Intak
 is yours: decide from the matrix. Print one line per hop: `Route: <route> (code)` or
 `Route: <route> (host)`.
 
+`EXPLAIN=1`: resolve the route (reading the references below as needed) but record nothing, then
+read [references/explain.md](references/explain.md) and stop there.
+
 A ready spec with no tasks and no recorded route: read
 [references/plan-vs-no-plan.md](references/plan-vs-no-plan.md), resolve the rule, and record it
 before any stage runs (`$FLOWCTL spec set-no-plan <id> --json` for direct,
@@ -54,8 +57,6 @@ the tripwire: read [references/spec-count.md](references/spec-count.md). Two rou
 materially differ with an answer you cannot observe: read
 [references/prototype-before-ask.md](references/prototype-before-ask.md) before asking, and ask at
 most one question per hop.
-
-`EXPLAIN=1`: read [references/explain.md](references/explain.md) and stop there.
 
 ## Step 3: Run the routed stage
 

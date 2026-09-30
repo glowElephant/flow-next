@@ -305,7 +305,7 @@ For a **signalled** item, route it to exactly one class. **First match wins - an
 
 | Class | The agent's read | Route |
 |---|---|---|
-| **needs-spec** | a **tracker-only** promoted item - no flow spec exists at all | **`ask` via the tracker comment ALONE** (Phase 3) - surface "run capture/interview"; **never a spec stub** |
+| **needs-spec** | a **tracker-only** promoted item - no flow spec exists at all | **`ask` via the tracker comment ALONE** (Phase 3) - surface "run capture/refine"; **never a spec stub** |
 | **dep-unsatisfied** | signal present, but a blocker (flow or tracker) is not yet done - for a spec-backed item, `spec chain` reported `eligible: false` (1f) | **`BLOCKED <id> by <dep>`** - a state-changing terminal that **surfaces the dep wait** (never `NO_WORK` - the item was selectable in 1f); `<dep>` is the command's `reason` string for a flow dep; the topo-sort offers the blocker first on a later run. A circular/unsatisfiable dep routes to `ASKED` instead (1e) |
 | **workable** | signal present, **deps satisfied**, AND the spec is complete enough to act on (clear AC / R-IDs, an actionable next stage) | **advance**: hand to `auto.md` Phase 2, which drives it from there |
 | **ready-but-thin / ambiguous** | signal present, deps satisfied, but the spec is missing, a stub, or too thin/ambiguous to act on safely | **`ask`** (Phase 3) - kick back the gap; **never build, never auto-author** |

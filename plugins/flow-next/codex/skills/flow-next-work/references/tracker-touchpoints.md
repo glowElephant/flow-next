@@ -24,7 +24,7 @@ Contents:
 | task done (multi-task.md 3d.1) | `tracker.perEvent.work.done` | fixed `comment` for `pull`, `push`, `reconcile`, or `comment` | post a status comment + evidence (tests / commits / PR) |
 | spec-completion-review SHIP (multi-task.md 3g) | `tracker.perEvent.completionReview` | fixed `comment` for `pull`, `push`, `reconcile`, or `comment` | post verdict / R-ID coverage as a comment; NEVER terminal Done (Done is reserved for a MERGED PR, driven by land.merged); at most leaves the issue at In Review |
 
-(capture / interview / plan / make-pr / resolve-pr carry their own touchpoints in those skills, gated identically on `tracker.perEvent.{capture,interview,plan,makePr,resolvePr}`.)
+(capture / refine / plan / make-pr / resolve-pr carry their own touchpoints in those skills, gated identically on `tracker.perEvent.{capture,interview,plan,makePr,resolvePr}`.)
 
 **Observable + forcing:** every touchpoint invocation above carries its `event: <perEvent-key>` tag, which the tracker-sync skill stamps onto that run's receipts (`sync receipt --event`). Phase 5 then runs an end-of-run `flowctl sync check` over the events that actually triggered, retro-fires any `MISSING` touchpoint exactly once, and surfaces the outcome in a mandatory four-state `Tracker sync:` slot in the final summary (phases.md Phase 5) — a configured-but-didn't-fire touchpoint is a visible gap, never a silent one. Bridge inactive stays zero-overhead: the check exits silently and the slot reads `n/a (bridge inactive)`.
 
