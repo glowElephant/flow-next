@@ -8,11 +8,12 @@ Flow-Next changed shape with 5.0.0. One command, `/flow-next:flow`, reads whatev
 
 Flow-Next has one unattended mode: `/flow-next:flow --auto` (with `--until=merge` or `--tick`). The Ralph harness it replaced is gone, so there is no repo-local loop to scaffold, no guard hooks to register and no second set of receipts to keep in step.
 
-**What changes when you upgrade.** Ralph is removed. If you still run it, pin flow-next 6.6.x. Otherwise delete `scripts/ralph/` and any `ralph-guard` hook entries from your project settings, and use `/flow-next:flow --auto` for unattended runs.
+**What changes when you upgrade.** Ralph is removed. If you still run it, pin flow-next 6.6.x. Otherwise delete `scripts/ralph/` and any `ralph-guard` hook entries from your project settings, and use `/flow-next:flow --auto` for unattended runs. If you turned on the HTML render lenses, read the note on them under Removed.
 
 ### Removed
 
 - **Ralph.** `/flow-next:ralph-init`, the `scripts/ralph/` harness and `ralphctl`, the `ralph-guard` hooks, setup's Ralph question, the `FLOW_RALPH`, `RALPH_ITERATION` and `FLOW_RALPH_NO_TRIAGE` variables, the Ralph-run probe in `flowctl status`, and the `flow-next-tui` run monitor.
+- **The HTML render lenses.** I removed the opt-in HTML pages that capture, plan and make-pr wrote under `.flow/artifacts/<spec-id>/`, along with the `artifacts.html.enabled` key, setup's HTML question and `flowctl pr-cognitive-aid html-input`. People turned them on and then every capture, plan and make-pr run got much slower, and I saw little benefit in return. For a visual view of a spec, a plan or a diff, run `/flow-next:visual`, or ask the agent for an HTML page when you want one. A config that still sets `artifacts.html.enabled` keeps working. flowctl ignores the key and prints a one-line note. Your old `spec.html` and `pr.html` files stay where they are and you can delete them, along with the `HTML render lens:` link line a lens added near the top of each spec.
 
 ### Changed
 
