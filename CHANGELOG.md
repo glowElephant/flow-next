@@ -18,7 +18,7 @@ Flow-Next started on December 26, 2025, as a plugin called flow: a plan command,
 
 The goal was always bigger than a to-do list. I wanted R&D teams to be able to work together on big, messy codebases and get better work out of their agents. Over this year that meant hundreds of features for attended and unattended runs, the building blocks for code factories, and support for six hosts: Claude Code, Codex, Factory Droid, Cursor, Grok Build and OpenCode.
 
-None of that ever hurt the quality of the output. It was consistently about 20 to 30% better than a plain agent in the short run, with bigger gains over the life of a project. But all those features made Flow-Next slower, heavier and hungrier for tokens than I liked. Models and harnesses have also moved on a lot since December. So for 7.0 I went back through the whole plugin and rebuilt it for speed, measuring every change against plain Claude Code before keeping it.
+None of that ever hurt the quality of the output. It was consistently better than a plain agent's, with bigger gains over the life of a project. But all those features made Flow-Next slower, heavier and hungrier for tokens than I liked. Models and harnesses have also moved on a lot since December. So for 7.0 I went back through the whole plugin and rebuilt it for speed, measuring every change against plain Claude Code before keeping it.
 
 ### Benchmarks
 
