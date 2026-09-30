@@ -6,9 +6,35 @@ Flow-Next changed shape with 5.0.0. One command, `/flow-next:flow`, reads whatev
 
 ## Unreleased
 
-Flow-Next has one unattended mode: `/flow-next:flow --auto` (with `--until=merge` or `--tick`). The Ralph harness it replaced is gone, so there is no repo-local loop to scaffold, no guard hooks to register and no second set of receipts to keep in step.
+**7.0.0, codename Roadrunner. Flow-Next is now blazing fast.**
 
-**What changes when you upgrade.** Ralph is removed. If you still run it, pin flow-next 6.7.x. Otherwise delete `scripts/ralph/` and any `ralph-guard` hook entries from your project settings, and use `/flow-next:flow --auto` for unattended runs. If you turned on the HTML render lenses, read the note on them under Removed.
+A large feature now lands in about half the time your coding agent takes on its own, with a spec, tests, a cross-model review and a pull request that shows its reasoning. On the actual work Flow-Next is as fast as plain Claude Code, or your harness, or faster, and I measured that over and over: the change comes back to you in about the time your agent alone takes, often less. The result is better than the plain agent's even before any review. The optional stages, a cross-model review and live QA where there's a UI, widen the gap to up to 25% better outcomes, especially on large and long-horizon work, and `/flow-next:flow` adds a stage only where the risk calls for it. Run it unattended and it finishes on its own: it never stops to ask, keeps fixing until a reviewer from another model family signs off, and writes every decision it made on your behalf into the pull request.
+
+**What changes when you upgrade.** Ralph is gone: `/flow-next:flow --auto` is the one unattended mode. If you still run Ralph, pin flow-next 6.7.x. Otherwise delete `scripts/ralph/` and any `ralph-guard` hook entries from your project settings, and use `/flow-next:flow --auto` for unattended runs. The HTML render lenses are gone too (run `/flow-next:visual`, or ask for an HTML page). `pipeline.chainStages` is retired and ignored. Unattended merges wait 10 minutes after the last push instead of 30. You don't need to re-run setup.
+
+### How it got here
+
+Flow-Next started on December 26, 2025, as a plugin called flow: a plan command, a few scouts and a quality auditor. Claude Opus 4.5 was the model of the day, and models have come a long way since. It began as a simple way to plan a change and keep the tasks straight. It was the first to run autonomous cross-model review loops, where a model from another family argues with your agent's work until it holds up, and one of the first to interview you before building. It grew from there into the most complete workflow plugin for coding agents that I know of.
+
+The goal was always bigger than a to-do list. I wanted R&D teams to be able to work together on big, messy codebases and get better work out of their agents. Over this year that meant hundreds of features for attended and unattended runs, the building blocks for code factories, and support for six hosts: Claude Code, Codex, Factory Droid, Cursor, Grok Build and OpenCode.
+
+None of that ever hurt the quality of the output. It was consistently about 20 to 30% better than a plain agent in the short run, with bigger gains over the life of a project. But all those features made Flow-Next slower, heavier and hungrier for tokens than I liked. Models and harnesses have also moved on a lot since December. So for 7.0 I went back through the whole plugin and rebuilt it for speed, measuring every change against plain Claude Code before keeping it.
+
+### Benchmarks
+
+I tested 7.0 against plain Claude Code on the same model across a wide spread of work: a simple bug, a hard bug, a small feature and a large feature, attended and unattended, plus a held-out large feature from a repository and stack the tuning never touched. That came to more than 140 full end-to-end runs, each case drawn several times, never a single lucky run. Hidden tests the agent never sees check each result, and a blind judge scores the handoff. The work column is time to the working change against plain Claude Code, or your harness; review and QA time sit in their own column.
+
+| Task | The work (vs plain agent) | Quality stages | What they added |
+|---|---|---|---|
+| Large feature | about half the time (0.5-0.8x) | cross-model review, three reviewers | caught a real data-integrity defect in every run; judge 19-20 of 20 |
+| Held-out large feature (Rust) | about 0.8x | three reviewers, then the repository's full gate | four real defects fixed, including a race at finalisation; every hidden test passed where plain Claude Code missed one run in three; judge 19 vs 12-14 of 20 |
+| Small feature | about 0.9x | cross-model review | caught a broken setup check the change introduced; judge about 19 vs 17.5 of 20 |
+| Simple bug | about 0.85x | review skipped by risk (a local fix) | none needed: already about 10% better on the judge without review |
+| Hard bug | measured and fixed at the cause | cross-model review, three reviewers | fix held on every hidden test |
+
+The hard bug is the one place Flow-Next takes longer: it measures the cause before it fixes anything and writes the proof into the pull request. Run unattended with `--until=merge`, a large feature and a hard bug both went from spec to a merged pull request with nobody watching and no stops, **the large feature in about half the time plain Claude Code took**.
+
+I'm going to keep improving Flow-Next, both what it does and how fast it does it.
 
 ### Removed
 
@@ -18,6 +44,16 @@ Flow-Next has one unattended mode: `/flow-next:flow --auto` (with `--until=merge
 - **`pipeline.chainStages`.** I removed the key along with the pilot alias, as the deprecation note said I would. It only made `flow --auto --tick` open the PR in the same tick as a fresh QA verdict, and a long-horizon `flow --auto` already runs QA and then make-pr as consecutive hops. Under `--tick`, make-pr now runs on the next tick. You don't need to do anything else. Remove the key from `.flow/config.json`. Until you do, flowctl ignores it and prints a one-line note.
 
 ### Changed
+
+- **Faster routing, fewer questions.** `/flow-next:flow` picks the route itself in seconds, from your words and the repository, and no longer asks about a branch or a readiness flag before building: it takes the sensible default and says so in one line. A small, local change goes straight to the change with no spec.
+- **A spec with one task is built right in the conversation.** Workers and the multi-task scheduler run only when a spec has several tasks, or when you route a task to a chosen model.
+- **Review by risk.** A change that touches persisted or shared state, concurrency, security, data layout or migrations, or spans several files, gets three reviewers from another model family. A small local fix gets one, and a change to output, wording or display gets none, with the reason recorded.
+- **One review, one look at the fixes, when you're there.** You get the result first; the review runs in the background, and after the fixes the same reviewer looks only at what changed. Findings the author declines are listed with a reason in the fix commit, and the reviewer can withdraw them.
+- **Unattended runs keep going until the reviewer signs off.** `flow --auto` loops fix and re-review until SHIP. The author may decline hardening, scope creep and problems that predate the change; if that's all the reviewer has left, all below Major, the loop ends and each disagreement goes into the pull request, both sides with their reasons. A finding that shows a stated requirement broken is always fixed. Plan review and completion review loop the same way when unattended.
+- **Unattended runs finish with something you can review.** They never ask. Every default they pick, finding they decline and review they skip goes into a Decisions list in the pull request. A call only you can make, and that blocks nothing else, goes in as an open item on a draft pull request instead of stopping the run.
+- **Pull requests open ready** unless there are open items, and a route without a spec can open one directly.
+- **Working rules shared by every stage.** One reference sets the scope (the smallest change the evidence justifies, including a sibling case the same cause breaks in the same code), the tests (focused tests for what changed, the full suite only when your repository or you ask, a check you name always run and waited for, a slow run's full output kept in a file), the handoff (each claim marked measured, inferred or a guess) and follow-ups as plain facts.
+- **Lighter refine (interview), plan and QA.** Refine (the former interview) asks only what would change the build, in one question pass.
 
 - **Unattended merges wait 10 minutes, not 30.** When `--until=merge` lands a pull request without you authorizing the merge in the session, land waits `land.patienceMinutes` after the last push so review bots can post. That window is for bots, not people: if you expect a human review you would not run `--until=merge`. Bots post within a few minutes and the wait overlaps CI, so I cut the default to 10. Set `land.patienceMinutes` if your bots are slower.
 - **The optional Jev judge no longer picks the route.** With a key, Jev's route answers sent small features down heavier routes than the same request took without one, and routing was no faster for it: the agent picks a route in seconds on its own. Routing is now the agent's and the code's, with or without a key.
