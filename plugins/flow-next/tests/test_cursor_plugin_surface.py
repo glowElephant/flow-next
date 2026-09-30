@@ -13,8 +13,7 @@ Validates:
   - every skill / agent / command has non-empty ``name`` and ``description``
     frontmatter (Cursor marketplace review checklist shape);
   - ``rules/flow-next.mdc`` is the Cursor guidance rail: proper .mdc frontmatter,
-    ``.flow/bin/flowctl`` resolution, lifecycle + the two ``flowctl usage``
-    pull directives.
+    and the flowctl resolution chain.
 
 Pure file/JSON checks — no Cursor install required.
 
@@ -25,7 +24,6 @@ Run:
 from __future__ import annotations
 
 import json
-import re
 import unittest
 from pathlib import Path
 from typing import Any
@@ -244,7 +242,6 @@ class TestFlowNextRule(unittest.TestCase):
         # repos (review finding, fn-123.1). Agent-decides via the trigger-shaped
         # description is the correct scope for a plugin rule.
         self.assertEqual(self.fm.get("alwaysApply"), "false")
-        self.assertIn(".flow/", str(self.fm.get("description")))
 
     def test_flowctl_resolved_via_three_rung_chain(self) -> None:
         # fn-197: the rail teaches the same chain every skill preamble carries.
@@ -264,34 +261,6 @@ class TestFlowNextRule(unittest.TestCase):
         # Commands run through the resolved variable, never a hardcoded path.
         self.assertNotIn("`.flow/bin/flowctl ", self.text)
         self.assertIn("$FLOWCTL list", self.text)
-
-    def test_lifecycle_commands(self) -> None:
-        for token in ("list", "show", "start", "done"):
-            self.assertRegex(
-                self.text,
-                rf"\b{token}\b",
-                f"lifecycle token {token!r} missing from flow-next.mdc",
-            )
-        self.assertIn("summary-file", self.text)
-        self.assertIn("evidence-json", self.text)
-
-    def test_two_usage_pull_directives(self) -> None:
-        # The two pull directives from the fn-121 slim snippet (Cursor analog).
-        self.assertRegex(
-            self.text,
-            re.compile(
-                r"BEFORE any other flowctl operation.*flowctl usage",
-                re.IGNORECASE | re.DOTALL,
-            ),
-        )
-        self.assertRegex(
-            self.text,
-            re.compile(
-                r"BEFORE bridging work.*flowctl usage",
-                re.IGNORECASE | re.DOTALL,
-            ),
-        )
-        self.assertIn("Orchestration & model steering", self.text)
 
 
 if __name__ == "__main__":

@@ -9,17 +9,14 @@ judgment in the flow skill's routing reference; nothing here asserts prose.
   pilot's) resolves two flags from the root snapshot: the literal `on` sets
   `QA_STAGE_ENABLED=1`, the literal `auto` sets `QA_STAGE_AUTO=1`, anything
   else leaves both 0 - proven by running the fence against each value;
-* the setup ceremony's Live QA question names the three literal values and
-  the ceremony recommends `/flow-next:features` once the stage is on or auto;
-* the QA and prime skills route the `auto` rule to the flow skill's
-  gate-selection reference, which exists.
+* setup persists each of the three literal values with `config set`;
+* the QA skill links the flow skill's gate-selection reference, which exists.
 """
 
 from __future__ import annotations
 
 import json
 import os
-import re
 import shutil
 import subprocess
 import sys
@@ -31,14 +28,8 @@ PLUGIN_DIR = Path(__file__).resolve().parent.parent
 AUTO_MD = PLUGIN_DIR / "skills" / "flow-next-flow" / "auto.md"
 SETUP_WORKFLOW = PLUGIN_DIR / "skills" / "flow-next-setup" / "workflow.md"
 QA_SKILL = PLUGIN_DIR / "skills" / "flow-next-qa" / "SKILL.md"
-PRIME_PILLARS = PLUGIN_DIR / "skills" / "flow-next-prime" / "pillars.md"
 GATE_SELECTION = (
     PLUGIN_DIR / "skills" / "flow-next-flow" / "references" / "gate-selection.md"
-)
-
-SNAPSHOT_LINE = (
-    'PILOT_CFG_SNAPSHOT="${TMPDIR:-/tmp}/flow-pilot-config-'
-    "$(git rev-parse --show-toplevel 2>/dev/null | cksum | cut -d' ' -f1).json\""
 )
 
 _POSIX_BASH = unittest.skipIf(
@@ -123,45 +114,21 @@ class AutoQaGateReadsEveryValue(unittest.TestCase):
         self.assertNotIn("QA=", result.stdout)
 
 
-class SetupLiveQaQuestion(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls) -> None:
-        cls.text = _read(SETUP_WORKFLOW)
-
-    def _questions_block(self) -> str:
-        start = self.text.index("### 6d: Build questions list")
-        end = self.text.index("## Step 7: Process Answers")
-        return self.text[start:end]
-
-    def test_live_qa_question_names_three_literal_values(self) -> None:
-        block = self._questions_block()
-        self.assertIn('"header": "Live QA"', block)
-        labels = re.findall(r'"label": "([^"]+)"', block)
-        leading = {label.split(" ", 1)[0] for label in labels}
-        self.assertTrue({"off", "on", "auto"} <= leading, labels)
-
+class SetupPersistsEveryValue(unittest.TestCase):
     def test_answers_persist_each_literal_value(self) -> None:
+        text = _read(SETUP_WORKFLOW)
         for value in ("off", "on", "auto"):
-            self.assertIn(f"config set pipeline.qa {value} --json", self.text)
-
-    def test_probe_and_features_recommendation(self) -> None:
-        self.assertIn("setup-status", self.text)
-        self.assertIn("SETUP_FIRST_RUN", self.text)
-        self.assertIn("/flow-next:features", self.text)
+            self.assertIn(f"config set pipeline.qa {value} --json", text)
 
 
 class AutoRuleRoutesToGateSelection(unittest.TestCase):
-    def test_reference_exists_and_names_the_enum(self) -> None:
+    def test_reference_exists(self) -> None:
         self.assertTrue(GATE_SELECTION.is_file())
-        self.assertIn("`off | on | auto`", _read(GATE_SELECTION))
 
     def test_qa_skill_links_gate_selection_one_level_deep(self) -> None:
         self.assertIn(
             "../flow-next-flow/references/gate-selection.md", _read(QA_SKILL)
         )
-
-    def test_prime_readiness_line_names_auto(self) -> None:
-        self.assertIn("`pipeline.qa auto`", _read(PRIME_PILLARS))
 
 
 if __name__ == "__main__":

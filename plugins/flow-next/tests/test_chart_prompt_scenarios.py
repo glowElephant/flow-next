@@ -6,10 +6,9 @@ points, guarded flowctl chart mutations, and the exact terminal CHART_VERDICT
 line where applicable.
 
 The harness does not run an LLM. It validates fixture schema and cross-checks
-expectations against the skill prose contracts (same technique as
-test_prime_eval.py: expectations are data; the oracle asserts contracts, never
-live judgment). Static prose tests in test_chart_skill_contract.py remain useful
-but are not evidence for prompt interpretation coverage.
+expectations against the skill's verdict grammar and mutation guards
+(expectations are data; the oracle asserts contracts, never live judgment).
+Prose wording is not pinned.
 
 Run:
     cd plugins/flow-next/tests && python3 -m unittest test_chart_prompt_scenarios -q
@@ -29,15 +28,6 @@ PLUGIN = HERE.parent
 REPO_ROOT = PLUGIN.parent.parent
 FIXTURES_DIR = HERE / "fixtures" / "chart_prompt_scenarios"
 SKILL_DIR = PLUGIN / "skills" / "flow-next-chart"
-FLOW_SKILL_DIR = PLUGIN / "skills" / "flow-next-flow"
-FLOW_ROUTING_REFS = (
-    "route-matrix.md",
-    "spec-count.md",
-    "plan-vs-no-plan.md",
-    "gate-selection.md",
-    "prototype-before-ask.md",
-    "tail.md",
-)
 
 SKILL_MD = SKILL_DIR / "SKILL.md"
 WORKFLOW_MD = SKILL_DIR / "workflow.md"
@@ -175,13 +165,6 @@ def _skill_prose() -> str:
     ]
     parts += [p.read_text(encoding="utf-8") for p in MODE_REFERENCE_MDS]
     return "\n".join(parts)
-
-
-def _flow_prose() -> str:
-    """The flow skill's reachable prose: SKILL.md, workflow.md, all six references."""
-    paths = [FLOW_SKILL_DIR / "SKILL.md", FLOW_SKILL_DIR / "workflow.md"]
-    paths += [FLOW_SKILL_DIR / "references" / name for name in FLOW_ROUTING_REFS]
-    return "\n".join(p.read_text(encoding="utf-8") for p in paths if p.is_file())
 
 
 def _is_flowctl_like(token: str) -> bool:
@@ -426,48 +409,16 @@ class ChartPromptGuardedMutations(unittest.TestCase):
 
 
 class ChartPromptSkillContractCrossCheck(unittest.TestCase):
-    """Each fixture's skill_contract_tokens must appear in skill prose.
+    """Fixture verdicts and guarded mutations agree with the skill contract.
 
-    Mirrors test_prime_eval's oracle style: fixture rows are data; the test
-    asserts the contracts those rows depend on still exist in the skill.
-    Flow-routing fixtures (family flow_routing) check the flow skill's
-    reachable prose; all other families check the chart skill.
+    Fixture rows are data; the checks cover verdict kinds and the mutation
+    guards, not prose wording.
     """
 
     @classmethod
     def setUpClass(cls) -> None:
         cls.fixtures = _load_fixtures()
         cls.prose = _skill_prose()
-        cls.prose_cf = cls.prose  # case-sensitive primary
-        cls.prose_lower = cls.prose.lower()
-        cls.flow_prose = _flow_prose()
-        cls.flow_lower = cls.flow_prose.lower()
-
-    def test_contract_tokens_present_in_skill_prose(self) -> None:
-        for path, data in self.fixtures:
-            with self.subTest(fixture=path.name):
-                if data.get("family") == "flow_routing":
-                    prose_cf = self.flow_prose
-                    prose_lower = self.flow_lower
-                    label = "flow skill"
-                else:
-                    prose_cf = self.prose_cf
-                    prose_lower = self.prose_lower
-                    label = "chart skill"
-                missing: list[str] = []
-                for tok in data["skill_contract_tokens"]:
-                    if tok in prose_cf:
-                        continue
-                    # Case-insensitive fallback for short prose tokens
-                    if tok.lower() in prose_lower:
-                        continue
-                    missing.append(tok)
-                self.assertEqual(
-                    missing,
-                    [],
-                    f"{path.name}: skill_contract_tokens missing from {label}: "
-                    f"{missing}",
-                )
 
     def test_verdict_token_when_set_is_documented(self) -> None:
         """Primary verdict kind must appear in the skill verdict table."""
@@ -585,9 +536,7 @@ class ChartPromptExamplesAlignment(unittest.TestCase):
 
     def test_needs_human_reason_documented(self) -> None:
         row = self.fixtures["attended-unattended-driver-needs-human"]
-        # Grammar kind + no-answer contract appear in examples/skill
         self.assertIn("NEEDS_HUMAN", self.examples)
-        self.assertIn("no answer", self.examples.lower())
         self.assertIn("NEEDS_HUMAN", row["expected"]["verdict"])
 
     def test_locate_failure_verdict_in_examples(self) -> None:

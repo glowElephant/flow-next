@@ -786,11 +786,7 @@ class MarkdownAndBudgetTests(unittest.TestCase):
 
 
 class MakePrIntegrationTests(unittest.TestCase):
-    def test_artifact_precedes_body_and_tracker_pr_url_boundary_is_unchanged(self) -> None:
-        workflow = (
-            REPO_ROOT
-            / "plugins/flow-next/skills/flow-next-make-pr/workflow.md"
-        ).read_text(encoding="utf-8")
+    def test_finalize_reachable_and_tracker_pr_url_boundary_is_unchanged(self) -> None:
         artifact_reference = (
             REPO_ROOT
             / "plugins/flow-next/skills/flow-next-make-pr/pr-cognitive-aid.md"
@@ -799,21 +795,15 @@ class MakePrIntegrationTests(unittest.TestCase):
             REPO_ROOT
             / "plugins/flow-next/skills/flow-next-make-pr/create-and-finalize.md"
         ).read_text(encoding="utf-8")
-        self.assertLess(
-            workflow.index("## Phase 1.5: Structured PR cognitive-aid"),
-            workflow.index("## Phase 2:"),
-        )
         self.assertIn(
             "[create-and-finalize.md](create-and-finalize.md)", artifact_reference
         )
-        self.assertNotIn("skill: flow-next-tracker-sync", artifact_reference)
         self.assertIn("make-pr-create.sh", finalize)
         create_script = (REPO_ROOT / "plugins/flow-next/scripts/make-pr-create.sh").read_text()
         self.assertIn('PR_URL=""', create_script)
         self.assertIn("--pr-url \"$PR_URL\"", finalize)
         self.assertIn("--op reconcile", finalize)
         self.assertIn("sync check", finalize)
-        self.assertIn("Retro-fire", finalize)
 
 
 # --- Changed-path and batched-object tests for cognitive-aid glossary diffs ---

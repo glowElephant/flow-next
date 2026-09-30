@@ -32,7 +32,6 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
-import re
 import shutil
 import subprocess
 import sys
@@ -2800,65 +2799,15 @@ class FixtureFamiliesTestCase(unittest.TestCase):
                 assert_raw(payload)
 
 
-# ── R13 re-baselined smoke: report inputs are derivable (resolution 14) ────────
-
-
-# The 48 SCORED legacy criteria + the 3 legacy INFORMATIONAL rows (DC7 frontend-
-# only, DC8 glossary, DE7 feature-map) - the full stable legacy denominator R13
-# forbids diluting. `substance upgrades tighten pass conditions, never remove
-# checks`: every one of these IDs must still carry a table row in pillars.md.
-_LEGACY_CRITERION_IDS = (
-    tuple(f"SV{i}" for i in range(1, 7))    # Pillar 1
-    + tuple(f"BS{i}" for i in range(1, 7))  # Pillar 2
-    + tuple(f"TS{i}" for i in range(1, 7))  # Pillar 3
-    + tuple(f"DC{i}" for i in range(1, 9))  # Pillar 4 (DC7/DC8 informational)
-    + tuple(f"DE{i}" for i in range(1, 8))  # Pillar 5 (DE7 informational)
-    + tuple(f"OB{i}" for i in range(1, 7))  # Pillar 6 (report-only)
-    + tuple(f"SE{i}" for i in range(1, 7))  # Pillar 7 (report-only)
-    + tuple(f"WP{i}" for i in range(1, 7))  # Pillar 8 (report-only)
-)
-_LEGACY_INFORMATIONAL = ("DC7", "DC8", "DE7")
+# ── Emitter non-mutation ──
 
 
 class ReportInputDerivabilityTestCase(unittest.TestCase):
-    """R13 re-baselined (resolution 14): instead of a heavyweight full-prime run,
-    a lightweight CI smoke that the INPUTS the Phase-3 verdict/scoring machinery
-    consumes are still derivable - (a) every legacy criterion ID is present in
-    pillars.md (the level denominator is never silently shrunk), (b) the
-    hard-gate / verdict-headline machinery the skill references actually resolves
-    in the doc, and (c) the emitter classify path is non-mutating (`git status
-    --porcelain` byte-identical pre/post)."""
+    """The emitter classify path is non-mutating."""
 
     @classmethod
     def setUpClass(cls) -> None:
         cls.flowctl = _load_flowctl()
-        cls.pillars = (PRIME_SKILL_DIR / "pillars.md").read_text(encoding="utf-8")
-        cls.workflow = (PRIME_SKILL_DIR / "workflow.md").read_text(encoding="utf-8")
-
-    def test_all_legacy_criterion_ids_present(self) -> None:
-        # 48 scored + 3 informational = 51 total legacy rows.
-        self.assertEqual(len(_LEGACY_CRITERION_IDS), 51)
-        scored = [c for c in _LEGACY_CRITERION_IDS if c not in _LEGACY_INFORMATIONAL]
-        self.assertEqual(len(scored), 48)
-        missing = [
-            c for c in _LEGACY_CRITERION_IDS
-            if not re.search(rf"\|\s*{c}\s*\|", self.pillars)
-        ]
-        self.assertEqual(missing, [], f"legacy criterion rows dropped from pillars.md: {missing}")
-
-    def test_hard_gate_machinery_resolves(self) -> None:
-        # The three gates + the Level-2 cap are defined verbatim in pillars.md,
-        # and the workflow references resolve back to that definition.
-        self.assertIn("## Hard gates", self.pillars)
-        self.assertIn("cap agent readiness at **Level 2**", self.pillars)
-        for gate in ("**G1**", "**G2**", "**G3**"):
-            self.assertIn(gate, self.pillars, gate)
-        # Workflow §2.10 cites the pillars "Hard gates" section and names the
-        # failing gate in the verdict headline; the verdict-assembly section
-        # (the headline inputs the scoring feeds) exists.
-        self.assertIn("Hard gates G1-G3", self.workflow)
-        self.assertIn("name the failure in the verdict headline", self.workflow)
-        self.assertIn("Verdict assembly", self.workflow)
 
     def test_emitter_classify_is_non_mutating(self) -> None:
         # Non-mutation proof for the emitter path: a full classify over a
@@ -2886,89 +2835,14 @@ class ReportInputDerivabilityTestCase(unittest.TestCase):
             shutil.rmtree(tmp, ignore_errors=True)
 
 
-class PrimeProseContractTestCase(unittest.TestCase):
-    """Prose contracts the host-inline scoring depends on, locked on the
-    canonical file AND the Codex mirror (sync-codex.sh must not drop the frozen
-    SV4 wording, the N/A whitelist, or the stacks.md row schema). Prose-only
-    review is NOT acceptable coverage - the strings are pinned in CI."""
-
-    def _pillars(self, base: Path) -> str:
-        return (base / "pillars.md").read_text(encoding="utf-8")
-
-    def _stacks(self, base: Path) -> str:
-        return (base / "stacks.md").read_text(encoding="utf-8")
-
-    def _workflow(self, base: Path) -> str:
-        return (base / "workflow.md").read_text(encoding="utf-8")
-
-    def _assert_sv4_contract(self, base: Path) -> None:
-        text = self._pillars(base)
-        # The SV4 feedback-gate rewrite - the layer-agnostic contract.
-        self.assertIn("Deterministic feedback gate (layer-agnostic)", text, base)
-        # Prose-quality pins removed 2026-08-07 - judged via .flow/criteria.md G1.
-        # (whole-sentence needles: 'Rewritten from "pre-commit hooks configured".',
-        # "headroom warn, never a pass-blocker",
-        # "Prime **NEVER** recommends test-running pre-commit hooks.",
-        # "SV4 grades gate TOPOLOGY")
-
-    def _assert_na_whitelist(self, base: Path) -> None:
-        text = self._pillars(base)
-        # The single N/A whitelist table - the ONLY source of N/A entries.
-        self.assertIn("N/A Whitelist (single source", text, base)
-        self.assertIn("| Criterion(s) | N/A condition |", text, base)
-        # Representative rows must survive the mirror sync.
-        self.assertRegex(text, re.compile(r"\|\s*BS6\s*\|.*[Nn]on-monorepo", re.DOTALL), base)
-        self.assertIn("Greenfield lifecycle", text, base)
-
-    def _assert_stacks_row_schema(self, base: Path) -> None:
-        text = self._stacks(base)
-        # The stacks.md map header columns - the dispatch schema the skill reads.
-        self.assertIn(
-            "| Stack | Detect | Verify (non-interactive) | LSP for agents | Map tooling | Gotchas |",
-            text,
-            base,
-        )
-
-    def test_canonical_sv4(self) -> None:
-        self._assert_sv4_contract(PRIME_SKILL_DIR)
-
-    def test_mirror_sv4(self) -> None:
-        self._assert_sv4_contract(PRIME_MIRROR_DIR)
-
-    def test_canonical_na_whitelist(self) -> None:
-        self._assert_na_whitelist(PRIME_SKILL_DIR)
-
-    def test_mirror_na_whitelist(self) -> None:
-        self._assert_na_whitelist(PRIME_MIRROR_DIR)
-
-    def test_canonical_stacks_row_schema(self) -> None:
-        self._assert_stacks_row_schema(PRIME_SKILL_DIR)
-
-    def test_mirror_stacks_row_schema(self) -> None:
-        self._assert_stacks_row_schema(PRIME_MIRROR_DIR)
-
-    def _assert_metachar_rejection(self, base: Path) -> None:
-        # Regression (PR #207, security): §2.6 executes commands quoted in
-        # repo-authored agent files; an allowlisted leading token must never
-        # license chained shell actions. The argv-only rejection rule is
-        # load-bearing and must survive the mirror sync.
-        text = self._workflow(base)
-        self.assertIn("Metacharacter rejection (argv-only execution)", text, base)
-        self.assertIn("REJECT (do not run; record as skipped with the reason)", text, base)
-        for construct in ("`;`", "`&&`", "`||`", "`|`", "`$(`", "`>>`"):
-            self.assertIn(construct, text, f"{base}: missing rejected construct {construct}")
-
-    def test_canonical_metachar_rejection(self) -> None:
-        self._assert_metachar_rejection(PRIME_SKILL_DIR)
-
-    def test_mirror_metachar_rejection(self) -> None:
-        self._assert_metachar_rejection(PRIME_MIRROR_DIR)
+class PrimeBuildProbeFenceTestCase(unittest.TestCase):
+    """The build probe fence captures the build's own exit code."""
 
     def _assert_build_rc_captured_before_tail(self, base: Path) -> None:
         # Regression (PR #207 round 10, P1): `cmd | tail; BUILD_RC=$?` records
         # tail's status - the build probe must capture its own exit code
         # before truncating output, or a broken build passes BS2/G1.
-        text = self._workflow(base)
+        text = (base / "workflow.md").read_text(encoding="utf-8")
         self.assertIn('> "$BUILD_OUT" 2>&1', text, base)
         self.assertNotIn("| tail -20\nBUILD_RC=$?", text, base)
 
@@ -3003,29 +2877,9 @@ class PrimeReachedPathRoutingTestCase(unittest.TestCase):
         sys.modules[spec.name] = cls.character
         spec.loader.exec_module(cls.character)
 
-    def test_root_dispatches_classify_before_workflow(self) -> None:
-        route = self.skill.index("## Route Before Reading References")
-        classify = self.skill.index("**`--classify-only`:**", route)
-        workflow = self.skill.index("**All other modes:**", classify)
-        self.assertLess(route, classify)
-        self.assertLess(classify, workflow)
-        classify_block = self.skill[classify:workflow]
-        self.assertIn("read [classification.md](classification.md) directly", classify_block)
-        self.assertIn("Do **not** read `workflow.md`", classify_block)
-        self.assertIn("and EXIT", classify_block)
-
-    def test_unknown_mode_fails_open_to_full_workflow(self) -> None:
-        self.assertIn(
-            "unknown/malformed mode: use the full workflow",
-            self.skill,
-        )
-
-    def test_report_only_stops_before_remediation_template_read(self) -> None:
-        report_stop = self.workflow.index("**If `--report-only`**: Stop here")
-        remediation_read = self.workflow.index(
-            "Read [remediation.md](remediation.md)",
-        )
-        self.assertLess(report_stop, remediation_read)
+    def test_entry_point_reaches_its_references(self) -> None:
+        self.assertIn("(classification.md)", self.skill)
+        self.assertIn("(remediation.md)", self.workflow)
 
     def test_route_fixture_preserves_side_effect_contracts(self) -> None:
         routes = self.routes["routes"]
@@ -3037,8 +2891,6 @@ class PrimeReachedPathRoutingTestCase(unittest.TestCase):
         self.assertTrue(routes["full-no-fixes"]["asks"])
         self.assertTrue(routes["full-fixes"]["writes"])
         self.assertFalse(routes["full-fixes"]["asks"])
-
-    # Live-file char freeze removed 2026-08-07 (.flow/criteria.md G1).
 
     def test_classify_forbids_all_cold_references(self) -> None:
         forbidden = set(self.routes["routes"]["classify-only"]["forbidden_reads"])

@@ -1,12 +1,9 @@
-"""fn-215 fan-out prose-contract pins (completion review R8/R15).
+"""fn-215 fan-out workflow contract (completion review R8/R15).
 
-Grep-shaped assertions on minimal STRUCTURAL tokens of the fan-out workflow
-surfaces: command names, flag names, heading presence, the two quoted
-user-facing steering phrasings (command-like tokens), and executable-line
-greps for the round lifecycle. No sentence-level prose assertions
-(2026-08-07 rule) - prose quality is judged via .flow/criteria.md, and
-deliberate-prose-change detection is test_prompt_text_pinned's job.
-Canonical files and the generated Codex mirror are both pinned.
+Grep-shaped assertions on the flowctl command and flag tokens the fan-out
+workflows invoke, and executable-line greps for the round lifecycle. No prose,
+heading or phrasing assertions. Canonical files and the generated Codex mirror
+are both checked.
 """
 
 from __future__ import annotations
@@ -26,23 +23,13 @@ def _read(path: pathlib.Path) -> str:
 
 
 class CodexWorkflowFanoutContract(unittest.TestCase):
-    """workflow-codex.md: command/flag tokens + quoted steering phrasings."""
+    """workflow-codex.md: command/flag tokens."""
 
     def _texts(self) -> list[str]:
         return [
             _read(CANONICAL / "workflow-codex.md"),
             _read(MIRROR / "workflow-codex.md"),
         ]
-
-    def test_steering_phrasings_present(self) -> None:
-        # Quoted user-facing phrasings the coordinator matches against - these
-        # are command-like tokens, not prose.
-        for text in self._texts():
-            self.assertIn('"use 1 reviewer instead of 3"', text)
-            self.assertIn(
-                '"use three different model families for the review fan-out"',
-                text,
-            )
 
     def test_fanout_commands_and_flags_present(self) -> None:
         for text in self._texts():
@@ -63,7 +50,7 @@ class CodexWorkflowFanoutContract(unittest.TestCase):
 
 
 class HostWorkflowFanoutContract(unittest.TestCase):
-    """workflow-host.md: round-lifecycle executable lines + heading presence."""
+    """workflow-host.md: round-lifecycle executable lines."""
 
     def _texts(self) -> list[str]:
         return [
@@ -88,15 +75,8 @@ class HostWorkflowFanoutContract(unittest.TestCase):
             self.assertEqual(len(increment_lines), 1)
             self.assertEqual(len(record_lines), 1)
 
-    def test_first_round_three_draws_heading(self) -> None:
+    def test_sequential_fallback_names_review_route(self) -> None:
         for text in self._texts():
-            self.assertIn(
-                "### First round: three axis draws in ONE message", text
-            )
-
-    def test_sequential_fallback_degradation_token(self) -> None:
-        for text in self._texts():
-            self.assertIn("degradation", text)
             self.assertIn("review-route ", text)
 
 

@@ -8,7 +8,7 @@ Locks:
   (b) Executable Step-0 bash: PLUGIN_ROOT carrying
       .flow-next-opencode-manifest classifies as opencode; GROK_AGENT still
       wins; absence of the file is not an OpenCode signal.
-  (c) PLATFORM=opencode: lifecycle snippet + routing target AGENTS.md.
+  (c) PLATFORM=opencode: the snippet fence rewrites slash commands flat.
 
 Run:
     cd plugins/flow-next/tests && python3 -m unittest test_setup_opencode_host -q
@@ -177,27 +177,10 @@ class TestOpencodeDetectionExecutable(unittest.TestCase):
 
 
 class TestOpencodeSetupProfile(unittest.TestCase):
-    """PLATFORM=opencode: AGENTS.md target, default review menu."""
+    """PLATFORM=opencode: the snippet fence rewrites slash commands flat."""
 
-    def setUp(self) -> None:
-        self.text = _read(WORKFLOW)
-
-    def test_lifecycle_and_routing_target_agents_md(self) -> None:
-        self.assertIn("For **OpenCode** (`PLATFORM=opencode`)", self.text)
-        self.assertIn("OpenCode reads AGENTS.md", self.text)
-        self.assertIn(
-            "Codex / Cursor / Grok / OpenCode → `AGENTS.md`", self.text
-        )
-
-    def test_flat_slash_rewrite_documented(self) -> None:
-        self.assertIn("s|/flow-next:|/flow-next-|g", self.text)
-        self.assertIn("/flow-next-<name>", self.text)
-
-    def test_uses_default_review_menu(self) -> None:
-        self.assertIn(
-            "OpenCode uses this default Host + None menu", self.text
-        )
-        self.assertNotIn("When `PLATFORM=opencode`", self.text.split("**Review question**")[1].split("**Docs question**")[0])
+    def test_flat_slash_rewrite_in_snippet_fence(self) -> None:
+        self.assertIn("s|/flow-next:|/flow-next-|g", _read(WORKFLOW))
 
 
 if __name__ == "__main__":

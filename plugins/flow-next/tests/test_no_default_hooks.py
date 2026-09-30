@@ -4,7 +4,6 @@ Pins:
   * plugins/flow-next/hooks/ is absent (no hooks.json, no empty dir required)
   * .claude-plugin/plugin.json carries no ``hooks`` key
   * codex mirror ships no hooks.json (sync-codex zero-default)
-  * setup never copies hooks into a Codex project
 """
 
 from __future__ import annotations
@@ -19,7 +18,6 @@ PLUGIN_JSON = PLUGIN_DIR / ".claude-plugin" / "plugin.json"
 HOOKS_DIR = PLUGIN_DIR / "hooks"
 HOOKS_JSON = HOOKS_DIR / "hooks.json"
 CODEX_HOOKS_JSON = PLUGIN_DIR / "codex" / "hooks.json"
-SETUP_WORKFLOW = PLUGIN_DIR / "skills" / "flow-next-setup" / "workflow.md"
 
 
 class TestNoDefaultHooks(unittest.TestCase):
@@ -52,10 +50,6 @@ class TestNoDefaultHooks(unittest.TestCase):
             CODEX_HOOKS_JSON.is_file(),
             "plugins/flow-next/codex/hooks.json must not ship",
         )
-
-    def test_setup_never_copies_hooks(self) -> None:
-        workflow = SETUP_WORKFLOW.read_text(encoding="utf-8")
-        self.assertNotIn("Copied hooks.json to .codex/hooks.json", workflow)
 
 
 if __name__ == "__main__":

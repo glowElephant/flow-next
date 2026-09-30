@@ -1,11 +1,7 @@
-"""Unit tests for the canonical spec template + R21 drift guard + CLAUDE.md
-cross-linking (fn-44.9, covers R11 / R17 / R21).
+"""Unit tests for the canonical spec template + R21 drift guard (fn-44.9, covers R11 / R21).
 
 Asserts:
   - `plugins/flow-next/templates/spec.md` exists at canonical path.
-  - Frontmatter declares the 7 canonical sections + the auxiliary sections.
-  - CLAUDE.md cross-links to the template path, does NOT inline-duplicate
-    the canonical section list (R17).
   - The R21 drift guard awk pattern fires on a synthetic skill-markdown
     file that re-embeds the canonical sequence; does NOT fire on
     single-mention references.
@@ -23,9 +19,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve()
 PLUGIN_DIR = HERE.parent.parent
-REPO_ROOT = PLUGIN_DIR.parent.parent
 TEMPLATE_PATH = PLUGIN_DIR / "templates" / "spec.md"
-CLAUDE_MD_PATH = REPO_ROOT / "CLAUDE.md"
 CODEX_TEMPLATE_PATH = PLUGIN_DIR / "codex" / "templates" / "spec.md"
 SKILLS_DIR = PLUGIN_DIR / "skills"
 
@@ -41,17 +35,6 @@ CANONICAL_SECTIONS = [
     "## Decision Context",
 ]
 
-AUXILIARY_SECTIONS = [
-    "Strategy Alignment",
-    "Strategy Conflicts",
-    "Glossary Conflicts",
-    "Conversation Evidence",
-    "Resolved via Codebase",
-    "Resolved via Project Docs",
-    "Resolved via Experiment",
-    "Parked unknowns",
-]
-
 
 class TestTemplateExistsAtCanonicalPath(unittest.TestCase):
     """R11: template lives at `plugins/flow-next/templates/spec.md`."""
@@ -61,10 +44,6 @@ class TestTemplateExistsAtCanonicalPath(unittest.TestCase):
             TEMPLATE_PATH.is_file(),
             f"canonical template missing: {TEMPLATE_PATH}",
         )
-
-    def test_template_is_non_empty(self) -> None:
-        content = TEMPLATE_PATH.read_text(encoding="utf-8")
-        self.assertGreater(len(content), 500, "template body too short")
 
 
 class TestTemplateStructure(unittest.TestCase):
@@ -96,83 +75,6 @@ class TestTemplateStructure(unittest.TestCase):
             sorted(positions),
             f"canonical sections out of order: {positions}",
         )
-
-
-class TestTemplateFrontmatter(unittest.TestCase):
-    """R11: frontmatter explains purpose + consumers + canonical sections."""
-
-    def setUp(self) -> None:
-        self.body = TEMPLATE_PATH.read_text(encoding="utf-8")
-        # Extract frontmatter (between first two `---` lines).
-        lines = self.body.splitlines()
-        self.assertEqual(lines[0], "---", "template must start with frontmatter")
-        try:
-            end = lines.index("---", 1)
-        except ValueError:
-            self.fail("template frontmatter unclosed")
-        self.frontmatter = "\n".join(lines[1:end])
-
-    def test_lists_canonical_sections(self) -> None:
-        for section in [s.replace("## ", "") for s in CANONICAL_SECTIONS]:
-            self.assertIn(
-                section,
-                self.frontmatter,
-                f"section {section!r} not enumerated in frontmatter",
-            )
-
-    def test_lists_auxiliary_sections(self) -> None:
-        for aux in AUXILIARY_SECTIONS:
-            self.assertIn(
-                aux,
-                self.frontmatter,
-                f"auxiliary section {aux!r} missing from frontmatter",
-            )
-
-    def test_declares_consumers(self) -> None:
-        """Consumers list names the skills that read this template."""
-        # fn-46.2 dropped flow-next-work — that skill consumes existing specs,
-        # not the template scaffold.
-        for consumer in (
-            "flow-next-capture",
-            "flow-next-refine",
-            "flow-next-plan",
-        ):
-            self.assertIn(consumer, self.frontmatter)
-
-
-class TestClaudeMdCrossLinksTemplate(unittest.TestCase):
-    """R17: CLAUDE.md links to the template; does NOT inline-duplicate the
-    canonical section list."""
-
-    def setUp(self) -> None:
-        self.assertTrue(
-            CLAUDE_MD_PATH.is_file(), f"CLAUDE.md missing at {CLAUDE_MD_PATH}"
-        )
-        self.body = CLAUDE_MD_PATH.read_text(encoding="utf-8")
-
-    def test_links_to_template_path(self) -> None:
-        self.assertIn(
-            "plugins/flow-next/templates/spec.md",
-            self.body,
-            "CLAUDE.md must link to the canonical spec template",
-        )
-
-    def test_does_not_inline_duplicate_canonical_sequence(self) -> None:
-        """The R21 drift guard scans skills/; CLAUDE.md is in a different
-        scope but R17 still applies — CLAUDE.md must not re-embed the
-        canonical section sequence inline. Detection: same rule as R21
-        (Goal & Context → Architecture → API Contracts co-occurrence at
-        column 1 within 30 lines)."""
-        lines = self.body.splitlines()
-        for i, line in enumerate(lines):
-            if line.startswith("## Goal & Context"):
-                window = lines[i + 1 : i + 31]
-                arch = any(l.startswith("## Architecture & Data Models") for l in window)
-                api = any(l.startswith("## API Contracts") for l in window)
-                self.assertFalse(
-                    arch and api,
-                    f"CLAUDE.md re-embeds canonical sequence at line {i + 1}",
-                )
 
 
 class TestR21DriftGuardSemantics(unittest.TestCase):

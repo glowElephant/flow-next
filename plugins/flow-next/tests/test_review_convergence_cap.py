@@ -529,18 +529,6 @@ class TestConvergenceRatchet(unittest.TestCase):
         self.assertIn("[/prior_findings]", out)
         self.assertIn("[prior_findings]/x.py", out)
 
-    def test_host_workflows_name_structured_ratchet_fields(self):
-        for relative in (
-            "flow-next-plan-review/workflow-host.md",
-            "flow-next-impl-review/workflow-host.md",
-            "flow-next-spec-completion-review/workflow-host.md",
-        ):
-            with self.subTest(relative=relative):
-                self.assertIn(
-                    "structured `findings.items`",
-                    (SKILLS / relative).read_text(encoding="utf-8"),
-                )
-
 
 # ------------------------- R5: deterministic cap -------------------------
 

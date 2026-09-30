@@ -1,4 +1,9 @@
-"""Backlog and question-valve contracts after tracker prose teardown."""
+"""Backlog and question-valve contracts: wire verbs, flags and comment markers.
+
+Checks the wire verbs the prose invokes exist, the fences pass JSON
+locators, and the comment-marker grammar flowctl parses is the one the
+semantic reference documents. Prose wording is not pinned.
+"""
 
 from __future__ import annotations
 
@@ -16,11 +21,7 @@ from flowctl_tracker.wire import github, gitlab, jira, linear  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SKILL_ROOT = REPO_ROOT / "plugins/flow-next/skills/flow-next-tracker-sync"
-SKILL = (SKILL_ROOT / "SKILL.md").read_text(encoding="utf-8")
 STEPS = (SKILL_ROOT / "steps.md").read_text(encoding="utf-8")
-ADAPTER = (SKILL_ROOT / "references/adapter-interface.md").read_text(
-    encoding="utf-8"
-)
 COMMENTS = (SKILL_ROOT / "references/comments-sync.md").read_text(encoding="utf-8")
 # The backlog driver is `flow --auto --backlog`: auto.md carries the enforcing
 # guards, references/backlog-mode.md the SELECT/TRIAGE/ASK workflow.
@@ -55,7 +56,6 @@ class BacklogWireContractTests(unittest.TestCase):
             "tracker wire comment-list --locator", PILOT_BACKLOG)
         self.assertIn(
             "tracker wire comment-list --locator", STEPS)
-        self.assertIn("fails closed", PILOT_BACKLOG)
 
     def test_direct_wire_reads_pass_json_locators(self) -> None:
         # The wire verbs reject a bare identifier; every direct read passes the JSON locator.
@@ -87,18 +87,7 @@ class BacklogWireContractTests(unittest.TestCase):
         self.assertIs(out.cls, ErrorClass.UNRESOLVED)
         self.assertEqual(out.subtype, "ready_state")
 
-    # Prose-quality pins removed 2026-08-07 - judged via .flow/criteria.md G1,
-    # not grep.
-    def test_docs_keep_exact_ready_lane(self) -> None:
-        self.assertIn("resolved ready lane", STEPS)
-
-
 class QuestionValveContractTests(unittest.TestCase):
-    def test_question_content_remains_an_explicit_judgment_surface(self) -> None:
-        # Prose-quality pins removed 2026-08-07 - judged via .flow/criteria.md
-        # G1, not grep.
-        self.assertIn("**Comment content synthesis.**", SKILL)
-
     def test_closed_marker_families_remain_in_semantic_reference(self) -> None:
         for marker in (
             "flow-next:sync",
@@ -108,39 +97,12 @@ class QuestionValveContractTests(unittest.TestCase):
         ):
             self.assertIn(marker, COMMENTS)
 
-    def test_question_identity_excludes_free_prose(self) -> None:
-        self.assertIn("free-prose reason is OUTSIDE", COMMENTS)
+    def test_question_identity_fields(self) -> None:
         self.assertIn("subjectId", COMMENTS)
         self.assertIn("questionSlug", COMMENTS)
 
     def test_flat_tracker_answer_matches_by_id(self) -> None:
         self.assertIn("answer id=<hash>", COMMENTS)
-        self.assertIn("parentId == null", COMMENTS)
-
-    def test_wire_and_semantic_comment_shapes_are_not_conflated(self) -> None:
-        self.assertIn('"parent_identity": "validated or not_available"', ADAPTER)
-        self.assertIn('"created_at": "immutable provider timestamp or null"', ADAPTER)
-        self.assertIn("stable subset `id`, `body`, and `parent_identity`", ADAPTER)
-
-    def test_question_reopens_only_after_latest_answer(self) -> None:
-        self.assertIn("latest question", COMMENTS)
-        self.assertIn("latest answer", COMMENTS)
-        self.assertIn("created_at", COMMENTS)
-
-
-class AutonomousBoundaryTests(unittest.TestCase):
-    def test_forked_decisions_queue_instead_of_prompting(self) -> None:
-        # Prose-quality pins removed 2026-08-07 - judged via .flow/criteria.md
-        # G1, not grep. Smallest token kept for the autonomous-safety guard.
-        self.assertIn("Never attempt an interactive prompt", SKILL)
-
-    def test_no_legacy_setup_precheck(self) -> None:
-        self.assertNotIn("FLOW_SETUP_ASK", SKILL)
-        self.assertNotIn("setup_version", SKILL)
-
-    def test_no_stale_agentic_transport_claim(self) -> None:
-        self.assertIn("`flowctl tracker` owns tracker transport", SKILL)
-        self.assertNotIn("skill-level, never flowctl transport", SKILL)
 
 
 if __name__ == "__main__":

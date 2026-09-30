@@ -2251,27 +2251,10 @@ class TestPlanReviewSelectedBackendRouting(unittest.TestCase):
             "plugins/flow-next/skills/flow-next-plan-review/workflow-codex.md",
             row["required_reads"],
         )
-        common = (
-            self.repo
-            / "plugins/flow-next/skills/flow-next-plan-review/workflow.md"
-        ).read_text(encoding="utf-8")
-        self.assertIn("Backend unavailable/transport/no verdict", common)
-        self.assertIn("Never mix or fall back", common)
 
     def test_export_is_distinct_backend_cold_terminal(self) -> None:
         row = self.candidate.route_trace(self.repo, "export")
         self.assertIsNone(row["selected_backend"])
-        common = (
-            self.repo
-            / "plugins/flow-next/skills/flow-next-plan-review/workflow.md"
-        ).read_text(encoding="utf-8")
-        for contract in (
-            "review-export-<timestamp>.md",
-            "Exported review",
-            "write review receipt/status",
-            "enter the review fix loop",
-        ):
-            self.assertIn(contract, common)
 
     def test_real_production_prompt_path_preserves_corpus_and_rubric(self) -> None:
         evidence = self.candidate.corpus_evidence(
@@ -2285,10 +2268,6 @@ class TestPlanReviewSelectedBackendRouting(unittest.TestCase):
             self.assertTrue(row["spec_grounded_verbatim"])
             self.assertTrue(row["task_specs_grounded_verbatim"])
             self.assertTrue(row["verdict_grammar_present"])
-        self.assertFalse(evidence["prompt_template"]["byte_identical_to_b1"])
-        self.assertTrue(evidence["prompt_template"]["format_only_to_b1"])
-        # Size ratchet removed 2026-08-07: prose growth is judged by the
-        # standing criterion in .flow/criteria.md (G1), not a chars delta.
 
     # Live-vs-ledger route-size equality removed 2026-08-07 (.flow/criteria.md G1).
 

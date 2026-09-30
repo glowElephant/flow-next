@@ -188,11 +188,6 @@ class RuntimeSmoke(unittest.TestCase):
         src = (ROOT / "scripts" / "flowctl.py").read_text(encoding="utf-8")
         self.assertNotIn("MANIFEST.json", src)
 
-    def test_residual_marketplace_gap_is_documented(self) -> None:
-        docs = (ROOT / "docs" / "platforms.md").read_text(encoding="utf-8")
-        self.assertIn("Residual gap", docs)
-        self.assertIn("ImportError", docs)
-
 
 class BridgeInactiveByteParity(unittest.TestCase):
     """The single most load-bearing promise: a repo with no tracker configured

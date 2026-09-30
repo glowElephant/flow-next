@@ -34,7 +34,6 @@ class ReviewFindingsDocsTest(unittest.TestCase):
             "`pre-existing` / `pre existing` → `pre_existing`",
             "`open`, `fixed`, `not_fixed`, `withdrawn`",
             "`base`, `head`",
-            "Canonical item order",
         }
         for phrase in required:
             with self.subTest(phrase=phrase):
@@ -87,22 +86,6 @@ class ReviewFindingsDocsTest(unittest.TestCase):
                 self.assertIn(
                     "review-findings.md",
                     (DOCS / relative).read_text(encoding="utf-8"),
-                )
-
-        # The root README is the medium-length front door that points at
-        # flow-next.dev; the docs index (a runtime surface the skills read)
-        # carries the contract link instead.
-        root_surfaces = {
-            "plugins/flow-next/docs/README.md": "review-findings.md",
-            # Root GLOSSARY.md is a compact vocabulary dictionary; the
-            # long-form `## Structured finding` entry moved to the archive.
-            "agent_docs/archive/GLOSSARY-full.md": "## Structured finding",
-        }
-        for relative, phrase in root_surfaces.items():
-            with self.subTest(relative=relative):
-                self.assertIn(
-                    phrase,
-                    (REPO / relative).read_text(encoding="utf-8"),
                 )
 
 

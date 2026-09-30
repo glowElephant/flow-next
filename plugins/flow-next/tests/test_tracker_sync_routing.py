@@ -17,14 +17,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 HERE = Path(__file__).resolve()
 REPO_ROOT = HERE.parents[3]
 HARNESS = REPO_ROOT / "optimization" / "reached-path"
-SKILL = (
-    REPO_ROOT
-    / "plugins"
-    / "flow-next"
-    / "skills"
-    / "flow-next-tracker-sync"
-    / "SKILL.md"
-)
 B1_TRACKER = HARNESS / "fixtures" / "b1" / "tracker"
 
 
@@ -85,38 +77,6 @@ class SelectedAdapterRouteTestCase(unittest.TestCase):
         self.assertTrue(
             any(path.endswith("linear-graphql.md") for path in route.forbidden_reads)
         )
-
-    def test_prompt_contains_fail_closed_router_contract(self) -> None:
-        text = SKILL.read_text(encoding="utf-8")
-        for marker in (
-            "## Load the reached path",
-            "matching provider reference only",
-            "Never load an unselected provider",
-            "If the destination is",
-            "ambiguous, ask",
-            "write nothing",
-        ):
-            self.assertIn(marker, text)
-
-    def test_common_path_retains_reconciliation_contracts(self) -> None:
-        texts = {
-            path: (REPO_ROOT / path).read_text(encoding="utf-8")
-            for path in routes.COMMON_REFS
-        }
-        combined = "\n".join(texts.values())
-        for marker in (
-            "create-if-unlinked",
-            "three-way",
-            "who-wins",
-            "defer",
-            "Dependency projection",
-            "list-open",
-            "list-relations",
-            "`question`",
-            "aggregate receipt",
-            "lastSyncedAt",
-        ):
-            self.assertIn(marker, combined)
 
 
 class FrozenFixtureCoverageTestCase(unittest.TestCase):

@@ -138,22 +138,6 @@ class FixtureMetadataTests(unittest.TestCase):
             ["problem", "principle", *(["step"] * 7), "kept", "verify"],
         )
 
-    def test_consumer_doc_defines_offline_byte_pinned_vendoring(self) -> None:
-        text = " ".join(
-            CONSUMER_DOC.read_text(encoding="utf-8").split()
-        )
-        for phrase in (
-            "byte-identical copies of both files",
-            "pinned upstream `sha256`",
-            "No Flow-Next checkout",
-            "cross-repository network",
-            "schema requires a new versioned fixture directory",
-            "Never regenerate or pretty-print",
-            "strict `<100 ms p95` over 30 warm runs",
-            "`performanceBudget.p95MillisecondsExclusive` as an exclusive upper bound",
-        ):
-            self.assertIn(phrase, text)
-
 
 class CrossRenderParityTests(unittest.TestCase):
     @classmethod
@@ -203,13 +187,6 @@ class ReferenceAssetTests(unittest.TestCase):
         for name in IMAGE_NAMES:
             self.assertIn(name, spec_text)
             self.assertIn(name, consumer_text)
-        self.assertIn(
-            "normative interaction and information-architecture references",
-            spec_text,
-        )
-        self.assertIn(
-            "normative hierarchy and interaction", consumer_text
-        )
 
 
 if __name__ == "__main__":

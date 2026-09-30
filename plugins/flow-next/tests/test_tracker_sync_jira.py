@@ -5,8 +5,7 @@ DETERMINISTIC flowctl plumbing only — the activation enum, the `perTracker`
 config schema (`baseUrl`/`projectKey`/`authScheme`/`apiVersion`/`sslVerify`/
 `statusMap`), and the `set-tracker-id` identifier validator (Jira keys are the
 existing `KEY-N` form, so this is regression coverage + error-text, NOT a
-rewrite) — plus the discovery-ceremony wiring (prose in steps.md / SKILL.md,
-asserted by presence) and the receipt-transport `rest` token. No Jira transport
+rewrite) — plus the receipt-transport `rest` token. No Jira transport
 code lives here (that is the jira.md adapter prose in fn-70.2/.3); these tests
 never invoke a live Jira REST API.
 
@@ -26,10 +25,6 @@ Asserts:
     `KEY-N` like Linear; BOTH entry flows work).
   * Receipt transport (R2) — `sync receipt --transport rest` round-trips
     (free-form; `rest` accepted).
-  * Ceremony wiring (R5) — steps.md / SKILL.md carry the Jira probe row, the
-    Jira ASK option, the `tracker.type jira` + `perTracker` config-writes, and
-    the Jira readiness branch. Ceremony is prose, so presence/grep, not shape.
-    The probe-count wording reads SIX.
 
 Run:
     python3 -m unittest discover -s plugins/flow-next/tests -v
@@ -58,12 +53,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
 HERE = Path(__file__).resolve()
 FLOWCTL_PY = HERE.parent.parent / "scripts" / "flowctl.py"
-REPO_ROOT = HERE.parents[3]
-TRACKER_SKILL = REPO_ROOT / "plugins" / "flow-next" / "skills" / "flow-next-tracker-sync"
-STEPS_MD = TRACKER_SKILL / "steps.md"
-SKILL_MD = TRACKER_SKILL / "SKILL.md"
-DOCS_TRACKER_SYNC = REPO_ROOT / "plugins" / "flow-next" / "docs" / "tracker-sync.md"
-JIRA_REF = TRACKER_SKILL / "references" / "jira.md"
 
 
 def _load_flowctl(name: str) -> Any:
@@ -448,34 +437,6 @@ class JiraReceiptTransportTestCase(unittest.TestCase):
         self.assertTrue(receipt_path.exists())
         written = json.loads(receipt_path.read_text(encoding="utf-8"))
         self.assertEqual(written["transport"], "rest")
-
-
-class JiraCeremonyWiringTestCase(unittest.TestCase):
-    """The skill owns deployment choice; flowctl owns Jira HTTP mechanics."""
-
-    @classmethod
-    def setUpClass(cls) -> None:
-        cls.steps = STEPS_MD.read_text(encoding="utf-8")
-        cls.skill = SKILL_MD.read_text(encoding="utf-8")
-        cls.docs = DOCS_TRACKER_SYNC.read_text(encoding="utf-8")
-        cls.jira = JIRA_REF.read_text(encoding="utf-8")
-
-    def test_discovery_persists_jira_deployment_shape(self) -> None:
-        compact = " ".join(self.steps.split())
-        self.assertIn("persist the deployment shape", compact)
-        self.assertIn("API version 2 is the default", compact)
-
-    def test_jira_reference_describes_transport_shape_only(self) -> None:
-        self.assertIn("Jira REST through the deterministic HTTP executor", self.jira)
-        self.assertIn("Skill prose never constructs Jira requests", self.jira)
-        self.assertNotIn("curl ", self.jira)
-        self.assertNotIn("project/$PROJ_KEY/statuses", self.jira)
-
-    def test_jira_reference_preserves_persisted_auth_choice(self) -> None:
-        self.assertIn("Cloud | email plus API token | 2", self.jira)
-        self.assertIn("Data Center/Server | bearer PAT | 2 by default", self.jira)
-        self.assertIn("Runtime never", self.jira)
-        self.assertIn("re-races credentials", self.jira)
 
 
 if __name__ == "__main__":

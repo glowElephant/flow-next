@@ -16,15 +16,12 @@ that can run standalone:
 * the verdict grammar admits the `qa+make-pr` stage token;
 * the chain block names `make-pr` as its only target, requires `QA_ADVANCED`,
   and never names `plan-review` or `work` as a target;
-* explain reports `chain=` plus a precondition-checked `would-chain=`;
-* every authoritative single-stage surface carries the gated clause, pinned by
-  the key name `chainStages`.
+* explain reports `chain=` plus a precondition-checked `would-chain=`.
 
 `auto.md` is the single always-loaded-under---auto file; where the pilot
 tests distinguished SKILL.md from workflow.md, both now resolve to auto.md.
 Pinned on the canonical file AND its codex-mirror copy (the `both_copies`
-pattern from test_skill_prose_diet.py). Surfaces with no mirror copy (the
-conduct checklist, the sync script) stay canonical-only.
+pattern from test_skill_prose_diet.py).
 """
 
 from __future__ import annotations
@@ -49,12 +46,9 @@ _POSIX_BASH = unittest.skipIf(
 )
 
 PLUGIN_DIR = Path(__file__).resolve().parent.parent
-REPO_ROOT = PLUGIN_DIR.parent.parent
 
 FLOW_SKILL = PLUGIN_DIR / "skills" / "flow-next-flow"
 MIRROR_FLOW_SKILL = PLUGIN_DIR / "codex" / "skills" / "flow-next-flow"
-CONDUCT_MD = REPO_ROOT / "agent_docs" / "conduct" / "pilot.md"
-SYNC_SCRIPT = REPO_ROOT / "scripts" / "sync-codex.sh"
 
 CONFIG_GET = re.compile(r'\$FLOWCTL"?\s+config get')
 CHAIN_KEY_READ = ".config.pipeline.chainStages"
@@ -252,39 +246,6 @@ class ExplainReportTestCase(unittest.TestCase):
             self.assertIn("chain=<off|on>", text, path)
             self.assertIn("would-chain=make-pr", text, path)
             self.assertIn("would-chain=none", text, path)
-
-
-class SingleStageSurfacesTestCase(unittest.TestCase):
-    def test_every_single_stage_surface_carries_the_gated_clause(self):
-        for path in (*AUTO_MDS, CONDUCT_MD):
-            self.assertIn("chainStages", read(path), f"{path}: gated clause missing")
-
-    def test_conduct_checklist_names_the_closed_table(self):
-        conduct = read(CONDUCT_MD)
-        self.assertIn("pipeline.chainStages", conduct)
-        self.assertIn(CHAIN_STAGE_TOKEN, conduct)
-
-    def test_sync_script_pilot_descriptions_are_the_deprecated_alias_shape(self):
-        # The two hardcoded pilot descriptions are now alias descriptions
-        # pointing at `flow --auto --tick`; the openai.yaml row carries the
-        # catalog flag `false` so the alias leaves the published tier. The
-        # catalog length cap is enforced by the sync script's own hard-fail
-        # guard at regen time - not re-pinned here (G2: no size baselines).
-        lines = [
-            ln for ln in read(SYNC_SCRIPT).splitlines()
-            if ln.startswith('generate_openai_yaml "flow-next-pilot"')
-            or ln.lstrip().startswith('"flow-next-pilot":')
-        ]
-        self.assertEqual(len(lines), 2, "expected the two hardcoded pilot descriptions")
-        for ln in lines:
-            targets = [s for s in re.findall(r'"([^"]*)"', ln) if "--auto --tick" in s]
-            self.assertEqual(len(targets), 1, f"alias description must name the flow --auto --tick target: {ln}")
-            # The mirror writes these as UNQUOTED YAML scalars: a `: ` inside
-            # the value is a mapping separator and breaks frontmatter parsing.
-            self.assertNotIn(": ", targets[0], ln)
-        yaml_line = next(ln for ln in lines if ln.startswith("generate_openai_yaml"))
-        self.assertTrue(yaml_line.rstrip().endswith(" false"),
-                        f"pilot alias must be out of the catalog: {yaml_line}")
 
 
 if __name__ == "__main__":

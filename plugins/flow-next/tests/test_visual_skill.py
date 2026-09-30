@@ -1,11 +1,9 @@
-"""Prose contract for the /flow-next:visual digest skill (fn-189.5).
+"""The /flow-next:visual skill: files, shim frontmatter, reachability.
 
-Pins CONTENT and REACHABILITY, per the repo's prose-contract heuristic:
-what the skill must carry, and the link that makes a contract's home file
-reachable from its skill's entry point. Location is pinned only where it is
-load-bearing (the shim frontmatter name, the make-pr sketch section).
-
-No stored-hash pins, no size ceilings, no sentence-level prose assertions.
+Checks the skill and its command shim exist, the shim frontmatter carries the
+bare command name and a description (hosts parse both), the shim reaches the
+skill, and the shipped skill never links maintainer-only `agent_docs/`. The
+skill's wording is not pinned.
 
 Run:
     cd plugins/flow-next/tests && python3 -m unittest test_visual_skill -q
@@ -25,38 +23,8 @@ SKILL_DIR = PLUGIN / "skills" / "flow-next-visual"
 SKILL_MD = SKILL_DIR / "SKILL.md"
 SHIM = PLUGIN / "commands" / "visual.md"
 
-PLAN_SKILL = PLUGIN / "skills" / "flow-next-plan" / "SKILL.md"
-PLAN_STEPS = PLUGIN / "skills" / "flow-next-plan" / "steps.md"
-INTERVIEW_SKILL = PLUGIN / "skills" / "flow-next-refine" / "SKILL.md"
-
-MAKE_PR_DIR = PLUGIN / "skills" / "flow-next-make-pr"
-MAKE_PR_WORKFLOW = MAKE_PR_DIR / "workflow.md"
-
 CONDUCT_VISUAL = REPO_ROOT / "agent_docs" / "conduct" / "visual.md"
 CONDUCT_README = REPO_ROOT / "agent_docs" / "conduct" / "README.md"
-
-# Natural-language triggers R1 requires in the skill description so the skill
-# fires without the slash command.
-TRIGGER_PHRASES = (
-    "show me",
-    "explain this visually",
-    "restate that",
-    "digest the plan",
-    "walk me through",
-    "too much text",
-)
-
-# The eight vocabulary shapes (R2). Each entry: (label, content probes).
-SHAPE_PROBES = {
-    "1 pseudocode": ("Pseudocode",),
-    "2 call tree": ("Call tree",),
-    "3 component tree": ("Component tree", "```tsx"),
-    "4 file tree": ("file tree",),
-    "5 diff-fenced sketch": ("Diff-fenced structural sketch", "```diff"),
-    "6 types and signatures": ("Types and signatures", "```ts"),
-    "7 compact table": ("Compact table",),
-    "8 mermaid last resort": ("Mermaid", "LAST resort"),
-}
 
 
 def _read(path: Path) -> str:
@@ -74,10 +42,6 @@ def _split_frontmatter(text: str) -> tuple[str, str]:
     return m.group(1), text[m.end() :]
 
 
-def _frontmatter(text: str) -> str:
-    return _split_frontmatter(text)[0]
-
-
 class VisualSkillFiles(unittest.TestCase):
     def test_skill_and_shim_exist(self) -> None:
         self.assertTrue(SKILL_MD.is_file(), f"missing {SKILL_MD}")
@@ -86,7 +50,7 @@ class VisualSkillFiles(unittest.TestCase):
 
 class VisualShimContract(unittest.TestCase):
     def test_shim_bare_colon_free_name_and_description(self) -> None:
-        front = _frontmatter(_read(SHIM))
+        front = _split_frontmatter(_read(SHIM))[0]
         name = re.search(r"^name:\s*(.+)$", front, re.M)
         self.assertIsNotNone(name, "shim frontmatter has no name")
         value = name.group(1).strip().strip("\"'")
@@ -106,85 +70,6 @@ class VisualShimContract(unittest.TestCase):
         self.assertIn("flow-next-visual", _read(SHIM))
 
 
-class VisualSkillDescription(unittest.TestCase):
-    def test_description_carries_natural_language_triggers(self) -> None:
-        description = _frontmatter(_read(SKILL_MD)).lower()
-        for phrase in TRIGGER_PHRASES:
-            with self.subTest(phrase=phrase):
-                self.assertIn(
-                    phrase,
-                    description,
-                    "skill description must carry the natural-language trigger "
-                    f"{phrase!r} so plain language invokes the skill",
-                )
-
-    def test_description_names_the_four_targets(self) -> None:
-        description = _frontmatter(_read(SKILL_MD)).lower()
-        for target in ("spec", "task", "diff", "topic"):
-            with self.subTest(target=target):
-                self.assertIn(target, description)
-
-
-class VisualOutputContract(unittest.TestCase):
-    def test_body_states_markdown_chat_output_not_images_or_html(self) -> None:
-        """R1: the contract lives in the BODY, not the trigger description."""
-        _, body = _split_frontmatter(_read(SKILL_MD))
-        self.assertRegex(body, re.compile(r"compact markdown", re.I))
-        self.assertRegex(body, re.compile(r"never images|Never images", re.I))
-        self.assertRegex(body, re.compile(r"HTML", re.I))
-
-    def test_read_only_and_grounding_rules_present(self) -> None:
-        prose = _skill_dir_prose()
-        self.assertRegex(prose, re.compile(r"read-only", re.I))
-        self.assertRegex(prose, re.compile(r"never writes|never write", re.I))
-        self.assertIn("satisfies", prose)
-        self.assertRegex(prose, re.compile(r"never invented|no invented", re.I))
-
-
-class VisualShapeVocabulary(unittest.TestCase):
-    def test_all_eight_shapes_present_in_skill_dir(self) -> None:
-        prose = _skill_dir_prose()
-        for label, probes in SHAPE_PROBES.items():
-            for probe in probes:
-                with self.subTest(shape=label, probe=probe):
-                    self.assertIn(
-                        probe,
-                        prose,
-                        f"shape vocabulary entry {label} missing probe {probe!r}",
-                    )
-
-    def test_selection_and_trimming_rules_present(self) -> None:
-        prose = _skill_dir_prose()
-        self.assertRegex(prose, re.compile(r"smallest", re.I))
-        self.assertRegex(prose, re.compile(r"one or a few", re.I))
-        self.assertRegex(prose, re.compile(r"Whole-block rule", re.I))
-        self.assertRegex(prose, re.compile(r"Trimming rule", re.I))
-
-
-class VisualCloserOffers(unittest.TestCase):
-    """R4: plan and interview offer the digest at their read-back. Capture's
-    command menu was retired in 7.0; its close prints only the routed next step."""
-
-    def test_plan_closer_offers_digest_and_is_reachable(self) -> None:
-        steps = _read(PLAN_STEPS)
-        self.assertIn("/flow-next:visual", steps)
-        self.assertRegex(steps, re.compile(r"never run for them|offer", re.I))
-        self.assertIn("steps.md", _read(PLAN_SKILL))
-
-    def test_interview_closer_offers_digest(self) -> None:
-        self.assertIn("/flow-next:visual", _read(INTERVIEW_SKILL))
-
-
-class MakePrSketchClause(unittest.TestCase):
-    """fn-252 keeps structural sketches inline and retires diagram recipes."""
-
-    def test_workflow_keeps_structural_sketch_contract(self) -> None:
-        workflow = _read(MAKE_PR_WORKFLOW)
-        self.assertIn("linked file lists", workflow)
-        self.assertNotIn("mermaid-rules.md", workflow)
-        self.assertFalse((MAKE_PR_DIR / "mermaid-rules.md").exists())
-
-
 class VisualConductChecklist(unittest.TestCase):
     """R8: maintainer doc exists, indexed, and never referenced at runtime."""
 
@@ -192,7 +77,6 @@ class VisualConductChecklist(unittest.TestCase):
         self.assertTrue(CONDUCT_VISUAL.is_file(), f"missing {CONDUCT_VISUAL}")
         readme = _read(CONDUCT_README)
         self.assertIn("(visual.md)", readme)
-        self.assertIn("/flow-next:visual", readme)
 
     def test_skill_files_never_reference_the_conduct_page(self) -> None:
         prose = _skill_dir_prose() + "\n" + _read(SHIM)

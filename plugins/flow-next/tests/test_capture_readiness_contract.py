@@ -26,9 +26,8 @@ MARK_READY_LINK = "[references/mark-ready.md](references/mark-ready.md)"
 
 
 class CaptureReadinessContract(unittest.TestCase):
-    # Prose-quality pins removed 2026-08-07 - judged via .flow/criteria.md G1,
-    # not grep. What remains: executable bash gates, option/field tokens, and
-    # the autofix never-writes-readiness guard.
+    # Only the executable gate lines and the links that reach them are
+    # checked; the surrounding prose is not pinned.
 
     def test_rewrite_offer_follows_target_state(self) -> None:
         for directory in (CANONICAL, MIRROR):
@@ -54,29 +53,16 @@ class CaptureReadinessContract(unittest.TestCase):
                 mark_ready = _ref(directory, "mark-ready.md")
                 self.assertIn("tracker.readyState", mark_ready)
                 self.assertIn('&& -z "$READY_STATE"', mark_ready)
-                # Spine keeps the tracker-authority branch visible: when the
-                # gate is silent because tracker.readyState is configured, no
-                # readiness question is ever offered.
-                self.assertIn("tracker.readyState", _read(directory, "workflow.md"))
 
-    def test_option_tokens_reset_and_autofix_invariants(self) -> None:
+    def test_rewrite_resets_readiness(self) -> None:
         for directory in (CANONICAL, MIRROR):
             with self.subTest(directory=directory):
-                mark_ready = _ref(directory, "mark-ready.md")
-                self.assertIn("`mark-ready`", mark_ready)
-                self.assertIn("`keep-draft`", mark_ready)
-                self.assertIn("never writes readiness", mark_ready)
-                # Autofix never writes readiness either.
-                self.assertIn(
-                    "never writes readiness", _ref(directory, "autofix-mode.md")
-                )
-                # The rewrite branch's idempotent readiness reset.
                 self.assertIn(
                     'spec unready "$SPEC_ID"', _ref(directory, "rewrite-mode.md")
                 )
-                workflow = _read(directory, "workflow.md")
-                self.assertIn("`mark-ready`", workflow)
-                self.assertIn("references/rewrite-mode.md", workflow)
+                self.assertIn(
+                    "references/rewrite-mode.md", _read(directory, "workflow.md")
+                )
 
 
 if __name__ == "__main__":

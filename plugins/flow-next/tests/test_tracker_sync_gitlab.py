@@ -1,11 +1,9 @@
-"""GitLab adapter flowctl-plumbing + ceremony-wiring tests (fn-69.1).
+"""GitLab adapter flowctl-plumbing tests (fn-69.1).
 
-This task adds `tracker.type: gitlab` as a real, activatable tracker. It is
-DETERMINISTIC flowctl plumbing only — the enum, the config schema defaults, and
-the `set-tracker-id` identifier validator — plus the discovery-ceremony wiring
-(prose in steps.md / SKILL.md, asserted by presence). No transport code lives
-here (that is the gitlab.md adapter prose in fn-69.2); these tests never invoke
-a live `glab`.
+This task adds `tracker.type: gitlab` as a real, activatable tracker. These
+tests cover the DETERMINISTIC flowctl plumbing only — the enum, the config
+schema defaults, and the `set-tracker-id` identifier validator; they never
+invoke a live `glab`.
 
 Asserts:
   * Activation — `tracker.type: gitlab` flips `tracker_sync_active()` true via
@@ -16,11 +14,6 @@ Asserts:
     `<project>#<iid>` form INCLUDING nested `group/subgroup/project#12` plus the
     bare `#<iid>` form, and rejects `group/#12` (empty segment), `#0` (non-positive
     iid), and the existing malformed forms; the Linear handle path stays strict.
-  * Ceremony wiring (R3 + R5) — steps.md / SKILL.md carry the GitLab probe row,
-    the GitLab ASK option, the `tracker.type gitlab` + `perTracker.project`/`host`
-    config-writes, and the readiness-label ceremony branch (pre-create +
-    tolerate-already-exists). Ceremony is prose, so we assert presence/grep, not
-    executable shape. The "four signals" probe wording is updated to FIVE.
 
 Run:
     python3 -m unittest discover -s plugins/flow-next/tests -v
@@ -49,11 +42,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
 HERE = Path(__file__).resolve()
 FLOWCTL_PY = HERE.parent.parent / "scripts" / "flowctl.py"
-REPO_ROOT = HERE.parents[3]
-TRACKER_SKILL = REPO_ROOT / "plugins" / "flow-next" / "skills" / "flow-next-tracker-sync"
-STEPS_MD = TRACKER_SKILL / "steps.md"
-SKILL_MD = TRACKER_SKILL / "SKILL.md"
-GITLAB_REF = TRACKER_SKILL / "references" / "gitlab.md"
 
 
 def _load_flowctl(name: str) -> Any:
@@ -242,31 +230,6 @@ class GitlabIdentifierValidatorTestCase(unittest.TestCase):
         with self.assertRaises(SystemExit):
             self._set_id(spec_id, "uuid-x", identifier="wor-17-slug")
         self.assertIsNone(self._state(spec_id)["id"])
-
-
-class GitlabCeremonyWiringTestCase(unittest.TestCase):
-    """The skill owns choices; flowctl owns GitLab transport mechanics."""
-
-    @classmethod
-    def setUpClass(cls) -> None:
-        cls.steps = STEPS_MD.read_text(encoding="utf-8")
-        cls.skill = SKILL_MD.read_text(encoding="utf-8")
-        cls.gitlab = GITLAB_REF.read_text(encoding="utf-8")
-
-    def test_discovery_retains_confirmation_judgment(self) -> None:
-        self.assertIn("No confirmation means no write", self.steps)
-        self.assertIn("Discovery ceremony", self.skill)
-
-    def test_gitlab_reference_describes_transport_shape_only(self) -> None:
-        compact = " ".join(self.gitlab.split())
-        self.assertIn("authenticated GitLab CLI transport", self.gitlab)
-        self.assertIn("Skill prose never builds GitLab requests", compact)
-        self.assertNotIn("glab api", self.gitlab)
-        self.assertNotIn("POST /projects", self.gitlab)
-
-    def test_gitlab_reference_preserves_self_managed_resolution(self) -> None:
-        self.assertIn("Self-managed host, protocol, port", self.gitlab)
-        self.assertIn("resolved destination", self.gitlab)
 
 
 if __name__ == "__main__":

@@ -182,34 +182,9 @@ class TerminalGrammar(unittest.TestCase):
         for token in ("SEEDED", "CLEAN", "CHANGED", "BLOCKED", "REFUSED"):
             self.assertIn(token, skill)
 
-    def test_grammar_is_bound_to_a_last_line_contract(self) -> None:
-        # Structural relation, not a prose pin: the section that carries the
-        # grammar must also carry the "last line" token, so removing the
-        # last-line contract (while keeping the grammar) fails here.
-        skill = _read(SKILL_MD)
-        heading = skill.find("## Terminal line")
-        self.assertNotEqual(heading, -1, "## Terminal line section missing")
-        nxt = skill.find("\n## ", heading + 1)
-        section = skill[heading : nxt if nxt != -1 else len(skill)]
-        self.assertIn(VERDICT_GRAMMAR, section)
-        self.assertIn("last line", section)
-
 
 class MaintainShipStep(unittest.TestCase):
-    """#495: ship names resolved at entry, the create seam, proven edits kept."""
-
-    def _span(self, text: str, start: str, end: str) -> str:
-        i = text.find(start)
-        self.assertNotEqual(i, -1, f"{start!r} missing")
-        j = text.find(end, i + len(start))
-        self.assertNotEqual(j, -1, f"{end!r} missing after {start!r}")
-        return text[i:j]
-
-    def test_ship_names_are_resolved_in_the_entry_gate(self) -> None:
-        # Structural relation: the ship-name step sits before Phase 1, so a
-        # missing ticket key stops the run before any proof work.
-        gate = self._span(_read(MAINTAIN_MD), "**Entry gate", "## Phase 1")
-        self.assertIn("**Ship names.**", gate)
+    """#495: the PR create fence honours the create seam."""
 
     @unittest.skipUnless(_BASH, "bash required to execute the create fence")
     def test_pr_create_fence_honours_the_create_seam(self) -> None:
@@ -229,10 +204,6 @@ class MaintainShipStep(unittest.TestCase):
             args = log.read_text(encoding="utf-8").splitlines()
         self.assertIn("--title", args)
         self.assertIn("--body-file", args)
-
-    def test_failed_ship_step_keeps_proven_edits(self) -> None:
-        blocked = self._span(_read(MAINTAIN_MD), "### BLOCKED", "### Terminal line")
-        self.assertIn("restores nothing", blocked)
 
 
 class ShimFrontmatter(unittest.TestCase):

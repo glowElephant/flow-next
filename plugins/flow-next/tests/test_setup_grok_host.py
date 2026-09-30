@@ -317,41 +317,5 @@ class TestMirrorUnconditionalCodex(unittest.TestCase):
             self.assertEqual(_run_detection(self.bash, env), "codex")
 
 
-class TestGrokProfileContract(unittest.TestCase):
-    """fn-126 R2 (codex impl-review P1): lock the FULL Grok profile in the
-    canonical setup workflow (not just detection), via exact-substring checks
-    against known markers — so half-configured Grok support fails the test."""
-
-    @classmethod
-    def setUpClass(cls) -> None:
-        cls.wf = _read(CANONICAL_WF)
-
-    def test_generic_review_menu_excludes_grok(self) -> None:
-        # Catch-all review menu must exclude cursor AND grok, else grok
-        # double-matches the dedicated grok menu and may emit a host-less menu.
-        self.assertNotIn("**When `PLATFORM` is NOT `cursor`**", self.wf)
-        self.assertIn("neither `cursor` nor `grok`", self.wf)
-
-    def test_dedicated_grok_review_menu(self) -> None:
-        self.assertIn("When `PLATFORM=grok`", self.wf)
-
-    def test_grok_skips_codex_agents_copy(self) -> None:
-        self.assertIn("Grok never copies `.codex/agents`", self.wf)
-
-    def test_grok_resolves_flowctl_without_copies(self) -> None:
-        # fn-197: the old copy-mode CONVERT recommendation is gone; Grok
-        # resolves flowctl from the plugin install, nothing is copied.
-        self.assertIn(
-            "flowctl resolves from the plugin install via the skill's own "
-            "absolute path (Grok exposes no plugin-root env vars) — nothing "
-            "is copied into the repo",
-            self.wf,
-        )
-        self.assertNotIn("recommend CONVERT", self.wf)
-
-    def test_grok_snippet_target_claude_md(self) -> None:
-        self.assertIn("lifecycle snippet targets CLAUDE.md", self.wf)
-
-
 if __name__ == "__main__":
     unittest.main()

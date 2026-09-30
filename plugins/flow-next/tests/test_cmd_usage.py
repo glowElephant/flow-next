@@ -24,7 +24,6 @@ ROOT = Path(__file__).resolve().parents[1]
 FLOWCTL_PY = ROOT / "scripts" / "flowctl.py"
 BUNDLED_USAGE = ROOT / "templates" / "usage.md"
 
-USAGE_GUIDE_HEADER = "# Flow-Next Usage Guide"
 NO_GUIDE_MSG = "No usage guide found"
 LOCAL_SENTINEL = "LOCAL COPY SENTINEL"
 
@@ -53,9 +52,8 @@ class TestCmdUsage(unittest.TestCase):
             result = _run_usage(FLOWCTL_PY, cwd)
 
         self.assertEqual(result.returncode, 0, msg=result.stderr)
-        self.assertTrue(
-            result.stdout.startswith(USAGE_GUIDE_HEADER),
-            f"stdout should start with bundled guide header, got: {result.stdout[:80]!r}",
+        self.assertEqual(
+            result.stdout, BUNDLED_USAGE.read_text(encoding="utf-8")
         )
 
     def test_flow_fallback_when_bundled_missing(self) -> None:

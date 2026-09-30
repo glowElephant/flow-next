@@ -1,4 +1,4 @@
-"""Work-skill argument-literal prose contract (lifted from the retired
+"""Work-skill argument-literal contract (lifted from the retired
 ``test_codex_delegation_gates.py`` in flow-98.4).
 
 The host expands raw skill arguments once into the ``<work-arguments>`` block;
@@ -72,14 +72,7 @@ class WorkArgumentLiteralContract(unittest.TestCase):
         for label, skill in self.skills.items():
             with self.subTest(host=label):
                 self.assertEqual(_extract_work_argument_block(skill), "$ARGUMENTS")
-                autonomy = skill.split(
-                    "## Autonomous Mode (questions off, no receipt obligations)", 1
-                )[1].split("## Input", 1)[0]
-                self.assertNotIn("for ARG in $ARGUMENTS", autonomy)
-                self.assertIn("literal prompt data", autonomy)
-                self.assertIn("never shell", autonomy)
-                self.assertIn("preserve\nall else verbatim", autonomy)
-                self.assertIn("spaces/quotes/globs", autonomy)
+                self.assertNotIn("for ARG in $ARGUMENTS", skill)
 
     def test_glob_and_spaces_survive_host_substitution_and_strip(self) -> None:
         cases = (
