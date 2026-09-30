@@ -55,8 +55,7 @@ plan-sync on, has broken this.
 
 **Wave route.** In SPEC_MODE, inspect the whole ready frontier and prefer a
 concurrent safe subset. In SINGLE_TASK_MODE, the selected wave is always the
-requested task alone. Every task gets a fresh-context worker, except a run with a
-single task to implement, which the conductor implements inline (3c).
+requested task alone. Every task gets a fresh-context worker.
 
 ### 3a. Inspect Ready Frontier and Select a Wave
 

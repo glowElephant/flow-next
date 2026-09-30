@@ -83,7 +83,7 @@ model family and fail closed when no cross-family pin is available.
 **Hard invariants:**
 - **The coordinator never authors a verdict.** A SHIP with no backend response behind it has broken this.
 - **One backend per review.** A transcript that dispatches a second backend after the first answered has broken this.
-- **Review is never skipped without consent.** A `none` backend that ends the run without the user's consent has broken this. A caller that skips a change under the working-rules.md risk rule records a `stage:` line instead of invoking this skill; that skip needs no consent.
+- **Review is never skipped silently.** A `none` backend that ends the run without saying so has broken this. A caller that skips a change under the working-rules.md risk rule records a `stage:` line instead of invoking this skill; that skip needs no question.
 
 ## Input
 
