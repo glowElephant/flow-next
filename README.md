@@ -56,7 +56,7 @@ Unattended, with `--until=merge`, a large feature went from spec to a merged pul
 
 Writing the code got cheap. Everything around it didn't: pinning down what was actually asked, keeping the build aligned with it, checking the result, and explaining the diff to whoever reviews it. That work is where agent-written code quietly goes wrong, and it's the part I wanted to make repeatable.
 
-So the spec lives in `.flow/specs/<id>.md` instead of a chat that scrolls away. The build reads it before it touches code. A model from another family checks the change, because a model reviewing its own work shares its own blind spots. And the PR shows which criterion each change satisfies and what proves it. It can't promise that the codebase stays easy to maintain. That still takes people who care about it.
+So the spec lives in `.flow/specs/<id>.md` instead of a chat that scrolls away. The build reads it before it touches code. When the risk calls for it, a model from another family checks the change, because a model reviewing its own work shares its own blind spots. And the PR shows which criterion each change satisfies and what proves it. It can't promise that the codebase stays easy to maintain. That still takes people who care about it.
 
 ---
 
