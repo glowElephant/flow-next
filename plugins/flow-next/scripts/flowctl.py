@@ -49815,6 +49815,11 @@ def _triage_run_copilot_judge(
         "-s",
         "--no-ask-user",
         "--allow-all-tools",
+        # Read-only, like the copilot reviewer: deny rules win over --allow-all-tools.
+        "--deny-tool",
+        "write",
+        "--deny-tool",
+        "shell",
         "--add-dir",
         str(repo_root),
         "--disable-builtin-mcps",
