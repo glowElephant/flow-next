@@ -93,6 +93,8 @@ FLOWCTL="${DROID_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/flowctl"
 
 flowctl computes the verdict (the worst draw wins; failed draws do not vote) and writes the
 receipt. Report `VERDICT=<verdict>` with the kept findings; your own reading never changes it.
+Finalize before you change or commit anything: a commit moves HEAD past the reviewed head,
+flowctl refuses the round, and the retry is a full fresh review instead of the scoped re-review.
 
 ## 4. Act on the verdict
 
