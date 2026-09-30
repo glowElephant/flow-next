@@ -19,9 +19,10 @@ intent. With no argument, read [references/no-argument.md](references/no-argumen
 
 ## Step 2: Route
 
-Read [references/route-matrix.md](references/route-matrix.md). Once per run, check whether the
-judge can run (this never prints the key); when it prints `judge: off`, skip every intake route,
-fork and QA judge call for the rest of the run:
+Read [references/route-matrix.md](references/route-matrix.md). Routing never asks the judge,
+so a run with a TypeSafe key and one without take the same route. Once per run, check whether the
+judge can run for the fork and QA calls (this never prints the key); when it prints `judge: off`,
+skip those calls for the rest of the run:
 
 ```bash
 JUDGE=on
@@ -30,34 +31,18 @@ JUDGE=on
 [ "$JUDGE" = off ] && echo "judge: off"
 ```
 
-No `judge: off` line means the judge is on: make the intake route call below before choosing a
-route, and never write "judge off" in a Route line unless the check printed it.
-
 Then route once per hop (in auto mode, use the route `pilot snapshot` returned instead). A spec
-always gets the route call, judge on or off: its lifecycle is decided in code and needs no key.
-Intake without a spec calls it only when the judge is on:
+gets the route call, which decides its lifecycle in code; run it without the key:
 
 ```bash
-KEEP='{available, reason, pr_probe_failed, decision, kind: (.answers.kind // {} | {choice, confidence}),
-  ui_observable_criteria: .answers.ui_observable_criteria}'
-"$FLOWCTL" judge --preset route --spec <spec-id> --json | jq -c "$KEEP"
-# Intake without a spec: the state file is {"view": "intent", "intent": "<text>"}
-# or {"view": "brief", "spec_title": "<title>", "spec_body": "<body>"}.
-"$FLOWCTL" judge --preset route --state-file <route-state.json> --json | jq -c "$KEEP"
+TYPESAFE_API_KEY= "$FLOWCTL" judge --preset route --spec <spec-id> --json | jq -c '{available, reason, pr_probe_failed, decision}'
 ```
 
 For a spec, code applies lifecycle order: an observed PR goes to landing, a closed spec without a
 PR to you, all tasks done to QA and make-pr, tasks to the recorded work route, a ready zero-task
-spec to direct or plan. When `decision.met` is true, use `decision.value`. At intake, a kind at or
-above the floor (`decision.met`) is Jev's decision, `tiny` included; take it unless the text or
-the repository shows something it contradicts, and then say why in one line. Below the floor you
-decide from the matrix among `decision.candidates`; with the judge off or unavailable you decide
-from the matrix alone. `none_of_the_above` is always yours. Print one line per hop:
-`Route: <route> (code)`, `Route: <kind> (jev <confidence>)`, `Route: <route> (host over jev <kind>
-<confidence>: <why>)`, `Route: host (jev below floor: <top three>)`, `Route: <route> (host)` with
-the judge off, or `Route: host (jev-unavailable(<reason>))`. A `research_recommended` decision runs
-the research-only refine pass before work; `defect_repro` says whether a reproduction was provided
-or is still needed. The QA reference reuses this hop's `ui_observable_criteria` answer.
+spec to direct or plan. When `decision.met` is true, use `decision.value`. Intake without a spec
+is yours: decide from the matrix. Print one line per hop: `Route: <route> (code)` or
+`Route: <route> (host)`.
 
 A ready spec with no tasks and no recorded route: read
 [references/plan-vs-no-plan.md](references/plan-vs-no-plan.md), resolve the rule, and record it

@@ -47,23 +47,24 @@ The model is fixed to `jev-latest`; floors are preset constants.
 | Decision | With a key | Host's part |
 |---|---|---|
 | Live spec lifecycle (PR tail, all done, recorded work route, direct or plan) | Code decides; Jev is not asked | None; the route is printed as `(code)` |
-| Intake route kind, `tiny` included | Jev decides at confidence >= 0.7 | May override on contrary evidence in the text or repository, saying why in one line; below the floor the host decides among the top three kinds |
+| Intake route kind, `tiny` included | Jev is not asked | The host decides from the route matrix, so a keyless run takes the same route |
 | QA under `pipeline.qa=auto`: UI-observable criteria | Jev decides at probability >= 0.5 | May override when the acceptance plainly contradicts it, saying why in one line |
 | QA under `pipeline.qa=auto`: startable target | Code resolves a documented target | None; no target is invented |
-| Research before work on a ready spec | The unfamiliar-dependency Noul sets `research_recommended` | Applies the route matrix's read-first rule |
+| Research before work on a ready spec | Jev is not asked | Applies the route matrix's read-first rule |
 | Fork: observable or preference | Optional hint on the host's own fork sentence | Decides; a hint never removes a fork the host found |
 | Memory relevance | Reorders the top 15 BM25 hits; drops none | Picks the entries that apply from titles and snippets |
 | Task tier | See the tier preset below | Unchanged by this contract |
 
-A host override prints the Jev answer beside the host's choice, for example
-`Route: build (host over jev tiny 0.81: the text names three modules)`.
+Routing never asks Jev: flow runs the live-spec route call without the key, so a run with a key
+and one without take the same route. A host override of a QA answer prints the Jev answer beside
+the host's choice, for example `(host over jev ui 0.62: the criteria are all CLI output)`.
 
 ## Runs without a key
 
 `/flow-next:flow` checks once per run whether the judge can run: the key is
 present (checked without printing it) and `judge.enabled` is not `false`. When
-it cannot, flow prints `judge: off` once and makes no intake route, fork, or
-QA judge call for the rest of the run. The live-spec route call still runs: its
+it cannot, flow prints `judge: off` once and makes no fork or QA judge call for
+the rest of the run. The live-spec route call still runs: its
 lifecycle decision and PR observation come from code and return with
 `available: false, reason: no_key`. Memory search runs the same command either
 way; without a key `--rerank` returns BM25 order and sends nothing.
@@ -243,11 +244,7 @@ Callers expose which path they took:
 ```text
 judge: off
 Route: work_planned (code)
-Route: defect (jev 0.91)
-Route: build (host over jev tiny 0.81: the text names three modules)
-Route: host (jev below floor: build 0.52, tiny 0.31, defect 0.10)
 Route: build (host)
-Route: host (jev-unavailable(timeout))
 stage: qa - skipped(config: pipeline.qa=auto: no UI-observable criteria (jev 0.12))
 stage: qa - ran (jev ui 0.84, target: <cmd>)
 fork-gate: observable (host)
