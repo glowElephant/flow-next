@@ -321,7 +321,7 @@ readiness change only when the flag actually changed.
 - **Never write readiness back to the tracker.** No `setStatus`, no label
   add/remove is ever driven by the local `ready` flag. A local `flowctl spec
   ready` on a tracker-connected repo is overwritten by the next sync — the
-  tracker is authoritative (which is why the capture/interview mark-ready prompt
+  tracker is authoritative (which is why the capture/refine mark-ready prompt
   is gated off when `readyState` is configured).
 - **Readiness receipts are local-only** — never posted as tracker comments
   (readiness is not a lifecycle comment; tracker-side comment text also gets

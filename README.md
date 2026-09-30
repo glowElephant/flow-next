@@ -18,7 +18,7 @@ Flow-Next runs inside your coding agent. Give it anything you need to fix, impro
 
 | You say | What Flow-Next does |
 |---|---|
-| "This fails: `<pasted stack trace>`" | Reproduces it as a failing test, makes that test the requirement, fixes it, gets the fix reviewed, opens a draft PR. |
+| "This fails: `<pasted stack trace>`" | Reproduces it as a failing test, makes that test the requirement, fixes it, gets the fix reviewed, opens a PR. |
 | "Add passwordless login" (or the conversation you just had about it) | Captures a spec with numbered acceptance criteria, builds it, reviews it, opens a PR that maps every change to a criterion. |
 | "The /reports page takes four seconds, it should take under one" | Measures on a real surface before any edit. The before-and-after numbers are the evidence. |
 | "Extract the pricing rules into their own module" | Pins a characterization test first, so the refactor is proven to keep behaviour. |

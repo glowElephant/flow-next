@@ -136,7 +136,7 @@ the agent folds tracker edits into Flow and judges conflicts.
   **prose, not a promoted requirement** — fold it as prose under the right section;
   do not allocate a new R-ID, do not add a coverage-table row, do not stamp a
   `[user]`/`[paraphrase]`/`[inferred]` source tag. R-ID allocation and source
-  tagging are flow-authoring acts (capture/interview/plan), not sync acts. The
+  tagging are flow-authoring acts (capture/refine/plan), not sync acts. The
   bridge **projects**; it does not author requirements.
 - Tracker free text that matches no existing section folds into the nearest
   sensible section (or a `## Notes` section) — never dropped, never invented into a

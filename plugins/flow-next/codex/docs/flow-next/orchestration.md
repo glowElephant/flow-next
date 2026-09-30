@@ -275,7 +275,9 @@ and scoped to the fix commits: the author's `Declined #<n>: <reason>` commit lin
 the reviewer withdraw a finding, and only a problem the fixes introduced can block.
 Unattended runs (`flow --auto`, any destination) and a request to review until SHIP loop
 further, bounded by the round cap and the stall check; the author may end that loop over
-declined findings below Major, recording each disagreement in the pull request.
+declined findings below Major, recording each disagreement in the pull request. The trade-off:
+looping confirms every fix, which suits unattended runs and weaker implementing models, but
+costs rounds and invites hardening scope; one scoped re-review keeps an attended run short.
 
 **Rule of thumb: the model that writes is never the model that reviews.** Route the reviewer to a different family than your session model and blind spots stop being correlated.
 

@@ -35,7 +35,7 @@ $FLOWCTL spec create --tracker-first --tracker-identifier "WOR-17" --tracker-id 
 
 ### Flow-first — keep `fn-NN`, gain a resolvable alias
 
-A spec authored in flow (capture/interview/plan) keeps its sequential `fn-NN-slug` handle (project convention preserved). On push, the tracker key is stored in the single `tracker.identifier` field as a **resolvable alias**:
+A spec authored in flow (capture/refine/plan) keeps its sequential `fn-NN-slug` handle (project convention preserved). On push, the tracker key is stored in the single `tracker.identifier` field as a **resolvable alias**:
 
 ```bash
 $FLOWCTL sync set-tracker-id "fn-42-foo" "$ISSUE_UUID" --identifier "WOR-99" --url "$ISSUE_URL"
