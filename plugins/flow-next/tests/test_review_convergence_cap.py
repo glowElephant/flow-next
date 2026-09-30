@@ -1082,7 +1082,7 @@ class TestDeterministicCap(unittest.TestCase):
 # ------------- issue #279: combined finalize write transaction -------------
 
 
-class TestCombinedFinalizeWrite(unittest.TestCase):
+class _CombinedFinalizeWriteBase(unittest.TestCase):
     """issue #279: attempt ledger, denormalized status, and the SHIP cap
     reset must land in ONE atomic sidecar write on the in-process paths."""
 
@@ -1109,6 +1109,8 @@ class TestCombinedFinalizeWrite(unittest.TestCase):
     def _reserve(self, kind: str = "plan") -> None:
         flowctl.enforce_and_increment_review_cap(self.spec_id, kind)
 
+
+class TestCombinedFinalizeWrite(_CombinedFinalizeWriteBase):
     def test_ship_finalize_is_one_atomic_write(self):
         """SHIP with finalize + reset: attempt row appended, plan status set,
         rounds zeroed - all via exactly one atomic_write_json call."""
@@ -2453,7 +2455,7 @@ class TestReviewRoundsCliAliasCanonicalization(unittest.TestCase):
         self.assertEqual(rounds[self.task_id], 2)
 
 
-class TestReviewedHeadShaBinding(TestCombinedFinalizeWrite):
+class TestReviewedHeadShaBinding(_CombinedFinalizeWriteBase):
     """The attempt row records the sha the review OBSERVED when supplied
     (pre-dispatch snapshot beats finalize-time HEAD)."""
 
@@ -2472,7 +2474,7 @@ class TestReviewedHeadShaBinding(TestCombinedFinalizeWrite):
         )
 
 
-class TestAttemptRowWorkVolumeAndProvenance(TestCombinedFinalizeWrite):
+class TestAttemptRowWorkVolumeAndProvenance(_CombinedFinalizeWriteBase):
     """fn-183 (#312): a row must say how the verdict was produced.
 
     Work volume (output bytes, and a tool-call count only where one was
@@ -2604,7 +2606,7 @@ class TestAttemptRowWorkVolumeAndProvenance(TestCombinedFinalizeWrite):
         self.assertEqual(new["base_sha"], "c" * 40)
 
 
-class TestAttemptRowResolvedModel(TestCombinedFinalizeWrite):
+class TestAttemptRowResolvedModel(_CombinedFinalizeWriteBase):
     """fn-193 R3 (#338): the row records WHICH model produced the verdict.
 
     The model cannot be re-derived from config after the fact - the fallback

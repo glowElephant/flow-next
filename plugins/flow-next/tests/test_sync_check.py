@@ -63,7 +63,7 @@ def _future_iso(hours: int = 1) -> str:
     )
 
 
-class SyncCheckTestCase(unittest.TestCase):
+class _SyncCheckBase(unittest.TestCase):
     def setUp(self) -> None:
         self.tmpdir = Path(tempfile.mkdtemp())
         self.prev_cwd = Path.cwd()
@@ -133,6 +133,8 @@ class SyncCheckTestCase(unittest.TestCase):
             self.flowctl.cmd_sync_check(ns)
         return buf.getvalue()
 
+
+class SyncCheckTestCase(_SyncCheckBase):
     # --- R8: zero-overhead inactive path -------------------------------------
 
     def test_inactive_bridge_prints_nothing_plain_and_json(self) -> None:
@@ -374,7 +376,7 @@ class SyncCheckTestCase(unittest.TestCase):
         self.assertEqual(res["count"], 0)
 
 
-class CompletionReviewEventKeyParity(SyncCheckTestCase):
+class CompletionReviewEventKeyParity(_SyncCheckBase):
     """fn-90 re-review regression (2.9.1): the completion-review event tag must
     match the TOP-LEVEL `tracker.perEvent.completionReview` leaf. The prose used
     to dispatch/audit `work.completionReview`, which resolves

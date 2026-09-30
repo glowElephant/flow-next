@@ -61,7 +61,7 @@ def _load_flowctl() -> Any:
     return mod
 
 
-class TaskCreateFilesTestCase(unittest.TestCase):
+class _TaskCreateFilesBase(unittest.TestCase):
     def setUp(self) -> None:
         self.tmpdir = Path(tempfile.mkdtemp())
         self.prev_cwd = Path.cwd()
@@ -166,6 +166,15 @@ class TaskCreateFilesTestCase(unittest.TestCase):
             "## Evidence\n- Commits:\n- Tests:\n- PRs:\n"
         )
 
+    # --- pre-write ordering + file error cases -----------------------------------
+
+    def _assert_no_orphan_writes(self) -> None:
+        tasks_dir = self.tmpdir / ".flow" / "tasks"
+        leftovers = sorted(p.name for p in tasks_dir.glob("*")) if tasks_dir.exists() else []
+        self.assertEqual(leftovers, [])
+
+
+class TaskCreateFilesTestCase(_TaskCreateFilesBase):
     # --- byte-compat regression (2.20.0) ---------------------------------------
 
     def test_flagless_create_byte_identical(self) -> None:
@@ -313,13 +322,6 @@ class TaskCreateFilesTestCase(unittest.TestCase):
             self.flowctl._export_parse_task_satisfies(self._task_md(via_create)),
             ["R1", "R4a"],
         )
-
-    # --- pre-write ordering + file error cases -----------------------------------
-
-    def _assert_no_orphan_writes(self) -> None:
-        tasks_dir = self.tmpdir / ".flow" / "tasks"
-        leftovers = sorted(p.name for p in tasks_dir.glob("*")) if tasks_dir.exists() else []
-        self.assertEqual(leftovers, [])
 
     def test_missing_description_file_errors_before_write(self) -> None:
         err = self._create_expect_error(
@@ -536,7 +538,7 @@ class TaskCreateFilesTestCase(unittest.TestCase):
                     self.assertTrue(md.startswith(f"# {result['id']}"))
 
 
-class RequireEmptySpecTestCase(TaskCreateFilesTestCase):
+class RequireEmptySpecTestCase(_TaskCreateFilesBase):
     """fn-209: `--require-empty-spec` — atomic zero-task precondition.
 
     The work/pilot direct route mints exactly one implicit task; two
@@ -701,7 +703,7 @@ class RequireEmptySpecTestCase(TaskCreateFilesTestCase):
         self.assertIn("--require-empty-spec", json.loads(buf.getvalue())["error"])
 
 
-class ExcusedReviewInvalidationTestCase(TaskCreateFilesTestCase):
+class ExcusedReviewInvalidationTestCase(_TaskCreateFilesBase):
     """fn-205 follow-up: `not_required` is a verdict about a spec shape.
 
     Adding a task (single or bulk) or rewriting the plan changes the review
