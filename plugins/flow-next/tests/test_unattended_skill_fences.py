@@ -60,8 +60,52 @@ class UnattendedSkillFences(unittest.TestCase):
                 self.assertEqual(result.stdout, expected)
                 self.assertNotIn("--review=ASK", result.stdout)
 
-    def test_triage_only_runs_on_successful_fanout_route(self):
-        code = fence("flow-next-impl-review/SKILL.md", 'if [[ -z "${TRIAGE_DISABLED:-}"')
+    def test_codex_step_triages_only_a_fanout_route(self):
+        """impl-review SKILL.md step 2: route first, triage only on fanout."""
+        code = fence("flow-next-impl-review/SKILL.md", "triage-skip")
+        code = code.replace('REVIEW_ID="<literal or empty>"', 'REVIEW_ID="fn-1.1"')
+        code = code.replace('DIFF_BASE="<literal>"', 'DIFF_BASE="abc123"')
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "scripts").mkdir()
+            stub = root / "scripts" / "flowctl"
+            stub.write_text(
+                "#!/usr/bin/env bash\n"
+                'case "$1" in\n'
+                "  review-route)\n"
+                "    printf '{\"action\":\"%s\",\"task_id\":\"fn-1.1\",\"receipt_path\":\"%s\",\"message\":\"stopped\"}' \"$ACTION\" \"$RECEIPT\"\n"
+                '    exit "$PROBE_RC" ;;\n'
+                "  triage-skip)\n"
+                '    [ "$TRIAGE_RC" = 0 ] || exit 1\n'
+                "    printf '{\"verdict\":\"SHIP\"}' > \"$RECEIPT\"\n"
+                "    printf '{\"reason\":\"docs only\"}' ;;\n"
+                "  codex) echo FULL_REVIEW ;;\n"
+                "esac\n",
+                encoding="utf-8",
+            )
+            stub.chmod(0o755)
+            receipt = root / "receipt.json"
+            before = '{"verdict":"NEEDS_WORK"}'
+            # (action, route rc, triage rc) -> (exit ok, skipped, full review)
+            for action, route_rc, triage_rc, ok, skipped, full in (
+                ("fanout", "0", "0", True, True, False),
+                ("fanout", "0", "1", True, False, True),
+                ("fix-then-rereview", "0", "0", True, False, False),
+                ("stop", "0", "0", False, False, False),
+                ("fanout", "2", "0", False, False, False),
+            ):
+                with self.subTest(action=action, route_rc=route_rc, triage_rc=triage_rc):
+                    receipt.write_text(before, encoding="utf-8")
+                    result = self.shell(code, DROID_PLUGIN_ROOT=str(root), ACTION=action,
+                                        PROBE_RC=route_rc, TRIAGE_RC=triage_rc, RECEIPT=str(receipt))
+                    self.assertEqual(result.returncode == 0, ok, result.stdout + result.stderr)
+                    self.assertEqual("VERDICT=SHIP" in result.stdout, skipped)
+                    self.assertEqual("FULL_REVIEW" in result.stdout, full)
+                    if not skipped:
+                        self.assertEqual(receipt.read_text(encoding="utf-8"), before)
+
+    def test_other_paths_triage_only_runs_on_successful_fanout_route(self):
+        code = fence("flow-next-impl-review/other-paths.md", 'if [[ -z "${TRIAGE_DISABLED:-}"')
         with tempfile.TemporaryDirectory() as tmp:
             receipt = Path(tmp) / "receipt.json"
             before = '{"verdict":"NEEDS_WORK"}'

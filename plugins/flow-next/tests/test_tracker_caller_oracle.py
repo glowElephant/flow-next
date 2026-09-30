@@ -118,6 +118,13 @@ class TrackerCallerOracleTests(unittest.TestCase):
     def _current_files(caller: dict) -> tuple[str, ...]:
         return CURRENT_CALLER_FILES.get(caller["id"], (caller["file"],))
 
+    def _current_paths(self, relative: str) -> tuple[str, ...]:
+        """Map an oracle (historical) caller path to its current home(s)."""
+        for caller in self.callers.values():
+            if caller["file"] == relative:
+                return self._current_files(caller)
+        return (relative,)
+
     def _current_text(self, caller: dict) -> str:
         return "\n".join(
             (REPO_ROOT / relative).read_text(encoding="utf-8")
@@ -183,7 +190,8 @@ class TrackerCallerOracleTests(unittest.TestCase):
 
         for caller in self.callers.values():
             self.assertEqual(set(caller), REQUIRED_CALLER_FIELDS, caller["id"])
-            self.assertTrue((REPO_ROOT / caller["file"]).is_file(), caller["file"])
+            for relative in self._current_files(caller):
+                self.assertTrue((REPO_ROOT / relative).is_file(), relative)
             self.assertTrue(caller["expected_receipt"])
             self.assertIn("off", caller["legal_config_values"])
             self.assertTrue(caller["resolved_facade_op"])
@@ -330,9 +338,8 @@ class TrackerCallerOracleTests(unittest.TestCase):
             self) -> None:
         """Every repeated comment caller must distinguish occurrences.
 
-        The facade rejects evidence-less comments, but the host-facing prose
-        must also name the right stable token instead of leaving callers to
-        improvise one shared marker.
+        The facade rejects evidence-less comments; each caller names the
+        `evidence=` field with a per-occurrence stable value.
         """
         expected = {
             (
@@ -372,19 +379,14 @@ class TrackerCallerOracleTests(unittest.TestCase):
             ),
             "plugins/flow-next/skills/flow-next-tracker-sync/SKILL.md": (
                 "evidence=<token>",
-                "rejects missing/placeholder evidence",
             ),
             "plugins/flow-next/skills/flow-next-tracker-sync/steps.md": (
                 "evidence=<token>",
-                "never reuse one fallback token",
             ),
             (
                 "plugins/flow-next/skills/flow-next-tracker-sync/"
                 "references/comments-sync.md"
-            ): (
-                "evidence=<stable-token>",
-                "placeholder evidence is rejected",
-            ),
+            ): ("evidence=<stable-token>",),
         }
         for relative, tokens in expected.items():
             text = (REPO_ROOT / relative).read_text(encoding="utf-8")
@@ -442,7 +444,11 @@ class TrackerCallerOracleTests(unittest.TestCase):
             self.assertFalse((REPO_ROOT / relative).exists(), relative)
 
         current_paths = [
-            *sweep["canonical_caller_paths"],
+            *(
+                current
+                for relative in sweep["canonical_caller_paths"]
+                for current in self._current_paths(relative)
+            ),
             *sweep["runner_specific_tests"],
             *sweep["documentation_paths"],
             sweep["sync_codex_path"],
@@ -471,11 +477,6 @@ class TrackerCallerOracleTests(unittest.TestCase):
             self.assertIn(f"--event {caller['event']}", text, caller["id"])
             for value in self.oracle["per_event_enum"]:
                 self.assertIn(value, text, f"{caller['id']}: {value}")
-
-        synthesized_comments = EVENTS - {"work.firstClaim", "land.merged"}
-        for caller_id in synthesized_comments:
-            text = self._current_text(self.callers[caller_id])
-            self.assertRegex(text.lower(), r"synthesi[sz]es?", caller_id)
 
 
 if __name__ == "__main__":

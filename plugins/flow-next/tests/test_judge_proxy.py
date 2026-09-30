@@ -1,9 +1,12 @@
 """The judge's HTTPS connection honours HTTPS_PROXY / NO_PROXY (http.client ignores them on its own)."""
 import importlib.util
 import os
+import sys
 import unittest
 from pathlib import Path
 from unittest import mock
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "flowctl.py"
 _spec = importlib.util.spec_from_file_location("flowctl_judge_proxy", SCRIPT)

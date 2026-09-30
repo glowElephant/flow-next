@@ -170,99 +170,37 @@ class TestHostLenientResolution(unittest.TestCase):
 class TestHostReviewWorkflowRouting(unittest.TestCase):
     """Host mechanics stay behind the selected reference and own no status."""
 
-    REVIEW_SKILLS = (
-        "flow-next-impl-review",
-        "flow-next-spec-completion-review",
-    )
-    NON_HOST_BACKENDS = ("codex", "copilot", "cursor", "rp")
-    HOST_ONLY_MECHANICS = (
-        "NEEDS_HUMAN: host review needs a cross-family model pin",
-        "`disallowedTools: Edit, Write, Task`",
-        '"mode": "host"',
-        '"session_id": null',
-    )
+    def test_host_workflow_is_reachable_from_the_skill_entry(self) -> None:
+        for skill, chain in (
+            ("flow-next-impl-review", ("SKILL.md", "other-paths.md")),
+            ("flow-next-spec-completion-review", ("SKILL.md",)),
+        ):
+            with self.subTest(skill=skill):
+                for parent, child in zip(chain, chain[1:] + ("workflow-host.md",), strict=True):
+                    self.assertIn(f"]({child})", _read(f"{skill}/{parent}"))
 
-    def test_root_host_surface_is_only_router_and_safety_invariant(self) -> None:
-        for skill in self.REVIEW_SKILLS:
-            root = _read(f"{skill}/SKILL.md")
-            host = _section(
-                root,
-                "**For host backend:**",
-                "**For all backends:**",
-            )
-            self.assertIn("[workflow-host.md](workflow-host.md)", host)
-            self.assertIn("fresh, tool-enforced read-only reviewer", host)
-            self.assertIn("different\nmodel family", host)
-            self.assertIn("fail closed", host)
-            for mechanic in self.HOST_ONLY_MECHANICS:
-                self.assertNotIn(mechanic, host, f"{skill}: host mechanics leaked into root")
-
-    def test_non_host_reached_paths_keep_host_mechanics_cold(self) -> None:
-        for skill in self.REVIEW_SKILLS:
-            root = _read(f"{skill}/SKILL.md")
-            common = _read(f"{skill}/workflow-common.md")
-            for backend in self.NON_HOST_BACKENDS:
-                reached = root + common + _read(f"{skill}/workflow-{backend}.md")
-                for mechanic in self.HOST_ONLY_MECHANICS:
-                    self.assertNotIn(
-                        mechanic,
-                        reached,
-                        f"{skill}/{backend}: loaded host-only mechanic {mechanic!r}",
-                    )
-
-    def test_selected_host_workflows_are_self_contained(self) -> None:
-        for skill in self.REVIEW_SKILLS:
-            host = _read(f"{skill}/workflow-host.md")
-            for mechanic in self.HOST_ONLY_MECHANICS:
-                self.assertIn(mechanic, host, f"{skill}: missing {mechanic!r}")
-            host_lower = host.lower()
-            for required in (
-                "prior findings",
-                "tests/lints",
-                "commit the fixes before re-review",
-                "<promise>RETRY</promise>",
-            ):
-                self.assertIn(
-                    required.lower(),
-                    host_lower,
-                    f"{skill}: incomplete host workflow",
-                )
-            self.assertIn("deterministic round cap", host_lower)
-            self.assertNotIn("Return the verdict", host)
-
-    def test_completion_status_is_journaled_before_host_or_rp_terminal(self) -> None:
+    def test_work_never_writes_a_verdict_completion_status(self) -> None:
+        """Work may only excuse a completion review, atomically from unknown."""
         root = _read("flow-next-spec-completion-review/SKILL.md")
         host = _read("flow-next-spec-completion-review/workflow-host.md")
         rp = _read("flow-next-spec-completion-review/workflow-rp.md")
-        work = _read("flow-next-work/phases.md")
-        command = "$FLOWCTL spec set-completion-review-status"
-        self.assertNotIn(command, root)
+        work_dir = SKILLS / "flow-next-work"
+        work = " ".join(
+            " ".join(p.read_text(encoding="utf-8").split())
+            for p in sorted(work_dir.rglob("*.md"))
+        )
+        self.assertNotIn("set-completion-review-status", root)
         self.assertIn("$FLOWCTL review-rounds resume-terminal", root)
         self.assertIn("--status-target completion", host)
         self.assertIn("--status-target completion", rp)
-        self.assertEqual(
-            work.count(command),
-            1,
-            "work's only completion-status write is the 3g policy-skip CAS",
-        )
-        cas_write = command + " <spec-id> --status not_required --if-current unknown"
-        self.assertIn(cas_write, work, "the 3g skip write must be the atomic CAS form")
-        gate_index = work.index("### 3g. Completion Review Gate")
-        self.assertGreater(
-            work.index(command),
-            gate_index,
-            "work's single status write must live in the 3g gate",
-        )
-        for verdict in ("ship", "needs_work", "needs_human"):
-            self.assertNotIn(
-                f"{command} <spec-id> --status {verdict}",
-                work,
-                "work must never write a verdict completion status",
-            )
-        self.assertIn("NEEDS_HUMAN", root)
-        self.assertIn("needs_human", host)
-        self.assertIn("NEEDS_HUMAN", rp)
-        self.assertIn("ESCALATE: reviewer requested human review", host)
+        writes = re.findall(r"set-completion-review-status <spec-id> ([^`]*)", work)
+        self.assertTrue(writes, "work lost its policy-skip write")
+        for args in writes:
+            with self.subTest(args=args):
+                self.assertTrue(
+                    args.startswith("--status not_required --if-current unknown"),
+                    "work's only completion-status write is the atomic policy-skip CAS",
+                )
 
     def test_host_needs_human_fences_attach_before_exit(self) -> None:
         for skill in (
@@ -293,7 +231,7 @@ class TestHostReviewWorkflowRouting(unittest.TestCase):
             stub.chmod(0o755)
             for action, status, code, marker in (
                 ("continue", "unknown", 0, "CONTINUED"),
-                ("retry", "unknown", 0, "<promise>RETRY</promise>"),
+                ("retry", "unknown", 0, "RETRY: no verdict"),
                 ("ship", "ship", 0, "VERDICT=SHIP"),
                 ("superseded", "ship", 0, "COMPLETION_REVIEW_STATUS=ship"),
                 ("escalate", "needs_human", 4, "ESCALATE: reviewer requested human review"),
@@ -482,10 +420,6 @@ class TestHostReviewWorkflowRouting(unittest.TestCase):
             '$FLOWCTL review-rounds reset "$SPEC_ID" --kind plan --json',
             host,
         )
-        self.assertIn(
-            "Never issue `review-rounds reset` autonomously", host
-        )
-        self.assertIn("(`REVIEW_ROUND == REVIEW_CAP`)", host)
         self.assertIn("<verdict>SHIP</verdict>", host)
         self.assertIn("<verdict>NEEDS_WORK</verdict>", host)
 

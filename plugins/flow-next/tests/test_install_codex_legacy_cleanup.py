@@ -255,16 +255,14 @@ class TestInstallCodexLegacyCleanup(unittest.TestCase):
                 (owned / "reach" / "../orchestration.md").resolve().is_file(),
                 "reach-page ../orchestration.md link dangles from installed reach/",
             )
-            # ...and a link to a non-installed target (repo-root STRATEGY.md,
-            # linked from the docs index) is an absolute canonical URL —
+            # ...and a link to a non-installed target (the config schema,
+            # linked from running-lean.md) is an absolute canonical URL —
             # resolves everywhere, never dangles on disk (string assertion
-            # only; no network). pipeline-variations.md used to carry the
-            # pinned link into README.md#compose-the-pipeline; that section
-            # now lives on flow-next.dev and the page links the site directly.
-            docs_index = (owned / "README.md").read_text(encoding="utf-8")
+            # only; no network).
+            lean_page = (owned / "running-lean.md").read_text(encoding="utf-8")
             self.assertIn(
-                "](https://github.com/gmickel/flow-next/blob/main/STRATEGY.md)",
-                docs_index,
+                "](https://github.com/gmickel/flow-next/blob/main/plugins/flow-next/schema/flow-config.schema.json)",
+                lean_page,
                 "non-installed-target docs link not rewritten to the absolute canonical URL",
             )
 

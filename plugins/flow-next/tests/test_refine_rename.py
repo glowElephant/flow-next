@@ -1,11 +1,10 @@
 """fn-238 R15-R18: interview -> refine rename, the research scope, the why-scout.
 
 Behavior or contract only (G2):
-  - the alias stub forwards and is non-triggering (frontmatter flag, Codex
-    catalog flag off in the regenerated mirror);
-  - the research skip is decided from the section or plan's findings, in
-    refine's reference AND plan's research step (symmetric), with the same
-    scout set on both sides;
+  - the interview alias stub and shim are removed; refine is the canonical
+    skill and its Codex catalog flag is on in the regenerated mirror;
+  - refine's research reference defines the section shape and plan's research
+    step reaches the same reference and writes the same section;
   - the why-scout is read-only by tools and carries the four tiers;
   - every pointer the new prose names resolves.
 
@@ -24,7 +23,7 @@ PLUGIN = HERE.parent.parent
 SKILLS = PLUGIN / "skills"
 
 REFINE = SKILLS / "flow-next-refine"
-STUB = SKILLS / "flow-next-interview" / "SKILL.md"
+STUB_DIR = SKILLS / "flow-next-interview"
 STUB_SHIM = PLUGIN / "commands" / "interview.md"
 REFINE_SHIM = PLUGIN / "commands" / "refine.md"
 RESEARCH_REF = REFINE / "references" / "research-scope.md"
@@ -32,7 +31,6 @@ PLAN_STEPS = SKILLS / "flow-next-plan" / "steps.md"
 ROUTE_MATRIX = SKILLS / "flow-next-flow" / "references" / "route-matrix.md"
 WHY_SCOUT = PLUGIN / "agents" / "why-scout.md"
 TEMPLATE = PLUGIN / "templates" / "spec.md"
-CODEX_STUB_YAML = PLUGIN / "codex" / "skills" / "flow-next-interview" / "agents" / "openai.yaml"
 CODEX_REFINE_YAML = PLUGIN / "codex" / "skills" / "flow-next-refine" / "agents" / "openai.yaml"
 
 SECTION = "## Resolved via Research"
@@ -58,14 +56,9 @@ def _links(text: str) -> list[str]:
     return re.findall(r"\]\(([^)#]+\.md)(?:#[^)]*)?\)", text)
 
 
-class AliasStubForwardsAndIsNonTriggering(unittest.TestCase):
-    def test_stub_frontmatter_is_non_triggering_and_names_refine(self) -> None:
-        fm = _frontmatter(_read(STUB))
-        self.assertEqual(fm["name"], "flow-next-interview")
-        self.assertEqual(fm["disable-model-invocation"], "true")
-        self.assertIn("eprecated", fm["description"])
-        self.assertIn("flow-next-refine", fm["description"])
-        self.assertIn("flow-next-refine", _read(STUB))
+class InterviewAliasRetired(unittest.TestCase):
+    def test_alias_stub_is_removed(self) -> None:
+        self.assertFalse(STUB_DIR.exists())
 
     def test_interview_shim_is_retired_and_refine_shim_forwards(self) -> None:
         self.assertFalse(STUB_SHIM.exists())
@@ -74,10 +67,7 @@ class AliasStubForwardsAndIsNonTriggering(unittest.TestCase):
         self.assertIn("flow-next-refine", refine)
         self.assertIn("--scope=research", refine)
 
-    def test_codex_catalog_flag_off_for_alias_on_for_refine(self) -> None:
-        if not CODEX_STUB_YAML.is_file() or not CODEX_REFINE_YAML.is_file():
-            self.skipTest("codex mirror not regenerated")
-        self.assertIn("allow_implicit_invocation: false", _read(CODEX_STUB_YAML))
+    def test_codex_catalog_flag_on_for_refine(self) -> None:
         self.assertIn("allow_implicit_invocation: true", _read(CODEX_REFINE_YAML))
 
     def test_refine_skill_is_the_canonical_skill(self) -> None:
@@ -102,12 +92,10 @@ class ResearchSkipIsSymmetric(unittest.TestCase):
         self.assertIn("--scope=research", skill)
         self.assertIn(SECTION.lstrip("# "), skill)
 
-    def test_plan_skips_the_same_scouts_and_writes_the_same_section(self) -> None:
+    def test_plan_reaches_the_reference_and_writes_the_same_section(self) -> None:
         steps = _read(PLAN_STEPS)
         self.assertIn(SECTION, steps)
         self.assertIn("research-scope.md", steps)
-        for scout in RESEARCH_SCOUTS:
-            self.assertIn(scout, steps)
 
     def test_template_lists_the_section_as_auxiliary(self) -> None:
         self.assertIn("Resolved via Research", _read(TEMPLATE))
@@ -136,7 +124,7 @@ class WhyScoutIsReadOnly(unittest.TestCase):
 
 class PointersResolve(unittest.TestCase):
     def test_relative_links_in_new_prose_resolve(self) -> None:
-        for path in (RESEARCH_REF, REFINE / "SKILL.md", STUB, WHY_SCOUT, ROUTE_MATRIX):
+        for path in (RESEARCH_REF, REFINE / "SKILL.md", PLAN_STEPS, WHY_SCOUT, ROUTE_MATRIX):
             for link in _links(_read(path)):
                 if link.startswith("http"):
                     continue
@@ -144,12 +132,9 @@ class PointersResolve(unittest.TestCase):
                 self.assertTrue(target.is_file(), f"{path.name}: {link} -> {target}")
 
     def test_no_canonical_call_site_names_the_old_command(self) -> None:
-        # Survivors are the alias stub, the alias shim, changelog/history, and
-        # rows that assert the alias; every skill call site says refine.
+        # Every skill call site says refine.
         offenders = []
         for p in SKILLS.rglob("*.md"):
-            if p.is_relative_to(SKILLS / "flow-next-interview"):
-                continue
             if "/flow-next:interview" in _read(p):
                 offenders.append(str(p.relative_to(PLUGIN)))
         self.assertEqual(offenders, [])

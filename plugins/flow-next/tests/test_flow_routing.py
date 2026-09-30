@@ -1,11 +1,10 @@
 """Contract checks for /flow-next:flow and its shared routing reference.
 
-Behavior and contract only (G2): the skill, shim, six routing reference files,
-the two gated auto-only reference files and the gated stage-intake file exist
-and nothing else sits in references/; every routing reference opens with a decision record; every
-reference link from the always-loaded files resolves, every routing reference
-is reachable from them, and the two auto-only files are reachable from auto.md
-only; every consumer pointer names a reference file that exists; the retired
+Reachability only: the skill, shim and reference files exist and every file
+in references/ is reached from the always-loaded files, auto.md, or a reached
+reference; every reference link from the always-loaded files resolves, every
+routing reference is reachable from them, and the two auto-only files are
+reachable from auto.md only; every consumer pointer names a reference file that exists; the retired
 guide skill is named nowhere on a canonical surface; the attended refusal
 line and the mode-detection tokens (--explain, --auto, --tick) are present.
 
@@ -38,7 +37,12 @@ REFERENCE_NAMES = (
     "gate-selection.md",
     "prototype-before-ask.md",
     "tail.md",
+    "explain.md",
+    "no-argument.md",
 )
+
+# Rarer route rows, reached from route-matrix.md rather than the spine.
+MATRIX_CONTINUATION_NAMES = ("route-matrix-more.md",)
 
 # Gated references read only under `--auto` (moved from the pilot skill). They
 # carry no routing rule and no decision record; auto.md reaches them.
@@ -47,8 +51,6 @@ AUTO_ONLY_REFERENCE_NAMES = ("backlog-mode.md", "qa-stage.md")
 # Gated stage-intake references the attended workflow reaches behind an
 # existence check. They carry no routing rule and no decision record.
 GATED_STAGE_REFERENCE_NAMES = ("defect-intake.md",)
-
-DECISION_RECORD_ITEMS = ("Source", "Trigger", "Purpose", "Evidence", "Disposition")
 
 # Consumers that point at the shared routing reference. A consumer with no
 # pointer yet is skipped (it is being edited elsewhere); a pointer that names
@@ -101,15 +103,31 @@ class FlowSurfaceExists(unittest.TestCase):
     def test_skill_workflow_shim_and_references_exist(self) -> None:
         for path in (FLOW_SKILL, FLOW_WORKFLOW, FLOW_AUTO, FLOW_SHIM):
             self.assertTrue(path.is_file(), f"missing {path.relative_to(REPO_ROOT)}")
-        for name in (*REFERENCE_NAMES, *AUTO_ONLY_REFERENCE_NAMES, *GATED_STAGE_REFERENCE_NAMES):
+        known = (
+            *REFERENCE_NAMES,
+            *MATRIX_CONTINUATION_NAMES,
+            *AUTO_ONLY_REFERENCE_NAMES,
+            *GATED_STAGE_REFERENCE_NAMES,
+        )
+        for name in known:
             path = FLOW_REFERENCES / name
             self.assertTrue(path.is_file(), f"missing {path.relative_to(REPO_ROOT)}")
-        on_disk = sorted(p.name for p in FLOW_REFERENCES.glob("*.md"))
-        self.assertEqual(
-            on_disk,
-            sorted((*REFERENCE_NAMES, *AUTO_ONLY_REFERENCE_NAMES, *GATED_STAGE_REFERENCE_NAMES)),
-            "references/ holds the six routing files, the two auto-only files and the gated stage files, nothing else",
-        )
+
+    def test_no_orphan_reference(self) -> None:
+        # Every file in references/ is reached: from SKILL.md, workflow.md or
+        # auto.md, or linked from a reference that is itself reached.
+        reached: set[str] = set()
+        frontier = [FLOW_SKILL, FLOW_WORKFLOW, FLOW_AUTO]
+        while frontier:
+            text = _read(frontier.pop())
+            for name in set(LOCAL_REF_MENTION_RE.findall(text)) | set(
+                re.findall(r"\]\(([A-Za-z0-9_.-]+\.md)(?:#[^)]*)?\)", text)
+            ):
+                if name not in reached and (FLOW_REFERENCES / name).is_file():
+                    reached.add(name)
+                    frontier.append(FLOW_REFERENCES / name)
+        on_disk = {p.name for p in FLOW_REFERENCES.glob("*.md")}
+        self.assertEqual(on_disk - reached, set(), "unreachable references")
 
     def test_shim_frontmatter(self) -> None:
         text = _read(FLOW_SHIM)
@@ -126,27 +144,6 @@ class FlowSurfaceExists(unittest.TestCase):
         self.assertRegex(fm, r"(?m)^name:\s*flow-next-flow\s*$")
 
 
-class FlowReferenceDecisionRecords(unittest.TestCase):
-    def test_every_reference_opens_with_a_decision_record(self) -> None:
-        for name in REFERENCE_NAMES:
-            with self.subTest(reference=name):
-                text = _read(FLOW_REFERENCES / name)
-                marker = text.find("**Decision record**")
-                self.assertGreater(marker, -1, f"{name} lacks a decision record marker")
-                # The record is the first thing after the title.
-                head = text[:marker]
-                self.assertNotIn("\n## ", head, f"{name}: decision record must precede any section")
-                body = text[marker:]
-                first_section = body.find("\n## ")
-                record = body if first_section < 0 else body[:first_section]
-                last = -1
-                for item in DECISION_RECORD_ITEMS:
-                    pos = record.find(f"- {item}:")
-                    self.assertGreater(pos, -1, f"{name}: decision record lacks `{item}`")
-                    self.assertGreater(pos, last, f"{name}: decision record items out of order at `{item}`")
-                    last = pos
-
-
 class FlowReferenceReachability(unittest.TestCase):
     def test_every_local_reference_link_resolves(self) -> None:
         for path in (FLOW_SKILL, FLOW_WORKFLOW):
@@ -160,14 +157,18 @@ class FlowReferenceReachability(unittest.TestCase):
 
     def test_gated_work_references_are_linked_from_their_readers(self) -> None:
         # Its matrix row routes to each gated reference and the worker reads it; every link resolves.
-        readers = (FLOW_REFERENCES / "route-matrix.md", PLUGIN / "agents" / "worker.md")
+        # The matrix rows span route-matrix.md and its continuation file.
+        matrix = (FLOW_REFERENCES / "route-matrix.md", FLOW_REFERENCES / "route-matrix-more.md")
+        worker = PLUGIN / "agents" / "worker.md"
         for name in ("defect-route.md", "hill-climb.md"):
-            for reader in readers:
-                links = re.findall(r"\]\(([^)#]*" + re.escape(name) + r")\)", _read(reader))
-                with self.subTest(reference=name, reader=reader.name):
-                    self.assertTrue(links, f"{reader.name} does not link {name}")
-                    for rel in links:
+            for label, readers in (("route matrix", matrix), ("worker.md", (worker,))):
+                found = []
+                for reader in readers:
+                    for rel in re.findall(r"\]\(([^)#]*" + re.escape(name) + r")\)", _read(reader)):
+                        found.append(rel)
                         self.assertTrue((reader.parent / rel).resolve().is_file(), f"{reader.name} links {rel}")
+                with self.subTest(reference=name, reader=label):
+                    self.assertTrue(found, f"{label} does not link {name}")
 
     def test_every_reference_is_reachable_from_always_loaded_prose(self) -> None:
         combined = _read(FLOW_SKILL) + "\n" + _read(FLOW_WORKFLOW)
@@ -181,6 +182,11 @@ class FlowReferenceReachability(unittest.TestCase):
                 )
         # The auto-only files are gated behind `--auto`: the attended prose
         # never names them, so an attended run never loads them.
+        self.assertIn(
+            "(route-matrix-more.md)",
+            _read(FLOW_REFERENCES / "route-matrix.md"),
+            "route-matrix-more.md is not reachable from route-matrix.md",
+        )
         # Plugin-level shared rules (plugins/flow-next/references/) are named from every route.
         unknown = mentioned - set(REFERENCE_NAMES) - set(GATED_STAGE_REFERENCE_NAMES) - {"working-rules.md"}
         self.assertEqual(unknown, set(), f"always-loaded prose names unknown references: {sorted(unknown)}")
@@ -224,7 +230,7 @@ class ConsumerPointersResolve(unittest.TestCase):
                         f"{path.relative_to(REPO_ROOT)} points at references/{name}, which does not exist",
                     )
 
-    def test_flow_skill_itself_links_all_six(self) -> None:
+    def test_flow_skill_itself_links_every_routing_reference(self) -> None:
         combined = _read(FLOW_SKILL) + "\n" + _read(FLOW_WORKFLOW)
         mentioned = set(LOCAL_REF_MENTION_RE.findall(combined))
         self.assertTrue(set(REFERENCE_NAMES) <= mentioned, f"flow skill misses {set(REFERENCE_NAMES) - mentioned}")

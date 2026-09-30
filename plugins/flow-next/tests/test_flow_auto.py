@@ -2,9 +2,8 @@
 
 The unattended driver lives in `skills/flow-next-flow/auto.md`, read only when
 flow's mode detection parsed the exact `--auto` token; `--tick` runs one hop.
-The `flow-next-pilot` alias stub redirects onto `flow --auto --tick`; its
-command shim is retired. Everything here is a contract token or a real code path
-(G2): the verdict grammar for both shapes, the stub's argument mapping, the
+The `flow-next-pilot` alias stub and its command shim are removed. Everything here is a contract token or a real code path
+(G2): the verdict grammar for both shapes, the retired alias, the
 classification pointers resolving to routing files that exist, the tick-only
 chain gate, the QA `auto` read, the zero-task route recording, the refusal
 inversion, and executable runs of the argument-parse fence and the hard-guard
@@ -40,10 +39,6 @@ VERDICT_GRAMMAR_LINE = (
     'spec=<id> stage=<stage> reason="<one line>"'
 )
 CHAINED_TICK_TOKEN = "qa+make-pr"
-DEPRECATION_LINE = (
-    "pilot is now flow --auto --tick; this alias is removed in the next release"
-)
-PILOT_ARGUMENTS = ("--spec", "--backlog", "--dry-run", "--review", "--research", "--depth")
 CLASSIFY_POINTERS = ("route-matrix.md", "plan-vs-no-plan.md", "gate-selection.md")
 QA_AUTO_SKIP_TOKEN = "skipped(config: pipeline.qa=auto:"
 
@@ -67,13 +62,6 @@ _GIT = unittest.skipIf(shutil.which("git") is None, "hard-guard fence needs git"
 
 def _read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
-
-
-def _frontmatter(text: str) -> str:
-    if not text.startswith("---"):
-        return ""
-    end = text.find("\n---", 3)
-    return text[3:end] if end > 0 else ""
 
 
 def _section(text: str, start: str, end: str) -> str:
@@ -108,32 +96,11 @@ class VerdictGrammar(unittest.TestCase):
         self.assertIn('PILOT_VERDICT=NO_WORK spec=<id> stage=- reason="already merged', _read(AUTO_MD))
 
 
-class ShimArgumentMapping(unittest.TestCase):
-    """(2) The pilot alias stub is a redirect onto `flow --auto --tick`."""
+class PilotAliasRetired(unittest.TestCase):
+    """(2) The pilot alias stub and its command shim are removed."""
 
-    def test_stub_forwards_with_auto_tick_and_deprecation_line(self) -> None:
-        text = _read(PILOT_STUB)
-        # The forwarding instruction itself (not only the heading or the
-        # deprecation line) adds `--auto --tick`, so the alias never lands in
-        # attended flow.
-        body = text.split("\n# ", 1)[1].split("\n", 1)[1].replace(DEPRECATION_LINE, "")
-        self.assertIn("--auto --tick", body)
-        self.assertIn(DEPRECATION_LINE, text)
-        self.assertIn("flow-next-flow", text)
-
-    def test_every_pilot_argument_has_a_place(self) -> None:
-        text = _read(PILOT_STUB)
-        for arg in PILOT_ARGUMENTS:
-            with self.subTest(argument=arg):
-                self.assertIn(arg, text)
-
-    def test_stub_frontmatter_is_a_deprecation_alias(self) -> None:
-        fm = _frontmatter(_read(PILOT_STUB))
-        self.assertRegex(fm, r"(?m)^name:\s*flow-next-pilot\s*$")
-        self.assertRegex(fm, r"(?m)^disable-model-invocation:\s*true\s*$")
-        self.assertRegex(fm, r"(?m)^user-invocable:\s*false\s*$")
-
-    def test_command_shim_is_retired(self) -> None:
+    def test_alias_stub_and_command_shim_are_retired(self) -> None:
+        self.assertFalse(PILOT_STUB.exists())
         self.assertFalse(PILOT_SHIM.exists())
 
 

@@ -18,6 +18,25 @@ sys.modules[spec.name] = f
 spec.loader.exec_module(f)
 
 
+def route_matrix_rows():
+    """Route-matrix rows keyed by starting-state prefix, across both matrix files."""
+    refs = SCRIPTS.parent / "skills/flow-next-flow/references"
+    rows = [
+        [cell.strip() for cell in line.split("|")[1:-1]]
+        for name in ("route-matrix.md", "route-matrix-more.md")
+        for line in (refs / name).read_text(encoding="utf-8").splitlines()
+        if line.startswith("| ") and not line.startswith("| Starting state")
+    ]
+
+    class _Rows:
+        def __getitem__(self, prefix):
+            hits = [row for row in rows if row[0].startswith(prefix)]
+            assert len(hits) == 1, f"{len(hits)} route-matrix rows start with {prefix!r}"
+            return hits[0]
+
+    return _Rows()
+
+
 class JudgeRouteTests(unittest.TestCase):
     def live(self, **overrides):
         return dict(view="live", spec_body="Build a bounded feature", ready=True,
@@ -176,14 +195,21 @@ class JudgeRouteTests(unittest.TestCase):
             self.assertEqual(tokens, ["newlib", "typesafe"])
 
     def test_presentation_skip_cells_match_matrix(self):
-        matrix = (SCRIPTS.parent / "skills/flow-next-flow/references/route-matrix.md").read_text()
-        rows = [[cell.strip() for cell in line.split("|")[1:-1]] for line in matrix.splitlines() if line.startswith("| ")][1:]
-        indices = {"discovery": 0, "theme": 3, "build": 4, "capture_brief": 5, "defect": 6,
-                   "cleanup": 7, "slowness": 8, "hillclimb": 9, "question": 10, "fork": 11,
-                   "tiny": 12, "refine": 13, "plan_review": 14, "work_no_plan_default": 15,
-                   "plan": 15, "work_planned": 17, "all_done_make_pr": 18, "existing_pr_tail": 19, "closed_spec_no_pr": 20}
-        for kind, index in indices.items():
-            self.assertEqual(f.JUDGE_ROUTE_PRESENTATION[kind][1], rows[index][3])
+        rows = route_matrix_rows()
+        states = {"discovery": "No written direction", "theme": "A theme or direction",
+                  "build": "One meaningful idea", "capture_brief": "Existing structured brief",
+                  "defect": "A reported defect", "cleanup": "A structural change",
+                  "slowness": "A measured slowness", "hillclimb": "One metric to improve",
+                  "question": "A read-only question", "fork": "A design or behaviour fork",
+                  "tiny": "Tiny, local", "refine": "A valid spec with unresolved",
+                  "plan_review": "A spec whose design needs",
+                  "work_no_plan_default": "A ready spec with no tasks", "plan": "A ready spec with no tasks",
+                  "work_planned": "A spec with an intentional plan",
+                  "all_done_make_pr": "A spec whose tasks are all done",
+                  "existing_pr_tail": "A spec with an existing PR",
+                  "closed_spec_no_pr": "A closed spec with no observed PR"}
+        for kind, prefix in states.items():
+            self.assertEqual(f.JUDGE_ROUTE_PRESENTATION[kind][1], rows[prefix][3])
 
     def test_target_and_trimming(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -230,9 +256,6 @@ class JudgeRouteTests(unittest.TestCase):
             self.assertEqual(result["reason"], "no_key")
             self.assertEqual(result["explain"][1], "Route: host (jev-unavailable(no_key))")
             self.assertEqual([line.split(":", 1)[0] for line in result["explain"]], ["Next", "Route", "Signal", "Skip/narrow", "Why not the alternatives"])
-        workflow = (SCRIPTS.parent / "skills/flow-next-flow/workflow.md").read_text()
-        self.assertIn("Add `--explain` to the same `--json`", workflow)
-        self.assertNotIn("Replace `--json` with `--explain`", workflow)
 
     def test_explain_uses_same_answers(self):
         result = {"available": True, "decision": {"value": "defect", "candidates": [["defect", .91], ["build", .06], ["tiny", .02]]}, "answers": {"kind": {"confidence": .91}, "reports_defect": {"type": "noul", "noul": .94}, "tiny_one_context_change": {"type": "noul", "noul": .99}}}

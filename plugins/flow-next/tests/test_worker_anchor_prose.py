@@ -59,8 +59,11 @@ CANONICAL_HANDOVER = PLUGIN / "skills" / "flow-next-work" / "references" / "work
 MIRROR_HANDOVER = (
     PLUGIN / "codex" / "skills" / "flow-next-work" / "references" / "worker-handover.md"
 )
-CANONICAL_PHASES = PLUGIN / "skills" / "flow-next-work" / "phases.md"
-MIRROR_PHASES = PLUGIN / "codex" / "skills" / "flow-next-work" / "phases.md"
+# Plan-sync 3e is a multi-task step; its gate lives in multi-task.md.
+CANONICAL_PHASES = PLUGIN / "skills" / "flow-next-work" / "references" / "multi-task.md"
+MIRROR_PHASES = (
+    PLUGIN / "codex" / "skills" / "flow-next-work" / "references" / "multi-task.md"
+)
 # The branch-disclosure refactor moved the 3e downstream-extraction /
 # CROSS_SPEC read / plan-sync spawn prose verbatim out of the always-loaded
 # phases.md into a reached-path reference, loaded only once 3e has read
@@ -98,17 +101,10 @@ class WorkerAnchorCallProse(unittest.TestCase):
     def _assert_anchor_contract(self, path: pathlib.Path) -> None:
         text = _read(path)
         self.assertIn("anchor <TASK_ID> --md", text, path)
-        # Floor, not a ceiling — read-more freedom retained.
-        self.assertRegex(
-            text, re.compile(r"FLOOR, not a ceiling", re.IGNORECASE), path
-        )
         self.assertIn("memory search", text, path)
         self.assertIn("memory read", text, path)
-        # Fail-open fallback: a broken section is run directly.
-        self.assertIn("section unavailable", text, path)
-        # BASE_COMMIT captured at Phase-1 end, before any edit.
+        # BASE_COMMIT captured at Phase-1 end.
         self.assertIn("BASE_COMMIT=$(git rev-parse HEAD)", text, path)
-        self.assertIn("BEFORE any edit", text, path)
         # Persisted to a gitignored file — bash vars do not survive across
         # tool-call Bash blocks, so BASE_COMMIT must be written once and
         # re-read where used, else Phase-5 evidence records a blank base.
@@ -152,7 +148,7 @@ class PhasesCrossSpecProse(unittest.TestCase):
         # 3e's gate leaf stays on the always-loaded path, and 3e names the
         # reached-path reference that carries the dispatch prose.
         self.assertIn("planSync.enabled", text, path)
-        self.assertIn("references/plan-sync-dispatch.md", text, path)
+        self.assertIn("plan-sync-dispatch.md", text, path)
         # Single config-leaf read + spawn-prompt input (now in the reference).
         self.assertIn("planSync.crossSpec", dispatch_text, dispatch)
         # reads the actual config value

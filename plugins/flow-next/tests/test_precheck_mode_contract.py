@@ -33,7 +33,6 @@ LIFECYCLE_SKILLS = [
     "flow-next-make-pr",
     "flow-next-map",
     "flow-next-memory-migrate",
-    "flow-next-pilot",  # one-release deprecation stub onto flow --auto --tick
     PLAN,
     "flow-next-prime",
     "flow-next-prospect",
@@ -75,20 +74,8 @@ class PrecheckModeContractTest(unittest.TestCase):
                     for marker in FORBIDDEN_MARKERS:
                         self.assertNotIn(marker, text)
 
-    def test_plan_nudges_on_legacy_copy_residue_only(self) -> None:
-        # The replacement touchpoint: Plan probes for residue and says one
-        # line about deleting it. No question, no version compare.
-        for root, label in ((SKILLS, "canonical"), (CODEX_SKILLS, "codex")):
-            with self.subTest(tree=label):
-                text = _skill(root, PLAN)
-                self.assertIn(".flow/bin/flowctl_bootstrap.py", text)
-                self.assertIn("LEGACY_COPY_ARTIFACTS", text)
-
-    def test_pilot_and_land_no_longer_carry_verdict_stash(self) -> None:
-        # The pilot stub has no workflow.md any more; its driver body is the
-        # flow skill's auto.md.
+    def test_auto_and_land_no_longer_carry_verdict_stash(self) -> None:
         surfaces = (
-            ("flow-next-pilot", "SKILL.md"),
             ("flow-next-flow", "auto.md"),
             ("flow-next-land", "SKILL.md"),
             ("flow-next-land", "workflow.md"),
@@ -137,7 +124,8 @@ class ResidueProbeParity(unittest.TestCase):
     """
 
     PROBE_FILES = (
-        REPO_ROOT / "plugins" / "flow-next" / "skills" / "flow-next-plan" / "SKILL.md",
+        SKILLS / PLAN / "SKILL.md",
+        CODEX_SKILLS / PLAN / "SKILL.md",
     )
 
     def _constant(self) -> list[str]:
@@ -159,7 +147,7 @@ class ResidueProbeParity(unittest.TestCase):
     def test_probe_lists_equal_the_constant(self) -> None:
         expected = sorted(self._constant())
         for probe in self.PROBE_FILES:
-            with self.subTest(file=probe.name):
+            with self.subTest(file=str(probe.relative_to(ROOT))):
                 got = sorted(self._probe_paths(probe.read_text(encoding="utf-8")))
                 self.assertEqual(got, expected, f"{probe} probe drifted from LEGACY_COPY_ARTIFACTS")
 

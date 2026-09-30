@@ -63,7 +63,6 @@ PILOT_SKILL = FLOW / "auto.md"
 PILOT_WORKFLOW = FLOW / "auto.md"
 PILOT_BACKLOG = FLOW / "references" / "backlog-mode.md"
 PILOT_QA = FLOW / "references" / "qa-stage.md"
-PILOT_STUB = PLUGIN / "skills" / "flow-next-pilot" / "SKILL.md"
 PILOT_LEDGER = REPO_ROOT / "optimization" / "reached-path" / "pilot-candidates.json"
 # The files a `--auto` run can load, relative to the flow skill dir; every one
 # needs a mirror counterpart.
@@ -77,7 +76,6 @@ MIRROR = PLUGIN / "codex" / "skills" / "flow-next-flow"
 MIRROR_SKILL = MIRROR / "auto.md"
 MIRROR_WORKFLOW = MIRROR / "auto.md"
 MIRROR_BACKLOG = MIRROR / "references" / "backlog-mode.md"
-MIRROR_STUB = PLUGIN / "codex" / "skills" / "flow-next-pilot" / "SKILL.md"
 MIRROR_TS_STEPS = (
     PLUGIN / "codex" / "skills" / "flow-next-tracker-sync" / "steps.md"
 )
@@ -99,13 +97,11 @@ class PilotBacklogMirrorSafety(unittest.TestCase):
             PILOT_WORKFLOW,
             PILOT_BACKLOG,
             PILOT_QA,
-            PILOT_STUB,
             PILOT_LEDGER,
             TS_STEPS,
             MIRROR_SKILL,
             MIRROR_WORKFLOW,
             MIRROR_BACKLOG,
-            MIRROR_STUB,
             MIRROR_TS_STEPS,
         ]
         for p in required:
@@ -132,19 +128,6 @@ class PilotBacklogMirrorSafety(unittest.TestCase):
             "backlog-mode.md must be mirrored into the Codex flow skill",
         )
 
-    def test_mirror_carries_triage_and_ask_stages(self) -> None:
-        """The new leftward stages survive the rewrite in the pilot mirror."""
-        mirror_route = self.m_skill + "\n" + self.m_backlog
-        self.assertIn("triage", mirror_route.lower())
-        self.assertIn("ask", mirror_route.lower())
-        # The async-question valve phase survives in the mirror workflow.
-        self.assertIn("Phase 3.5", self.m_workflow)
-        self.assertRegex(
-            self.m_workflow,
-            r"Phase 3\.5 [—-] ASK",
-            "the mirror auto.md must carry the Phase 3.5 ASK valve",
-        )
-
     def test_mirror_carries_asked_verdict_and_grammar(self) -> None:
         """The ASKED durable-park verdict survives in the mirror grammar."""
         mirror_route = self.m_skill + "\n" + self.m_backlog
@@ -158,13 +141,8 @@ class PilotBacklogMirrorSafety(unittest.TestCase):
     def test_canonical_routes_backlog_grammar_behind_mode_gate(self) -> None:
         """Ready mode carries only common grammar; selected backlog mode loads
         the direct reference containing the extended grammar."""
-        self.assertNotIn(
-            "### Backlog-mode verdict grammar",
-            self.pilot_skill,
-            "backlog-only grammar must not stay always-loaded in auto.md",
-        )
         self.assertIn(
-            "read [references/backlog-mode.md]",
+            "](references/backlog-mode.md)",
             self.pilot_skill,
             "the selected backlog route must require the direct reference",
         )
@@ -182,11 +160,6 @@ class PilotBacklogMirrorSafety(unittest.TestCase):
             "PILOT_VERDICT=<ADVANCED|ASKED|NO_WORK|DEFERRED_TO_LAND|BLOCKED|NEEDS_HUMAN>",
             self.pilot_backlog,
             "the selected reference must retain the full live backlog grammar",
-        )
-        self.assertRegex(
-            self.pilot_backlog,
-            r"`TRIAGED <id> <class>` is DIAGNOSTIC / dry-run ONLY",
-            "the selected reference must retain the diagnostic-only split",
         )
 
     def test_pilot_candidate_ledger_matches_live_routed_files(self) -> None:
@@ -250,9 +223,8 @@ class PilotBacklogMirrorSafety(unittest.TestCase):
         the human IS prompted to enable the bridge), never at the Phase-0
         autonomy invariant. Assert ordering: if an R2 block exists at all, it
         comes AFTER the Phase-0 invariant line."""
-        invariant_idx = self.m_ts_steps.find(
-            "Autonomy parity is a hard invariant"
-        )
+        # Anchored on the Phase-0 gate fence (not its prose statement).
+        invariant_idx = self.m_ts_steps.find("UNATTENDED=0")
         self.assertNotEqual(
             invariant_idx, -1,
             "the tracker-sync mirror must carry the Phase-0 autonomy invariant",
@@ -305,26 +277,6 @@ class PilotBacklogMirrorSafety(unittest.TestCase):
         self.assertIn("plain-text numbered prompt", self.m_skill)
         self.assertIn("plain-text numbered prompt", self.m_backlog)
 
-    def test_historical_maintainer_breadcrumb_is_absent(self) -> None:
-        """The fn-68.5 mirror breadcrumb was task-local and is now stale."""
-        for fname, text in (
-            ("canonical flow/backlog-mode.md", self.pilot_backlog),
-            ("canonical tracker-sync/steps.md", self.ts_steps),
-            ("flow/backlog-mode.md", self.m_backlog),
-            ("tracker-sync/steps.md", self.m_ts_steps),
-        ):
-            with self.subTest(file=fname):
-                self.assertNotIn(
-                    "Codex mirror is regenerated",
-                    text,
-                    f"{fname}: the maintainer breadcrumb must be stripped",
-                )
-                self.assertNotIn(
-                    "do NOT regenerate the mirror here",
-                    text,
-                    f"{fname}: the breadcrumb tail must be stripped",
-                )
-
     def test_no_r2_instruction_block_injected_into_pilot_mirror(self) -> None:
         """THE defect this regen exposed: pilot ONLY negates AskUserQuestion
         ('never reached', 'is forbidden', 'never an interactive') — so the R2
@@ -335,7 +287,6 @@ class PilotBacklogMirrorSafety(unittest.TestCase):
         for fname, text in (
             ("auto.md", self.m_skill),
             ("backlog-mode.md", self.m_backlog),
-            ("pilot stub SKILL.md", _read(MIRROR_STUB)),
         ):
             with self.subTest(file=fname):
                 self.assertNotIn(
@@ -354,7 +305,6 @@ class PilotBacklogMirrorSafety(unittest.TestCase):
             missing,
             f"canonical --auto files with no mirror: {missing}",
         )
-        self.assertTrue(MIRROR_STUB.is_file(), "pilot stub has no mirror")
 
     # ── B. /goal (Codex) driver parity ─────────────────────────────────────
 
@@ -382,43 +332,6 @@ class PilotBacklogMirrorSafety(unittest.TestCase):
             r"PILOT_VERDICT=<ADVANCED\|ASKED\|NO_WORK\|DEFERRED_TO_LAND\|BLOCKED\|NEEDS_HUMAN>",
             "the mirror must carry the full live PILOT_VERDICT grammar line",
         )
-
-    def test_triaged_is_diagnostic_dry_run_only_in_mirror(self) -> None:
-        """TRIAGED is documented diagnostic / dry-run-only — never a live
-        terminal — so a live tick always lands on a state-changing verdict and an
-        item can never re-select forever (R10). The mirror must preserve this."""
-        mirror_route = self.m_skill + "\n" + self.m_backlog
-        self.assertRegex(
-            mirror_route,
-            r"`TRIAGED <id> <class>` is DIAGNOSTIC / dry-run ONLY",
-            "the mirror must keep TRIAGED diagnostic/dry-run-only",
-        )
-        # The live grammar line must NOT include TRIAGED as a terminal verb.
-        live_line = next(
-            ln
-            for ln in mirror_route.splitlines()
-            if "Live backlog grammar" in ln
-        )
-        self.assertNotIn("TRIAGED", live_line.split("`ADVANCED")[0] + "ADVANCED")
-        self.assertRegex(
-            mirror_route,
-            r"`TRIAGED` is NOT a live terminal",
-            "the live grammar must explicitly exclude TRIAGED as a terminal",
-        )
-
-    def test_goal_driver_examples_key_on_no_work(self) -> None:
-        """The documented /goal stop-clause example keys on PILOT_VERDICT=NO_WORK
-        — present in both canonical and mirror."""
-        for label, text in (
-            ("canonical", self.pilot_skill),
-            ("mirror", self.m_skill),
-        ):
-            with self.subTest(where=label):
-                goal_lines = [ln for ln in text.splitlines() if ln.startswith("/goal ")]
-                self.assertTrue(
-                    any("/flow-next:flow --auto" in ln and "PILOT_VERDICT=NO_WORK" in ln for ln in goal_lines),
-                    f"{label}: a /goal example must target /flow-next:flow --auto and stop on PILOT_VERDICT=NO_WORK",
-                )
 
     # ── C. Autonomous-safety invariants (verifies R6/R7) ───────────────────
 

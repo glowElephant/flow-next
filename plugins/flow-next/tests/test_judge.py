@@ -23,6 +23,25 @@ sys.modules[spec.name] = f
 spec.loader.exec_module(f)
 
 
+def route_matrix_rows():
+    """Route-matrix rows keyed by starting-state prefix, across both matrix files."""
+    refs = SCRIPTS.parent / "skills/flow-next-flow/references"
+    rows = [
+        [cell.strip() for cell in line.split("|")[1:-1]]
+        for name in ("route-matrix.md", "route-matrix-more.md")
+        for line in (refs / name).read_text(encoding="utf-8").splitlines()
+        if line.startswith("| ") and not line.startswith("| Starting state")
+    ]
+
+    class _Rows:
+        def __getitem__(self, prefix):
+            hits = [row for row in rows if row[0].startswith(prefix)]
+            assert len(hits) == 1, f"{len(hits)} route-matrix rows start with {prefix!r}"
+            return hits[0]
+
+    return _Rows()
+
+
 def state_for(preset):
     states = {
         "route": {"view": "intent", "view_meaning": "An intent at intake", "repo": ".", "intent": "Fix the crash",
@@ -195,13 +214,19 @@ class JudgeTests(unittest.TestCase):
         self.connection.request.assert_not_called()
 
     def test_kind_criteria_match_route_matrix_verbatim(self):
-        matrix = (SCRIPTS.parent / "skills/flow-next-flow/references/route-matrix.md").read_text()
-        rows = [tuple(c.strip() for c in line.strip("|").split("|")) for line in matrix.splitlines() if line.startswith("| ")][1:]
-        indices = {"build": [4], "capture_brief": [5], "defect": [6], "cleanup": [7], "slowness": [8], "hillclimb": [9], "question": [10], "fork": [11], "tiny": [12], "theme": [3], "discovery": [0, 1, 2], "refine": [13], "plan_review": [14]}
+        rows = route_matrix_rows()
+        states = {"build": ["One meaningful idea"], "capture_brief": ["Existing structured brief"],
+                  "defect": ["A reported defect"], "cleanup": ["A structural change"],
+                  "slowness": ["A measured slowness"], "hillclimb": ["One metric to improve"],
+                  "question": ["A read-only question"], "fork": ["A design or behaviour fork"],
+                  "tiny": ["Tiny, local"], "theme": ["A theme or direction"],
+                  "discovery": ["No written direction", "Looking for candidate investments", "One large idea"],
+                  "refine": ["A valid spec with unresolved"], "plan_review": ["A spec whose design needs"]}
         actual = f.JUDGE_PRESETS["route"]["questions"]["kind"]["criteria"]
-        for kind, indices_for_kind in indices.items():
-            self.assertEqual(actual[kind], "; ".join(rows[i][0] + ". " + rows[i][2] for i in indices_for_kind))
-        self.assertEqual(set(actual), set(indices) | {"none_of_the_above"})
+        for kind, prefixes in states.items():
+            expected = "; ".join(row[0] + ". " + row[2] for row in (rows[p] for p in prefixes))
+            self.assertEqual(actual[kind], expected)
+        self.assertEqual(set(actual), set(states) | {"none_of_the_above"})
 
     def test_live_route_asks_only_what_its_lifecycle_reads(self):
         live = {"view": "live", "view_meaning": "An existing spec", "spec_title": "Feature", "spec_body": "Build it",

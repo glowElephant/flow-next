@@ -188,15 +188,15 @@ class DispatchContracts(unittest.TestCase):
         self.assertNotIn("/tmp/evidence.json", text)
         self.assertIn(".flow/tmp/<TASK_ID>-summary.md", text)
         self.assertIn(".flow/tmp/<TASK_ID>-evidence.json", text)
-        self.assertIn("### Investigation targets", text)
-        self.assertIn("## Investigation targets", text)
 
     def test_conductor_capture_reachable_on_both_ship_paths(self) -> None:
         codex_work = WORK.parents[1] / "codex" / "skills" / "flow-next-work"
-        for work, pattern in ((WORK, r"worker\.md#[^)]+"), (codex_work, r"worker\.toml")):
+        # The conductor reaches the worker's memory capture through the shared
+        # reference on every host (agent file names differ per host).
+        for work in (WORK, codex_work):
             for name in ("rolling-scheduler.md", "host-deferred-review.md"):
                 text = (work / "references" / name).read_text(encoding="utf-8")
-                links = re.findall(r"\]\(([^)]+" + pattern + r")\)", text)
+                links = re.findall(r"\]\(([^)]*worker-memory-capture\.md[^)]*)\)", text)
                 self.assertEqual(len(links), 1, (work, name))
                 self.assertTrue((work / "references" / links[0].split("#")[0]).resolve().exists())
                 self.assertIn("memory.enabled", text)

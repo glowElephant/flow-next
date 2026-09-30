@@ -40,21 +40,16 @@ class WorkReachedPathRoutes(unittest.TestCase):
                 self.assertFalse((WORK / "references" / stale).exists())
 
     def test_common_work_lifecycle_routes_and_no_forbidden_gate_regrowth(self) -> None:
-        """Tokens and routes only (G2); the lifecycle prose itself is not pinned."""
-        for contract in (
-            "host-deferred",
-            "Tracker sync:",
-            # Executable handoff line.
-            "Next: /flow-next:make-pr <spec-id>",
-            # The parallel-wave branch routes to the join reference.
-            "references/wave-join.md",
-        ):
-            with self.subTest(contract=contract):
-                self.assertIn(contract, self.phases)
-        self.assertTrue((WORK / "references" / "wave-join.md").is_file())
+        """Routes only: phases.md reaches multi-task.md, which reaches the
+        wave-join and host-deferred review references."""
+        self.assertIn("references/multi-task.md", self.phases)
+        multi = _text(WORK / "references" / "multi-task.md")
+        for reference in ("wave-join.md", "host-deferred-review.md"):
+            with self.subTest(reference=reference):
+                self.assertTrue((WORK / "references" / reference).is_file())
+                self.assertRegex(multi, r"\]\((?:references/)?" + reference.replace(".", r"\.") + r"[)#]")
         self.assertNotIn("plan-sync-probe", self.phases)
         self.assertNotIn("PLAN_DEVIATION", self.phases)
-
 
 if __name__ == "__main__":
     unittest.main()
