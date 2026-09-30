@@ -8618,6 +8618,13 @@ def run_copilot_exec(
             "-s",
             "--no-ask-user",
             "--allow-all-tools",
+            # A reviewer never edits: deny rules win over --allow-all-tools (which
+            # non-interactive mode requires), matching the claude reviewer's
+            # Read/Grep/Glob-only tool set.
+            "--deny-tool",
+            "write",
+            "--deny-tool",
+            "shell",
             "--add-dir",
             str(repo_root),
             "--disable-builtin-mcps",
