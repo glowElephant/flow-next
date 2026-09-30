@@ -24,6 +24,10 @@ Flow-Next has one unattended mode: `/flow-next:flow --auto` (with `--until=merge
 - **A fork you find is never cancelled by the judge.** The fork gate no longer reuses route answers computed on the spec text; you classify your own fork, and an optional hint on your fork sentence never removes it.
 - **Under the hood.** A live route whose lifecycle already decides the next step sends no judge request; a live route asks only the unfamiliar-dependency Noul (direct or plan) or the UI Noul (all tasks done, `pipeline.qa=auto`). Route state no longer carries the repository path, the memory rerank no longer sends entry paths or BM25 scores, and its score levels describe situations. The route preset drops the fork pair and the two hint Nouls; the eight signal Nouls are asked only under `--explain`. The `fork-gate` preset asks only the fork-kind Choice. The memory stage line reads `memory: reranked (jev, <n> entries)`.
 
+### Fixed
+
+- **The Copilot reviewer is read-only now.** It ran with `--allow-all-tools`, which Copilot needs for a non-interactive run, and that also let it edit files and run any shell command in your checkout. It now runs with `--deny-tool write --deny-tool shell`, the same read-only tools the Claude reviewer gets.
+
 ## [flow-next 6.6.0] - 2026-09-28
 
 Plan, prime and the other scout-heavy steps get faster and cheaper: the bundled scouts now run on Sonnet 5.5, which Anthropic reports at more than 30% faster than Sonnet 5 and lower cost than Opus 5.5, scoring within about three points of Opus 5.5 on its published agentic-coding and knowledge-work benchmarks. Teams that keep `.flow/` in a planning repo and their product code in sibling clones get the full gates whenever that code changes, and the feature map ages from product commits instead of planning edits. A feature-map maintain pass now finishes on repos whose branch and commit names need a ticket key or whose host is not GitHub, and a failed push keeps the proven corrections instead of discarding them. make-pr opens its pull request from zsh as well as bash.
