@@ -307,7 +307,7 @@ DESCRIPTIONS: dict[str, str] = {
     ),
     "land": "/flow-next:land settings for one named pull request. Unknown legacy keys are ignored.",
     "land.patienceMinutes": (
-        "Minutes since the last push to wait when no human authorized the merge in-session."
+        "Minutes since the last push to wait, so review bots can post, when no human authorized the merge in-session."
     ),
     "land.mergeVerdictCommand": (
         "Optional merge-verdict command run once after the other merge gates pass. "

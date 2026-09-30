@@ -585,9 +585,9 @@
       "additionalProperties": true,
       "properties": {
         "patienceMinutes": {
-          "description": "Minutes since the last push to wait when no human authorized the merge in-session.",
+          "description": "Minutes since the last push to wait, so review bots can post, when no human authorized the merge in-session.",
           "type": "integer",
-          "default": 30
+          "default": 10
         },
         "mergeVerdictCommand": {
           "description": "Optional merge-verdict command run once after the other merge gates pass. Any non-zero result, including missing, unexecutable or timed-out commands, blocks merging. Unset, null and empty string disable it.",

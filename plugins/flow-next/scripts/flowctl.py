@@ -1417,7 +1417,7 @@ def get_default_config() -> dict:
         # tracker bridge's `tracker.perEvent.work.*` lifecycle keys are a
         # DISTINCT namespace and are untouched.
         # One named PR: only the merge command and push-anchored patience remain.
-        "land": {"patienceMinutes": 30, "mergeVerdictCommand": ""},
+        "land": {"patienceMinutes": 10, "mergeVerdictCommand": ""},
         # fn-72.2 — optional QA pipeline stage gate, seeded so
         # `config get pipeline.qa` returns the enum string "off" (NOT null)
         # on a fresh repo via the defaults MERGE. STRING-ENUM (off|on|auto),

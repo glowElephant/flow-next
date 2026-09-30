@@ -17,6 +17,7 @@ Flow-Next has one unattended mode: `/flow-next:flow --auto` (with `--until=merge
 
 ### Changed
 
+- **Unattended merges wait 10 minutes, not 30.** When `--until=merge` lands a pull request without you authorizing the merge in the session, land waits `land.patienceMinutes` after the last push so review bots can post. That window is for bots, not people: if you expect a human review you would not run `--until=merge`. Bots post within a few minutes and the wait overlaps CI, so I cut the default to 10. Set `land.patienceMinutes` if your bots are slower.
 - **The optional Jev judge now only speeds decisions up; it no longer changes them.** A run with a TypeSafe key and a run without one reach the same route, QA and memory decisions. Jev still decides the intake route kind at its floor and the QA "UI-observable criteria" half, and the agent may override either when the evidence plainly contradicts it, saying why in one line.
 - **Memory reads the same way with or without a key.** Plan and workers run one `memory search "<task sentence>" --limit 15 --rerank --json` and pick the entries that apply from their titles and snippets. With a key, Jev reorders those hits and drops none; before, its relevance floor could return nothing for a real query. Plan no longer spawns the memory scout to refine a keyless search.
 - **Keyless runs skip calls that cannot answer.** `/flow-next:flow` checks once per run, prints `judge: off`, and makes no intake-route, fork or QA judge calls. A spec's route call still runs, because its lifecycle is decided in code.
