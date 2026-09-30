@@ -28,5 +28,5 @@ Example: a search box could refresh results on every keystroke or after a pause.
 
 - An observable fork is never a question. Run the smallest experiment that discriminates the branches, record what ran, and continue.
 - A product or preference fork becomes at most one blocking question, asked with `AskUserQuestion` (plain-text numbered fallback on hosts without it), only when the two routes would materially differ.
-- Under any autonomy marker a product or preference fork stops with `NEEDS_HUMAN` and the observed facts; a prototype still runs when it is cheap and reversible. Choosing among gathered directions is such a fork: it stops with the references in hand.
+- Under any autonomy marker a product or preference fork stops with `NEEDS_HUMAN` and the observed facts; a prototype still runs within the working rules' limit on experiments. Choosing among gathered directions is such a fork: it stops with the references in hand.
 - A prototype is evidence, never a deliverable: it is discarded or folded into the routed stage's work, and its result is named in the report.

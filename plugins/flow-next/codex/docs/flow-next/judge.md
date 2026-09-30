@@ -209,7 +209,7 @@ judge: off
 Route: work_planned (code)
 Route: build (host)
 stage: qa - skipped(config: pipeline.qa=auto: no UI-observable criteria)
-stage: qa - ran (target: <cmd>)
+stage: qa - ran [target: <cmd>]
 fork-gate: observable (host)
 fork-gate: preference (host, jev hint product_or_preference 0.71)
 memory: reranked (jev, 15 entries)

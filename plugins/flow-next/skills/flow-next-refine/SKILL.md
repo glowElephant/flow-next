@@ -98,10 +98,10 @@ Before the first round, read `STRATEGY.md` and search the other project docs for
 
 - **The code answers it** (what exists, how it is wired, which conventions hold): read and search; log it under `## Resolved via Codebase` with `file:line` evidence.
 - **The project docs answer it** (what the strategy says, what shipped, what was decided): log it under `## Resolved via Project Docs` with `path:line` evidence.
-- **Running something settles it** (behaviour, timing, layout, output, whether an eval separates two options): run a throwaway experiment in `.flow/tmp/experiments/` and log the question, what ran, what you observed and the decision under `## Resolved via Experiment`. Run it without asking only when it is read-only or fully disposable; one that needs live or shared state, credentials, the network, or a destructive command (a migration, a deployment, a write API) becomes a question. An inconclusive result (noise larger than the difference) is logged as inconclusive and goes to the person with the data. The experiment is evidence, never product code.
+- **Running something settles it** (behaviour, timing, layout, output, whether an eval separates two options): run a throwaway experiment in `.flow/tmp/experiments/` and log the question, what ran, what you observed and the decision under `## Resolved via Experiment`. Run it within the working rules' limit on experiments. An inconclusive result (noise larger than the difference) is logged as inconclusive and goes to the person with the data. The experiment is evidence, never product code.
 - **It is a judgment** (what should exist, which trade-off, what priority): ask it.
 
-Answering a "should" question by grep is the bug; so is asking something the docs already answer. Use multi-select for options that are not exclusive, and probe answers that contradict each other. When independent sources disagree wildly on the same question, reframe it more precisely and re-run it instead of averaging or picking a favourite.
+Answering a "should" question by grep is the bug; so is asking something the docs already answer. Use multi-select for options that are not exclusive, and probe answers that contradict each other.
 
 While the person answers a round you may dispatch one read-only fact scout for lookups that gate the next round; before dispatching one, read [references/fact-scouts.md](references/fact-scouts.md). Investigating inline needs nothing from it.
 
