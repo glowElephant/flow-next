@@ -14,8 +14,10 @@ unless the user or the repository's instructions ask for it.
   behind, a nearby bug) are reported, not fixed. Check whether they exist before your change;
   if they do, they are not yours. The exception is behaviour the request asks for: if it names a
   clear error, a working command or a passing check, and that fails for a reason that predates
-  your change, fixing that reason is part of the change. So is anything your change breaks,
-  such as the repository's own checks on what you added.
+  your change, fixing that reason is part of the change. So is anything your change breaks: when
+  the repository's own check, doctor or verify command rejects what your change produces (a new
+  flag, a new config key, a new file), making it accept that is part of the change, even though
+  the check's narrowness predates you.
 - Files a test run or tool writes into the repository are not part of your change: remove them
   from the diff before handing back, and mention them; do not chase their cause.
 - When asked whether to widen the scope, "no" is a fine answer; say why in one line.

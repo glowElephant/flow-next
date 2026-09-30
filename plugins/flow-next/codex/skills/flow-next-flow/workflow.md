@@ -30,6 +30,9 @@ JUDGE=on
 [ "$JUDGE" = off ] && echo "judge: off"
 ```
 
+No `judge: off` line means the judge is on: make the intake route call below before choosing a
+route, and never write "judge off" in a Route line unless the check printed it.
+
 Then route once per hop (in auto mode, use the route `pilot snapshot` returned instead). A spec
 always gets the route call, judge on or off: its lifecycle is decided in code and needs no key.
 Intake without a spec calls it only when the judge is on:
