@@ -24262,6 +24262,31 @@ def judge_validate_answers(questions: dict, payload: dict) -> dict:
     return answers
 
 
+def judge_https_connection(host: str, timeout: float):
+    """HTTPS connection to the judge API that honours HTTPS_PROXY / NO_PROXY (http.client does not)."""
+    import http.client
+
+    proxy = os.environ.get("HTTPS_PROXY") or os.environ.get("https_proxy") or ""
+    no_proxy = os.environ.get("NO_PROXY") or os.environ.get("no_proxy") or ""
+    excluded = any(
+        entry == "*" or host == entry.lstrip(".") or host.endswith("." + entry.lstrip("."))
+        for entry in (item.strip().lower() for item in no_proxy.split(","))
+        if entry
+    )
+    if not proxy or excluded:
+        return http.client.HTTPSConnection(host, timeout=timeout)
+    parts = urllib.parse.urlsplit(proxy if "://" in proxy else "http://" + proxy)
+    connection = http.client.HTTPSConnection(parts.hostname, parts.port or 80, timeout=timeout)
+    headers = {}
+    if parts.username:
+        import base64
+
+        token = f"{urllib.parse.unquote(parts.username)}:{urllib.parse.unquote(parts.password or '')}"
+        headers["Proxy-Authorization"] = "Basic " + base64.b64encode(token.encode()).decode()
+    connection.set_tunnel(host, 443, headers=headers)
+    return connection
+
+
 def judge_decide(preset: str, state: dict, answers: dict, route_decision: dict | None = None) -> dict:
     decision = {"value": None, "rule": "", "met": False}
     if preset == "qa-gate":
@@ -24342,7 +24367,7 @@ def judge_evaluate(preset: str, state: dict, explain: bool = False) -> dict:
     for attempt in range(3):
         connection = None
         try:
-            connection = http.client.HTTPSConnection("api.typesafe.ai", timeout=10)
+            connection = judge_https_connection("api.typesafe.ai", 10)
             connection.request("POST", "/v1/systemone", body=body.encode("utf-8"),
                                headers={"Authorization": "Bearer " + key, "Content-Type": "application/json"})
             response = connection.getresponse()
