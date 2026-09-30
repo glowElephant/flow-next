@@ -32,10 +32,10 @@ JUDGE=on
 ```
 
 Then route once per hop (in auto mode, use the route `pilot snapshot` returned instead). A spec
-gets the route call, which decides its lifecycle in code; run it without the key:
+gets the route call, which decides its lifecycle in code and never asks the judge:
 
 ```bash
-TYPESAFE_API_KEY= "$FLOWCTL" judge --preset route --spec <spec-id> --json | jq -c '{available, reason, pr_probe_failed, decision}'
+"$FLOWCTL" judge --preset route --spec <spec-id> --json | jq -c '{available, reason, pr_probe_failed, decision}'
 ```
 
 For a spec, code applies lifecycle order: an observed PR goes to landing, a closed spec without a

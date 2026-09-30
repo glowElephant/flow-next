@@ -5,7 +5,7 @@
 
 flow-next works the same with or without a TypeSafe API key. Every decision has
 a working default path: code decides lifecycle facts, and the host decides the
-rest from the route matrix and the repository. With a key, Jev (TypeSafe's
+rest from the route matrix and the repository. Routing never asks Jev. With a key, Jev (TypeSafe's
 System One model) answers a few narrow questions in one HTTP request per
 decision point, so the host reaches the same decision faster or cheaper. Jev
 may change how long a decision takes and what it costs; it must not change
@@ -58,8 +58,9 @@ The model is fixed to `jev-latest`; floors are preset constants.
 | Memory relevance | Reorders the top 15 BM25 hits; drops none | Picks the entries that apply from titles and snippets |
 | Task tier | See the tier preset below | Unchanged by this contract |
 
-Routing never asks Jev: flow runs the live-spec route call without the key, so a run with a key
-and one without take the same route. A host override of a QA answer prints the Jev answer beside
+Routing never asks Jev: `flowctl judge --preset route --spec <id>` returns the code lifecycle
+decision and sends no request, key or no key, so a run with a key and one without take the same
+route. A host override of a QA answer prints the Jev answer beside
 the host's choice, for example `(host over jev ui 0.62: the criteria are all CLI output)`.
 
 ## Runs without a key
@@ -67,31 +68,27 @@ the host's choice, for example `(host over jev ui 0.62: the criteria are all CLI
 `/flow-next:flow` checks once per run whether the judge can run: the key is
 present (checked without printing it) and `judge.enabled` is not `false`. When
 it cannot, flow prints `judge: off` once and makes no fork or QA judge call for
-the rest of the run. The live-spec route call still runs: its
-lifecycle decision and PR observation come from code and return with
-`available: false, reason: no_key`. Memory search runs the same command either
+the rest of the run. The live-spec route call runs either way: its lifecycle
+decision and PR observation come from code and return with
+`available: false, reason: routing_is_code`. Memory search runs the same command either
 way; without a key `--rerank` returns BM25 order and sends nothing.
 
-Without a key the host prints `Route: <route> (host)` at intake and records QA
-stage lines without a `jev` note. A judge that is on but fails keeps the same
+The host prints `Route: <route> (host)` at intake, key or no key. Without a key
+it records QA stage lines without a `jev` note. A judge that is on but fails keeps the same
 default path and names the reason, `jev-unavailable(<reason>)`.
 
 ## Presets and floors
 
 | Preset | Questions | Decision |
 |---|---|---|
-| `route` | Intake: kind Choice and the repro Noul; under `--explain` also eight signal Nouls and the unfamiliar-dependency Noul. Live spec: only what its lifecycle reads | Lifecycle first; intake kind at confidence >= 0.7; otherwise host with top-three candidates. |
+| `route` | None; code only, never sent | The live spec's lifecycle, decided in code (see [Decision order](#decision-order)). Intake routing is the host's. |
 | `qa-gate` | UI-observable Noul | Run under `pipeline.qa=auto` only at >= 0.5 AND a startable target resolved by code. A skipped stage names the failing half. |
 | `fork-gate` | Fork-kind Choice on the host's fork sentence | `observable` or `product_or_preference` at confidence >= 0.5 is a hint; otherwise `host`. Never `none`. |
 | `memory-rerank` | One Score per BM25 hit, up to 15 | Reorder by score, descending; ties keep BM25 order; none dropped. |
 | `tier` | Tier Choice and two Nouls | `mechanical` at confidence >= 0.8 selects the configured fast tier; `long_running` at >= 0.8 recommends a bridge. All other answers retain the current model. |
 
-A live route asks the unfamiliar-dependency Noul only for a ready spec headed to
-direct work or plan, and the UI-observable Noul only when all tasks are done
-and `pipeline.qa` is `auto`. Any other live route sends no request. The QA
-reference reuses the route hop's UI answer and calls the standalone preset only
-when the hop has none. `flowctl judge --preset qa-gate --spec <spec-id> --json`
-assembles the standalone QA input and documented target in code. No preset
+The QA gate calls `flowctl judge --preset qa-gate --spec <spec-id> --json`,
+which assembles the QA input and documented target in code. No preset
 predicts whether review, QA, or landing will pass.
 
 ## Memory
@@ -114,23 +111,6 @@ keyless result.
 
 Question IDs and instruction text below match the bundled preset registry.
 `entry_N` substitutes the zero-based BM25 hit index, from 0 through 14.
-
-### route
-
-| ID | Type | Asked | Instruction text |
-|---|---|---|---|
-| `kind` | choice | intake | Which kind of work is this starting state? Route on content and context, never on input kind. The state carries `view` with its meaning. Pick none_of_the_above when no kind fits. |
-| `defect_has_repro` | noul | intake | If the text reports a defect, does it carry a concrete repro (steps, a failing command, a trace with a location, a case that shows it)? Answer no when there is no defect or no repro. |
-| `names_unfamiliar_library_or_api` | noul | live direct or plan; intake `--explain` | Does the text name a library, service, or API that the repository does not already use (an unfamiliar dependency that needs reading first)? |
-| `ui_observable_criteria` | noul | live all done, `pipeline.qa=auto` | Same text as the `qa-gate` question. |
-| `reports_defect` | noul | intake `--explain` | Does the text report a defect: a bug report, console dump, crash, or failing behaviour, where the unknown is the cause and the risk is regression? |
-| `structural_change_behaviour_kept` | noul | intake `--explain` | Is the text a structural change with behaviour meant to stay the same (rename, extract, inline, dedupe, move; callers to migrate or a shape to collapse) with no new behaviour named anywhere? |
-| `names_metric_and_surface` | noul | intake `--explain` | Does the text name a measured slowness or a number the user wants moved once, with a metric and a surface the user can name (a trace or a repro)? |
-| `repeated_metric_target` | noul | intake `--explain` | Does the text ask to improve one metric against a target number through repeated attempts on a harness that reruns cheaply? |
-| `read_only_question` | noul | intake `--explain` | Is the text a read-only question (how does X work, why was Y built this way, are we sure about Z) whose deliverable is an answer rather than a change? |
-| `theme_no_end_state` | noul | intake `--explain` | Is the text a theme or direction ("make X more Y") with no nameable end state, so no outcome and no scope boundary? |
-| `no_written_direction` | noul | intake `--explain` | Does the text show that no written direction exists (target problem, users, or key metrics stated nowhere; repeated arguments about what matters)? |
-| `large_idea_several_unknowns` | noul | intake `--explain` | Is the text one large singular idea with unclear boundaries and several consequential unknowns that block stating intent (too big for one capture)? |
 
 ### qa-gate
 
@@ -179,11 +159,11 @@ Choice criteria:
 
 Required standalone state fields: `acceptance` and
 `startable_target_fact` for QA; `text` for fork; `query` and `entries` for
-memory. Route and tier fields are listed in the transport contract below.
+memory. Tier fields are listed in the transport contract below.
 
 ## Decision order
 
-For a live spec, code reads lifecycle facts before classifying text:
+For a live spec, code reads lifecycle facts in this order:
 
 1. An observed PR routes to the existing PR tail. The live probe preserves open,
    merged, closed, and failed observations; a failed probe never means no PR.
@@ -193,23 +173,16 @@ For a live spec, code reads lifecycle facts before classifying text:
 4. A ready spec with no tasks uses a recorded `no_plan: true` directly.
    Otherwise the positive plan signals (`asks_for_plan`, `separate_owners`,
    `staged_prs`) select plan; absent signals select direct work. False or missing
-   `no_plan` is not a recorded plan choice. Research is recommended here when
-   the unfamiliar-dependency Noul fires and no `## Resolved via Research` section exists.
+   `no_plan` is not a recorded plan choice. Whether to read before work is the
+   host's, by the route matrix's read-first rule.
 5. A spec that is not ready stays with the host for refinement, plan review,
    or proceeding.
 
-Live specs never ask the kind Choice. Intake views ask the thirteen content
-kinds plus `none_of_the_above`. Kind criteria copy the
-[route matrix](../../skills/flow-next-flow/references/route-matrix.md)'s starting-state
-and positive-signal cells verbatim, joined by a period. Lifecycle routes are absent from
-those criteria. Below the kind floor, or on `none_of_the_above`, the host
-receives only the top-three kinds and probabilities. Signal Nouls feed only the
-`--explain` `Signal:` line, never facts for the host to reconsider.
-
-`flow --explain` adds `--explain` to the same request for `Next:`, `Route:`,
-`Signal:`, `Skip/narrow:`, and `Why not the alternatives:`. The last line names
-the next two candidates; a below-floor recommendation names all three and says
-the host decides.
+Intake without a spec has no route call: the host picks the row from the
+[route matrix](../../skills/flow-next-flow/references/route-matrix.md), and judges
+whether a reported defect already carries a reproduction. `flow --explain`
+prints its `Next:`, `Route:`, `Signal:`, `Skip/narrow:`, and `Why not the
+alternatives:` lines from that row, without a judge call.
 
 Tier selection happens before worker or scout dispatch. An explicit
 `IMPLEMENTER:` override wins. A mechanical decision changes the spawn-model
@@ -230,16 +203,11 @@ See the [CLI contract](flowctl.md#judge) for the JSON envelope.
 Requests use stdlib HTTP with a 10-second timeout per attempt. Only HTTP 429
 and 529 retry, twice, after 1 and 2 seconds. State plus questions are estimated
 at four characters per token against about 32k tokens; an oversized request
-returns `over_budget` without sending. Route assembly takes only the first
-100,000 characters of a long spec body and records `spec_body_truncated: true`.
-The judge itself writes neither state nor answers. Credentials never appear
+returns `over_budget` without sending. The judge itself writes neither state nor answers. Credentials never appear
 in command output, receipts, stage lines, or logs.
 
-A request sends its supplied artifact text to TypeSafe. Route state includes
-only `view`, `view_meaning`, `intent` or `spec_title` plus `spec_body`,
-`status`, `ready`, `no_plan`, task counts, PR observations, and
-`startable_target_fact` (plus the truncation marker when needed); it never
-carries the repository's path. Tier state contains `task_title`, `task_body`,
+A request sends its supplied artifact text to TypeSafe. Route state is never
+sent. Tier state contains `task_title`, `task_body`,
 `acceptance`, `touches_count`, `has_quick_commands`, and `repo`.
 
 Callers expose which path they took:
@@ -266,13 +234,13 @@ route request, with about 2,200 input tokens for an intent and 4,000-8,000 for a
 spec body. At the evaluation's recorded rate of $46 per billion tokens, those
 input volumes cost approximately $0.00010 and $0.00018-$0.00037 respectively,
 before output tokens. These are historical evaluation measurements and cost
-estimates, not a current price quote or a production latency guarantee. A live
-route that its lifecycle already decides now sends no request.
+estimates, not a current price quote or a production latency guarantee. The
+route preset no longer sends any request.
 
 | Site | Evaluation result and bound |
 |---|---|
 | Clean review (retired preset; historical result) | 100/100 against the eyeball label; the regex recognized 5/12 in its comparison set. |
-| Kind | 0.95 raw agreement on 196 stable samples; the 0.7 floor gave 85% held-out coverage at 95% agreement. |
+| Kind (retired; historical result) | 0.95 raw agreement on 196 stable samples; the 0.7 floor gave 85% held-out coverage at 95% agreement. Retired because keyed intake routes sent small features down heavier routes than keyless runs. |
 | QA | 0.88 against a 0.71 baseline once code supplied the startable-target fact. |
 | Fork | 0.88 against 0.76 for the fork-present and kind pair on spec text; the hint on the host's own fork sentence has not been measured. |
 | Memory | Precision@5 0.66 against BM25's 0.48, measured with the earlier score levels and floor; the reorder-only shape has not been measured. |

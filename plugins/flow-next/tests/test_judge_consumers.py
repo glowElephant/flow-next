@@ -42,16 +42,15 @@ def execute(path, marker, **inputs):
 
 
 def live_state(**overrides):
-    state = {"view": "live", "view_meaning": "An existing spec", "spec_title": "Feature", "spec_body": "Build it",
-             "status": "open", "ready": True, "no_plan": False, "tasks_total": 0, "tasks_done": 0,
+    state = {"spec_body": "Build it", "status": "open", "ready": True, "no_plan": False, "tasks_total": 0, "tasks_done": 0,
              "pr_exists": False, "pr_ref": None, "startable_target_fact": "npm run dev"}
     state.update(overrides)
     return state
 
 
 def keep(judge_output):
-    """Project a judge result through workflow.md's shipped KEEP filter."""
-    program = re.search(r"KEEP='(.*?)'", fence(WORKFLOW, "KEEP="), re.S).group(1)
+    """Project a route result through workflow.md's shipped jq filter."""
+    program = re.search(r"jq -c '(.*?)'", fence(WORKFLOW, "--preset route"), re.S).group(1)
     out = subprocess.run(["jq", "-c", program], input=json.dumps(judge_output), capture_output=True,
                          text=True, check=True)
     return json.loads(out.stdout)
@@ -79,47 +78,24 @@ class JudgeConsumerTests(unittest.TestCase):
                     self.assertNotIn("secret-never-printed", run.stdout + run.stderr)
 
     @unittest.skipUnless(SHELL, "jq")
-    def test_route_keep_projects_decisions_and_drops_raw_answers(self):
-        intake = {"view": "intent", "view_meaning": "An intent at intake", "intent": "Fix the crash",
-                  "status": None, "ready": False, "no_plan": False, "tasks_total": 0, "tasks_done": 0,
-                  "pr_exists": False, "pr_ref": None, "startable_target_fact": None}
-        answers = {"kind": {"type": "choice", "choice": "defect", "confidence": 0.91,
-                            "probabilities": {"defect": 0.91, "build": 0.06, "tiny": 0.03}},
-                   "defect_has_repro": {"type": "noul", "noul": 0.2}}
-        out = keep({"success": True, "available": True, "answers": answers,
-                    "decision": f.judge_decide("route", intake, answers)})
-        self.assertEqual(set(out), {"available", "reason", "pr_probe_failed", "decision", "kind", "ui_observable_criteria"})
-        self.assertEqual(out["kind"], {"choice": "defect", "confidence": 0.91})
-        self.assertEqual((out["decision"]["value"], out["decision"]["met"], out["decision"]["defect_repro"]),
-                         ("defect", True, "needed"))
-        self.assertNotIn("defect_has_repro", json.dumps(out))
-        self.assertNotIn("fork", json.dumps(out))
-        # Below the floor only the candidates reach the host.
-        answers["kind"]["confidence"] = 0.52
-        out = keep({"available": True, "answers": answers, "decision": f.judge_decide("route", intake, answers)})
-        self.assertEqual((out["decision"]["value"], out["decision"]["met"]), ("host", False))
-        self.assertEqual(out["decision"]["candidates"][0], ["defect", 0.91])
-        # A keyed live all-done hop carries the QA half the gate reads.
-        done = live_state(tasks_total=2, tasks_done=2)
-        ui = {"ui_observable_criteria": {"type": "noul", "noul": 0.84}}
-        out = keep({"available": True, "answers": ui, "decision": f.judge_decide("route", done, ui)})
-        self.assertEqual(out["ui_observable_criteria"]["noul"], 0.84)
-        self.assertEqual((out["decision"]["value"], out["decision"]["qa"]["value"]), ("all_done_make_pr", "qa_runs"))
-
-    @unittest.skipUnless(SHELL, "jq")
-    def test_no_key_live_route_keeps_code_lifecycle(self):
-        with patch.dict(os.environ, {"TYPESAFE_API_KEY": ""}), patch.object(f, "get_config", return_value=True):
-            for overrides, value in (({"pr_exists": True}, "existing_pr_tail"), ({"tasks_total": 2}, "work_planned"),
-                                     ({"tasks_total": 2, "tasks_done": 2}, "all_done_make_pr"),
-                                     ({}, "work_no_plan_default"), ({"ready": False}, "host")):
-                with self.subTest(value=value):
-                    out = keep(f.judge_evaluate("route", live_state(**overrides)))
-                    self.assertEqual((out["available"], out["reason"]), (False, "no_key"))
-                    self.assertEqual(out["decision"]["value"], value)
-                    self.assertEqual(out["decision"]["met"], value != "host")
-            out = keep(f.judge_evaluate("route", live_state(pr_exists=None)))
-        self.assertTrue(out["pr_probe_failed"])
-        self.assertIsNone(out["decision"])
+    def test_route_projection_is_the_code_lifecycle_with_or_without_a_key(self):
+        cases = (({"pr_exists": True}, "existing_pr_tail"), ({"tasks_total": 2}, "work_planned"),
+                 ({"tasks_total": 2, "tasks_done": 2}, "all_done_make_pr"),
+                 ({}, "work_no_plan_default"), ({"ready": False}, "host"))
+        for key in ("", "test-key-never-sent"):
+            with patch.dict(os.environ, {"TYPESAFE_API_KEY": key}), patch.object(f, "get_config", return_value=True), \
+                    patch.object(f, "judge_https_connection") as connect:
+                for overrides, value in cases:
+                    with self.subTest(key=bool(key), value=value):
+                        out = keep(f.judge_route(live_state(**overrides)))
+                        self.assertEqual(set(out), {"available", "reason", "pr_probe_failed", "decision"})
+                        self.assertEqual((out["available"], out["reason"]), (False, "routing_is_code"))
+                        self.assertEqual(out["decision"]["value"], value)
+                        self.assertEqual(out["decision"]["met"], value != "host")
+                out = keep(f.judge_route(live_state(pr_exists=None)))
+                connect.assert_not_called()
+            self.assertTrue(out["pr_probe_failed"])
+            self.assertIsNone(out["decision"])
 
     def test_qa_enabled_and_unavailable_apply_stage(self):
         path = "skills/flow-next-flow/references/gate-selection.md"
@@ -136,14 +112,6 @@ class JudgeConsumerTests(unittest.TestCase):
                           host_qa_runs=prior, host_skip_reason="no drivable surface")
             self.assertEqual(out["qa_runs"], prior)
             self.assertIn("jev-unavailable(timeout)", out["qa_line"])
-
-    def test_route_qa_decision_is_consumed_by_the_gate(self):
-        state = live_state(tasks_total=2, tasks_done=2, startable_target_fact="dev")
-        answers = {"ui_observable_criteria": {"type": "noul", "noul": 0.84}}
-        route = {"available": True, "answers": answers, "decision": f.judge_decide("route", state, answers)}
-        qa = execute("skills/flow-next-flow/references/gate-selection.md", "fence:judge-qa-consumer", result=route, target="dev")
-        self.assertTrue(qa["qa_runs"])
-        self.assertIn("jev ui 0.84, target: dev", qa["qa_line"])
 
     def test_memory_fence_is_one_search_that_runs_without_a_key(self):
         command = fence("skills/flow-next-plan/references/judge-memory.md", "memory search")

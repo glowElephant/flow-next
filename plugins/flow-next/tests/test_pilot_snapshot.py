@@ -30,7 +30,7 @@ class PilotSnapshotTests(unittest.TestCase):
         self.branch = self.spec['branch_name']
         _git(self.repo, 'branch', self.branch)
 
-    def snapshot(self, rows=None, failed=False):
+    def snapshot(self, rows=None, failed=False, key=''):
         real_run = subprocess.run
         gh_calls = []
         def run(command, *args, **kwargs):
@@ -39,8 +39,10 @@ class PilotSnapshotTests(unittest.TestCase):
                 listed = [row for row in rows or [] if '--head' in command or row['state'] == 'OPEN']
                 return SimpleNamespace(returncode=int(failed), stdout=json.dumps(listed))
             return real_run(command, *args, **kwargs)
-        with patch.object(f, 'get_repo_root', return_value=self.repo), patch.object(f, 'get_flow_dir', return_value=self.repo / '.flow'), patch.object(f.subprocess, 'run', side_effect=run), patch.dict(os.environ, TYPESAFE_API_KEY=''), patch.object(f, '_pilot_strikes_ledger_path', return_value=self.ledger):
+        with patch.object(f, 'get_repo_root', return_value=self.repo), patch.object(f, 'get_flow_dir', return_value=self.repo / '.flow'), patch.object(f.subprocess, 'run', side_effect=run), patch.dict(os.environ, TYPESAFE_API_KEY=key), patch.object(f, '_pilot_strikes_ledger_path', return_value=self.ledger), patch.object(f, 'judge_https_connection') as connect:
             result = f.pilot_snapshot(self.sid)
+        # Routing never asks Jev: no judge connection, key or no key.
+        connect.assert_not_called()
         # One open-PR listing for selection, one full-history probe for the selected branch.
         self.assertEqual([call[3:5] for call in gh_calls], [['--state', 'open'], ['--head', self.branch]])
         return result
@@ -54,12 +56,20 @@ class PilotSnapshotTests(unittest.TestCase):
         self.assertTrue(result['selected']['chain']['eligible'])
         self.assertFalse(result['route']['available'])
         self.assertEqual(result['route']['decision']['value'], 'work_no_plan_default')
-        self.assertEqual(result['route']['reason'], 'no_key')
+        self.assertEqual(result['route']['reason'], 'routing_is_code')
         self.assertFalse(result['guards']['dirty'])
         self.assertIn('pipeline', result['config'])
         self.assertIn('backend', result['review_backend'])
         self.assertFalse(self.ledger.exists())
         self.assertEqual(before, _git(self.repo, 'status', '--porcelain').stdout)
+
+    def test_route_is_code_only_with_a_key(self):
+        keyless = self.snapshot()['route']
+        keyed = self.snapshot(key='test-key-never-sent')['route']
+        self.assertEqual(keyed, keyless)
+        self.assertNotIn('answers', keyed)
+        self.assertNotIn('explain', keyed)
+        self.assertEqual(keyed['decision']['value'], 'work_no_plan_default')
 
     def test_one_listing_preserves_open_merged_and_closed_observations(self):
         rows = [{'number': i, 'url': f'https://example.test/pr/{i}', 'state': state,

@@ -20,7 +20,7 @@ For `auto` only, and only when the judge is on: call `$FLOWCTL judge --preset qa
 
 On that fallback, whether a spec is drivable is judgment, read from the acceptance criteria and the repo (`.flow/features/`, the prime QA-readiness line, a documented start command). QA never hard-blocks the loop; `NEEDS_WORK` and `BLOCKED` advance to the draft PR with their findings. The evidence-aware subtraction inside QA is unchanged: runtime, UI, and integration criteria are always re-driven; deterministic re-runnable tests subtract.
 
-Apply the standalone `result.decision`, or the available route result's `decision.qa`, with this selector. `host_qa_runs` is today's judgment and is consulted only on unavailable; `target` is the resolved startable fact. Only an `auto` gate executes it:
+Apply the `qa-gate` result's `decision` with this selector. `host_qa_runs` is today's judgment and is consulted only on unavailable; `target` is the resolved startable fact. Only an `auto` gate executes it:
 
 ```python
 # fence:judge-qa-consumer
@@ -31,7 +31,7 @@ if not result["available"]:
         result["reason"],
     )
 else:
-    decision = result["decision"].get("qa", result["decision"])
+    decision = result["decision"]
     qa_runs = decision["value"] == "qa_runs"
     probability = result["answers"]["ui_observable_criteria"]["noul"]
     if qa_runs:

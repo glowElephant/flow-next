@@ -1165,12 +1165,11 @@ Exits with code 1 if validation fails (for CI use).
 ### judge
 
 Classify one supplied state with a bundled TypeSafe Jev preset and apply its decision rule.
+The `route` preset is the exception: it is code only and never sends a request.
 
 ```bash
 flowctl judge --preset <name> --state-file state.json [--json]
 flowctl judge --preset route --spec <spec-id> --json
-flowctl judge --preset route --spec <spec-id> --explain
-flowctl judge --preset route --spec <spec-id> --explain --json
 flowctl judge --preset qa-gate --spec <spec-id> --json
 flowctl judge --preset tier --task <task-id> --json
 ```
@@ -1182,15 +1181,23 @@ from the environment at call time. `judge.enabled=false` disables it.
 
 An available result contains `success`, `available`, `preset`, the returned
 `model`, typed `answers`, `decision` (`value`, `rule`, `met`), `latency_ms`, and
-`usage`. Route and tier decisions also contain the three leading
+`usage`. Tier decisions also contain the three leading
 `candidates` as `[option, probability]` pairs. Memory decisions contain every
-judged entry ID and score, reordered; none is dropped. A live route whose
-lifecycle needs no judged answer sends no request.
+judged entry ID and score, reordered; none is dropped.
 
-Unavailable judge answers exit 0 and name the reason. A live route still
-returns its code-computed lifecycle decision and PR observation when those
-facts are available; `available: false` describes the external judge only.
-Other presets retain their unavailable envelope:
+`--preset route --spec <spec-id>` returns the spec's lifecycle decision, decided
+in code, and never sends a request, with or without a key. It always reports
+`available: false, reason: routing_is_code`; `decision` carries `value`, `rule`,
+`met`, `pr_ref`, and `startable_target_fact`. It takes `--spec` only: intake
+routing is the host's, so a route `--state-file` is a command error.
+
+```json
+{"success": true, "available": false, "preset": "route", "reason": "routing_is_code",
+ "decision": {"value": "work_planned", "rule": "recorded task route", "met": true,
+              "pr_ref": null, "startable_target_fact": null}}
+```
+
+Unavailable judge answers exit 0 and name the reason:
 
 ```json
 {"success": true, "available": false, "preset": "fork-gate", "reason": "no_key"}
@@ -1199,10 +1206,7 @@ Other presets retain their unavailable envelope:
 Reasons are `no_key`, `disabled`, `http_<status>`, `transport`, `timeout`,
 `bad_answer`, and `over_budget`. The caller takes its existing fallback and
 records the reason. Unknown presets, unreadable/non-JSON state files, and missing
-required state fields exit nonzero; one error names every missing field. A route
-intake state file holds only `view` and its text (`intent`, or `spec_title` plus
-`spec_body`): code assembles `view_meaning`, `startable_target_fact`, and
-the empty lifecycle and PR facts. Requests use `jev-latest`, a 10-second timeout,
+required state fields exit nonzero; one error names every missing field. Requests use `jev-latest`, a 10-second timeout,
 and two retries only for HTTP 429/529, after 1 and 2 seconds. A request estimated
 over 32k tokens at four characters per token is rejected without sending.
 The command never writes state, answers, or credentials to disk.
@@ -1210,12 +1214,10 @@ The command never writes state, answers, or credentials to disk.
 `--task` assembles tier inputs from the task and returns `tier_line`,
 `spawn_model` and `implementer`. Unknown tasks fail.
 
-`--spec` assembles route or QA facts from the live spec and repository;
-`--explain` prints the route recommendation instead of JSON; with `--json` the
-structured result gains an `explain` list of those lines instead. A failed PR probe
-adds `pr_probe_failed: true` to the unavailable result so the caller preserves
-its existing failure outcome. Available live-route decisions include `pr_ref`
-and `startable_target_fact` for reuse by the tail and QA gates.
+`--spec` assembles route or QA facts from the live spec and repository. A failed
+PR probe returns `pr_probe_failed: true` and no `decision`, so the caller
+preserves its existing failure outcome. Route decisions include `pr_ref` and
+`startable_target_fact` for reuse by the tail gate.
 
 ### config
 

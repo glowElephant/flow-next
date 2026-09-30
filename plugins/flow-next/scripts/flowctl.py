@@ -23609,62 +23609,6 @@ def _memory_score_search(
     return score
 
 
-JUDGE_ROUTE_PRESENTATION = {'discovery': ('Establish direction, select an investment, or chart the unclear idea with the host.',
-               'Skip when `STRATEGY.md` exists or the effort is small enough that direction is not in '
-               'question'),
- 'theme': ('Narrow the theme to one effort, or prospect for candidates.',
-           'Chart cannot take a direction: it needs a destination whose route is unknown. Narrow first, or '
-           'prospect when the ask is which effort to pick'),
- 'build': ('Capture the meaningful idea as a spec.',
-           'Skip chart; do not manufacture a chart for clear work. Count specs per `spec-count.md` when the '
-           'tripwire trips'),
- 'capture_brief': ('Capture the structured brief.',
-                   'Skip chart. Skip refine unless a named product or authority decision is open '
-                   '(`plan-vs-no-plan.md`)'),
- 'defect': ('Check for prior fixes, reproduce and diagnose the defect, bisect when a known-good revision exists, then fix, prove on base and head, and review.',
-            'Refine is the wrong instrument for a defect. Capture only when the diagnosis conversation '
-            'itself carries decisions worth locking down'),
- 'cleanup': ('Pin the current behavior, then implement and review the structural change.',
-             'New behaviour named anywhere makes it a feature with cleanup inside; route to capture or work. '
-             'Skip the pin only when existing coverage already asserts the contract'),
- 'slowness': ('Measure the baseline and target on the named surface before changing code.',
-              'No nameable metric or surface routes to the read-only question row first. A fix motivated by '
-              'reading source instead of a measurement is not evidence'),
- 'hillclimb': ('Work against the frozen harness and its metric target.',
-               'One expected fix is the slowness row. Never relax the target to meet it'),
- 'question': ('Answer the question with repository, history, and memory evidence.',
-              'When the answer is a prerequisite for a change already asked for, route the change and let '
-              'its stage read'),
- 'fork': ('Settle the observable fork with a prototype or measurement.',
-          'Skip when the direction is already set. No decision means no prototype'),
- 'tiny': ('Make the bounded change and run the repository review path.',
-          'Skip chart and the full spec pipeline. The review and consent gates the change needs still run'),
- 'refine': ('Refine the unresolved product or authority questions.',
-            'Skip unless the open decision can be named (`plan-vs-no-plan.md`). Reopen discovery as chart '
-            'only when the answers show the effort itself is not yet specifiable'),
- 'plan_review': ('Review the spec design independently.',
-                 'Review the spec directly; task decomposition is not a prerequisite'),
- 'work_no_plan_default': ('Work directly from the ready spec without task decomposition.',
-                          'Plan only on a positive signal; the signals and the exclusions live in '
-                          '`plan-vs-no-plan.md`. The read-first pass is satisfied by a `## Resolved via '
-                          'Research` section or a plan that ran the scouts, so it never runs twice and never '
-                          'by default'),
- 'plan': ('Plan the work around the positive planning signal.',
-          'Plan only on a positive signal; the signals and the exclusions live in `plan-vs-no-plan.md`. The '
-          'read-first pass is satisfied by a `## Resolved via Research` section or a plan that ran the '
-          'scouts, so it never runs twice and never by default'),
- 'work_planned': ('Continue work on the recorded task route.',
-                  'Stay on work plus the configured review, QA, and ship gates (`gate-selection.md`). Chart '
-                  'is too late for understood work'),
- 'all_done_make_pr': ('Apply the QA gate, then make the pull request.',
-                      'QA runs or records `skipped(reason)`; make-pr is never skipped on this route'),
- 'closed_spec_no_pr': ('Ask the host to inspect the closed spec without an observed pull request.',
-                       'Never open a replacement pull request for a closed spec'),
- 'existing_pr_tail': ('Apply the existing pull request landing and consent rules.',
-                      'Review-only convergence keeps its limited scope. PR existence is not consent; land '
-                      'owns convergence and merge gates')}
-
-
 # Live routing consumes the same spec/task inventory as `show`; no state store.
 def judge_startable_target(repo: Path, text: str = "") -> str | None:
     """Read documented launch facts; never start a process or infer from UI words."""
@@ -23704,7 +23648,7 @@ def judge_startable_target(repo: Path, text: str = "") -> str | None:
 
 
 def judge_route_state(state: dict, spec_id: str | None = None) -> dict:
-    """Assemble facts without asking the host to summarize lifecycle or PR state."""
+    """Assemble live lifecycle facts in code; the host never summarizes lifecycle or PR state."""
     state = dict(state)
     repo = get_repo_root()
     if spec_id:
@@ -23716,7 +23660,6 @@ def judge_route_state(state: dict, spec_id: str | None = None) -> dict:
         tasks = TaskInventory.load(flow_dir, use_json=True, spec_id=spec_id).by_spec.get(spec_id, [])
         body = find_spec_md_path(flow_dir, spec_id).read_text(encoding="utf-8")
         state = {
-            "view": "live", "spec_title": spec["title"],
             "spec_body": body, "status": spec["status"],
             "ready": spec.get("ready") is True, "no_plan": spec.get("no_plan") is True,
             "tasks_total": len(tasks), "tasks_done": sum(t["status"] == "done" for t in tasks),
@@ -23748,35 +23691,14 @@ def judge_route_state(state: dict, spec_id: str | None = None) -> dict:
                     state["pr_ref"] = prs[0] if prs else None
             except (OSError, subprocess.TimeoutExpired, ValueError):
                 pass  # Unknown remains unknown; never manufacture absence.
-    meanings = {
-        "intent": "User intent at intake, without a recorded spec lifecycle.",
-        "brief": "A structured brief at intake, without a recorded spec lifecycle.",
-        "live": "An existing spec with observed task and pull request lifecycle.",
-    }
-    if state.get("view") in meanings:
-        state["view_meaning"] = meanings[state["view"]]
-    if state.get("view") in ("intent", "brief"):
-        # Intake has no lifecycle: the absent facts are assembled here, never asked of the host.
-        for key, value in (("status", None), ("ready", False), ("no_plan", False), ("tasks_total", 0),
-                           ("tasks_done", 0), ("pr_exists", False), ("pr_ref", None)):
-            state.setdefault(key, value)
-    # The repository's absolute path is a local fact the judge never needs.
-    state.pop("repo", None)
-    text = state.get("spec_body", state.get("intent", ""))
-    # A non-text artifact is validation's error to name, not assembly's crash.
-    state["startable_target_fact"] = judge_startable_target(repo, text if isinstance(text, str) else "")
-    if isinstance(state.get("spec_body"), str) and len(state["spec_body"]) > 100000:
-        state["spec_body"] = state["spec_body"][:100000]
-        state["spec_body_truncated"] = True
+    state["startable_target_fact"] = judge_startable_target(repo, state.get("spec_body", ""))
     return state
 
 
-def judge_route_lifecycle(state: dict) -> dict | None:
-    """First-match lifecycle inventory; only intake needs kind classification."""
-    if state.get("view") != "live":
-        return None
+def judge_route_lifecycle(state: dict) -> dict:
+    """First-match lifecycle inventory for a live spec; intake routing is the host's."""
     def decision(value, rule):
-        return {"value": value, "rule": rule, "met": value != "host", "candidates": []}
+        return {"value": value, "rule": rule, "met": value != "host"}
     if state.get("pr_exists") is None:
         return decision("host", "pr_probe_failed")
     if state["pr_exists"]:
@@ -23810,243 +23732,21 @@ def judge_route_lifecycle(state: dict) -> dict | None:
     return decision("work_no_plan_default", "no positive plan signal")
 
 
-def judge_dependency_tokens(state: dict) -> list[str]:
-    """Name concrete dependency mentions absent from local manifest/import facts."""
-    text = state.get("spec_body", state.get("intent", ""))
-    # Dependency-shaped mentions only: install commands and backticked import statements.
-    mentions = set(re.findall(
-        r"(?:pip install|uv add|npm install|yarn add|pnpm add|cargo add|go get)\s+([A-Za-z@][A-Za-z0-9_.@/-]*)", text))
-    mentions.update(re.findall(r"`(?:import|from)\s+([A-Za-z_][A-Za-z0-9_.]*)", text))
-    repo = get_repo_root()
-    known = set()
-    for name in ("package.json", "pyproject.toml", "requirements.txt", "Cargo.toml", "go.mod"):
-        try:
-            known.update(re.findall(r"[A-Za-z][A-Za-z0-9_.@/-]*", (repo / name).read_text(encoding="utf-8").lower()))
-        except (OSError, UnicodeDecodeError):
-            pass
-    # A tracked-file inventory excludes vendored/untracked trees; inspect Python import roots.
-    try:
-        paths = subprocess.run(["git", "ls-files", "*.py"], cwd=repo, capture_output=True,
-                               text=True, timeout=10, check=False)
-        if paths.returncode == 0:
-            for name in paths.stdout.splitlines():
-                try:
-                    source = (repo / name).read_text(encoding="utf-8")
-                except (OSError, UnicodeDecodeError):
-                    continue  # A non-UTF-8 source is skipped, never a crash.
-                known.update(x.lower() for x in re.findall(r"^(?:from|import)\s+([A-Za-z_][A-Za-z0-9_]*)", source, re.M))
-    except (OSError, subprocess.TimeoutExpired):
-        pass
-    return sorted(token for token in mentions if token.lower() not in known)
-
-
-def judge_route_explain(result: dict, state: dict) -> list[str]:
-    """Render evidence from this hop only; no second judge or hidden host call."""
-    lifecycle = judge_route_lifecycle(state)
-    decision = result.get("decision", lifecycle or {})
-    value = decision.get("value", "host")
-    candidates = decision.get("candidates", [])
-    if not result.get("available"):
-        route = f"host (jev-unavailable({result['reason']}))"
-    elif lifecycle:
-        route = f"{value} (code: {lifecycle['rule']})"
-    elif value == "host":
-        route = "host (jev below floor: " + ", ".join(f"{k} {p:.2f}" for k, p in candidates) + ")"
-    else:
-        route = f"{value} (jev {result['answers']['kind']['confidence']:.2f})"
-    answers = result.get("answers", {})
-    fact_ids = set(JUDGE_PRESETS["route"]["questions"]) - {"kind", "ui_observable_criteria"}
-    facts = [
-        (key, answer["noul"]) for key, answer in answers.items()
-        if key in fact_ids and answer.get("type") == "noul" and answer.get("noul", 0) >= 0.5
-    ]
-    signal = ", ".join(f"{key} (jev {probability:.2f})" for key, probability in facts)
-    if not signal:
-        signal = lifecycle["rule"] if lifecycle else "host decides"
-    if answers.get("names_unfamiliar_library_or_api", {}).get("noul", 0) >= 0.5:
-        tokens = judge_dependency_tokens(state)
-        if tokens:
-            signal += "; dependency scan: " + ", ".join(tokens)
-    alternatives = ", ".join(f"{key} {probability:.2f}" for key, probability in candidates[1:3])
-    presentation_key = (
-        "closed_spec_no_pr"
-        if lifecycle and lifecycle["rule"] == "closed spec without observed PR"
-        else value
-    )
-    presentation = JUDGE_ROUTE_PRESENTATION.get(presentation_key, ("host decides", "host decides"))
-    next_step = presentation[0]
-    if decision.get("research_recommended"):
-        next_step = "Read the unfamiliar dependency documentation first; then " + next_step
-    if decision.get("defect_repro") == "provided":
-        next_step = "Check for prior fixes, run the supplied repro and diagnose, bisect when a known-good revision exists, then fix, prove on base and head, and review."
-    return [
-        f"Next: {next_step}",
-        f"Route: {route}", f"Signal: {signal}",
-        f"Skip/narrow: {presentation[1]}",
-        f"Why not the alternatives: {alternatives or 'lifecycle precedence' if lifecycle else alternatives or 'host decides'}",
-    ]
-
+def judge_route(state: dict) -> dict:
+    """Routing never asks Jev, key or no key: return the code lifecycle decision and send nothing."""
+    result = {"success": True, "available": False, "preset": "route", "reason": "routing_is_code"}
+    decision = judge_route_lifecycle(state)
+    if decision["rule"] == "pr_probe_failed":
+        # A failed probe never means no PR: no lifecycle is guessed.
+        return {**result, "pr_probe_failed": True}
+    return {**result, "decision": {**decision, "pr_ref": state.get("pr_ref"),
+                                   "startable_target_fact": state.get("startable_target_fact")}}
 
 
 # --- Optional System One judge (fn-247): self-contained for copied flowctl. ---
 
 JUDGE_MODEL = "jev-latest"
-JUDGE_PRESETS = {'route': {'required': ['view',
-                        'view_meaning',
-                        'status',
-                        'ready',
-                        'no_plan',
-                        'tasks_total',
-                        'tasks_done',
-                        'pr_exists',
-                        'pr_ref',
-                        'startable_target_fact'],
-           'questions': {'kind': {'type': 'choice',
-                                  'instructions': 'Which kind of work is this starting state? '
-                                                  'Route on content and context, never on input '
-                                                  'kind. The state carries `view` with its '
-                                                  'meaning. Pick none_of_the_above when no kind '
-                                                  'fits.',
-                                  'criteria': {'build': 'One meaningful idea whose intent and '
-                                                        'boundaries can be stated. Clear '
-                                                        'meaningful idea',
-                                               'capture_brief': 'Existing structured brief with '
-                                                                'resolved business and technical '
-                                                                'choices. Structured brief or '
-                                                                'chart briefing ready',
-                                               'defect': 'A reported defect (bug report, console '
-                                                         'dump, failing behaviour). The unknown is '
-                                                         'the cause, the risk is regression',
-                                               'cleanup': 'A structural change with behaviour '
-                                                          'meant to stay the same (rename, '
-                                                          'extract, inline, dedupe, move). No new '
-                                                          'behaviour named; callers to migrate or '
-                                                          'a shape to collapse',
-                                               'slowness': 'A measured slowness or a number the '
-                                                           'user wants moved once. A metric and a '
-                                                           'surface the user can name; a trace or '
-                                                           'a repro',
-                                               'hillclimb': 'One metric to improve against a '
-                                                            'target through repeated attempts. A '
-                                                            'harness that reruns cheaply and a '
-                                                            'target number',
-                                               'question': 'A read-only question ("how does X '
-                                                           'work", "why was Y built this way", '
-                                                           '"are we sure about Z"). The '
-                                                           'deliverable is an answer',
-                                               'fork': 'A design or behaviour fork whose answer is '
-                                                       'observable. A named decision the prototype '
-                                                       'exists to make; the output is a decision, '
-                                                       'not shippable code',
-                                               'tiny': 'Tiny, local, low-risk change that fits one '
-                                                       'implementation context. One-context fix; '
-                                                       'low risk',
-                                               'theme': 'A theme or direction ("make X more Y"). '
-                                                        'No nameable end state, so no outcome and '
-                                                        'no scope boundary',
-                                               'discovery': 'No written direction - target '
-                                                            'problem, users, or key metrics stated '
-                                                            'nowhere. Repeated arguments about '
-                                                            'what matters; no `STRATEGY.md`; '
-                                                            'Looking for candidate investments '
-                                                            'across a domain. Domain search; '
-                                                            'ranked candidates needed; One large '
-                                                            'idea, unclear boundaries, several '
-                                                            'consequential unknowns. Singular '
-                                                            'effort too big for one capture; '
-                                                            'unknowns block stating intent',
-                                               'refine': 'A valid spec with unresolved product or '
-                                                         'authority questions. Spec exists; '
-                                                         'judgment gaps remain',
-                                               'plan_review': 'A spec whose design needs an '
-                                                              'independent assessment. '
-                                                              'Consequential design choices; a '
-                                                              'zero-task spec qualifies',
-                                               'none_of_the_above': None}},
-                         'reports_defect': {'type': 'noul',
-                                            'instructions': 'Does the text report a defect: a bug '
-                                                            'report, console dump, crash, or '
-                                                            'failing behaviour, where the unknown '
-                                                            'is the cause and the risk is '
-                                                            'regression?'},
-                         'defect_has_repro': {'type': 'noul',
-                                              'instructions': 'If the text reports a defect, does '
-                                                              'it carry a concrete repro (steps, a '
-                                                              'failing command, a trace with a '
-                                                              'location, a case that shows it)? '
-                                                              'Answer no when there is no defect '
-                                                              'or no repro.'},
-                         'structural_change_behaviour_kept': {'type': 'noul',
-                                                              'instructions': 'Is the text a '
-                                                                              'structural change '
-                                                                              'with behaviour '
-                                                                              'meant to stay the '
-                                                                              'same (rename, '
-                                                                              'extract, inline, '
-                                                                              'dedupe, move; '
-                                                                              'callers to migrate '
-                                                                              'or a shape to '
-                                                                              'collapse) with no '
-                                                                              'new behaviour named '
-                                                                              'anywhere?'},
-                         'names_metric_and_surface': {'type': 'noul',
-                                                      'instructions': 'Does the text name a '
-                                                                      'measured slowness or a '
-                                                                      'number the user wants moved '
-                                                                      'once, with a metric and a '
-                                                                      'surface the user can name '
-                                                                      '(a trace or a repro)?'},
-                         'repeated_metric_target': {'type': 'noul',
-                                                    'instructions': 'Does the text ask to improve '
-                                                                    'one metric against a target '
-                                                                    'number through repeated '
-                                                                    'attempts on a harness that '
-                                                                    'reruns cheaply?'},
-                         'read_only_question': {'type': 'noul',
-                                                'instructions': 'Is the text a read-only question '
-                                                                '(how does X work, why was Y built '
-                                                                'this way, are we sure about Z) '
-                                                                'whose deliverable is an answer '
-                                                                'rather than a change?'},
-                         'theme_no_end_state': {'type': 'noul',
-                                                'instructions': 'Is the text a theme or direction '
-                                                                '("make X more Y") with no '
-                                                                'nameable end state, so no outcome '
-                                                                'and no scope boundary?'},
-                         'no_written_direction': {'type': 'noul',
-                                                  'instructions': 'Does the text show that no '
-                                                                  'written direction exists '
-                                                                  '(target problem, users, or key '
-                                                                  'metrics stated nowhere; '
-                                                                  'repeated arguments about what '
-                                                                  'matters)?'},
-                         'large_idea_several_unknowns': {'type': 'noul',
-                                                         'instructions': 'Is the text one large '
-                                                                         'singular idea with '
-                                                                         'unclear boundaries and '
-                                                                         'several consequential '
-                                                                         'unknowns that block '
-                                                                         'stating intent (too big '
-                                                                         'for one capture)?'},
-                         'names_unfamiliar_library_or_api': {'type': 'noul',
-                                                             'instructions': 'Does the text name a '
-                                                                             'library, service, or '
-                                                                             'API that the '
-                                                                             'repository does not '
-                                                                             'already use (an '
-                                                                             'unfamiliar '
-                                                                             'dependency that '
-                                                                             'needs reading '
-                                                                             'first)?'},
-                         'ui_observable_criteria': {'type': 'noul',
-                                                    'instructions': "Does the spec's acceptance "
-                                                                    'describe UI behaviour a user '
-                                                                    'could observe on a drivable '
-                                                                    'surface (a screen, a page, a '
-                                                                    'window, a rendered widget), '
-                                                                    'as opposed to CLI output, '
-                                                                    'file contents, or library '
-                                                                    'behaviour?'}}},
+JUDGE_PRESETS = {
  'qa-gate': {'required': ['acceptance', 'startable_target_fact'],
              'questions': {'ui_observable_criteria': {'type': 'noul',
                                                       'instructions': "Does the spec's acceptance "
@@ -24126,14 +23826,7 @@ JUDGE_PRESETS = {'route': {'required': ['view',
                                                                          'rather than one bounded '
                                                                          'turn?'}}}}
 
-JUDGE_ROUTE_SIGNAL_IDS = (
-    "reports_defect", "structural_change_behaviour_kept", "names_metric_and_surface",
-    "repeated_metric_target", "read_only_question", "theme_no_end_state",
-    "no_written_direction", "large_idea_several_unknowns",
-)
-
-
-def judge_questions(preset: str, state: dict, explain: bool = False) -> dict:
+def judge_questions(preset: str, state: dict) -> dict:
     """Only the questions some consumer reads for this decision point."""
     if preset == "memory-rerank":
         return {
@@ -24148,23 +23841,7 @@ def judge_questions(preset: str, state: dict, explain: bool = False) -> dict:
             }
             for i in range(len(state["entries"]))
         }
-    questions = dict(JUDGE_PRESETS[preset]["questions"])
-    if preset == "route":
-        lifecycle = judge_route_lifecycle(state)
-        if lifecycle:
-            # A live spec is routed by code; ask only what that route still reads.
-            needed = set()
-            if lifecycle["value"] in ("plan", "work_no_plan_default"):
-                needed.add("names_unfamiliar_library_or_api")
-            if lifecycle["value"] == "all_done_make_pr" and get_config("pipeline.qa", "off") == "auto":
-                needed.add("ui_observable_criteria")
-            return {qid: q for qid, q in questions.items() if qid in needed}
-        # Intake: QA is never decided on this hop; signal Nouls feed only --explain.
-        questions.pop("ui_observable_criteria")
-        if not explain:
-            for qid in JUDGE_ROUTE_SIGNAL_IDS + ("names_unfamiliar_library_or_api",):
-                questions.pop(qid)
-    return questions
+    return dict(JUDGE_PRESETS[preset]["questions"])
 
 
 def judge_validate_state(preset: str, state: dict) -> None:
@@ -24173,33 +23850,19 @@ def judge_validate_state(preset: str, state: dict) -> None:
     if not isinstance(state, dict):
         raise ValueError("state must be a JSON object")
     required = list(JUDGE_PRESETS[preset]["required"])
-    if preset == "route":
-        if state.get("view") not in ("intent", "brief", "live"):
-            raise ValueError("state field view must be intent, brief, or live")
-        required += ["intent"] if state["view"] == "intent" else ["spec_title", "spec_body"]
     missing = [key for key in required if key not in state]
     if missing:
         raise ValueError("missing required state field: " + ", ".join(missing))
     text_fields = {"qa-gate": ["acceptance"], "fork-gate": ["text"],
-                   "memory-rerank": ["query"], "tier": ["task_title", "task_body", "acceptance", "repo"],
-                   "route": ["view_meaning"] + (["intent"] if state.get("view") == "intent" else ["spec_title", "spec_body"])}
+                   "memory-rerank": ["query"], "tier": ["task_title", "task_body", "acceptance", "repo"]}
     for key in text_fields[preset]:
         if not isinstance(state[key], str):
             raise ValueError("state field must be a string: " + key)
-    if preset in ("route", "tier"):
-        counts = ["tasks_total", "tasks_done"] if preset == "route" else ["touches_count"]
-        for key in counts:
-            if type(state[key]) is not int or state[key] < 0:
-                raise ValueError("state field must be a nonnegative integer: " + key)
-        flags = ["ready", "no_plan"] if preset == "route" else ["has_quick_commands"]
-        for key in flags:
-            if type(state[key]) is not bool:
-                raise ValueError("state field must be boolean: " + key)
-    if preset == "route":
-        if state["tasks_done"] > state["tasks_total"]:
-            raise ValueError("state field tasks_done exceeds tasks_total")
-        if state["pr_exists"] is not None and type(state["pr_exists"]) is not bool:
-            raise ValueError("state field pr_exists must be boolean or null")
+    if preset == "tier":
+        if type(state["touches_count"]) is not int or state["touches_count"] < 0:
+            raise ValueError("state field must be a nonnegative integer: touches_count")
+        if type(state["has_quick_commands"]) is not bool:
+            raise ValueError("state field must be boolean: has_quick_commands")
     if preset == "memory-rerank":
         entries = state["entries"]
         if not isinstance(entries, list) or len(entries) > 15:
@@ -24276,7 +23939,7 @@ def judge_https_connection(host: str, timeout: float):
     return connection
 
 
-def judge_decide(preset: str, state: dict, answers: dict, route_decision: dict | None = None) -> dict:
+def judge_decide(preset: str, state: dict, answers: dict) -> dict:
     decision = {"value": None, "rule": "", "met": False}
     if preset == "qa-gate":
         ui = answers["ui_observable_criteria"]["noul"]
@@ -24296,45 +23959,23 @@ def judge_decide(preset: str, state: dict, answers: dict, route_decision: dict |
         ranked.sort(key=lambda pair: pair[1], reverse=True)
         decision.update(value=[[entry_id, score] for entry_id, score in ranked],
                         rule="score descending; stable", met=True)
-    elif preset == "route" and state["view"] == "live":
-        decision = dict(route_decision or judge_route_lifecycle(state))
-        decision["candidates"] = []
-        decision["pr_ref"] = state["pr_ref"]
-        decision["startable_target_fact"] = state["startable_target_fact"]
-        if "ui_observable_criteria" in answers:
-            decision["qa"] = judge_decide("qa-gate", state, answers)
-        if "names_unfamiliar_library_or_api" in answers:
-            decision["research_recommended"] = (answers["names_unfamiliar_library_or_api"]["noul"] >= 0.5
-                and not re.search(r"^## Resolved via Research\s*$", state["spec_body"], re.M))
     else:
-        qid, floor = ("kind", 0.7) if preset == "route" else ("tier", 0.8)
-        answer = answers[qid]
+        answer = answers["tier"]
         candidates = sorted(answer["probabilities"].items(), key=lambda pair: pair[1], reverse=True)[:3]
         value = answer["choice"]
-        met = answer["confidence"] >= floor and value != "none_of_the_above"
-        if preset == "tier":
-            met = met and value in ("mechanical", "long_running")
-        decision.update(value=value if met else ("host" if preset == "route" else "session"),
-                        rule=f"{qid} confidence>={floor}", met=met, candidates=[list(c) for c in candidates])
-        if preset == "route":
-            if value == "defect" and met:
-                decision["defect_repro"] = "provided" if answers["defect_has_repro"]["noul"] >= 0.5 else "needed"
+        met = answer["confidence"] >= 0.8 and value in ("mechanical", "long_running")
+        decision.update(value=value if met else "session", rule="tier confidence>=0.8", met=met,
+                        candidates=[list(c) for c in candidates])
     return decision
 
 
-def judge_evaluate(preset: str, state: dict, explain: bool = False) -> dict:
+def judge_evaluate(preset: str, state: dict) -> dict:
     """One bounded HTTP request, with retry only for documented overload statuses."""
     import http.client
     import socket
 
     judge_validate_state(preset, state)
     unavailable = {"success": True, "available": False, "preset": preset}
-    route_decision = judge_route_lifecycle(state) if preset == "route" else None
-    if route_decision and route_decision["rule"] == "pr_probe_failed":
-        return {**unavailable, "reason": "transport", "pr_probe_failed": True}
-    if route_decision:
-        unavailable["decision"] = {**route_decision, "pr_ref": state.get("pr_ref"),
-                                   "startable_target_fact": state.get("startable_target_fact")}
     enabled = get_config("judge.enabled", True)
     if not isinstance(enabled, bool):
         print("Warning: judge.enabled must be boolean; treating it as true", file=sys.stderr)
@@ -24344,15 +23985,15 @@ def judge_evaluate(preset: str, state: dict, explain: bool = False) -> dict:
         return {**unavailable, "reason": "disabled"}
     if not key:
         return {**unavailable, "reason": "no_key"}
-    questions = judge_questions(preset, state, explain)
+    questions = judge_questions(preset, state)
     body = json.dumps({"model": JUDGE_MODEL, "state": state, "questions": questions}, ensure_ascii=False)
     if len(body) > 32000 * 4:
         return {**unavailable, "reason": "over_budget"}
     started = time.monotonic()
     if not questions:
-        # Nothing left to ask (a lifecycle route, no memory hits): no request is sent.
+        # Nothing left to ask (no memory hits): no request is sent.
         return {"success": True, "available": True, "preset": preset, "model": JUDGE_MODEL,
-                "decision": judge_decide(preset, state, {}, route_decision), "answers": {}, "latency_ms": 0, "usage": {}}
+                "decision": judge_decide(preset, state, {}), "answers": {}, "latency_ms": 0, "usage": {}}
     for attempt in range(3):
         connection = None
         try:
@@ -24371,7 +24012,7 @@ def judge_evaluate(preset: str, state: dict, explain: bool = False) -> dict:
             payload = json.loads(raw)
             answers = judge_validate_answers(questions, payload)
             return {"success": True, "available": True, "preset": preset, "model": payload["model"],
-                    "decision": judge_decide(preset, state, answers, route_decision), "answers": answers,
+                    "decision": judge_decide(preset, state, answers), "answers": answers,
                     "latency_ms": round((time.monotonic() - started) * 1000), "usage": payload["usage"]}
         except (TimeoutError, socket.timeout):
             return {**unavailable, "reason": "timeout"}
@@ -24445,9 +24086,9 @@ def cmd_judge(args: argparse.Namespace) -> None:
                 raise ValueError("--task applies only to tier and cannot combine with --spec or --state-file")
             state = judge_tier_state(args.task)
         elif args.preset == "route":
-            # Assembly fills the code-owned facts, so intake supplies only its text;
-            # judge_evaluate validates the assembled state before any request.
-            state = judge_route_state(state, args.spec)
+            # Routing is code's and the host's: a live spec's lifecycle, never a judge request.
+            if not args.spec or args.state_file:
+                raise ValueError("--preset route takes --spec only; intake routing is the host's")
         elif args.preset == "qa-gate" and args.spec:
             flow_dir = get_flow_dir()
             spec_id = resolve_spec_id_arg(flow_dir, args.spec, use_json=True)
@@ -24455,23 +24096,17 @@ def cmd_judge(args: argparse.Namespace) -> None:
             state = {"acceptance": body, "startable_target_fact": judge_startable_target(get_repo_root(), body)}
         elif args.spec:
             raise ValueError("--spec applies only to the route and qa-gate presets")
-        if args.explain and args.preset != "route":
-            raise ValueError("--explain applies only to the route preset")
-        result = judge_evaluate(args.preset, state, explain=args.explain)
+        if args.preset == "route":
+            result = judge_route(judge_route_state({}, args.spec))
+        else:
+            result = judge_evaluate(args.preset, state)
         if args.preset == "tier":
             result.update(judge_tier_dispatch(result, args))
-        # One request serves both the projection and the explain rendering.
-        explain = judge_route_explain(result, state) if args.explain else None
     except (OSError, UnicodeError, json.JSONDecodeError):
         error_exit("state file is unreadable or is not JSON", use_json=args.json)
     except ValueError as exc:
         error_exit(str(exc), use_json=args.json)
-    if explain is not None and not args.json:
-        print("\n".join(explain).encode("ascii", "backslashreplace").decode("ascii"))
-    else:
-        if explain is not None:
-            result["explain"] = explain
-        print(json.dumps(result, ensure_ascii=True))
+    print(json.dumps(result, ensure_ascii=True))
 
 
 def cmd_memory_search(args: argparse.Namespace) -> None:
@@ -43636,23 +43271,19 @@ def pilot_snapshot(spec_arg: str | None = None) -> dict:
         prs = candidate["pr"]
         pr_ref = prs["open"] or prs["merged"] or next(iter(prs["closed"]), None)
         state = judge_route_state({
-            "view": "live", "spec_title": spec["title"],
             "spec_body": find_spec_md_path(flow_dir, spec["id"]).read_text(encoding="utf-8"),
             "status": spec["status"], "ready": spec.get("ready") is True, "no_plan": spec.get("no_plan") is True,
             "tasks_total": len(tasks), "tasks_done": sum(t["status"] == "done" for t in tasks),
             "tasks_blocked": sum(t["status"] == "blocked" for t in tasks),
             "blocked_reasons": [f"{t['id']}: {t.get('blocked_reason') or 'blocked'}" for t in tasks if t["status"] == "blocked"],
             "pr_exists": None if prs["probe_failed"] else bool(pr_ref), "pr_ref": pr_ref})
-        decision = judge_route_lifecycle(state)
-        candidate["route"] = {"success": True, "available": False, "preset": "route", "reason": "not_selected"}
-        if prs["probe_failed"]:
-            candidate["route"]["pr_probe_failed"] = True
-        elif prs["history_complete"]:
-            candidate["route"]["decision"] = {**decision, "pr_ref": pr_ref,
-                                               "startable_target_fact": state.get("startable_target_fact")}
-        if candidate is selected:
-            candidate["route"] = judge_evaluate("route", state)
-        candidate["route"]["explain"] = judge_route_explain(candidate["route"], state)
+        # Every candidate is routed in code; only the selected one carries full PR history.
+        route = judge_route(state)
+        if candidate is not selected:
+            route["reason"] = "not_selected"
+            if not prs["history_complete"]:
+                route.pop("decision", None)
+        candidate["route"] = route
     current = subprocess.run(["git", "branch", "--show-current"], cwd=repo,
                              capture_output=True, text=True, check=True).stdout.strip()
     current_prs = [row for row in rows or [] if row["headRefName"] == current]
@@ -55354,7 +54985,7 @@ def main() -> None:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     p_judge = subparsers.add_parser("judge", help="Optional typed System One judgments")
-    p_judge.add_argument("--preset", required=True, choices=list(JUDGE_PRESETS))
+    p_judge.add_argument("--preset", required=True, choices=["route", *JUDGE_PRESETS])
     p_judge.add_argument("--state-file", help="JSON state file")
     p_judge.add_argument("--spec", help="Assemble route or QA state from a live spec")
     p_judge.add_argument("--task", help="Assemble tier state from a live task")
@@ -55363,7 +54994,6 @@ def main() -> None:
     p_judge.add_argument("--role-model", help="Model pinned by the dispatched role")
     p_judge.add_argument("--can-spawn-model", action="store_true", help="Host supports native model selection")
     p_judge.add_argument("--can-bridge", action="store_true", help="Host verified bridge reach")
-    p_judge.add_argument("--explain", action="store_true", help="Print the route recommendation")
     p_judge.add_argument("--json", action="store_true", help="JSON output")
     p_judge.set_defaults(func=cmd_judge)
 
