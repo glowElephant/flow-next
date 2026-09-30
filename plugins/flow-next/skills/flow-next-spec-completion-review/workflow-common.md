@@ -133,7 +133,7 @@ read-only by contract; a sandbox-blocked reviewer means something asked it to
 mutate the workspace. Fix that, do not pass `--sandbox workspace-write` /
 `danger-full-access` or set `CODEX_SANDBOX` (Windows resolves via `auto`).
 
-If the verdict is NEEDS_WORK, run one fix pass and one re-review (working-rules.md, Review):
+If the verdict is NEEDS_WORK, fix and re-review (working-rules.md, Review):
 
 1. **Parse issues** from reviewer feedback (missing requirements, incomplete implementations)
 2. **Fix code** and run the focused tests for it
@@ -145,10 +145,11 @@ If the verdict is NEEDS_WORK, run one fix pass and one re-review (working-rules.
    - **Host**: Continue through [workflow-host.md](workflow-host.md)'s selected
      re-review path.
    - **RP**: `$FLOWCTL rp chat-send --window "$W" --tab "$T" --message-file <literal re-review path from workflow-rp.md's fix loop>` (NO `--new-chat`; stdout redirected to the same literal response file, Read once)
-5. **Stop.** The re-review's verdict is terminal: `SHIP` completes; `NEEDS_WORK` hands
-   the surviving findings to the caller, never a second fix pass. On host/rp, run the
-   terminal status step below on that verdict. The iteration cap stays as a safety net
-   (`ESCALATE:`, exit 4).
+5. **Stop.** Attended, the re-review's verdict is terminal: `SHIP` completes; `NEEDS_WORK`
+   hands the surviving findings to the caller, never a second fix pass. When working-rules.md's
+   review loop applies (an unattended run, or a request to review until SHIP), repeat steps 1-4
+   until SHIP or an `ESCALATE:`. On host/rp, run the terminal status step below on the final
+   verdict. The iteration cap stays as the backstop (`ESCALATE:`, exit 4).
 
 **RP re-reviews stay in the same chat.** `--new-chat` belongs to the first review only — a re-review carrying it drops the reviewer's context and has broken this.
 
