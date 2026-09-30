@@ -70,8 +70,8 @@ DESCRIPTIONS: dict[str, str] = {
     "review": "Review subsystem settings.",
     "review.backend": (
         "Default review backend (rp, codex, copilot, cursor, claude, host, "
-        "none) or spec form backend[:model[:effort]], e.g. codex:gpt-5.4:high "
-        "or claude:claude-opus-5:high. cursor folds effort into the model "
+        "none) or spec form backend[:model[:effort]], e.g. codex:<model>:high "
+        "or claude:<model>:high. cursor folds effort into the model "
         "name (no :effort rung); rp, host, and none are bare-only. copilot "
         "accepts no none/minimal effort; claude takes the claude CLI's own "
         "low|medium|high|xhigh|max. If "
