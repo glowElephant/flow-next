@@ -376,7 +376,6 @@ python3 "$SCRIPT_DIR/merge_codex_config.py" "$CONFIG" "$CODEX_SRC/agents" \
     --max-threads "$CODEX_MAX_THREADS"
 
 echo -e "  ${GREEN}✓${NC} config.toml ($AGENT_COUNT agent entries, max_threads=$CODEX_MAX_THREADS)"
-echo -e "  ${GREEN}✓${NC} [features] hooks = true (feature flag only; no hooks file)"
 
 # ====================
 # Summary
