@@ -49,6 +49,8 @@ failed, question the idea before trying a third.
   and look at the actual result, not only the unit tests. That includes each error case and
   boundary the request names: give the bad value or the missing key the way a user would and
   read the message they would get.
+- When a change defers, batches or caches work that used to happen at once, try the case where
+  the process stops before the deferred work runs, and check every stated guarantee still holds.
 - Save a slow run's full output to a file (never only through `tail` or `grep`) and read it
   from there; never re-run a suite only to read its output again.
 
