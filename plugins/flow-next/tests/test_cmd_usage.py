@@ -13,6 +13,7 @@ controlled cwd per case:
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import sys
@@ -29,11 +30,15 @@ LOCAL_SENTINEL = "LOCAL COPY SENTINEL"
 
 
 def _run_usage(flowctl_py: Path, cwd: Path) -> subprocess.CompletedProcess:
+    # UTF-8 both ways: usage.md carries non-ASCII, and a Windows console
+    # encoding would otherwise mangle it in transit.
     return subprocess.run(
         [sys.executable, str(flowctl_py), "usage"],
         cwd=str(cwd),
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        env={**os.environ, "PYTHONIOENCODING": "utf-8"},
     )
 
 

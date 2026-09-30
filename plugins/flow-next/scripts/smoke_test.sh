@@ -1116,17 +1116,14 @@ import sys
 sys.path.insert(0, sys.argv[1])
 from flowctl import build_review_prompt
 
-# Test impl prompt has all 7 criteria
+# Test impl prompt carries the scoped review sections
 impl_prompt = build_review_prompt(
     "impl", context_hints="Test hints", review_scope="1\t0\tsrc/x.py",
     diff_range="aaa..bbb", spec_path=".flow/tasks/fn-1.1.md")
 assert "<review_instructions>" in impl_prompt
-assert "Correctness" in impl_prompt
-assert "Simplicity" in impl_prompt
+assert "## What to review" in impl_prompt
+assert "## Introduced vs pre-existing" in impl_prompt
 assert "DRY" in impl_prompt
-assert "Architecture" in impl_prompt
-assert "Edge Cases" in impl_prompt
-assert "Tests" in impl_prompt
 assert "Security" in impl_prompt
 assert "<verdict>SHIP</verdict>" in impl_prompt
 assert "File:Line" in impl_prompt  # Structured output format

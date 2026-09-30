@@ -633,7 +633,7 @@ echo -e "${YELLOW}--- Case 10: numbered-options fallback (R19) ---${NC}"
 assert_grep "Saved: .flow/prospects/<artifact-id>.md"   "$WF_TEXT" "Case 10: 'Saved: …' literal present in workflow.md"
 assert_grep "Promote a survivor to a spec?"           "$WF_TEXT" "Case 10: 'Promote a survivor to a spec?' literal present"
 assert_grep "Enter choice [1-N|i|skip]:"               "$WF_TEXT" "Case 10: 'Enter choice [1-N|i|skip]:' literal present"
-assert_grep "i) Interview"                             "$WF_TEXT" "Case 10: interview alphabetic shortcut present"
+assert_grep "i) Refine"                                "$WF_TEXT" "Case 10: refine alphabetic shortcut present"
 assert_grep "N) Skip"                                  "$WF_TEXT" "Case 10: numeric Skip slot present"
 
 # Reply routing simulator: the workflow defines exact reply-parsing rules.
