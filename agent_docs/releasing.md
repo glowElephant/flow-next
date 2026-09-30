@@ -69,9 +69,12 @@ jq . plugins/flow-next/.codex-plugin/plugin.json   # 3. verify version
 #    exist in skill prose are the failure mode this step closes.
 
 git add -A && git commit -m "chore(flow-next): bump version to X.Y.Z"
-git push
+git push   # on main (a release from another branch merges to main first)
 
-git tag flow-next-vX.Y.Z && git push origin flow-next-vX.Y.Z   # triggers release + Discord
+# 9. WAIT for the green main-push CI run on this exact SHA. The release job
+#    (require_release_ci.py) refuses a tag whose SHA has no green main CI; if a tag
+#    raced CI, rerun the Release workflow once CI is green.
+git tag flow-next-vX.Y.Z && git push origin flow-next-vX.Y.Z   # triggers the release
 ```
 
 ## Changelog writing gate

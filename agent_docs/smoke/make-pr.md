@@ -10,7 +10,7 @@ Expected behavior for a native invocation:
 - `command -v gh` missing → exit 1 with install instructions.
 - `gh auth status` failing → exit 1 with login instructions.
 - `--base <branch>` resolves `origin/<branch>`; a stale local branch cannot widen the export. An invalid remote branch stops before composition.
-- Branch with no `branch_name` match in any `.flow/specs/*.json` AND no positional spec id → interactive `AskUserQuestion`; autonomous hard-errors with exit 2.
+- Branch with no `branch_name` match in any `.flow/specs/*.json` AND no positional spec id → preflight prints `NO_SPEC` and exits 4; make-pr takes the no-spec path (`gh pr create` with the handoff as the body), with no question and no spec created.
 - Tasks not all done + interactive → warn on stderr + proceed (open items force a draft via create-and-finalize); autonomous exits 2; `--dry-run` warns and continues. No `AskUserQuestion` for open tasks.
 - Branch with an OPEN PR → exit 1 with `/flow-next:resolve-pr` hint.
 - Branch with a CLOSED or MERGED PR (no OPEN) → continues cleanly. **This is the load-bearing check** — validated empirically: bare `gh pr view --json url` rc=0 for closed/merged PRs would false-positive without the `select(.state == "OPEN")` filter.
