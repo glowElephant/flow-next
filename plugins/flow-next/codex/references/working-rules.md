@@ -70,12 +70,6 @@ failed, question the idea before trying a third.
   for a call only a human can make or an irreversible action. A human call that does not block
   the rest of the work (refreshing a frozen fixture, a requirement only CI can prove) goes in the
   pull request as an open item, on a draft pull request; finish the rest instead of stopping.
-- **Experiments** (both modes): settle an observable question by running something only when the
-  run is read-only or disposable. One that needs live or shared state, credentials, the network or
-  a destructive command (a migration, a deployment, a write API) is a question when attended and a
-  human call when unattended. When independent inputs (sources, scouts, reviewers, models)
-  disagree wildly on one question, the question was underspecified: reframe it and re-run, never
-  average or pick one.
   Fix a discovery only when it blocks the goal, as its own commit; list the rest as follow-ups
   in the final report. Keep a
   Decisions list in the final report and the pull request body: each default you chose, finding
