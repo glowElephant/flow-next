@@ -63,8 +63,8 @@ esac
 
 # Standalone branch reviews leave TASK_ID empty — OMIT the positional entirely
 # (a quoted "" is rejected as an invalid task id; standalone mode needs no task arg).
-# Size the panel by risk: a small diff in one area that touches no persisted or shared state,
-# concurrency, security or data layout gets one draw (add `--draw correctness`); anything else
+# Size the panel by risk: a small diff in one area (one module or feature, not spread across
+# subsystems) that touches no persisted or shared state, concurrency, security or data layout gets one draw (add `--draw correctness`); anything else
 # (those risks, or a large or cross-cutting diff) keeps the default three.
 # DEFAULT topology only — when the user gave a steering instruction ("use 1
 # reviewer instead of 3", "three different model families"), read "Steering

@@ -9,6 +9,7 @@ Flow-Next changed shape with 5.0.0. One command, `/flow-next:flow`, reads whatev
 ### Changed
 
 - **When you're there, Flow opens the pull request when you ask.** An attended build now hands back the change, commits locally and ends with one line: say "open the PR" when you want it. Nothing is pushed or opened on GitHub until you do. `flow --auto` is unchanged and still stops at the open PR, ready or as a draft with open items. A PR the run just opened no longer gets a "land it now?" question.
+- **Audit's autofix stops at a local branch.** On the default branch it used to create a branch, commit and open a pull request on its own. It now commits to `docs/audit-memory-<date>` and reports the branch; nothing is pushed or opened until you ask.
 
 ### Deprecated
 
@@ -20,6 +21,8 @@ Flow-Next changed shape with 5.0.0. One command, `/flow-next:flow`, reads whatev
 - **Land lands a pull request opened without a spec.** 7.0 let a direct change open a PR with no spec behind it, and land then stopped with "no matching spec". It now runs the same gates on that PR (threads, CI, review state, your merge authorization) and merges it, with no spec to close.
 - **Land's repairs can push.** Land works on review threads and red CI in an isolated checkout, but the checkout you ran it from may already hold the PR branch, and resolve-pr's plain `git push` fails from a detached checkout. Land now uses a detached worktree at the PR head and pushes to the PR branch by name, and resolve-pr does the same when it runs detached.
 - **An unattended merge asks once when a review thread needs you.** When resolve-pr hands a thread to a person, land now stops `NEEDS_HUMAN` with the resolver's reason. Before, it stopped `RESOLVING` and the next tick ran resolve-pr on the same thread again, every 30 minutes, without telling anyone.
+- **An attended flow run commits QA's verdict.** QA left its result file uncommitted, so an attended run ended on a dirty tree and a PR you asked for went out without the verdict. Flow now commits only that file on the spec branch. Running `/flow-next:qa` yourself still leaves commits to you.
+- **A reviewer's `NEEDS_HUMAN` stops on every backend.** Implementation and plan review handled it only on the Codex path; Claude, Copilot, Cursor and host reviews now stop and hand you the reviewer's question too.
 
 ## [flow-next 7.0.0] - 2026-10-01
 

@@ -88,8 +88,9 @@ unrequested machinery your change added, remove it.
 
 Attended, the person wants fast feedback: after fixing, re-review once with a single reviewer
 looking at the fixes, and do not loop. Later fixes, including ones the person asks for, get focused
-tests, not another review. Hand the result back first, in its own message, and end the turn; then
-start the review in the background and report its verdict (and any fix) when it lands. If the
+tests, not another review. Hand the result back first, in its own message; then
+start the review as background work whose completion wakes you (a background agent or task), end
+the turn, and report its verdict (and any fix) when it lands. If the
 re-review still finds the change wrong, give the person the remaining findings with the
 reviewer's reasons and leave the task open until they decide; when they accept it as is, record
 an `OVERRIDDEN:` line with their words in the task's done summary and complete the task.

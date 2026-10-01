@@ -574,7 +574,7 @@ If `GIT_BRANCH` is a feature branch + dirty tree (other uncommitted changes):
 
 | Context | Default action |
 |---------|---------------|
-| On main/master/default | Create branch `docs/audit-memory-<date>`, commit, attempt `gh pr create`. If PR creation fails, report the branch name |
+| On main/master/default | Create branch `docs/audit-memory-<date>`, commit, and report the branch name. Never push or open a PR unless asked |
 | On feature branch | Commit as a separate commit on the current branch |
 | Git operations fail | Include the recommended git commands in the report and continue |
 

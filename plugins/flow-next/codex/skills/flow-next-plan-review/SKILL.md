@@ -99,8 +99,8 @@ Format: `<flow-spec-id> [focus areas] [--review=<mode>]`
 **The fix loop never pauses for user confirmation**; never use plain-text numbered prompt in it. Which findings it fixes, and which it lists as follow-ups, follows the Review section of [working-rules.md](../../references/working-rules.md).
 
 `MAJOR_RETHINK` is not a fix-loop input. Surface the reviewer's rationale and
-stop with `BLOCKED: DESIGN_CONFLICT`. Only
-`NEEDS_WORK` enters the loop.
+stop with `BLOCKED: DESIGN_CONFLICT`. `NEEDS_HUMAN` is not one either: stop and hand the
+reviewer's question to the person, on every backend. Only `NEEDS_WORK` enters the loop.
 
 Attended: one fix pass, then one re-review, whose verdict is terminal. When working-rules.md's
 review loop applies (an unattended run, or a request to review until SHIP), repeat the steps

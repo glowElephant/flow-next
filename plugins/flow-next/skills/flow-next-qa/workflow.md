@@ -260,7 +260,8 @@ to record it, then keep testing the criterion by another route.
 
 Pick the first that applies:
 
-1. **BLOCKED**: no reachable target or no driver. Could not verify; not a failure of the app.
+1. **BLOCKED**: no reachable target, no driver, or the scenarios need data only a CI or staging
+   environment holds. Could not verify; not a failure of the app.
    Set `blocked_reason`.
 2. **NA**: no criterion is user-observable. Set `na_reason`.
 3. **NEEDS_WORK** (NO): any open P0 or P1, or a `⚠️ no live scenario` row.

@@ -48,7 +48,8 @@ takes `REVIEW_ID` and `DIFF_BASE` as literals.
 ## 2. Codex review
 
 Run each review command as one blocking foreground Bash call with a 600-second timeout. Never
-run it in the background: its completion would not resume you.
+run it in the background: its completion would not resume you. (An attended caller may run this
+whole skill as background work; the commands inside it still run in the foreground.)
 
 ```bash
 FLOWCTL="${CODEX_HOME:-$HOME/.codex}/scripts/flowctl"
@@ -69,8 +70,8 @@ if OUT=$("$FLOWCTL" triage-skip --json "${TRIAGE[@]}" 2>/dev/null); then
 fi
 args=(); [ -n "$TASK_ID" ] && args+=("$TASK_ID")
 args+=(--base "$DIFF_BASE" --receipt "$RECEIPT_PATH" --json)
-# The default is three reviewers. For a small diff in one area that touches no persisted or
-# shared state, concurrency, security or data layout, set ONE_REVIEWER=1 for a single reviewer.
+# The default is three reviewers. For a small diff in one area (one module or feature, not spread
+# across subsystems) that touches no persisted or shared state, concurrency, security or data layout, set ONE_REVIEWER=1 for a single reviewer.
 ONE_REVIEWER=0
 [ "$ONE_REVIEWER" = 1 ] && args+=(--draw correctness)
 "$FLOWCTL" codex impl-review-fanout "${args[@]}"
@@ -99,14 +100,14 @@ receipt. Report `VERDICT=<verdict>` with the kept findings; your own reading nev
 Finalize before you change or commit anything: a commit moves HEAD past the reviewed head,
 flowctl refuses the round, and the retry is a full fresh review instead of the scoped re-review.
 
-## 4. Act on the verdict (codex path)
+## 4. Act on the verdict (every backend)
 
 - `SHIP`: done. Report the verdict and any follow-ups.
 - `MAJOR_RETHINK`: the approach is wrong. Stop with `BLOCKED: DESIGN_CONFLICT` and the
   reviewer's rationale; do not patch finding by finding.
 - `NEEDS_HUMAN`: stop and hand the reviewer's question to the person.
-- `NEEDS_WORK`: read [references/codex-fix-pass.md](references/codex-fix-pass.md) and run its one fix
-  pass and re-review.
+- `NEEDS_WORK`: on the codex path, read [references/codex-fix-pass.md](references/codex-fix-pass.md)
+  and run its one fix pass and re-review; other backends run their workflow file's fix loop.
 
 On any backend, when an unattended loop ends with the reviewer keeping only findings you declined
 under working-rules.md's rule, all below Major, print `OVERRIDDEN: <n> declined findings` with

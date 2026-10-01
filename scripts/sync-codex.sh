@@ -2402,7 +2402,6 @@ flow-next-work/phases.md	Next: /flow-next:make-pr <spec-id>	Next: $flow-next-mak
 flow-next-make-pr/create-and-finalize.md	Reviewer feedback → /flow-next:resolve-pr	Reviewer feedback → $flow-next-resolve-pr
 flow-next-make-pr/create-and-finalize.md	Body inspection → /flow-next:make-pr	Body inspection → $flow-next-make-pr
 flow-next-make-pr/create-and-finalize.md	re-run /flow-next:make-pr (skill detects	re-run $flow-next-make-pr (skill detects
-flow-next-refine/SKILL.md	Use `/flow-next:plan fn-N`	Use `$flow-next-plan fn-N`
 flow-next-refine/SKILL.md	→ `/flow-next:work fn-N` (or more refine	→ `$flow-next-work fn-N` (or more refine
 flow-next-refine/SKILL.md	→ `/flow-next:work fn-N.M`	→ `$flow-next-work fn-N.M`
 flow-next-refine/SKILL.md	→ `/flow-next:capture` to turn the refined document	→ `$flow-next-capture` to turn the refined document
@@ -2426,7 +2425,6 @@ flow-next-flow/references/route-matrix.md	| `/flow-next:work <spec-id> --no-plan
 flow-next-flow/references/route-matrix.md	then `/flow-next:make-pr <spec-id>`	then `$flow-next-make-pr <spec-id>`
 flow-next-flow/references/plan-vs-no-plan.md	Recommended next: /flow-next:work <spec-id> --no-plan	Recommended next: $flow-next-work <spec-id> --no-plan
 flow-next-flow/references/plan-vs-no-plan.md	Recommended next: /flow-next:plan <spec-id>	Recommended next: $flow-next-plan <spec-id>
-flow-next-refine/SKILL.md	recommend `/flow-next:work fn-N --no-plan`	recommend `$flow-next-work fn-N --no-plan`
 flow-next-work/references/no-plan-ask.md	spec has no tasks - choose /flow-next:work <spec-id> --no-plan or /flow-next:plan <spec-id>	spec has no tasks - choose $flow-next-work <spec-id> --no-plan or $flow-next-plan <spec-id>
 flow-next-work/references/no-plan-ask.md	stop; run /flow-next:plan (reviewed task breakdown	stop; run $flow-next-plan (reviewed task breakdown
 flow-next-work/references/no-plan-ask.md	pointer: run `/flow-next:plan <spec-id>`, then re-run `/flow-next:work <spec-id>`	pointer: run `$flow-next-plan <spec-id>`, then re-run `$flow-next-work <spec-id>`
