@@ -234,8 +234,9 @@ here, inline.** Print `Scheduling: inline (single task)`.
 5. **Review, by the risk rule in working-rules.md.** Selected, and the review mode is not `none`:
    attended, hand the result back first, then run
    `flow-next:flow-next-impl-review <task-id> --base <base_commit> --review=<mode>` in the
-   background and report its verdict when it lands (`<mode>` is the `--review` the user passed, else
-   `$FLOWCTL review-backend <task-id>`, so a task's own backend wins over the project default); unattended, run it and wait. `done` waits for
+   background and report its verdict when it lands (`<mode>` is the review choice the user made, by `--review` or by
+   answering setup's review question, else `$FLOWCTL review-backend <task-id>`, so a task's own
+   backend wins over the project default); unattended, run it and wait. `done` waits for
    SHIP, or for an `OVERRIDDEN:` line from an unattended loop (its declined findings go in the
    summary and the Decisions list) or from the person accepting an attended `NEEDS_WORK`. Not selected: record `stage: impl-review - skipped(policy: risk - <reason>)`. When a
    review went NEEDS_WORK then SHIP on a non-trivial fix and memory is enabled, capture the lesson
@@ -251,8 +252,8 @@ here, inline.** Print `Scheduling: inline (single task)`.
    set-completion-review-status <spec-id> --status not_required --if-current unknown --json` and,
    when it reports `written: true` or the status already reads `not_required`, note `stage:
    completion-review - skipped(policy: single-task, per-task SHIP covers spec surface)`; any other
-   result means the skip did not land: a verdict already recorded stands, and `refused` runs the
-   review. Otherwise invoke `flow-next:flow-next-spec-completion-review <spec-id>` with the same
+   result means the skip did not land: a verdict already recorded stands, and `refused` (another task
+   appeared) waits, like any spec with unfinished tasks, until every task is done. Otherwise invoke `flow-next:flow-next-spec-completion-review <spec-id>` with the same
    `--review`. Commit the task receipt and this status together:
    `git add -- .flow/ && git commit -m "chore(flow): task receipt <task-id>"`.
 

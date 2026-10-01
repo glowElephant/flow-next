@@ -22,7 +22,8 @@ Select every spec whose `branch_name` equals `headRefName`; several matches are 
 If none match, read the `baseRefName` tree from the base repository and select specs with
 `status: done` at head, absent or not done at base, and at least one
 `.flow/tasks/<spec-id>.*` entry whose tree SHA is absent from, or different in,
-the base tree.
+the base tree; also select any spec not done at head whose task entries the PR changes that
+way, so the open-work stop below catches unfinished work built on another branch.
 A closed spec has `status: done` and at least one
 `.flow/tasks/<spec-id>.*.json` blob in the same tree. If any selected spec is
 open, stop `BLOCKED`, reason `work not finished` naming every open selection;
@@ -46,8 +47,9 @@ Next enumerate all review threads with pagination. Open threads invoke
 `$flow-next-resolve-pr <PR>` with `mode:autonomous`, bound to this PR and an
 isolated checkout; the invoking checkout stays untouched. The isolated checkout is a detached
 worktree at the PR head (`git worktree add --detach <dir> <headRefOid>`, removed afterwards),
-because the invoking checkout may hold the PR branch; pushes from it name the branch
-(`git push origin HEAD:<headRefName>`). Resolver refusal
+because the invoking checkout may hold the PR branch; pushes from it go to the PR's head
+repository and branch by name (`git push <head repository URL> HEAD:<headRefName>`), which is
+the PR itself even when it comes from a fork. Resolver refusal
 `NOT_RETRYABLE: artifact unchanged since last verdict` stops `NEEDS_HUMAN`.
 Re-read the head
 and threads afterward; unresolved threads stop `RESOLVING`.

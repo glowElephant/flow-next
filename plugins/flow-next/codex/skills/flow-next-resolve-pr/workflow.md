@@ -374,11 +374,13 @@ $(echo "$VERDICTS" | jq -r '.[] | select(.files_changed|length>0) | "- " + .reas
 ${PRE_EXISTING_FAILURE_NOTE:-}"
 
 # On the PR branch a plain push works; from a detached checkout (land's isolated worktree)
-# push to the PR's head branch by name.
+# push to the PR's head repository and branch by name (a fork PR's head is not origin).
 if git symbolic-ref -q HEAD >/dev/null; then
   git push
 else
-  git push origin "HEAD:$(gh pr view "$PR_NUMBER" --json headRefName -q .headRefName)"
+  HEAD_REPO_URL=$(gh pr view "$PR_NUMBER" --json headRepository,headRepositoryOwner \
+    -q '"https://github.com/" + .headRepositoryOwner.login + "/" + .headRepository.name + ".git"')
+  git push "$HEAD_REPO_URL" "HEAD:$(gh pr view "$PR_NUMBER" --json headRefName -q .headRefName)"
 fi
 ```
 

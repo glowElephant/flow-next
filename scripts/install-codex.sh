@@ -188,7 +188,7 @@ for stale_prompt in "$CODEX_DIR/prompts/"*.md; do
     [ -f "$PLUGIN_DIR/commands/$pname" ] && continue
     [ "$pname" = "epic-review.md" ] && continue
     if [ "$(frontmatter_name "$stale_prompt")" = "${pname%.md}" ] \
-        && grep -q 'This command MUST invoke the skill `flow-next-' "$stale_prompt" 2>/dev/null; then
+        && grep -qxF "# IMPORTANT: This command MUST invoke the skill \`flow-next-${pname%.md}\`" "$stale_prompt" 2>/dev/null; then
         retire_artifact "$stale_prompt" "prompts" "prompt $pname"
     fi
 done
