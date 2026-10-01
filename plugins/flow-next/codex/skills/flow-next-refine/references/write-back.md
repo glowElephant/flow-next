@@ -1,6 +1,6 @@
 # Refine — write-back
 
-Read at completion. Run the one branch that matches the input: [spec](#spec), [task](#task) or [file](#file-path).
+Read at completion. Run the one branch that matches the input: [spec](#spec) below; for a task or a file path, read [write-back-task-file.md](write-back-task-file.md).
 
 Spec prose follows the artifact prose contract in [docs/prose.md](../../../docs/flow-next/prose.md) when that doc exists.
 
@@ -43,7 +43,7 @@ Only a spec's `## Acceptance Criteria` bullets that this session adds are tagged
 
 Check for tasks with `$FLOWCTL tasks --spec <id> --json`. When tasks exist, change only the spec, never a task. Without tasks, judge the `Recommended next:` line from [plan-vs-no-plan.md](../../flow-next-flow/references/plan-vs-no-plan.md) (`/flow-next:plan-review fn-N` when design risk wants an independent look; `$flow-next-flow --explain fn-N` when the signals conflict).
 
-Start from the body read when detecting the input; re-read only if this run already wrote the spec. Keep every section in its original order, refine the sections the answers belong in, and bring every other section back byte-for-byte. Then add refine's own sections, only those that apply, below the rest:
+Start from the body read when detecting the input; re-read only if this run already wrote the spec. Then add refine's own sections, only those that apply, below the rest:
 
 ```markdown
 ## Resolved via Codebase
@@ -68,8 +68,6 @@ Genuine fog only, one bullet each, naming what would resolve it.
 Items left for planning, plus every skipped question with its owner and unconfirmed leaning. After fill-assumptions, one entry points at the inline *(assumed — unconfirmed)* markers.
 ```
 
-Entries already in an auxiliary section stay as they are; refine appends below them.
-
 **Parked unknowns.** For each existing bullet: resolved this session → move the answer into the section that owns it and delete the bullet; still unknown → keep it byte-for-byte. Append new fog as a bullet naming what would resolve it (decidable now → decide it; resolvable by scheduled work → it is a task, not fog). Drop the heading when the list empties. Fog is a question nobody can answer yet; a skipped question belongs in `## Open Questions`.
 
 Write the merged body per the write pattern, get approval, then:
@@ -77,21 +75,3 @@ Write the merged body per the write pattern, get approval, then:
 ```bash
 $FLOWCTL spec set-plan <id> --file "${TMPDIR:-/tmp}/flow-refine-spec-<id>-<suffix>.md" --json
 ```
-
-## Task
-
-Task acceptance is a plain `- [ ]` checklist; it takes no source tags. Use the task text read when detecting the input.
-
-**The task has planning detail** (file references, sizing, approach): never overwrite it. Append the new criteria to the existing acceptance, Write the merged list to a literal path, and run `$FLOWCTL task set-acceptance <id> --file "${TMPDIR:-/tmp}/flow-refine-acc-<id>-<suffix>.md" --json`. Or suggest refining the spec instead: `$flow-next-refine <spec-id>`.
-
-**The task is a stub** (title, empty or placeholder description): write the description (what must be accomplished, the edge cases and constraints found; not how) and the acceptance, each to its own literal path, then:
-
-```bash
-$FLOWCTL task set-spec <id> --description "${TMPDIR:-/tmp}/flow-refine-desc-<id>-<suffix>.md" --acceptance "${TMPDIR:-/tmp}/flow-refine-acc-<id>-<suffix>.md" --json
-```
-
-Leave file references, sizing and implementation approach to plan.
-
-## File path
-
-Rewrite the file with the refined requirements: keep its structure and format, add sections for what the interview covered (edge cases, acceptance criteria), and stay on what, not how. No source tags; it is the person's own document until capture turns it into a spec. Draft it to a literal path and get approval as above before overwriting the file. Then suggest `$flow-next-capture` to turn it into a spec.

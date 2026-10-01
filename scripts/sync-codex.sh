@@ -440,6 +440,7 @@ for nf in \
   "$CODEX_DIR/skills/flow-next-make-pr/create-and-finalize.md" \
   "$CODEX_DIR/skills/flow-next-refine/SKILL.md" \
   "$CODEX_DIR/skills/flow-next-refine/references/write-back.md" \
+  "$CODEX_DIR/skills/flow-next-refine/references/write-back-task-file.md" \
   "$CODEX_DIR/skills/flow-next-prospect/workflow.md" \
   "$CODEX_DIR/skills/flow-next-chart/references/briefing-and-reopen.md" \
   "$CODEX_DIR/skills/flow-next-chart/references/chart-mode.md" \
@@ -2407,8 +2408,8 @@ flow-next-refine/SKILL.md	→ `/flow-next:capture` to turn the refined document	
 flow-next-refine/SKILL.md	`/flow-next:visual fn-N` for a spec input	`$flow-next-visual fn-N` for a spec input
 flow-next-refine/SKILL.md	`/flow-next:visual fn-N.M` for a task input	`$flow-next-visual fn-N.M` for a task input
 flow-next-refine/SKILL.md	`/flow-next:visual <file-path>` for the file input	`$flow-next-visual <file-path>` for the file input
-flow-next-refine/references/write-back.md	instead: `/flow-next:refine <spec-id>`	instead: `$flow-next-refine <spec-id>`
-flow-next-refine/references/write-back.md	suggest `/flow-next:capture` to turn it into a spec	suggest `$flow-next-capture` to turn it into a spec
+flow-next-refine/references/write-back-task-file.md	instead: `/flow-next:refine <spec-id>`	instead: `$flow-next-refine <spec-id>`
+flow-next-refine/references/write-back-task-file.md	suggest `/flow-next:capture` to turn it into a spec	suggest `$flow-next-capture` to turn it into a spec
 flow-next-prospect/workflow.md	(ask /flow-next:refine what to refine)	(ask $flow-next-refine what to refine)
 flow-next-prospect/workflow.md	Run /flow-next:chart on the selected survivor	Run $flow-next-chart on the selected survivor
 flow-next-prospect/workflow.md	Run /flow-next:refine <spec-or-task-id> to refine	Run $flow-next-refine <spec-or-task-id> to refine

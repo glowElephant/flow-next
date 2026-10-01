@@ -43,7 +43,7 @@ Empty: ask "What should I refine? Give me a Flow ID (e.g. fn-1-add-oauth) or a f
 
 **Research pass.** With `--scope=research`, skip the doc-aware gate and the interview: detect the input, then read [references/research-scope.md](references/research-scope.md) and follow it. The interview never reads that file.
 
-**Doc flags.** When the arguments carry any of `--docs`, `--no-docs`, `--strategy`, `--no-strategy`, read [references/doc-aware.md](references/doc-aware.md) § Flag parsing before detecting the input; it strips them and sets the two force values used below.
+**Doc flags.** When the arguments carry any of `--docs`, `--no-docs`, `--strategy`, `--no-strategy`, read [references/doc-flags.md](references/doc-flags.md) § Flag parsing before detecting the input; it strips them and sets the two force values used below.
 
 **Doc-aware gate.** Doc-aware mode adds glossary, decision-record and strategy behaviours to the interview. It turns on when the repo has a glossary term, a decision entry, or a filled strategy section (counts, not file presence); the doc flags override. Run once per interview:
 
@@ -51,7 +51,7 @@ Empty: ask "What should I refine? Give me a Flow ID (e.g. fn-1-add-oauth) or a f
 REFINE_PREFLIGHT="${TMPDIR:-/tmp}/flow-refine-preflight-<suffix>.json"   # literal path; reused after the write-back
 # One preflight bundle per interview. A failed, missing or empty probe counts as signal (fail open).
 "$FLOWCTL" preflight --json > "$REFINE_PREFLIGHT" 2>/dev/null || printf '{}' > "$REFINE_PREFLIGHT"
-# DOC_AWARE_FORCE / STRATEGY_AWARE_FORCE keep the "on" / "off" that doc-aware.md § Flag parsing set; unset = autodetect.
+# DOC_AWARE_FORCE / STRATEGY_AWARE_FORCE keep the "on" / "off" that doc-flags.md § Flag parsing set; unset = autodetect.
 GATES="$(jq -er '
   def v(p): if p.status == "ok" then p.value else null end;
   [ (if v(.probes.glossary) == null or v(.probes.decisions) == null
@@ -143,11 +143,7 @@ A recommendation never implies consent. Three answer shapes:
 
 Park each skip under `## Open Questions` as `**<question>** — skipped during refine; leaning <X>, unconfirmed. *(owner: engineering | product)*`. A skipped judgment question stays a judgment question; never backfill it by grep. Keep a skip count.
 
-With one or more skips, ask one checkpoint before the write-back:
-
-- **header:** `Skipped items`
-- **body:** `<N> question(s) were skipped. Recommended: park-open — record them under ## Open Questions with my unconfirmed leanings; nothing skipped becomes a decision. Confidence: [high].`
-- **options:** `park-open` (Open Questions entries only), `fill-assumptions` (write the recommendation into its section marked inline `*(assumed — unconfirmed)*`, plus one Open Questions entry pointing at the markers), `re-ask` (ask the skipped questions once more; answers and delegations resolve normally, a second skip parks).
+With one or more skips: read [references/skipped-items.md](references/skipped-items.md) and ask its checkpoint before the write-back.
 
 ### Out of scope
 
