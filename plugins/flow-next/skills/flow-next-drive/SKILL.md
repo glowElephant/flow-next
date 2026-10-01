@@ -80,19 +80,9 @@ Probe availability top-down and use the **highest rung that passes**; fail soft 
 
 ## Step 4 — Native rung (surface C): Cua Driver, then Computer Use
 
-A genuinely native app (or a non-CDP webview) has no browser tab to attach to — the model has to drive the live machine. This rung is provider-agnostic; probe for the best available driver in this order, prefer the highest that passes, degrade to the next:
-
-| Probe | Driver | Reference |
-|-------|--------|-----------|
-| `cua-driver` MCP registered / `command -v cua-driver` (real display) | **Cua Driver** — MIT, provider-agnostic, **background** (no focus steal), macOS/Windows (Linux pre-release), accessibility-tree-based. Preferred when present. | `references/cua.md` |
-| Codex CU available, or a Claude Computer-Use harness present | **Computer Use** — Codex CU (macOS/Windows) / Anthropic Claude CU (the API `computer` tool via its own harness). Screen-takeover. | `references/computer-use.md` |
-| **Headless / CI** (no display) and a sandbox backend (`lume`/Docker/QEMU, or opted-in cloud) | **Cua Sandbox** — drive inside an isolated VM/container; the **only** native option with no real screen. Opt-in per run, torn down each run; local backend default, cua.ai cloud explicit opt-in. | `references/cua.md` |
-| None present | **Documented limitation** — document the gap and stop; never fail silently. | — |
-
-All share the universal flow (Step 2) — `observe → act → verify → capture`, described as goal + success state, not pixel coordinates; only the actuation differs. **Detect, never assume** (`command -v`, MCP list, `uname -s`); no native driver is ever a hard dependency. **Attended vs headless splits the precedence:** on a real display, prefer the background Cua Driver → Computer Use; on a **headless/CI** host (no screen) the **Cua Sandbox** is the only native option — the explicit ordering, the local-default/cloud-opt-in split, and provisioning/teardown live in `references/cua.md`.
-
-→ Read `references/cua.md` for Cua Driver detection, the install/permission walkthrough (multi-host MCP wiring), the AX-tree driving loop, the macOS permission-split evidence mode, the Native-rung precedence list, licensing, and degradation.
-→ Read `references/computer-use.md` for Computer Use availability detection, the enable/permission walkthrough, the driving loop, safety/hygiene, and the full graceful-degradation table.
+Only for surface C (a genuinely native app or a non-CDP webview): read
+[references/cua.md § Native rung (surface C)](references/cua.md#native-rung-surface-c) first; it holds
+the driver probe order and routes to Computer Use.
 
 ## Driver detection & graceful degradation (all surfaces)
 
