@@ -234,9 +234,8 @@ here, inline.** Print `Scheduling: inline (single task)`.
 5. **Review, by the risk rule in working-rules.md.** Selected, and the review mode is not `none`:
    attended, hand the result back first, then run
    `flow-next:flow-next-impl-review <task-id> --base <base_commit> --review=<mode>` in the
-   background and report its verdict when it lands (`<mode>` is the review choice the user made, by `--review` or by
-   answering setup's review question, else `$FLOWCTL review-backend <task-id>`, so a task's own
-   backend wins over the project default); unattended, run it and wait. `done` waits for
+   background and report its verdict when it lands (`<mode>` is a backend the user named for this run, else
+   `$FLOWCTL review-backend <task-id>`, so a task's own backend wins over the project default); unattended, run it and wait. `done` waits for
    SHIP, or for an `OVERRIDDEN:` line from an unattended loop (its declined findings go in the
    summary and the Decisions list) or from the person accepting an attended `NEEDS_WORK`. Not selected: record `stage: impl-review - skipped(policy: risk - <reason>)`. When a
    review went NEEDS_WORK then SHIP on a non-trivial fix and memory is enabled, capture the lesson
