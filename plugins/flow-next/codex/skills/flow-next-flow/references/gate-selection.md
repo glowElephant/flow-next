@@ -12,6 +12,10 @@
 
 QA never hard-blocks the loop; `NEEDS_WORK` and `BLOCKED` advance to make-pr, and their findings become open items on a draft PR. The evidence-aware subtraction inside QA is unchanged: runtime, UI, and integration criteria are always re-driven; deterministic re-runnable tests subtract.
 
+Attended, QA leaves its verdict uncommitted; on a spec branch (not the default branch), commit only
+the receipt QA wrote and its `.history` directory with `chore(flow): qa verdict <spec-id>`, the
+subject the freshness check peels. Under `--auto`, QA commits it itself.
+
 ## Review, completion review and receipts
 
 Implementation, design and completion review are run and recorded by the stages that own them
