@@ -247,9 +247,11 @@ here, inline.** Print `Scheduling: inline (single task)`.
    still has unfinished tasks runs none: it commits the task receipt (the command below) and
    finishes. Skip it when the spec has this one task, its review reached SHIP (or a recorded
    override), and every spec R-ID is in the task's `satisfies`: run `$FLOWCTL spec
-   set-completion-review-status <spec-id> --status not_required --if-current unknown --json` and
-   note `stage: completion-review - skipped(policy: single-task, per-task SHIP covers spec
-   surface)`. Otherwise invoke `flow-next:flow-next-spec-completion-review <spec-id>` with the same
+   set-completion-review-status <spec-id> --status not_required --if-current unknown --json` and,
+   when it reports `written: true` or the status already reads `not_required`, note `stage:
+   completion-review - skipped(policy: single-task, per-task SHIP covers spec surface)`; any other
+   result means the skip did not land: a verdict already recorded stands, and `refused` runs the
+   review. Otherwise invoke `flow-next:flow-next-spec-completion-review <spec-id>` with the same
    `--review`. Commit the task receipt and this status together:
    `git add -- .flow/ && git commit -m "chore(flow): task receipt <task-id>"`.
 
