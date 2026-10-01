@@ -372,6 +372,8 @@ flow-next's bundled `flowctl` is a thin launcher over `flowctl.py`. On Windows i
 
 ## RepoPrompt review backend (macOS-only)
 
+> **Deprecated:** RepoPrompt support will be removed in flow-next 8.0.0. Existing `rp` setups keep working until then; to switch, run `flowctl config set review.backend codex` (or `host`, `claude`, `copilot`, `cursor`).
+
 The `rp` review backend drives [RepoPrompt Community Edition](https://repoprompt.com) on macOS. Flow-Next prefers `rpce-cli` on PATH, then the current and legacy CE user links, with discontinued Classic `rp-cli` retained only as the final compatibility fallback. Once CE is selected, a connection or command failure is authoritative and never retries against Classic. `/flow-next:plan` and the review skills only *propose* RepoPrompt when that CE-first capability ladder finds a runnable CLI; other hosts steer to the cross-platform backends (`codex`, `copilot`, `cursor`, `claude`, `host`, `none`). Explicit `--review=rp` / `review.backend=rp` remains accepted anywhere and fails at runtime with a clear supported-RepoPrompt-CLI diagnostic when no candidate exists.
 
 ## Windows + Copilot review backend
