@@ -81,7 +81,8 @@ and anti-pattern rules live only in the selected backend file.
 
 Arguments: $ARGUMENTS
 
-Format: `<flow-spec-id> [focus areas] [--review=<mode>]`
+Format: `<flow-spec-id> [focus areas] [--review=<mode>] [mode:autonomous]`. `mode:autonomous` marks an
+unattended run (working-rules.md's review loop applies); it is not a focus area.
 
 ## Workflow
 

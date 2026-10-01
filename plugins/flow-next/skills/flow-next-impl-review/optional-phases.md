@@ -439,6 +439,8 @@ helpers for the defer sink + receipt merge.
 
 **Preserved by default:** when `INTERACTIVE=false`, this entire section is
 skipped — the fix loop runs against all surviving findings as before.
+Under any autonomy marker (`mode:autonomous`, `FLOW_AUTONOMOUS=1`) nobody is there to walk with:
+ignore `--interactive`, say so once, and run the fix loop.
 
 ### Step W.1: Extract findings for the walkthrough
 
