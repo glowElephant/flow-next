@@ -67,14 +67,8 @@ failed, question the idea before trying a third.
   When the change is ready for one, end the handoff with one line saying so ("Say 'open the PR'
   when you want it"), not a question. List discoveries in the handoff as follow-ups ("found X, not part of this");
   the person decides what to pick up.
-- **Unattended** (`--auto`): nobody is waiting. Never ask; decide from evidence, and stop only
-  for a call only a human can make or an irreversible action. A human call that does not block
-  the rest of the work (refreshing a frozen fixture, a requirement only CI can prove) goes in the
-  pull request as an open item, on a draft pull request; finish the rest instead of stopping.
-  Fix a discovery only when it blocks the goal, as its own commit; list the rest as follow-ups
-  in the final report. Keep a
-  Decisions list in the final report and the pull request body: each default you chose, finding
-  you declined and review you skipped, with the evidence behind it.
+- **Unattended** (`--auto`): read [working-rules-unattended.md](working-rules-unattended.md) and
+  follow its Unattended rules in place of the attended ones above.
 
 ## Review
 
@@ -100,16 +94,9 @@ re-review still finds the change wrong, give the person the remaining findings w
 reviewer's reasons and leave the task open until they decide; when they accept it as is, record
 an `OVERRIDDEN:` line with their words and complete the task.
 
-Unattended (`--auto`, with or without `--until=merge`), nobody is there to decide what is left, so
-aim for the best result: fix, re-review the fixes, and repeat until SHIP, with flowctl's round cap
-and stall check as the backstop (an `ESCALATE:` from either is a stop). A person or project instruction that asks for it ("review
-until SHIP") loops the same way. In the loop, decline hardening, scope creep and problems that
-existed before the change, one `Declined #<n>: <reason>` line each in the fix commit. If the
-reviewer keeps only findings like that, all below Major, end the loop yourself: report the
-override and list each disagreement, with both sides' reasons, in the Decisions list and the pull
-request. Never end it over a finding that shows a stated requirement broken; fix that. The verdict
-stays the reviewer's: the receipt keeps it, and you never write a SHIP. The loop's end (SHIP, or a
-recorded override) gates the handoff and any merge.
+Unattended (`--auto`, with or without `--until=merge`), or when a person or project instruction
+asks to review until SHIP: read [working-rules-unattended.md § Review loop](working-rules-unattended.md#review-loop)
+and loop as it says.
 
 ## Pull requests and follow-ups
 
