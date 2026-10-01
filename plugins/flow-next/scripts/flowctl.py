@@ -23927,6 +23927,9 @@ def judge_https_connection(host: str, timeout: float):
     if not proxy or excluded:
         return http.client.HTTPSConnection(host, timeout=timeout)
     parts = urllib.parse.urlsplit(proxy if "://" in proxy else "http://" + proxy)
+    if parts.scheme != "http":
+        # Only an HTTP CONNECT proxy is supported; never guess a port for another scheme.
+        raise OSError(f"unsupported proxy scheme: {parts.scheme}")
     connection = http.client.HTTPSConnection(parts.hostname, parts.port or 80, timeout=timeout)
     headers = {}
     if parts.username:

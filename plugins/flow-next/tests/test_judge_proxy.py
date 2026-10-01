@@ -37,6 +37,10 @@ class JudgeProxyTests(unittest.TestCase):
         self.assertEqual(c.host, "proxy.local")
         self.assertTrue(c._tunnel_headers["Proxy-Authorization"].startswith("Basic "))
 
+    def test_non_http_proxy_scheme_is_refused(self):
+        with self.assertRaises(OSError):
+            self.connect(HTTPS_PROXY="https://proxy.example")
+
     def test_no_proxy_excludes_the_host(self):
         for entry in (".typesafe.ai", "typesafe.ai", "api.typesafe.ai", "*"):
             with self.subTest(entry=entry):

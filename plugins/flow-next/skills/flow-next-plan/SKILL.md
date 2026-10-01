@@ -10,7 +10,7 @@ Turn an idea or an existing spec into a spec with right-sized tasks in `.flow/`,
 
 Read [working-rules.md](../../references/working-rules.md) first unless you already have this run; it holds for every step of this skill.
 
-**`.flow/` is the only task tracker.** Every spec and task is created or changed through `flowctl`. A markdown TODO list, a TodoWrite call, or a plan file outside `.flow/` has broken this.
+**`.flow/` is the only task tracker.** Every spec and task is created or changed through `flowctl`. A markdown TODO list, a TodoWrite call, or a plan file kept outside `.flow/` as the record has broken this.
 
 ## Preamble
 
@@ -98,4 +98,4 @@ Read [steps.md](steps.md) and follow each step in order. Its optional paths (rea
 ## Output
 
 - Spec: `.flow/specs/<spec-id>.json` + `.md`; tasks: `.flow/tasks/<spec-id>.M.json` + `.md`.
-- No code changes and no plan files outside `.flow/`.
+- No code changes. Specs and tasks live in `.flow/`; temporary drafts (the `/tmp` bodies steps.md writes) are fine.
