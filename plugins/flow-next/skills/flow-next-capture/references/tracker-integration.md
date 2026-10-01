@@ -2,13 +2,15 @@
 
 > Loaded ONLY when a `flowctl sync active` gate fires (bridge active, or the probe errored). With no
 > tracker configured, capture behaves exactly as it always has: `spec create` mints `fn-N` locally,
-> no lifecycle push happens, and Phase 6 prints no `Tracker sync:` line — the sync check itself
-> stays inline in workflow.md and always runs.
+> no lifecycle push happens, and Phase 6 prints no `Tracker sync:` line. Phase 6's sync check
+> also lives here; workflow.md skips it only when the preflight tracker probe reads
+> `status: "ok"` with `value.active: false`.
 
 Contents:
 
 - [5.2 — Tracker-first mint](#52--tracker-first-mint) — the distributed id allocator branch
 - [5.7 — Tracker sync touchpoint](#57--tracker-sync-opt-in--spec-pushpull--merge)
+- [Phase 6 — sync check](#phase-6--sync-check)
 - [Phase 6 — retro-fire on MISSING](#phase-6--retro-fire-on-missing)
 
 ---
@@ -79,6 +81,29 @@ fi
 ```
 
 Best-effort — a tracker failure never blocks the capture. The skill emits its own receipt, event-tagged `--event capture` — the tag Phase 6's end-of-run `sync check` audits.
+
+---
+
+## Phase 6 — sync check
+
+**Tracker-sync check first** (read-only, independent of §5.7, so a skipped touchpoint is still caught):
+
+```bash
+# --since: the Phase-5 run anchor. created_at is a valid fallback only for a fresh
+# capture; a rewrite needs the anchor (created_at would admit an old receipt).
+ANCHOR_FILE="${TMPDIR:-/tmp}/flow-capture-anchor-${SPEC_ID}"
+if [[ -f "$ANCHOR_FILE" ]]; then
+  SINCE="$(cat "$ANCHOR_FILE")"
+else
+  SINCE="$("$FLOWCTL" show "$SPEC_ID" --json | jq -r '.created_at')"
+fi
+
+"$FLOWCTL" sync check "$SPEC_ID" --events capture --since "$SINCE" --json
+# Empty output → bridge inactive → no Tracker sync line. `.missing` empty → OK;
+# non-empty → retro-fire (below).
+```
+
+When `.missing` is non-empty, run [Phase 6 — retro-fire on MISSING](#phase-6--retro-fire-on-missing) once (never blocking) and record the final state.
 
 ---
 

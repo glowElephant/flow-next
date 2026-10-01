@@ -56,9 +56,8 @@ On the sentinel, read [references/strategy-alignment.md](references/strategy-ali
 
 ### 0.4 — Compaction detection
 
-Look for compaction signals: `[compacted]` markers, truncated tool output, system-summary blocks, or later turns relying on a result that is not visible. A signal alone is not a refusal. The question is whether evidence **relevant to this capture** is gone: proceed when the feature is fully stated in visible user turns (note `Prior compaction detected; relevant capture evidence remains visible.` in the summary warnings); treat it as incomplete when a relevant requirement is summary-only, truncated, or missing, or when the draft would have to guess. When unsure, treat it as incomplete.
-
-If relevant evidence is incomplete AND `FROM_COMPACTED_OK` is `0`, refuse: name the markers and gaps, and tell the user to restate the missing requirements or re-run with `--from-compacted-ok` after checking the transcript holds the full intent. Interactive capture does not offer to proceed anyway; autofix exits 2.
+Look for compaction signals: `[compacted]` markers, truncated tool output, system-summary blocks, or later turns relying on a result that is not visible. Only when one is present: read [references/compaction.md](references/compaction.md) and decide
+whether to proceed or refuse as it says.
 
 ### 0.5 — Duplicate branch
 
@@ -119,7 +118,9 @@ At 8+ criteria, or criteria serving more than one independently shippable outcom
 
 ### 2.6 — Business context
 
-Business context the user stated goes into the section that owns it: audience, problem and why-now, UX expectations, and framing constraints or risks into `Goal & Context`; MVP scope and non-goals into `Boundaries`; success measures into outcome criteria. Success measures, prioritization rationale, and constraints or risks that drive a trade-off also go under a `### Motivation` H3 in `## Decision Context`; without them Decision Context stays one flat body, and capture never writes `### Implementation Tradeoffs`. Routed content is the user's words or `[paraphrase]`, never `[inferred]`; a conversation with no business signal gains no business content.
+Only when the user stated business context (audience, problem or why-now, UX expectations,
+success measures, MVP scope or non-goals, priorities, constraints or risks): read
+[references/business-context.md](references/business-context.md) for where each piece goes.
 
 ### 2.7 — Glossary gate
 
@@ -167,23 +168,15 @@ Write the complete body once to `${TMPDIR:-/tmp}/flow-capture-draft-<working-tit
 
 Under `from:flow`, skip this step and §5.9: flow builds the spec in this session and never asks about readiness.
 
-Readiness is a separate follow-up; capture the predicate now, before a rewrite resets the old flag. This step asks and writes nothing:
-
-```bash
-ACTIVE=0
-# From the preamble root snapshot (same literal path) — not a config get call.
-VAL="$(jq -r '.value.tracker.readyState // empty' "${TMPDIR:-/tmp}/flow-capture-config-<suffix>.json" 2>/dev/null)" || ACTIVE=1
-[ -z "$VAL" ] && ACTIVE=1
-if [ "$ACTIVE" = "1" ]; then
-  echo "GATE ACTIVE — STOP. Read references/mark-ready.md before continuing."
-fi   # default branch: bare no-op — NO link, NO read path
-```
-
-On the sentinel, read [references/mark-ready.md](references/mark-ready.md), compute its §4.2 predicate, and keep it for §5.9. Silent: `tracker.readyState` owns readiness, so capture offers no readiness write.
+Otherwise read [references/readiness-snapshot.md](references/readiness-snapshot.md) and take its
+snapshot before writing.
 
 ### 4.3 — Editor and correction handling
 
-Runs from §5.6a, on the saved spec (never the temporary draft). After an editor round, re-read the whole file before anything else and keep the user's edits; an edit is not approval to execute. A chat correction is appended verbatim to the evidence first (the spec's `## Conversation Evidence` when it has one, never adding the block otherwise; trim older lines with §1.1's marker, never the correction). Then edit only the affected sections through the normal write plumbing. After either kind of change, recheck findability, recompute the tally, re-judge the route if criteria changed, and run the applicable §5.0 strategy check (surface a new conflict rather than rolling back the user's file). Show only the diff and tally. There is no re-approval loop: `continue` or stopping leaves the spec as saved, deletion needs an explicit request, and a later capture still runs the duplicate/rewrite checks.
+Runs from §5.6a, on the saved spec (never the temporary draft). Only after an `open in editor`
+answer or a free-text correction: read
+[references/editor-corrections.md](references/editor-corrections.md) and apply it. `continue` needs
+nothing here.
 
 ### 4.4 — Autofix write gate
 
@@ -249,7 +242,8 @@ If the user named a feature branch, run `"$FLOWCTL" spec set-branch "$SPEC_ID" -
 
 ### 5.6a — Saved-spec review (interactive only)
 
-Read [docs/read-back.md](../../docs/read-back.md) for the summary shape: title, criteria count, source tally, warnings, related memory context, recommended route, and the saved path (plus the rewrite diff; one summary per spec for a split). The full body prints only on request.
+Read only the § Summary payload section of [docs/read-back.md](../../docs/read-back.md#summary-payload)
+(its other sections cover plan/refine ratification and restate this step) for the summary shape: title, criteria count, source tally, warnings, related memory context, recommended route, and the saved path (plus the rewrite diff; one summary per spec for a split). The full body prints only on request.
 
 Then use `AskUserQuestion` for one short editor question: `open in editor` opens the saved file(s); `continue` leaves them as written; free text is a correction. Apply §4.3 to either, then continue the remaining follow-ups without re-approval. Skip an offer already answered, and honor a request to review later. Saving or viewing grants no readiness, implementation, commit, or external-write authority; configured tracker behavior keeps its own scope.
 
@@ -284,24 +278,11 @@ Best-effort: a refusal (the spec already has tasks, reachable only on a `--rewri
 
 ## Phase 6: Close
 
-**Tracker-sync check first** (read-only, independent of §5.7, so a skipped touchpoint is still caught):
-
-```bash
-# --since: the Phase-5 run anchor. created_at is a valid fallback only for a fresh
-# capture; a rewrite needs the anchor (created_at would admit an old receipt).
-ANCHOR_FILE="${TMPDIR:-/tmp}/flow-capture-anchor-${SPEC_ID}"
-if [[ -f "$ANCHOR_FILE" ]]; then
-  SINCE="$(cat "$ANCHOR_FILE")"
-else
-  SINCE="$("$FLOWCTL" show "$SPEC_ID" --json | jq -r '.created_at')"
-fi
-
-"$FLOWCTL" sync check "$SPEC_ID" --events capture --since "$SINCE" --json
-# Empty output → bridge inactive → no Tracker sync line. `.missing` empty → OK;
-# non-empty → retro-fire (below).
-```
-
-When `.missing` is non-empty, run `references/tracker-integration.md` § Phase 6 once (never blocking) and record the final state.
+**Tracker-sync check first.** Read the tracker probe from the preflight snapshot
+(`.probes.tracker`). Only when it reads `status: "ok"` with `value.active: false`: skip the check
+and print no `Tracker sync:` line. Otherwise, including a probe error: read
+[references/tracker-integration.md § Phase 6 — sync check](references/tracker-integration.md#phase-6-sync-check)
+and run it.
 
 Then print:
 

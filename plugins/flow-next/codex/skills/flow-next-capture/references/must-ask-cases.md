@@ -14,7 +14,7 @@ Use `plain-text numbered prompt` with the lead-with-recommendation pattern:
 - **body**: `<Context — what's ambiguous and why>. Recommended: <X> — <one-sentence rationale>. Confidence: [<tier>].`
 - **options**: frozen neutral labels (no recommendation markers on the options themselves)
 
-Confidence tier rules (the full table is in phases.md §Confidence tiers):
+Confidence tier rules (the full table is in [confidence-tiers.md](confidence-tiers.md)):
 
 - `[high]` — agent has strong codebase signal or convention match
 - `[judgment-call]` — slight lean but reasonable people disagree
