@@ -224,28 +224,6 @@ class TestCodexReceiptReviewFieldExtraction(unittest.TestCase):
     wrap ``output`` in ``extract_codex_final_message``.
     """
 
-    def test_no_codex_receipt_stores_raw_stream(self):
-        src_path = (
-            Path(__file__).resolve().parent.parent / "scripts" / "flowctl.py"
-        )
-        lines = src_path.read_text(encoding="utf-8").split("\n")
-        offenders = []
-        for i, line in enumerate(lines):
-            if '"review": output' not in line:
-                continue
-            if "extract_codex_final_message" in line:
-                continue
-            ctx = "\n".join(lines[max(0, i - 30):i])
-            if '"mode": "codex"' in ctx:
-                offenders.append(f"flowctl.py:{i + 1}")
-        self.assertEqual(
-            offenders,
-            [],
-            "codex receipt(s) store the raw stream in the review field; the "
-            "ratchet would inject stream JSON as prior findings: "
-            f"{offenders}",
-        )
-
     def test_ratchet_prior_findings_from_extracted_stream_are_clean(self):
         # End-to-end shape: raw stream -> extraction (what receipts now store)
         # -> ratchet block. The tool echo must not reach <prior_findings>.

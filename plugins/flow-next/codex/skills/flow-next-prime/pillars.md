@@ -6,7 +6,7 @@ Eight pillars for comprehensive codebase assessment. Pillars 1-5 measure **agent
 
 **Three scoring layers:**
 1. **The maturity level** = average of Pillars 1-5 scores ONLY (Pillars 6-8 are report-only). The legacy Pillars 1-5 criteria are the stable level denominator for cross-repo comparability; the full 48 legacy set is never diluted by the new groups.
-2. **Agent-readiness tier GROUPS** (AO, DR, TO, HP scored-core, the scored gap-diff FH criteria) are scored and fix-offered but **EXCLUDED from the maturity-level formula** (resolution 1). They report as group pass-count lines and feed the verdict headline + ranked actions, never the level.
+2. **Agent-readiness tier GROUPS** (AO, DR, TO, HP scored-core, the scored gap-diff FH criteria) are scored and fix-offered but **EXCLUDED from the maturity-level formula**. They report as group pass-count lines and feed the verdict headline + ranked actions, never the level.
 3. **Report-only / informational** rows (Pillars 6-8, DT, HP-informational, FH report-only, gh-CLI) are surfaced but never scored.
 
 The **criterion-to-score map** (below the pillar and group tables) is the single source of truth for every criterion's group, taxonomy, denominator behavior, aggregate presentation, remediation eligibility, hard-gate impact, and **probe owner** (emitter / host-inline / scout). The **N/A whitelist** (single table) is the only source of N/A entries.
@@ -24,7 +24,7 @@ Automated tools that catch bugs instantly. Without them, agents waste cycles on 
 | SV1 | Linter configured | ESLint, Biome, oxlint, Flake8, Ruff, golangci-lint, or Clippy config exists |
 | SV2 | Formatter configured | Prettier, Biome, Black, gofmt, or rustfmt config/usage detected |
 | SV3 | Type-checking depth (substance) | Grade strictness SUBSTANCE, not "a typed language exists": strict flags enumerated (tsconfig `strict`/`noImplicitAny`/`strictNullChecks`; mypy `strict`; pyright `strict`) PLUS a bounded `: any`-ratio probe on TS sources. A typed project with strictness disabled or a high `any` ratio = ⚠️ with the flag/ratio quoted. Evidence = the config lines quoted. |
-| SV4 | Deterministic feedback gate (layer-agnostic) | **Rewritten from "pre-commit hooks configured".** PASS = the acceptance/verify layer runs the tests: a verify command gated by ACCEPTANCE REQUIREMENTS (L3 - flow-next's own work-loop quality gates / Stop hooks) AND/OR a CI required check running the SAME verify command (L4). Evidence = the gate config quoted. Edit-time enforcement (L1 harness hooks: PostToolUse / afterFileEdit format + file-scoped lint/typecheck) and commit-gate enforcement (L2 git hooks scoped to format/lint on staged files, <~10s, auto-fix) with real content are a reported **STRENGTH**; their ABSENCE is a **headroom warn, never a pass-blocker** ("no git hooks but hardened CI + verify command" is a legitimate pass). Flags (each quotes evidence): stub hook content (`.husky/` echo scaffold, whitespace-only pre-commit config) = ❌; test-suite/E2E/coverage in a pre-commit hook = ⚠️ "heavyweight hook - known agent bypass/stall risk; move tests to verify + CI"; git hooks in an agent-committing repo without bypass hardening (deny `git commit --no-verify` / PreToolUse guard) = ⚠️ "advisory only for agents"; L1/L2 tooling diverging from L3/L4 (different tools/flags per layer) = a finding (one verify command is the single source of truth). Prime **NEVER** recommends test-running pre-commit hooks. **Boundary (resolution 2):** SV4 grades gate TOPOLOGY (which layer owns what); workflow TRIGGER correctness is **FH3 (CI actually gates)**, never double-scored; Pillar 8 WP1 report-only row untouched. |
+| SV4 | Deterministic feedback gate (layer-agnostic) | PASS = the acceptance/verify layer runs the tests: a verify command gated by ACCEPTANCE REQUIREMENTS (L3 - flow-next's own work-loop quality gates / Stop hooks) AND/OR a CI required check running the SAME verify command (L4). Evidence = the gate config quoted. Edit-time enforcement (L1 harness hooks: PostToolUse / afterFileEdit format + file-scoped lint/typecheck) and commit-gate enforcement (L2 git hooks scoped to format/lint on staged files, <~10s, auto-fix) with real content are a reported **STRENGTH**; their ABSENCE is a **headroom warn, never a pass-blocker** ("no git hooks but hardened CI + verify command" is a legitimate pass). Flags (each quotes evidence): stub hook content (`.husky/` echo scaffold, whitespace-only pre-commit config) = ❌; test-suite/E2E/coverage in a pre-commit hook = ⚠️ "heavyweight hook - known agent bypass/stall risk; move tests to verify + CI"; git hooks in an agent-committing repo without bypass hardening (deny `git commit --no-verify` / PreToolUse guard) = ⚠️ "advisory only for agents"; L1/L2 tooling diverging from L3/L4 (different tools/flags per layer) = a finding (one verify command is the single source of truth). Prime **NEVER** recommends test-running pre-commit hooks. **Boundary:** SV4 grades gate TOPOLOGY (which layer owns what); workflow TRIGGER correctness is **FH3 (CI actually gates)**, never double-scored; Pillar 8 WP1 report-only row untouched. |
 | SV5 | Lint script exists AND executes | `lint` command present in manifest/Makefile AND runs in CHECK mode exiting cleanly or with real findings; a `lint` script that crashes = ❌ with the error quoted. Non-mutating execution policy: check mode only, never `--fix`/`--write` against the worktree. |
 | SV6 | Format script exists AND executes (check mode) | `format` command present AND runs via its CHECK/`--check` mode ONLY (never `--write`/`--fix` against the worktree - non-mutating execution policy); evidence = the check-mode invocation output. No check mode available = report that the format command resolves statically, do not execute it. |
 
@@ -126,7 +126,7 @@ Reproducible environment setup.
 - ⚠️ 40-79%: Setup mostly documented
 - ❌ <40%: Setup requires tribal knowledge
 
-DE7 is **informational** - like DC7 and DC8, it is excluded from the Pillar 5 score and the agent-readiness baseline. The **48 legacy scored criteria** (Pillars 1-5 feed the maturity level; Pillars 6-8 are report-only) all remain present and scored per R13 - substance upgrades tighten pass conditions, never remove checks; including the informational DE7 and DC8 rows the legacy table totals **50**. The new agent-readiness tier GROUPS (AO 5, DR 7, TO 4, HP scored-core HP1/2/5/7/9/12, and the scored gap-diff criteria FH1-FH6) are scored and fix-offered but EXCLUDED from the maturity-level formula (resolution 1) - they surface as group pass-count lines, never in the 48-criterion level denominator. See the criterion-to-score map and N/A whitelist below.
+DE7 is **informational** - like DC7 and DC8, it is excluded from the Pillar 5 score and the agent-readiness baseline. The **48 legacy scored criteria** (Pillars 1-5 feed the maturity level; Pillars 6-8 are report-only) all remain present and scored - substance upgrades tighten pass conditions, never remove checks; including the informational DE7 and DC8 rows the legacy table totals **50**. The new agent-readiness tier GROUPS (AO 5, DR 7, TO 4, HP scored-core HP1/2/5/7/9/12, and the scored gap-diff criteria FH1-FH6) are scored and fix-offered but EXCLUDED from the maturity-level formula - they surface as group pass-count lines, never in the 48-criterion level denominator. See the criterion-to-score map and N/A whitelist below.
 
 ---
 
@@ -201,7 +201,7 @@ Team processes and automation.
 
 ## Agent-Readiness Tier Groups (scored, EXCLUDED from the level formula)
 
-These groups are scored and fix-offered in the agent-readiness tier, but per **resolution 1** they are **excluded from the maturity-level formula** (the level stays avg(Pillars 1-5) for cross-repo comparability). Each group reports a **pass-count line** (e.g. "AO: 3/5 pass"), never folded into the level, and feeds the verdict headline + ranked actions + remediation. Taxonomy per row: `scored-in-tier` / `report-only` / `informational`.
+These groups are scored and fix-offered in the agent-readiness tier, but they are **excluded from the maturity-level formula** (the level stays avg(Pillars 1-5) for cross-repo comparability). Each group reports a **pass-count line** (e.g. "AO: 3/5 pass"), never folded into the level, and feeds the verdict headline + ranked actions + remediation. Taxonomy per row: `scored-in-tier` / `report-only` / `informational`.
 
 ### Agent Observability & Drivability (AO / DR / TO / DT)
 
@@ -267,12 +267,12 @@ Net-new criteria from the gap-diff, deduped against everything above. Scored row
 |----|-----------|----------|----------------------------------|
 | FH1 | Docs freshness vs code churn | scored-in-tier | `git log -1 --format=%ct` on CLAUDE.md/README/docs vs src churn (emitter); instruction files untouched for months while src churned = drift flag. Fix = targeted refresh, never bulk regeneration. |
 | FH2 | Large-file/legibility metrics | scored-in-tier | p50/max file LOC + top-N offenders via scc (emitter; LEG4 pathology inventory generalized to ALL repos); fix = report offenders + offer a max-lines lint rule. |
-| FH3 | CI actually gates | scored-in-tier | Workflows contain test AND lint steps AND **gate-relevant TRIGGERS** (pull_request / push on the default branch) - step content alone is insufficient. When `gh` is authed, corroborate with required-status/branch-protection. A CI "lint" step that MUTATES (`--write`/`--fix`) can never fail = flag it. External deploy platforms (vercel.json/.netlify) INFERRED as a compile gate -> recommendation becomes "add test-gating CI (compile gate already external)"; tags=0 suppressed for continuously-deployed web repos. **Boundary (resolution 2):** FH3 grades workflow TRIGGER correctness; gate TOPOLOGY is **SV4**, never double-scored; Pillar 8 WP1 untouched. |
+| FH3 | CI actually gates | scored-in-tier | Workflows contain test AND lint steps AND **gate-relevant TRIGGERS** (pull_request / push on the default branch) - step content alone is insufficient. When `gh` is authed, corroborate with required-status/branch-protection. A CI "lint" step that MUTATES (`--write`/`--fix`) can never fail = flag it. External deploy platforms (vercel.json/.netlify) INFERRED as a compile gate -> recommendation becomes "add test-gating CI (compile gate already external)"; tags=0 suppressed for continuously-deployed web repos. **Boundary:** FH3 grades workflow TRIGGER correctness; gate TOPOLOGY is **SV4**, never double-scored; Pillar 8 WP1 untouched. |
 | FH4 | Local secrets gate | scored-in-tier | gitleaks/detect-secrets/trufflehog in the commit gate or CI (SV4-content extension) - agents generate and commit fast. Push-protection status reported alongside SE2 (report-only). |
 | FH5 | Destructive-script scan | scored-in-tier | Bounded scan (POSIX classes) for recursive-delete/`--force`/`push -f`/db-drop patterns in manifest scripts, Makefiles, scripts/. Severity by CONTEXT AND TARGET (emitter provides raw hits + context class): string-literal/comment/doc-snippet = dropped; repo-internal dir the same script regenerates = informational (feeds a LEG7 never-edit line); `$HOME`/env-derived bounded path = ask-tier mention; unbounded or parameterized target = P1, named in the never/ask tiers. |
 | FH6 | API contract presence (conditional) | scored-in-tier | When an HTTP framework is detected: OpenAPI/GraphQL schema/proto files as a machine-verifiable diff target; fix = suggest generation from routes. N/A when no HTTP framework detected. |
 | FH7 | Module-boundary enforcement | informational | import-linter/dependency-cruiser/eslint-boundaries/Nx tags/ArchUnit config (size-tiered); suggest only above the size tiers where it pays. |
-| FH8 | Feedback latency | report-only | Local suite wall time from what ALREADY executed (resolution 3 - never run a full suite for timing) + CI median derived locally from `gh run list --limit 20 --json startedAt,updatedAt,status,conclusion,headBranch` on completed default-branch runs (no `durationMs` field - compute updatedAt minus startedAt). >~10 min median caps agent iteration. Build-caching config reported alongside. |
+| FH8 | Feedback latency | report-only | Local suite wall time from what ALREADY executed (never run a full suite for timing) + CI median derived locally from `gh run list --limit 20 --json startedAt,updatedAt,status,conclusion,headBranch` on completed default-branch runs (no `durationMs` field - compute updatedAt minus startedAt). >~10 min median caps agent iteration. Build-caching config reported alongside. |
 | FH9 | gh CLI available + authed | informational (host) | `command -v gh && gh auth status` - a **host-environment line EXCLUDED from ALL repo scores** (a machine property must never make the same repo score differently per assessor). Reported in the report header. |
 | FH10 | Dependency/runtime currency | report-only | Runtime major vs EOL table (ancient stacks fall outside model training distribution). |
 | FH11 | Test isolation / parallel safety | report-only | Parallel agents + worktrees are flow-next's own model. |
@@ -281,7 +281,7 @@ Net-new criteria from the gap-diff, deduped against everything above. Scored row
 
 ---
 
-## Criterion-to-Score Map (resolution 21a)
+## Criterion-to-Score Map
 
 The single source of truth for every new/upgraded criterion's scoring behavior. Columns:
 - **Group** - which pillar or tier group it belongs to.
@@ -339,7 +339,7 @@ The single source of truth for every new/upgraded criterion's scoring behavior. 
 
 ---
 
-## N/A Whitelist (single source - resolution 11)
+## N/A Whitelist (single source)
 
 Only these criteria may be marked **N/A**; the model may NOT invent N/A elsewhere. Excluded criteria drop from **both** numerator and denominator of their pillar/group and are listed separately - never counted as ❌. Classification (Phase 0.5) adds N/A entries ONLY via this table. `workflow.md` references this table; it never restates the list.
 
@@ -360,7 +360,7 @@ Only these criteria may be marked **N/A**; the model may NOT invent N/A elsewher
 | FH13 | No LLM SDK in deps |
 | All Pillars 1-8 scored criteria | **Greenfield lifecycle** - scorecard SUPPRESSED; premature pillars get **recorded-deferral N/A** ("no observability yet - deferred until first deploy"). A documented deferral beats BOTH a silent gap AND a stub file. |
 
-**Floor-check rule (resolution 1):** pillars OR groups whose criteria are **ALL excluded** (shape/tier N/A, greenfield deferral, inactive harness) are **SKIPPED from the floor checks** - never counted as a 0% pillar that caps the level. This stops a healthy library (no monorepo/E2E/Docker) from being capped at 67% and locked out of Level 5, and stops a Codex-only repo from being floored by inactive HP criteria.
+**Floor-check rule:** pillars OR groups whose criteria are **ALL excluded** (shape/tier N/A, greenfield deferral, inactive harness) are **SKIPPED from the floor checks** - never counted as a 0% pillar that caps the level. This stops a healthy library (no monorepo/E2E/Docker) from being capped at 67% and locked out of Level 5, and stops a Codex-only repo from being floored by inactive HP criteria.
 
 ---
 

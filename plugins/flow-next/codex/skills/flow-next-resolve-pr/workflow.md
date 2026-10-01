@@ -47,7 +47,7 @@ if [[ "${FLOW_AUTONOMOUS:-}" == "1" ]]; then
 fi
 ```
 
-`AUTONOMOUS=1` flips question-suppression branches ONLY (Phase 10): the needs-human surface reports instead of blocking, and the run ends with the machine-readable `RESOLVE_PR_VERDICT=` terminal line. Autonomy ≠ Ralph — neither signal sets `FLOW_RALPH`, implies `REVIEW_RECEIPT_PATH` receipt obligations, or activates ralph-guard hooks. Every other phase (triage, demotion/skip logic, cluster gate, dispatch, validation, commit, reply/resolve, the 2-cycle bound) behaves identically in both modes.
+`AUTONOMOUS=1` flips question-suppression branches ONLY (Phase 10): the needs-human surface reports instead of blocking, and the run ends with the machine-readable `RESOLVE_PR_VERDICT=` terminal line. Every other phase (triage, demotion/skip logic, cluster gate, dispatch, validation, commit, reply/resolve, the 2-cycle bound) behaves identically in both modes.
 
 Detect mode from `TARGET`. Regex matches are authoritative — do not relax:
 
@@ -453,7 +453,7 @@ The 2-cycle bound is identical in both modes. Under `AUTONOMOUS=1` the escalatio
 
 ## Phase 9.5: Tracker sync (opt-in) — optional resolution comment
 
-**Optional. Runs only when the tracker bridge is active AND `resolvePr` is opted in, after the resolution pass settles (Phase 9 found nothing left to loop on, or only `needs-human` threads remain). With no tracker configured this is a no-op.** Posts an optional resolution comment to the linked tracker issue summarizing what was addressed on the PR — append-only (R8), conflict-free.
+**Optional. Runs only when the tracker bridge is active AND `resolvePr` is opted in, after the resolution pass settles (Phase 9 found nothing left to loop on, or only `needs-human` threads remain). With no tracker configured this is a no-op.** Posts an optional resolution comment to the linked tracker issue summarizing what was addressed on the PR — append-only, conflict-free.
 
 The linked spec id comes from the PR's spec association (the same `SPEC_ID` make-pr used; resolve `flowctl show <spec-id>` from the branch as elsewhere in this skill).
 

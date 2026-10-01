@@ -40,8 +40,8 @@ paths given; use `<changed_files>` as the authoritative scope map — a path abs
 of scope — then run `git diff` over the range to read the hunks and judge each requirement
 against what actually landed. Verification budget: verify via the spec's Quick commands /
 the focused suites the tasks' evidence names, plus any command a specific gap needs — running
-the exact test a finding disputes is always licensed. The FULL suite belongs to the run's
-final gate (work Phase 4/5, rolling quiesce), never to a review round.
+the exact test a finding disputes is always licensed. Never run the FULL suite in a review round; CI
+and the project's own gate own it.
 
 Nothing is pre-truncated for you. Fetch what you need.
 
@@ -133,7 +133,7 @@ Suppression gate: drop findings below 75, EXCEPT P0 at 50+ (those survive). Emit
 Classify each finding: **introduced** (this diff caused or newly exposed it) or **pre_existing** (already on base, untouched — a finding on an unchanged line is pre_existing by default; confirm with `git blame`/base-file read when cheap).
 Verdict gate: only `introduced` findings affect the verdict — a review whose survivors are all `pre_existing` ships. List pre-existing under `## Pre-existing issues (not blocking this verdict)` as `[sev, confidence N, introduced=false] file:line — summary`; never drop them. End with `Classification counts: N introduced, M pre_existing.`
 ## Protected artifacts
-NEVER recommend deleting / gitignoring / removing these committed pipeline paths (flag bad CONTENT inside them, never their existence): `.flow/*`, `.flow/bin/*`, `.flow/memory/*`, `.flow/specs/*.md`, `.flow/tasks/*.md`, `docs/plans/*`, `docs/solutions/*`, `scripts/ralph/*`. Discard any such finding during synthesis; emit a `Protected-path filter:` count when any dropped.
+NEVER recommend deleting / gitignoring / removing these committed pipeline paths (flag bad CONTENT inside them, never their existence): `.flow/*`, `.flow/bin/*`, `.flow/memory/*`, `.flow/specs/*.md`, `.flow/tasks/*.md`, `docs/plans/*`, `docs/solutions/*`. Discard any such finding during synthesis; emit a `Protected-path filter:` count when any dropped.
 ## Output Format
 
 ```

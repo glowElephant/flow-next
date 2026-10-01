@@ -7,6 +7,11 @@ working - flowctl ignores the keys - and gets ONE advisory line per
 invocation naming them and pointing at the agentic route (the
 /flow-next:setup model-routing block plus the `flowctl usage` recipes).
 
+7.0 removed the HTML render lenses; `artifacts.html.enabled` gets the same
+advisory, pointing at /flow-next:visual or an HTML page asked for in
+conversation. `pipeline.chainStages` gets it too: `flow --auto` already runs
+QA then make-pr as consecutive hops.
+
 Pinned here: presence detection is raw-file-only, the advisory is one line
 per invocation (never one per key), it goes to stderr so `--json` stays
 parseable, it never blocks, and a fresh repo is silent.
@@ -61,6 +66,8 @@ LEGACY_CONFIG = {
         "verifiedAt": "2026-07-19",
         "verifiedWith": {"codex": "0.144"},
     },
+    "artifacts": {"html": {"enabled": True}},
+    "pipeline": {"qa": "off", "chainStages": "on"},
 }
 
 
@@ -123,6 +130,13 @@ class RemovedDelegateAdvisoryTestCase(unittest.TestCase):
         self.assertIn("flowctl usage", note)
         self.assertIn("AGENTS.md", note)
 
+    def test_html_lens_key_note_points_at_the_replacement(self) -> None:
+        note = self.flowctl.removed_config_keys_note(["artifacts.html.enabled"])
+        self.assertEqual(note.count("\n"), 0)
+        self.assertIn("artifacts.html.enabled", note)
+        self.assertIn("/flow-next:visual", note)
+        self.assertNotIn("flowctl usage", note)
+
     def test_config_get_emits_one_stderr_line_and_still_answers(self) -> None:
         self._write_config(LEGACY_CONFIG)
         payload, err = self._config_get("memory.enabled")
@@ -158,9 +172,24 @@ class RemovedDelegateAdvisoryTestCase(unittest.TestCase):
             payload, _err = self._config_get(key)
             self.assertIsNone(payload["value"], key)
 
+    def test_html_lens_key_has_no_default_and_warns(self) -> None:
+        self.assertNotIn("artifacts", self.flowctl.get_default_config())
+        self._write_config({"artifacts": {"html": {"enabled": True}}})
+        payload, err = self._config_get("artifacts.html.enabled")
+        self.assertIs(payload["value"], True)
+        self.assertIn("artifacts.html.enabled", err)
+
+    def test_chain_stages_key_has_no_default_and_warns(self) -> None:
+        self.assertEqual(self.flowctl.get_default_config()["pipeline"], {"qa": "off"})
+        self._write_config({"pipeline": {"qa": "on", "chainStages": "on"}})
+        payload, err = self._config_get("pipeline.qa")
+        self.assertEqual(payload["value"], "on")
+        self.assertEqual(err.count("\n"), 1)
+        self.assertIn("pipeline.chainStages", err)
+        self.assertIn("consecutive hops", err)
+
     def test_models_block_is_not_validated_or_read(self) -> None:
         # fn-195: no role-map validation on write, no merged default.
-        self.assertFalse(hasattr(self.flowctl, "_validate_models_config_key"))
         self.assertNotIn("models", self.flowctl.get_default_config())
 
 

@@ -5,16 +5,6 @@ ARGUMENTS="${1:-}"
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 CLAWPATCH_DIR="$REPO_ROOT/.clawpatch"
 
-if [[ -n "${REVIEW_RECEIPT_PATH:-}" || "${FLOW_RALPH:-}" == "1" ]]; then
-  if [[ -n "${REVIEW_RECEIPT_PATH:-}" ]]; then
-    TRIGGER="REVIEW_RECEIPT_PATH"
-  else
-    TRIGGER="FLOW_RALPH"
-  fi
-  echo "Error: /flow-next:map declines under Ralph ($TRIGGER set); rerun interactively." >&2
-  exit 2
-fi
-
 SOURCE="heuristic"
 EXTRA_PASSTHROUGH=()
 seen_dashdash=0

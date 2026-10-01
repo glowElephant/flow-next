@@ -46,6 +46,7 @@ READ_SURFACE_EXCLUSIONS = {
     "plugin.json": "Codex host manifest install-codex.sh writes at $CODEX_HOME",
     "codex": "committed Codex rewrite mirror (must not land at dest)",
     "skills": "installed separately",
+    "agents": "generated per host by each installer (OpenCode: agents/flow-next-<name>.md), never a copied support dir",
     ".flow-next-opencode-manifest": (
         "dest-root ownership/detection file written by the installer, "
         "not a support dir to copy"

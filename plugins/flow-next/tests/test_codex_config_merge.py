@@ -130,7 +130,10 @@ class ConfigMergeTests(unittest.TestCase):
             with self.subTest(text=text):
                 out = mod.merge(text, SOURCE, 12)
                 data = tomllib.loads(out)
-                self.assertTrue(data['features']['hooks'])
+                if text:
+                    self.assertTrue(data['features']['hooks'])
+                else:
+                    self.assertNotIn('features', data)
                 self.assertEqual(data['agents']['max_threads'], 12)
                 self.assertEqual(mod.merge(out, SOURCE, 12), out)
 

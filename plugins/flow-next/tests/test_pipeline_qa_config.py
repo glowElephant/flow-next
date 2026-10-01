@@ -14,11 +14,9 @@ stores it like any other value and never interprets it (the attended
 conductor reads it; pilot treats it as off). The default `"off"` keeps
 pilot's stage set + behavior byte-for-byte unchanged.
 
-Unlike the `artifacts` block, `pipeline` is NOT in
-`_INIT_UNMATERIALIZED_BLOCKS`: there is no setup-ceremony
-include-only-if-unset question gated on a `--raw` null probe, so it
-materializes into config.json on init like the `work.*` / `land.*` blocks.
-Mirrors test_artifacts_config.py / test_land_config.py.
+There is no setup-ceremony include-only-if-unset question gated on a
+`--raw` null probe for `pipeline`, so it materializes into config.json on
+init like the `land.*` block. Mirrors test_land_config.py.
 """
 
 from __future__ import annotations
@@ -100,7 +98,7 @@ class PipelineQaConfigTestCase(unittest.TestCase):
     def test_defaults_dict_has_pipeline_block(self) -> None:
         defaults = self.flowctl.get_default_config()
         self.assertIn("pipeline", defaults)
-        self.assertEqual(defaults["pipeline"], {"qa": "off", "chainStages": "off"})
+        self.assertEqual(defaults["pipeline"], {"qa": "off"})
 
     # ── Defaults: surfaced via `config get --json` on a FRESH repo ───────
     # No config.json on disk and no prior `config set` — the merge must
@@ -166,9 +164,8 @@ class PipelineQaConfigTestCase(unittest.TestCase):
         self.assertEqual(self._run_config_get_cli("pipeline.qa")["value"], "on")
 
     # ── init materializes the pipeline block (NOT exempt) ────────────────
-    # Unlike artifacts, `pipeline` is NOT in _INIT_UNMATERIALIZED_BLOCKS —
-    # there is no setup-ceremony `--raw` null probe for it, so init writes it
-    # into config.json like work.*/land.*.
+    # There is no setup-ceremony `--raw` null probe for `pipeline`, so init
+    # writes it into config.json like land.*.
 
     def test_fresh_init_materializes_pipeline_block(self) -> None:
         out = self._run_init_cli()
@@ -176,7 +173,7 @@ class PipelineQaConfigTestCase(unittest.TestCase):
         self.assertIn("pipeline", self._read_config_file())
         self.assertEqual(
             self._read_config_file()["pipeline"],
-            {"qa": "off", "chainStages": "off"},
+            {"qa": "off"},
         )
 
     def test_init_upgrade_adds_pipeline_block(self) -> None:
@@ -189,7 +186,7 @@ class PipelineQaConfigTestCase(unittest.TestCase):
         self._run_init_cli()
         upgraded = self._read_config_file()
         self.assertIn("pipeline", upgraded)
-        self.assertEqual(upgraded["pipeline"], {"qa": "off", "chainStages": "off"})
+        self.assertEqual(upgraded["pipeline"], {"qa": "off"})
 
     def test_user_set_value_survives_init_rerun(self) -> None:
         # An explicit `config set pipeline.qa on` is preserved by a later
@@ -205,13 +202,11 @@ class PipelineQaConfigTestCase(unittest.TestCase):
     def test_pipeline_block_does_not_clash_with_existing_blocks(self) -> None:
         defaults = self.flowctl.get_default_config()
         # pipeline.* is its own top-level block, distinct from
-        # land.*, artifacts.*, and memory.* — no shared keys leak across.
+        # land.* and memory.* — no shared keys leak across.
         self.assertIn("pipeline", defaults)
         self.assertIn("land", defaults)
-        self.assertIn("artifacts", defaults)
         self.assertNotIn("qa", defaults["land"])
-        self.assertNotIn("qa", defaults["artifacts"])
-        self.assertNotIn("html", defaults["pipeline"])
+        self.assertNotIn("qa", defaults["memory"])
 
     def test_setting_pipeline_key_does_not_clobber_other_defaults(self) -> None:
         self._run_config_set_cli("pipeline.qa", "on")
@@ -219,64 +214,7 @@ class PipelineQaConfigTestCase(unittest.TestCase):
             self._run_config_get_cli("land.mergeVerdictCommand")["value"], ""
         )
         self.assertEqual(
-            self._run_config_get_cli("land.patienceMinutes")["value"], 30
-        )
-        self.assertIs(
-            self._run_config_get_cli("artifacts.html.enabled")["value"], False
-        )
-
-    # ── fn-219: pipeline.chainStages (R1) ────────────────────────────────
-    # Same string-enum shape and same STRICT positive read as pipeline.qa:
-    # only the literal "on" activates chaining; "off" / null / bool true /
-    # a typo all read OFF. Seeded beside `qa` so it materializes on init.
-
-    def test_fresh_get_chain_stages_is_off_string(self) -> None:
-        out = self._run_config_get_cli("pipeline.chainStages")
-        self.assertEqual(out["value"], "off")
-        self.assertNotIsInstance(out["value"], bool)
-
-    def test_set_chain_stages_on_round_trips(self) -> None:
-        set_out = self._run_config_set_cli("pipeline.chainStages", "on")
-        self.assertEqual(set_out["value"], "on")
-        self.assertEqual(
-            self._run_config_get_cli("pipeline.chainStages")["value"], "on"
-        )
-        self._run_config_set_cli("pipeline.chainStages", "off")
-        self.assertEqual(
-            self._run_config_get_cli("pipeline.chainStages")["value"], "off"
-        )
-
-    def test_chain_stages_strict_literal_on_predicate(self) -> None:
-        # The pilot gate is `[ "$value" = "on" ]`: table of persisted values
-        # vs. whether chaining activates. Bool `true` is coerced by
-        # set_config and must still read OFF (string-enum, not bool).
-        cases = [("on", True), ("off", False), ("true", False),
-                 ("null", False), ("On", False), ("yes", False)]
-        for raw, expect_on in cases:
-            with self.subTest(raw=raw):
-                self._run_config_set_cli("pipeline.chainStages", raw)
-                value = self._run_config_get_cli("pipeline.chainStages")["value"]
-                self.assertIs(value == "on", expect_on)
-
-    def test_set_chain_stages_keeps_qa_sibling_default(self) -> None:
-        self._run_config_set_cli("pipeline.chainStages", "on")
-        self.assertEqual(self._run_config_get_cli("pipeline.qa")["value"], "off")
-        self._run_config_set_cli("pipeline.qa", "on")
-        self.assertEqual(
-            self._run_config_get_cli("pipeline.chainStages")["value"], "on"
-        )
-
-    def test_init_upgrade_adds_chain_stages_leaf_without_clobbering_qa(self) -> None:
-        # Pre-fn-219 config.json with a user-set `qa`: the upgrade merge adds
-        # the missing chainStages leaf and leaves the user's `qa` alone.
-        config_path = self.tmpdir / ".flow" / "config.json"
-        config_path.write_text(
-            json.dumps({"pipeline": {"qa": "on"}}), encoding="utf-8"
-        )
-        self._run_init_cli()
-        self.assertEqual(
-            self._read_config_file()["pipeline"],
-            {"qa": "on", "chainStages": "off"},
+            self._run_config_get_cli("land.patienceMinutes")["value"], 10
         )
 
 

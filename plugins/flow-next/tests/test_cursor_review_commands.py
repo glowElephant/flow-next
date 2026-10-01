@@ -559,31 +559,27 @@ class CursorFallbackCoercion(unittest.TestCase):
 class CursorPersonaOverrideAndCap(unittest.TestCase):
     """fn-90 R7 (persona override) + R5 (cap) end-to-end on the cursor path."""
 
-    def test_plan_review_prompt_carries_persona_override(self):
-        with _flow_repo() as (repo, base):
-            receipt = repo / "receipt.json"
-            runner = _fake_exec()
-            args = argparse.Namespace(
-                epic=EPIC_ID, files="src/mod.py", base=base,
-                receipt=str(receipt), json=False, spec=None,
-            )
-            with mock.patch.object(flowctl, "run_cursor_exec", runner):
-                with contextlib.redirect_stdout(io.StringIO()):
-                    flowctl.cmd_cursor_plan_review(args)
-            sent = runner.calls[0]["prompt"]
-            self.assertIn("PERSONA OVERRIDE", sent)
-            self.assertIn("superseded", sent)
-
-    def test_impl_review_prompt_carries_persona_override(self):
-        with _flow_repo() as (repo, base):
-            receipt = repo / "receipt.json"
-            runner = _fake_exec()
-            args = _impl_args(repo, base, receipt)
-            with mock.patch.object(flowctl, "run_cursor_exec", runner):
-                with contextlib.redirect_stdout(io.StringIO()):
-                    flowctl.cmd_cursor_impl_review(args)
-            sent = runner.calls[0]["prompt"]
-            self.assertIn("PERSONA OVERRIDE", sent)
+    def test_review_prompts_carry_persona_override(self):
+        for kind, handler in (
+            ("plan", flowctl.cmd_cursor_plan_review),
+            ("impl", flowctl.cmd_cursor_impl_review),
+        ):
+            with self.subTest(kind=kind), _flow_repo() as (repo, base):
+                receipt = repo / "receipt.json"
+                runner = _fake_exec()
+                if kind == "plan":
+                    args = argparse.Namespace(
+                        epic=EPIC_ID, files="src/mod.py", base=base,
+                        receipt=str(receipt), json=False, spec=None,
+                    )
+                else:
+                    args = _impl_args(repo, base, receipt)
+                with mock.patch.object(flowctl, "run_cursor_exec", runner):
+                    with contextlib.redirect_stdout(io.StringIO()):
+                        handler(args)
+                sent = runner.calls[0]["prompt"]
+                self.assertIn("PERSONA OVERRIDE", sent)
+                self.assertIn("superseded", sent)
 
     def test_plan_review_increments_cap_counter(self):
         with _flow_repo() as (repo, base):

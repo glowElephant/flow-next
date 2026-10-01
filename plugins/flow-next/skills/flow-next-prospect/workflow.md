@@ -29,22 +29,21 @@ done
 
 ---
 
-## Ralph-block (R8) — runs first, before everything else
+## Autonomy block — runs first, before everything else
 
 ```bash
-if [[ -n "${REVIEW_RECEIPT_PATH:-}" || "${FLOW_RALPH:-}" == "1" \
-   || "${FLOW_AUTONOMOUS:-}" == "1" || "${AUTONOMOUS:-}" == "1" \
+if [[ "${FLOW_AUTONOMOUS:-}" == "1" || "${AUTONOMOUS:-}" == "1" \
    || " ${ARGUMENTS:-} " == *" mode:autonomous "* ]]; then
-  echo "Error: /flow-next:prospect requires a user at the terminal; not compatible with Ralph mode (REVIEW_RECEIPT_PATH or FLOW_RALPH detected)." >&2
+  echo "Error: /flow-next:prospect requires a user at the terminal; not compatible with autonomous mode." >&2
   exit 2
 fi
 ```
 
-**No env-var opt-in.** Ralph cannot decide what a repo should build next — that's a human judgement call. Pattern matches impl-review `--interactive`. The block runs before `mkdir`, before any user prompt, before any scan; the artifact directory is not created and no question is surfaced.
+**No env-var opt-in.** An autonomous run cannot decide what a repo should build next — that's a human judgement call. The block runs before `mkdir`, before any user prompt, before any scan; the artifact directory is not created and no question is surfaced.
 
 ---
 
-## Phase 0: Resume check (R5, R16)
+## Phase 0: Resume check
 
 **Goal:** if the user already has an active prospect artifact <30 days old, surface it and ask whether to extend it, start fresh, or open it. Corrupt artifacts must be detected and listed with `status: corrupt` so the user knows they exist, but never offered for extension or promote.
 
@@ -76,7 +75,7 @@ When the sentinel prints, STOP and Read [references/resume-artifacts.md](referen
 
 ---
 
-## Phase 1: Ground (R1, R17)
+## Phase 1: Ground
 
 **Goal:** produce a structured 30-50 line snapshot of repo state relevant to the focus hint. Each data source has a graceful-degradation fallback that records `scanned: none (reason)` rather than erroring. Titles + tags only; **never raw file bodies** — bloated context measurably degrades downstream generation quality.
 
@@ -270,10 +269,6 @@ $STRATEGY_BLOCK
 EOF
 ```
 
-### 1.4 — Manual smoke (acceptance R1, R17)
-
-In the flow-next plugin repo: `prospect DX` should produce a readable snapshot listing recently-modified files, open specs, CHANGELOG entries from the last few releases, memory hits if memory is initialised, and `scanned: none (...)` lines for any absent source. The snapshot must fit in roughly 30-50 lines of output and must not contain raw file bodies.
-
 ### Done when
 
 - All six sources have contributed a block or a `scanned: none (<reason>)` line, in the fixed order.
@@ -282,7 +277,7 @@ In the flow-next plugin repo: `prospect DX` should produce a readable snapshot l
 
 ---
 
-## Phase 2: Generate (R2, R18) — divergent-convergent + persona seeding
+## Phase 2: Generate — divergent-convergent + persona seeding
 
 **Goal:** produce a flat candidate list with **wide spread** by running one divergent generation pass anchored by ≥2 distinct persona voices. Phase 2 does **not** self-judge or pre-rank — that is Phase 3's job, on a separate prompt without this prompt's framing.
 
@@ -465,17 +460,17 @@ The `loosen` path keeps the run going but flags the under-volume in the eventual
 
 ---
 
-## Phase 3: Critique (R3, R12) — separate prompt, rejection floor enforced
+## Phase 3: Critique — separate prompt, rejection floor enforced
 
 **Goal:** evaluate every candidate from Phase 2 with explicit `keep|drop` verdicts plus a fixed taxonomy reason. **The critique never sees Phase 2's system prompt, the personas, or the focus hint.** A critique dispatch carrying any of the three has broken this — it becomes self-critique of one's own generations, the exact sycophancy this pass exists to prevent ("the generator wanted X, the critic finds reasons to keep X").
 
-**The exclusion is structural, not an instruction.** The critique runs as a **fresh-context read-only subagent** (a single `Task` dispatch — `subagent_type: Explore`, or `general-purpose` if unavailable, or the host's generic read-only dispatch on hosts with neither builtin (e.g. Cursor); `sync-codex.sh` rewrites `Task` → `spawn_agent`) whose prompt contains only the grounding snapshot + the candidate list + the taxonomy/floor instructions below. A separate context window physically cannot attend to the personas / focus hint / generation prompt — where a same-window "separate prompt" section could. This is the **one** subagent dispatch in this otherwise-inline skill, and it is safe: the critique is non-interactive (it emits verdicts, asks nothing), so `AskUserQuestion` reachability — the reason the rest of the skill stays inline — is unaffected; the floor-violation question (§3.2) runs on the main thread after the subagent returns.
+**The exclusion is structural, not an instruction.** The critique runs as a **fresh-context read-only subagent** (a single `Task` dispatch — `subagent_type: Explore`, or `general-purpose` if unavailable, or the host's generic read-only dispatch on hosts with neither builtin (e.g. Cursor)) whose prompt contains only the grounding snapshot + the candidate list + the taxonomy/floor instructions below. A separate context window physically cannot attend to the personas / focus hint / generation prompt — where a same-window "separate prompt" section could. This is the **one** subagent dispatch in this otherwise-inline skill, and it is safe: the critique is non-interactive (it emits verdicts, asks nothing), so `AskUserQuestion` reachability — the reason the rest of the skill stays inline — is unaffected; the floor-violation question (§3.2) runs on the main thread after the subagent returns.
 
 ### 3.1 — Build the critique prompt (the subagent's only inputs)
 
 Inputs handed to the critique subagent: `CANDIDATES_YAML` (Phase 2 §2.4) + the Phase 1 grounding snapshot + the taxonomy + the target rejection rate. **Never included in the dispatch:** `FOCUS_HINT`, persona texts, the Phase 2 prompt (they live in THIS context, not the subagent's — the point of the split). The subagent returns the per-candidate `keep|drop|taxonomy|reason` YAML, which §3.2 parses on the main thread.
 
-Rejection taxonomy (R3 anchor — frozen string list):
+Rejection taxonomy (anchor — frozen string list):
 
 ```
 duplicates-open-epic       — material overlap with an open spec in the grounding snapshot (slug kept stable for artifact round-trip; semantics now read "duplicates-open-spec")
@@ -554,7 +549,7 @@ Critique rejected only X% (below the ≥Y% floor). Options:
   ship-anyway   — same as loosen-floor; preserved for clarity in transcripts
 ```
 
-Frozen string format (R12 anchor — must match across backends): `regenerate | loosen-floor | ship-anyway`. Use `AskUserQuestion`; fall back to numbered-options when the tool is unreachable. Validate the choice; reject anything outside the three options.
+Frozen string format (anchor — must match across backends): `regenerate | loosen-floor | ship-anyway`. Use `AskUserQuestion`; fall back to numbered-options when the tool is unreachable. Validate the choice; reject anything outside the three options.
 
 - `regenerate` → loop back to Phase 2 §2.3 with a fresh prompt invocation. Cap at **1 regeneration**; a second floor violation auto-routes to `loosen-floor` with a printed warning (avoids infinite loops on a model that genuinely can't reject).
 - `loosen-floor` / `ship-anyway` → continue to Phase 4. Record `floor_violation: true` in the eventual artifact frontmatter.
@@ -584,7 +579,7 @@ No third option here — shipping zero survivors produces a useless artifact.
 
 ---
 
-## Phase 4: Rank survivors (R2) — bucketed, prose-only
+## Phase 4: Rank survivors — bucketed, prose-only
 
 **Goal:** assign each survivor to one of three labeled buckets and stamp it with a forced-format leverage sentence. **No numeric scores.** Past position 5, ranking is near-random across reruns; bucketing stabilizes the top-3 while keeping the rest legible.
 
@@ -592,7 +587,7 @@ No third option here — shipping zero survivors produces a useless artifact.
 
 Inputs: `SURVIVORS` (Phase 3 §3.3) + the Phase 1 grounding snapshot. Personas and focus hint are **not** re-introduced — Phase 4 ranks on grounding-evidence, not on the generator's framing.
 
-Buckets (R2 / R4 anchor — frozen labels):
+Buckets (anchor — frozen labels):
 
 ```
 High leverage (1-3)            — small-diff, large-impact wins; top-3 cap
@@ -682,7 +677,7 @@ Materialize `RANKED` — the parsed ranking with each survivor's full candidate 
 
 ---
 
-## Phase 5: Write artifact (R4, R13)
+## Phase 5: Write artifact
 
 **Goal:** atomically write a single markdown artifact to `.flow/prospects/<slug>-<date>.md` so it survives Ctrl-C, concurrent runs, and resume on the next session. **Artifact lands on disk before Phase 6 fires.** Never gate the write on the handoff prompt.
 
@@ -749,26 +744,26 @@ Empty buckets render `_(none)_`. Empty `## Rejected` renders `_(none)_`.
 
 ---
 
-## Phase 6: Handoff prompt (R9, R19)
+## Phase 6: Handoff prompt
 
 **Goal:** offer the user a one-keystroke path from "artifact saved" to a spec (via `flowctl prospect promote`), chart (only when the selected candidate is still singular + oversized + unclear), interview, or a clean exit. The artifact already exists on disk by the time this phase fires - Ctrl-C here loses nothing.
 
 ### 6.1 — Use the blocking-question tool
 
-Use `AskUserQuestion` (deferred — load via `ToolSearch select:AskUserQuestion` if its schema isn't yet in scope). If the tool is unreachable, print the frozen-string format below and read the user's reply from chat. (sync-codex.sh rewrites this to a plain-text numbered prompt in the Codex mirror.)
+Use `AskUserQuestion` (deferred — load via `ToolSearch select:AskUserQuestion` if its schema isn't yet in scope). If the tool is unreachable, print the frozen-string format below and read the user's reply from chat.
 
-If the tool is available, use it with these labelled choices (one per survivor + chart when warranted + skip + interview):
+If the tool is available, use it with these labelled choices (one per survivor + chart when warranted + skip + refine):
 
 - `Promote #1: <title>`
 - `Promote #2: <title>`
 - ... (one per survivor across all buckets)
 - `Chart #N: <title>` (offer **only** when that survivor is still singular, oversized, and unclear - never for clear candidates)
 - `Skip`
-- `Interview instead`
+- `Refine instead`
 
 The tool's free-text `description` field gets the artifact path so the user has it visible while choosing. Chart is optional discovery after selection, not a mandatory hop and not a fixed prospect -> chart -> capture conveyor.
 
-### 6.2 — Frozen numbered-options fallback (R19)
+### 6.2 — Frozen numbered-options fallback
 
 When no blocking tool is reachable (or the platform tool errors), print this **exact** string format. Do not paraphrase, re-order, or add commentary — the smoke test in task 6 grep-checks this format:
 
@@ -780,7 +775,7 @@ Promote a survivor to a spec?
   2) Promote #2: <title>
   ...
   N) Skip
-  i) Interview (ask /flow-next:refine what to refine)
+  i) Refine (ask /flow-next:refine what to refine)
 
 Enter choice [1-N|i|skip]:
 ```
@@ -796,7 +791,7 @@ Normalize the reply (strip whitespace, lowercase). Route by exact match:
 | `1`, `2`, ..., `N-1` (where `N` is the Skip slot) | Run `flowctl prospect promote <artifact-id> --idea <reply>`. Echo the new spec id and exit. |
 | `N`, `skip`, empty string | Print `Skipped. Artifact saved at .flow/prospects/<artifact-id>.md` and exit. |
 | `c`, `chart` | Print suggestion: `Run /flow-next:chart on the selected survivor only if it is still singular, oversized, and unclear; otherwise capture/promote. Artifact saved at .flow/prospects/<artifact-id>.md`. **Do not auto-invoke.** |
-| `i`, `interview` | Print suggestion: `Run /flow-next:refine <spec-or-task-id> to refine. Artifact saved at .flow/prospects/<artifact-id>.md`. **Do not auto-invoke** - the user picks the target id. |
+| `i`, `refine`, `interview` | Print suggestion: `Run /flow-next:refine <spec-or-task-id> to refine. Artifact saved at .flow/prospects/<artifact-id>.md`. **Do not auto-invoke** - the user picks the target id. |
 | anything else | Reprint the menu once with `Unrecognized choice: <reply>`. On second invalid reply, print `Skipped (no valid choice). Artifact saved at .flow/prospects/<artifact-id>.md` and exit cleanly. |
 
 **Host command form:** print every copy-pasteable flow-next command here in the spelling this host invokes — the flat `/flow-next-<name>` form when the resolved plugin root carries `.flow-next-opencode-manifest` (an OpenCode install — the same signal setup's host detection uses); on any other or indeterminate host, exactly as spelled here.
@@ -808,5 +803,5 @@ The artifact is on disk. Phase 6 does not retry, does not extend, does not delet
 ### Done when
 
 - The user was offered the choice once (blocking tool or the frozen numbered fallback) and the reply was routed per §6.3.
-- Chart and interview were suggested, never auto-invoked.
+- Chart and refine were suggested, never auto-invoked.
 - The artifact path was printed on every exit path.

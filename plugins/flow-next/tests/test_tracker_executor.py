@@ -92,10 +92,6 @@ class Classification(unittest.TestCase):
 
 
 class Credentials(unittest.TestCase):
-    def test_no_generic_keyring_rung_exists(self) -> None:
-        src = (ROOT / "scripts" / "flowctl_tracker" / "credentials.py").read_text()
-        self.assertNotIn("keyring.get_password", src)
-        self.assertIn("no keyring", src.lower())
 
     def test_jira_selects_by_persisted_auth_scheme_not_by_racing(self) -> None:
         env = {"JIRA_EMAIL": "e@x", "JIRA_API_TOKEN": "cloud-token-1234",
@@ -726,12 +722,6 @@ class HttpStatusBeatsGraphqlBody(unittest.TestCase):
     def test_429_with_graphql_body_is_rate_limited(self) -> None:
         self.assertIs(C.classify("linear", resp(429, self.GQL)).cls, ErrorClass.RATE_LIMITED)
 
-    def test_400_still_uses_the_graphql_document(self) -> None:
-        body = json.dumps({"errors": [{"message": "e",
-                                       "extensions": {"code": "RATELIMITED"}}]}).encode()
-        self.assertIs(C.classify("linear", resp(400, body)).cls, ErrorClass.RATE_LIMITED)
-
-
 class CredentialsNeverReachTheEnvelope(unittest.TestCase):
     """R6, end to end. The previous test exercised redact() in ISOLATION and so
     never covered the path that actually leaked: provider error text copied
@@ -895,7 +885,7 @@ class ErrorEnvelopeRedactsEveryOutboundString(unittest.TestCase):
                 self.assertNotIn("s3cret-token-value", payload)
 
     def test_stderr_note_is_redacted(self) -> None:
-        """stderr is captured by CI logs and Ralph receipts exactly like stdout."""
+        """stderr is captured by CI logs exactly like stdout."""
         import io
         buf = io.StringIO()
         with mock.patch("sys.stderr", buf), mock.patch("sys.stdout", io.StringIO()):

@@ -1461,7 +1461,7 @@ class TestNeedsHumanTerminal(_JournalReplayBase):
                 self.assertLess(attach_at, terminal_at)
 
 
-class TestNeedsHumanHandlerOrdering(unittest.TestCase):
+class _NeedsHumanHandlerBase(unittest.TestCase):
     """fn-159.3 r1: run a NEEDS_HUMAN dispatch end-to-end through the
     in-process handlers. The ordering claim itself is the assertion - the
     attempt row, the receipt, and (for plan) the denormalized status must all
@@ -1523,6 +1523,8 @@ class TestNeedsHumanHandlerOrdering(unittest.TestCase):
                     handler(args, "codex")
         return json.loads(out.getvalue()), ctx.exception.code
 
+
+class TestNeedsHumanHandlerOrdering(_NeedsHumanHandlerBase):
     def test_impl_needs_human_exits_four_with_state_durable(self):
         receipt = self.root / "impl-receipt.json"
         args = argparse.Namespace(
@@ -1568,12 +1570,12 @@ class TestNeedsHumanHandlerOrdering(unittest.TestCase):
         self.assertEqual(payload["plan_review_status"], "needs_human")
 
 
-class TestSupersededVerdictNeverSurfacesAsTerminal(TestNeedsHumanHandlerOrdering):
+class TestSupersededVerdictNeverSurfacesAsTerminal(_NeedsHumanHandlerBase):
     """PR #290 bot r8: a concurrent SHIP lands WHILE a review is in flight.
 
     The late finalization correctly consumes nothing and writes no status, but
     the handler used to route its NEEDS_WORK/NEEDS_HUMAN out as a live terminal
-    — exit 4 / fix-loop — while durable state said ship, so pilot and Ralph
+    — exit 4 / fix-loop — while durable state said ship, so pilot
     acted on a pre-SHIP artifact. The late verdict must surface as SUPERSEDED
     evidence instead.
     """

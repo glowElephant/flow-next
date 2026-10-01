@@ -7,7 +7,7 @@
 
 ## 2.7 — New-vocabulary scan (glossary term-add proposals)
 
-Capture joins `/flow-next:refine` as a glossary writer. Gate first — same husk-aware autodetect as interview's doc-aware mode (`total_terms`, never `[[ -f ]]` — a `# Glossary` husk must not open the gate):
+Capture joins `/flow-next:refine` as a glossary writer. Gate first — same husk-aware autodetect as refine's doc-aware mode (`total_terms`, never `[[ -f ]]` — a `# Glossary` husk must not open the gate):
 
 ```bash
 GLOSSARY_TERMS=$("$FLOWCTL" glossary list --json 2>/dev/null | jq -r '.total_terms // 0')
@@ -49,14 +49,8 @@ Runs only when the separate glossary question approved ≥1 term (which implies 
 EOF
 ```
 
-Same call site as interview's behavior (b) — `glossary add` is a case-insensitive upsert; stdin keeps quoted phrasing intact. Best-effort: a failed add prints a warning and continues — never blocks the capture (the spec is already on disk). Report `Glossary: added N term(s) (<terms>)` for the Phase 6 footer.
+Same call site as refine's behaviour (b) — `glossary add` is a case-insensitive upsert; stdin keeps quoted phrasing intact. Best-effort: a failed add prints a warning and continues — never blocks the capture (the spec is already on disk). Report `Glossary: added N term(s) (<terms>)` for the Phase 6 footer.
 
 ## Phase 6 — footer line
 
-When Phase 5.8 wrote terms, append one line after `Tracker sync:`: `Glossary: added N term(s) (<comma-separated terms>)`. Omit entirely otherwise (including every autofix run).
-
-## Forbidden behavior (glossary row)
-
-| Forbidden | Why |
-|-----------|-----|
-| Glossary term-adds without read-back consent, or in autofix | Consent lives in the separate `Glossary?` question; autofix prints suggestions only. Husk-aware gate (`total_terms > 0`) — seeding an empty glossary is `/flow-next:prime`'s job. |
+When Phase 5.8 wrote terms, append one line to the Phase 6 close: `Glossary: added N term(s) (<comma-separated terms>)`. Omit entirely otherwise (including every autofix run).

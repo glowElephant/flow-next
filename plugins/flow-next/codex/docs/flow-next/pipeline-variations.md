@@ -42,7 +42,7 @@ The pipeline proper starts where shaped intent exists: at **capture** (turn the 
 
 | Variant | Driving signal | Route |
 |---|---|---|
-| [Epic](#epic) | Material choices plus a plan signal (a plan was asked for, separate people implement, or delivery is staged across several PRs) | capture → refine → plan → plan-review → work → [qa when `on` or qualifying `auto`] → make-pr, draft PR by default; optional authorized land stage through merge |
+| [Epic](#epic) | Material choices plus a plan signal (a plan was asked for, separate people implement, or delivery is staged across several PRs) | capture → refine → plan → plan-review → work → [qa when `on` or qualifying `auto`] → make-pr, a ready PR unless `--draft` or open items; optional authorized land stage through merge |
 | [Feature, requirements known](#feature-requirements-known) | Design risk remains; cohesive spec needs no task breakdown | spec → plan-review → work `--no-plan` → make-pr |
 | [No-plan route](#no-plan-route) | Ready cohesive spec; capable coding agent; no coordination benefit from tasks | work `--no-plan` (zero-task fork → one implicit task) |
 | [Small task](#small-task) | Small cohesive spec or an existing planned task | spec: work `--no-plan`; planned task: work `fn-N.M` |
@@ -63,11 +63,11 @@ flowchart LR
     E([Epic intent]) --> C[/capture/] --> I[/refine/] --> P[/plan/] --> PR[/plan-review/] --> W[/work/]
     W -->|qa on, or auto qualifying| Q[/qa/] --> M[/make-pr/]
     W -->|qa off, or auto skip recorded| M
-    M --> D([Draft PR, default stop])
+    M --> D([Open PR, default stop])
     D -.scoped consent or --until=merge.-> L[/land/]
 ```
 
-The pattern that works in practice is to **capture the entire epic, then let the machinery scope it.** Capture proposes whether the input is one spec or a dependency-sorted set (the epic-split proposal), and source-tags every criterion `[user]` / `[paraphrase]` / `[inferred]`. Then **refine sharpens** exactly what is soft - the `[inferred]` lines, the requirement someone should pressure-test - rather than re-litigating the whole spec. Plan decomposes into waved tasks, plan-review burns down design risk before code exists, work executes in fresh-context workers, QA drives the live app when `pipeline.qa` is `on` or a qualifying `auto`, and make-pr opens the draft PR. Flow stops there by default; an explicit merge destination continues through land's convergence and gated merge. You can also invoke `/flow-next:resolve-pr` or `/flow-next:land` directly. Every stage earns its place because every stage has an unknown to convert or a risk to bound.
+The pattern that works in practice is to **capture the entire epic, then let the machinery scope it.** Capture proposes whether the input is one spec or a dependency-sorted set (the epic-split proposal), and tags every criterion it paraphrased or inferred (`[paraphrase]` / `[inferred]`; the user's own words stay untagged). Then **refine sharpens** exactly what is soft - the `[inferred]` lines, the requirement someone should pressure-test - rather than re-litigating the whole spec. Plan decomposes into waved tasks, plan-review burns down design risk before code exists, work executes in fresh-context workers, QA drives the live app when `pipeline.qa` is `on` or a qualifying `auto`, and make-pr opens the PR (ready unless `--draft` or open items). Flow stops there by default; an explicit merge destination continues through land's convergence and gated merge. You can also invoke `/flow-next:resolve-pr` or `/flow-next:land` directly. Every stage earns its place because every stage has an unknown to convert or a risk to bound.
 
 ### Feature, requirements known
 
@@ -82,7 +82,7 @@ Invoke `/flow-next:plan-review <spec-id>` explicitly to review the spec without 
 
 ### No-plan route
 
-**Signal:** acceptance criteria and material decisions are ready, the work is cohesive, and a capable coding agent can own its implementation. This is the recommended route when task decomposition adds no coordination value. The [GLOSSARY entry](https://github.com/gmickel/flow-next/blob/main/GLOSSARY.md#no-plan-route) names it the **No-plan route**.
+**Signal:** acceptance criteria and material decisions are ready, the work is cohesive, and a capable coding agent can own its implementation. This is the recommended route when task decomposition adds no coordination value. The [glossary entry](https://flow-next.dev/reference/glossary/#no-plan-route) names it the **No-plan route**.
 
 ```mermaid
 flowchart LR
@@ -189,13 +189,13 @@ Skipping a stage never skips the **evidence, consent, or review contract** that 
 
 That set - gates, receipts, evidence, review - is the verification spine (the docs-site page *Verification Spine* is its long-form treatment). The variants differ in which unknowns they pay to convert; none of them touches the spine.
 
-The capture and plan closers, `flow --explain`, and flow's own route step all read the same [routing reference](../../skills/flow-next-flow/SKILL.md), so the recommendation you see and the route that runs cannot diverge. Live QA is `pipeline.qa` `off | on | auto`, default off; `auto` runs QA only when the spec's acceptance describes UI behaviour on a drivable surface and a target can be started, and records `skipped(reason)` otherwise ([`gate-selection.md`](../../skills/flow-next-flow/references/gate-selection.md)). Pilot can advance QA findings or inability to verify into a draft PR; the draft and its evidence do not grant merge approval.
+The capture and plan closers, `flow --explain`, and flow's own route step all read the same [routing reference](../../skills/flow-next-flow/SKILL.md), so the recommendation you see and the route that runs cannot diverge. Live QA is `pipeline.qa` `off | on | auto`, default off; `auto` runs QA only when the spec's acceptance describes UI behaviour on a drivable surface and a target can be started, and records `skipped(reason)` otherwise ([`gate-selection.md`](../../skills/flow-next-flow/references/gate-selection.md)). `flow --auto` can advance QA findings or inability to verify into a draft PR; the draft and its evidence do not grant merge approval.
 
 ## See also
 
 - [Compose the pipeline on flow-next.dev](https://flow-next.dev/understand/compose-the-pipeline/) - how the stages compose and the composition moves (chain, prompt-into, reorder, parallelize).
 - [`../skills/flow-next-flow/SKILL.md`](../../skills/flow-next-flow/SKILL.md) - `/flow-next:flow`, the attended conductor that applies the routing reference; `--explain` shows the route without running it.
-- [`../skills/flow-next-capture/workflow.md`](../../skills/flow-next-capture/workflow.md#phase-6-suggested-next-step-r16) - capture's Phase 6 closer, which reads the routing reference and prints its `Recommended next:` line.
+- [`../skills/flow-next-capture/workflow.md`](../../skills/flow-next-capture/workflow.md#phase-6-close) - capture's Phase 6 closer, which reads the routing reference and prints its `Recommended next:` line.
 - [`../skills/flow-next-plan/references/next-steps-menu.md`](../../skills/flow-next-plan/references/next-steps-menu.md) - plan's interactive menu, which reads the same reference for the plan-review-vs-work decision.
 - [`running-lean.md`](running-lean.md) - the layer axis: which subsystems to run at all, priced.
 - [`teams.md`](teams.md) - the full nine-step lifecycle and the handover objects the epic variant produces.

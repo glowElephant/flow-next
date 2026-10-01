@@ -24,6 +24,8 @@ Verify that the combined implementation of all tasks in a spec satisfies the spe
 - When `RP_ELIGIBLE=1`: RepoPrompt (rp), Codex CLI (codex), GitHub Copilot CLI (copilot), Cursor CLI (cursor), Claude Code CLI (claude), or host-native (`host`)
 - When `RP_ELIGIBLE=0`: Codex CLI (codex), GitHub Copilot CLI (copilot), Cursor CLI (cursor), Claude Code CLI (claude), or host-native (`host`) — rp is macOS-only; never list it in guidance you surface (`--review=rp` stays accepted)
 
+Read [working-rules.md](../../references/working-rules.md) first; it holds for every step of this skill.
+
 ## Preamble — execute Phase 0 exactly once
 
 **The executable Phase 0 lives in [workflow-common.md](workflow-common.md) §"Phase 0: Backend Detection" — Read it and execute it ONCE, before any other bash in this skill.** It defines `$FLOWCTL` (bundled — NOT installed globally; `which flowctl` fails, expected), probes `RP_ELIGIBLE`, resolves `$BACKEND` via the single `flowctl review-backend` call, and handles the ASK / `none` cases. Never invoke `flowctl review-backend` a second time in the same run.
@@ -72,7 +74,7 @@ model family and fail closed when no cross-family pin is available.
 
 **For all backends:**
 - If `REVIEW_RECEIPT_PATH` set: write receipt after SHIP verdict (RP writes manually after fix loop; codex writes automatically via `--receipt`)
-- Any failure → output `<promise>RETRY</promise>` and stop. No-verdict
+- Any failure → output `RETRY: no verdict (backend or transport failure)` and stop. No-verdict
   transport failures are recorded and their reserved round refunded; never
   manually reset the review counter. Exit 5 / `TRANSPORT_UNHEALTHY` stops
   automatic retries until the backend is repaired.
@@ -115,7 +117,7 @@ TERMINAL_STATUS="$(printf '%s' "$TERMINAL_REVIEW_JSON" | jq -r '.status')"
 TERMINAL_EXIT="$(printf '%s' "$TERMINAL_REVIEW_JSON" | jq -r '.exit')"
 case "$TERMINAL_ACTION" in
   continue) ;;
-  retry) echo "<promise>RETRY</promise>"; exit "$TERMINAL_EXIT" ;;
+  retry) echo "RETRY: no verdict (backend or transport failure)"; exit "$TERMINAL_EXIT" ;;
   ship) echo "VERDICT=SHIP"; exit "$TERMINAL_EXIT" ;;
   superseded) echo "COMPLETION_REVIEW_STATUS=$TERMINAL_STATUS"; exit "$TERMINAL_EXIT" ;;
   escalate)
@@ -155,5 +157,5 @@ Follow the phases in the per-backend file end-to-end. Each file owns its own Ide
 
 Both are backend-agnostic and live in [workflow-common.md](workflow-common.md) — already in context from Phase 0:
 
-- §"Fix Loop (INTERNAL - do not exit to Ralph)" — the round cap, the anti-patterns, and the parse → fix → commit → re-review cycle.
+- §"Fix Loop (INTERNAL)" — the round cap, the anti-patterns, and the parse → fix → commit → re-review cycle.
 - §"Record the terminal verdict exactly once" — who writes `completion_review_status`, and when host/rp re-run the Step 0.5 checkpoint above.

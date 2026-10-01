@@ -50,16 +50,16 @@ fi
 
 **Positive path discriminator — `PLUGIN_ROOT` under `~/.cursor/` (never `codex/` absence).** The manifest + env checks alone are not enough when Codex runs from the **checked-in plugin source** inside a Cursor shell (Codex marketplace points at `./plugins/flow-next`, which carries `.cursor-plugin/`, `.codex-plugin/`, and the `codex/` mirror) — there the Cursor manifest is present in the workspace tree, so env+manifest would misfire. The positive signal is that a **real Cursor install** resolves `PLUGIN_ROOT` under `~/.cursor/` — local `install-cursor.sh`/`.ps1` → `~/.cursor/plugins/local/flow-next/`; team-marketplace repo-import → Cursor's marketplace plugin cache under `~/.cursor/` (and that cache **may contain `codex/`** because the whole plugin source is imported; explicit component paths in `.cursor-plugin/plugin.json` keep Cursor from loading the mirror as skills). A genuine Codex install resolves under `$CODEX_HOME` (default `~/.codex`); the shared source tree resolves to a workspace path. Neither is under `~/.cursor/`, so both correctly fall through to `codex` even with inherited `CURSOR_AGENT`. **Do not** key detection on the `codex/` directory being absent — that misclassifies marketplace repo-imports as Codex.
 
-**Claude Code signal - `CLAUDECODE` + the Claude plugin manifest, and why the rung sits low (#306).** `CLAUDE_PLUGIN_ROOT` is **never set in the Bash environment of a running plugin skill** on Claude Code (probe-verified against 2.1.221 and re-verified at v3.16.3), so the branch that keyed on it could not fire on our PRIMARY host: every rung failed and setup fell through to `else -> codex`, writing Codex `$flow-next-` snippets into a repo driven by `/flow-next:` slash commands. The signal that IS present is `CLAUDECODE=1`. It is set by Claude Code itself, in every install mode (marketplace cache, local marketplace, `--plugin-dir` dev load), so it needs no plugin-root env var; `PLUGIN_ROOT` is already resolved from this file's own location.
+**Claude Code signal - `CLAUDECODE` + the Claude plugin manifest, and why the rung sits low.** `CLAUDE_PLUGIN_ROOT` is **never set in the Bash environment of a running plugin skill** on Claude Code, so a rung keyed on it never fires there: setup would fall through to `else -> codex` and write Codex `$flow-next-` snippets into a repo driven by `/flow-next:` slash commands. The signal that IS present is `CLAUDECODE=1`. It is set by Claude Code itself, in every install mode (marketplace cache, local marketplace, `--plugin-dir` dev load), so it needs no plugin-root env var; `PLUGIN_ROOT` is already resolved from this file's own location.
 
 `CLAUDECODE` is **inherited by child processes** - same class as the `CURSOR_AGENT` misfire above - so it is paired with a positive discriminator and a lowered position, never used bare:
 
 - **Positive discriminator:** the Claude plugin manifest `.claude-plugin/plugin.json` must exist at the resolved `PLUGIN_ROOT`. That is present in every Claude-format install and **absent** from a Codex install root (`$CODEX_HOME`, whose manifest is a top-level `plugin.json`), so a `codex exec` child that inherited `CLAUDECODE` from its Claude parent still classifies `codex`.
-- **Position: after Droid / Cursor / Grok / OpenCode, before the `codex` fallback.** Each of those hosts proves itself with a signal set by its OWN process or install (`DROID_PLUGIN_ROOT`, `CURSOR_AGENT` + a `~/.cursor/` install, `GROK_AGENT`, the OpenCode ownership manifest), and all of them read the canonical Claude plugin format - so a Cursor or Grok agent launched **from** a Claude Code shell inherits `CLAUDECODE` and would be misclassified `claude-code` by a higher rung. Ordering is what keeps an inherited marker from outranking a host's own signal. This is a deliberate precedence change from the pre-#306 cascade, where the Claude rung sat second: that position only ever protected the `CLAUDE_PLUGIN_ROOT` reading, which on Claude Code is never there.
+- **Position: after Droid / Cursor / Grok / OpenCode, before the `codex` fallback.** Each of those hosts proves itself with a signal set by its OWN process or install (`DROID_PLUGIN_ROOT`, `CURSOR_AGENT` + a `~/.cursor/` install, `GROK_AGENT`, the OpenCode ownership manifest), and all of them read the canonical Claude plugin format - so a Cursor or Grok agent launched **from** a Claude Code shell inherits `CLAUDECODE` and would be misclassified `claude-code` by a higher rung. Ordering is what keeps an inherited marker from outranking a host's own signal.
 
-**Grok ordering matters.** Grok Build (xAI's `grok` CLI) reads the canonical Claude plugin format AS-IS and drives with `/flow-next-*` / `/flow-next:` slash commands — not the Codex `$flow-next-` mirror. Without a positive signal it fell through to `else → codex` and setup wrote Codex-shaped `$flow-next-` snippets into AGENTS.md (dogfood 2026-07-22). **Probe-verified signal:** `GROK_AGENT=1` is set BY grok in its agent shell (absent from a plain-shell control on the same machine). **Rejected non-signals:** `~/.grok/` exists on the machine regardless (install dir), and `~/.grok/bin` on `PATH` is profile-level — neither distinguishes a grok session. The `GROK_AGENT` branch MUST come after Droid / Cursor (so a real Cursor/Droid host that merely inherited `GROK_AGENT` from a parent grok shell still classifies by its own higher-precedence signal), BEFORE the inherited-marker `CLAUDECODE` rung, and BEFORE the `else → codex` fallback.
+**Grok ordering matters.** Grok Build (xAI's `grok` CLI) reads the canonical Claude plugin format AS-IS and drives with `/flow-next-*` / `/flow-next:` slash commands — not the Codex `$flow-next-` form. Without a positive signal it would fall through to `else → codex` and setup would write Codex-shaped `$flow-next-` snippets into AGENTS.md. **Signal:** `GROK_AGENT=1` is set BY grok in its agent shell (absent from a plain-shell control on the same machine). **Rejected non-signals:** `~/.grok/` exists on the machine regardless (install dir), and `~/.grok/bin` on `PATH` is profile-level — neither distinguishes a grok session. The `GROK_AGENT` branch MUST come after Droid / Cursor (so a real Cursor/Droid host that merely inherited `GROK_AGENT` from a parent grok shell still classifies by its own higher-precedence signal), BEFORE the inherited-marker `CLAUDECODE` rung, and BEFORE the `else → codex` fallback.
 
-**OpenCode ordering matters.** OpenCode has no plugin-root env var and no host-process marker. Without a positive signal it fell through to `else → codex` and setup would write Codex-shaped `$flow-next-` snippets — wrong, because OpenCode command stubs are the flat `/flow-next-<name>` form (filenames, not `/flow-next:<name>`). **We-control signal:** `scripts/install-opencode.sh` writes `.flow-next-opencode-manifest` at the config root, which IS the plugin root two levels above SKILL.md. After `PLUGIN_ROOT` is derived, `[ -f "${PLUGIN_ROOT}/.flow-next-opencode-manifest" ]` → `PLATFORM=opencode`. Never an env var, never an absence signal. The OpenCode rung MUST come after Grok, BEFORE the inherited-marker `CLAUDECODE` rung, and BEFORE the `else → codex` fallback.
+**OpenCode ordering matters.** OpenCode has no plugin-root env var and no host-process marker. Without a positive signal it would fall through to `else → codex` and setup would write Codex-shaped `$flow-next-` snippets — wrong, because OpenCode command stubs are the flat `/flow-next-<name>` form (filenames, not `/flow-next:<name>`). **Installer signal:** the OpenCode installer (`install-opencode.sh`) writes `.flow-next-opencode-manifest` at the config root, which IS the plugin root two levels above SKILL.md. After `PLUGIN_ROOT` is derived, `[ -f "${PLUGIN_ROOT}/.flow-next-opencode-manifest" ]` → `PLATFORM=opencode`. Never an env var, never an absence signal. The OpenCode rung MUST come after Grok, BEFORE the inherited-marker `CLAUDECODE` rung, and BEFORE the `else → codex` fallback.
 
 **Known nesting edge (Droid → Grok) — NEEDS-HUMAN.** A grok child inherits `CLAUDECODE` from a Claude parent, and the Claude rung now sits BELOW grok, so Claude-from-parent does not misfire. It did **not** disprove `DROID_PLUGIN_ROOT` propagation: if a grok child inherits `DROID_PLUGIN_ROOT` from a Droid parent shell, the cascade classifies as `droid` (higher precedence). Treat nested Droid→Grok as **unsupported pending a this-process-is-grok discriminator** unless a NEEDS-HUMAN smoke confirms `DROID_PLUGIN_ROOT` does not propagate. Cursor-from-grok remains correct via its higher-precedence signal. The mirror-image nesting edge is Claude-from-Grok / Claude-from-Cursor: a Claude Code session launched inside a grok or Cursor agent shell inherits that host's marker and classifies as the parent host. That trade is deliberate - both markers are set by the parent's own process, and the reverse (Claude outranking them on an inherited `CLAUDECODE`) is the far more common nesting, since Claude sessions routinely spawn grok / cursor-agent bridges.
 
@@ -68,13 +68,13 @@ fi
 Store `PLATFORM` for use in later steps. This determines:
 - Which manifest to read for version (`plugin.json`)
 - Which docs file to prefer (CLAUDE.md vs AGENTS.md)
-- Whether to copy Codex agents to project (hooks are **not** copied here — Ralph is opt-in via the Ralph question + `/flow-next:ralph-init`)
+- Whether to copy Codex agents to project (hooks are **not** copied)
 - Which command-name syntax the docs snippet uses (Claude-format skill ids for Claude Code / Droid / **Cursor** / **Grok**; `/flow-next-plan` flat form for **OpenCode**; `$flow-next-plan` for Codex)
 
 ### Done when
 
 - `PLUGIN_ROOT` resolves to a directory containing `scripts/` and a plugin manifest, and `PLATFORM` holds exactly one of `claude-code` / `codex` / `droid` / `cursor` / `grok` / `opencode`.
-- **`PLATFORM` came from the host's own signals in the documented precedence, and every downstream choice matches it.** A Cursor or Grok repo that received the Codex `$flow-next-` snippet, a Codex install misclassified as Cursor through an inherited `CURSOR_AGENT`, a Claude Code run classified `codex` because the cascade looked for `CLAUDE_PLUGIN_ROOT` instead of `CLAUDECODE` (#306), or an OpenCode install classified `codex` because the cascade missed `.flow-next-opencode-manifest`, has broken this.
+- **`PLATFORM` came from the host's own signals in the documented precedence, and every downstream choice matches it.** A Cursor or Grok repo that received the Codex `$flow-next-` snippet, a Codex install misclassified as Cursor through an inherited `CURSOR_AGENT`, a Claude Code run classified `codex` because the cascade looked for `CLAUDE_PLUGIN_ROOT` instead of `CLAUDECODE`, or an OpenCode install classified `codex` because the cascade missed `.flow-next-opencode-manifest`, has broken this.
 
 ## Step 1: Initialize .flow/
 
@@ -101,7 +101,7 @@ Read all setup probes once:
 
 Keep this response through the ceremony. `first_run` supplies `SETUP_FIRST_RUN`,
 `plugin_version` supplies `PLUGIN_VERSION`, and `optional_answers` holds prior
-answers for `spec`, `leftovers`, `docs`, `criteria`, `ralph`, and `star`.
+answers for `spec`, `leftovers`, `docs`, `criteria`, and `star`.
 A missing or unreadable metadata file means first run. A same-version rerun
 continues without a confirmation question; existing choices remain authoritative.
 
@@ -114,8 +114,8 @@ explicitly asks to change that choice. Persist each attended answer immediately
 under `.flow/meta.json` → `setup.optional_answers.<key>` as its answer label,
 preserving all other metadata (including block hashes). This also applies to
 Step 4a's Skip/Keep and Step 2b's Keep. Never record a missing answer as consent.
-An unattended run (`FLOW_RALPH`, `REVIEW_RECEIPT_PATH`, `FLOW_AUTONOMOUS=1`,
-`AUTONOMOUS=1`, or `mode:autonomous`) asks nothing: defer unanswered optional
+An unattended run (`FLOW_AUTONOMOUS=1`, `AUTONOMOUS=1`, or `mode:autonomous`)
+asks nothing: defer unanswered optional
 questions, record no answer, and continue without their optional mutations.
 Existing explicit authorization still governs its scope. Customized-file
 replacement without authorization returns `NEEDS_HUMAN`; no overwrite occurs.
@@ -131,7 +131,7 @@ from flowctl's `LEGACY_COPY_ARTIFACTS` source of truth.
 
 **Customized-template guard (before the ask).** `.flow/templates/spec.md` is the one leftover a user may have EDITED — it used to sit in the spec-scaffold cascade, so a customized copy there is user-authored content, not a snapshot. Compare it against the bundled `${PLUGIN_ROOT}/templates/spec.md`: identical → a plain snapshot, list it with the rest; different → EXCLUDE it from the delete list and say so: `.flow/templates/spec.md differs from the bundled template - it looks customized. The cascade no longer reads it; copy it to a repo-root SPEC.md to keep using it (that is the customization point now), then delete it yourself.` Never delete a differing template under this offer.
 
-**Any present →** list the exact paths, tell the user they are dead weight on every host (nothing reads them; deleting them changes nothing observable), and ask via `AskUserQuestion` (sync-codex.sh rewrites this to a plain-text numbered prompt for the Codex mirror):
+**Any present →** list the exact paths, tell the user they are dead weight on every host (nothing reads them; deleting them changes nothing observable), and ask via `AskUserQuestion`:
 
 - **header**: `Leftovers`
 - **question**: `Delete these leftover flowctl copies? They are snapshots from an older install layout. Every flow-next skill now resolves flowctl from the plugin install itself, so nothing reads them — deleting them changes nothing observable in any workflow, and keeping them means a stale flowctl can shadow the current one.`
@@ -159,8 +159,8 @@ The spec-template discovery cascade prefers a customized scaffold at the repo ro
 ```bash
 # Count DISTINCT FILES, not argument names. `ls -1 SPEC.md spec.md` echoes each
 # existing argument back, so on a case-insensitive FS one file prints as two
-# names and `sort -u` de-duplicates nothing (#305: HITS=2 on APFS for a repo
-# holding only SPEC.md, firing the bogus both-files warning). Inodes answer the
+# names and `sort -u` de-duplicates nothing (HITS=2 on APFS for a repo
+# holding only SPEC.md fires a bogus both-files warning). Inodes answer the
 # question the branches actually ask.
 # Portable stat, per candidate: GNU form FIRST (`stat -c %i` -> inode; on BSD
 # `-c` is unsupported and errors, so it falls through), BSD form second
@@ -175,7 +175,7 @@ done | sort -u | wc -l | tr -d ' ')
 
 Then branch:
 
-**1. `HITS=0` (neither file exists)** — ask the user via `AskUserQuestion` (sync-codex.sh rewrites this to a plain-text numbered prompt for the Codex mirror):
+**1. `HITS=0` (neither file exists)** — ask the user via `AskUserQuestion`:
 
 - **header**: `SPEC.md`
 - **question**: `Copy the canonical spec template to <repo-root>/SPEC.md? Every new flow-next spec starts from a template. Lookup order: <repo-root>/SPEC.md first, then <repo-root>/spec.md, then the plugin's bundled copy — so a SPEC.md at the repo root is where you customize section wording for THIS project. Skipping is safe — the bundled template always resolves, and you can opt in any time by re-running /flow-next:setup.`
@@ -227,7 +227,7 @@ identical = normalize(user_bytes) == normalize(canonical_bytes)
 Then:
 
 - **Identical** (after normalization): no-op. Skip the write — re-running setup must not bump mtime on unchanged files.
-- **Customized** (any deviation after normalization): **the file is never replaced without an explicit answer** — a customized `SPEC.md` overwritten silently has broken this. Ask the user via `AskUserQuestion` (sync-codex.sh rewrites this to a plain-text numbered prompt for the Codex mirror):
+- **Customized** (any deviation after normalization): **the file is never replaced without an explicit answer** — a customized `SPEC.md` overwritten silently has broken this. Ask the user via `AskUserQuestion`:
   - **header**: `Spec file`
   - **question**: `Overwrite the customized <repo-root>/$EXISTING? It exists and differs from the canonical template shipped with this plugin version (CRLF and trailing newlines ignored). Overwriting replaces your edits. Keeping skips this file (you can manually merge later via diff against \`${PLUGIN_ROOT}/templates/spec.md\`).`
   - **options**:
@@ -241,7 +241,7 @@ Then:
 
 **This step runs only when `PLATFORM` is `codex`.** A `.codex/agents/` directory created on a Claude Code, Droid, Cursor, Grok, or OpenCode host has broken this. (Cursor, Grok, and OpenCode drive the workflow with slash commands, not project-scoped `.codex/` agents. Grok never copies `.codex/agents`. OpenCode never copies `.codex/agents`.)
 
-On Codex, agents live in project-scoped `.codex/` directories (not in the plugin cache). Copy them. **Do not copy or enable Ralph hooks here** — hooks are opt-in via the Ralph question (Step 6d, always asked) and `/flow-next:ralph-init` registration prose.
+On Codex, agents live in project-scoped `.codex/` directories (not in the plugin cache). Copy them. **Do not copy or enable hooks here.**
 
 ### Copy agent .toml files
 
@@ -262,7 +262,7 @@ fi
 ### Done when
 
 - **User-owned files — repo-root `SPEC.md`, `.flow/criteria.md` — were compared before writing, left untouched when identical, and never overwritten without an explicit answer.** A customized one silently replaced has broken this.
-- `.codex/agents/*.toml` exists only when `PLATFORM=codex`, and no Ralph hook was copied or enabled here.
+- `.codex/agents/*.toml` exists only when `PLATFORM=codex`, and no hook was copied or enabled here.
 
 ## Step 5: Update meta.json
 
@@ -283,8 +283,8 @@ Use the Step 2 response, without repeating shell probes or config calls:
 
 - `tools` supplies the `HAVE_RP`, `HAVE_CODEX`, `HAVE_COPILOT`, `HAVE_CURSOR`,
   `HAVE_CLAUDE`, and `HAVE_GROK` availability flags.
-- `config` supplies raw `CURRENT_BACKEND`, `CURRENT_HTML_ARTIFACTS`,
-  `CURRENT_SPEC_IDS`, and `CURRENT_QA`. Only null means unset; false is an answer.
+- `config` supplies raw `CURRENT_BACKEND`, `CURRENT_SPEC_IDS`, and
+  `CURRENT_QA`. Only null means unset; false is an answer.
 - `criteria_exists` supplies `CRITERIA_EXISTS`; symlinks count as existing.
 - `tracker_active` supplies `TRACKER_CONFIGURED` from the canonical predicate.
 
@@ -318,7 +318,6 @@ If ANY config values are already set, print a notice before asking questions:
 ```
 Current configuration:
 - Review backend: <current value, bare or spec form> (change with: flowctl config set review.backend <codex|rp|copilot|cursor|claude|host|none OR spec form like codex:<model>:xhigh, cursor:<model>, or claude:<model>:<effort>>)
-- HTML artifacts: <enabled|disabled> (change with: flowctl config set artifacts.html.enabled <true|false>)
 - Spec ids: <flow|tracker> (change with: flowctl config set tracker.specIds <flow|tracker>)
 - Live QA: <off|on|auto> (change with: flowctl config set pipeline.qa <off|on|auto>)
 ```
@@ -329,7 +328,7 @@ Only include lines for config values that are set. If no config is set, skip thi
 
 Build the questions array dynamically. **The questions array is built only from keys that read raw-null in `.flow/config.json`** (one exception: `pipeline.qa` materializes as `off` on init, so the Live QA question also treats that default as unanswered on a first setup run and never on a re-run). A re-run with everything set that asks a config question it already knows the answer to has broken this — existing config is preserved, never silently flipped. To change an already-set value, the user runs `flowctl config set <key> <value>` directly (the commands are surfaced in 6c's current-config notice).
 
-Skipped questions = config values already persisted from a prior run. Asking again would either no-op (same answer) or silently flip a deliberate user choice — both are wrong. The questions go out in two `AskUserQuestion` calls, because the tool takes at most 4 questions per call, 4 options per question, and a header of at most 12 characters: the **config call** (Review, HTML, Live QA, Spec ids — only the unset entries) and then the **files call** (Docs, Criteria, Ralph, Star). Skip a call whose array is empty, so a steady re-run with all choices recorded asks nothing. Filter the files call through `optional_answers` before applying its remaining gates. **There is no routing question** — the routing block is proposed, not negotiated (Step 7).
+Skipped questions = config values already persisted from a prior run. Asking again would either no-op (same answer) or silently flip a deliberate user choice — both are wrong. The questions go out in two `AskUserQuestion` calls, because the tool takes at most 4 questions per call, 4 options per question, and a header of at most 12 characters: the **config call** (Review, Live QA, Spec ids — only the unset entries) and then the **files call** (Docs, Criteria, Star). Skip a call whose array is empty, so a steady re-run with all choices recorded asks nothing. Filter the files call through `optional_answers` before applying its remaining gates. **There is no routing question** — the routing block is proposed, not negotiated (Step 7).
 
 Available questions (include only if corresponding config is unset):
 
@@ -341,19 +340,6 @@ Available questions (include only if corresponding config is unset):
   "options": [
     {"label": "Tracker (Recommended)", "description": "Mint KEY-N-slug / gh-N / gl-N from the issue; create the tracker issue first on a fresh idea. Stops parallel fn-N collisions."},
     {"label": "Flow", "description": "Keep sequential fn-N allocation (today's default). Safer offline; collisions remain possible across parallel worktrees/clones. An explicit Flow answer is remembered — setup will not ask again."}
-  ],
-  "multiSelect": false
-}
-```
-
-**HTML question** (include if CURRENT_HTML_ARTIFACTS is empty):
-```json
-{
-  "header": "HTML",
-  "question": "Enable HTML artifact mode? Capture/plan/make-pr additionally render each spec and PR body as a self-contained HTML page under .flow/artifacts/ - nicer for humans to review in a browser. The markdown stays the source of truth; pages are regenerable any time.",
-  "options": [
-    {"label": "Yes (Recommended)", "description": "Also emit shareable HTML review pages alongside the markdown (one extra render step per capture, plan, and make-pr)"},
-    {"label": "No", "description": "Markdown-only. Zero extra steps, zero token overhead. Enable later: flowctl config set artifacts.html.enabled true"}
   ],
   "multiSelect": false
 }
@@ -529,28 +515,6 @@ For **OpenCode** (`PLATFORM=opencode`) — OpenCode reads AGENTS.md. Command stu
 }
 ```
 
-**Ralph question.** Resolve its gate before reading question prose:
-
-```bash
-RALPH_ASK=1
-if [[ "$PLATFORM" == "cursor" || "$PLATFORM" == "grok" || "$PLATFORM" == "opencode" ]]; then
-  RALPH_ASK=0
-  RALPH_OUTCOME="off (unsupported on $PLATFORM)"
-elif [[ "${FLOW_RALPH:-}" == "1" || -n "${REVIEW_RECEIPT_PATH:-}" \
-      || "${FLOW_AUTONOMOUS:-}" == "1" || "${AUTONOMOUS:-}" == "1" || "${ARGUMENTS:-}" == *mode:autonomous* ]]; then
-  RALPH_ASK=0
-  RALPH_OUTCOME="off (non-interactive)"
-fi
-```
-
-On Cursor/Grok/OpenCode: never offer, never register, never run `/flow-next:ralph-init`.
-A recorded Ralph answer sets `RALPH_ASK=0` and preserves the existing hooks.
-When `RALPH_ASK=1`, **MUST read and follow exactly**
-[references/ralph-question.md](references/ralph-question.md) and add its object
-to the files call. When zero, read no Ralph reference and ask no Ralph
-question. Unknown/malformed gate state fails safe to `RALPH_ASK=0`: no hook
-registration and no branch read.
-
 **Star question** (include only when unanswered):
 ```json
 {
@@ -564,7 +528,7 @@ registration and no branch read.
 }
 ```
 
-Send the config call, then the files call, each through `AskUserQuestion` (call `ToolSearch` with `select:AskUserQuestion` first if its schema isn't loaded). sync-codex.sh rewrites this to a plain-text numbered prompt in the Codex mirror.
+Send the config call, then the files call, each through `AskUserQuestion` (call `ToolSearch` with `select:AskUserQuestion` first if its schema isn't loaded).
 
 **Note:** If docs are already current, skip the Docs question entirely.
 
@@ -572,9 +536,8 @@ Send the config call, then the files call, each through `AskUserQuestion` (call 
 
 ### Done when
 
-- The config call and the files call each carried at most 4 questions, every question at most 4 options, and every header at most 12 characters; together they hold only the still-unanswered keys plus Docs / Star (and Ralph, Criteria when their own gates passed).
+- The config call and the files call each carried at most 4 questions, every question at most 4 options, and every header at most 12 characters; together they hold only the still-unanswered keys plus Docs / Star (and Criteria when its own gate passed).
 - **No routing question was asked, no CLI was probed for model ids, and no pin was proposed or stamped.** Setup asking which model to route to, or writing a model id anywhere, has broken this.
-- **Under any autonomy marker (`FLOW_RALPH`, `REVIEW_RECEIPT_PATH`, `FLOW_AUTONOMOUS`, `mode:autonomous`) the Ralph ceremony was skipped silently** — no reference read, no question, no summary noise. A run that blocked on it under an autonomy marker has broken this.
 
 ## Step 7: Process Answers
 
@@ -584,43 +547,6 @@ Only process answers for questions that were asked (config values that were unse
 - If "Tracker" / label starts with `Tracker`: `"${PLUGIN_ROOT}/scripts/flowctl" config set tracker.specIds tracker --json`
 - If "Flow": `"${PLUGIN_ROOT}/scripts/flowctl" config set tracker.specIds flow --json`
 - Writing either value ends the ask-once contract: the next setup run sees a non-empty raw key and skips this question.
-
-**HTML** (if question was asked):
-- If "No": `"${PLUGIN_ROOT}/scripts/flowctl" config set artifacts.html.enabled false --json`
-- If "Yes":
-  1. `"${PLUGIN_ROOT}/scripts/flowctl" config set artifacts.html.enabled true --json`
-  2. Ask ONE follow-up via `AskUserQuestion` (sync-codex.sh rewrites this to a plain-text numbered prompt for the Codex mirror) — track or ignore the artifact directory:
-     - **header**: `Artifacts`
-     - **question**: `Artifacts live at .flow/artifacts/<spec-id>/{spec,pr}.html (fixed paths, regenerable). Commit them or gitignore the directory?`
-     - **options**:
-       - `Commit artifacts (Recommended)` — keep `.flow/artifacts/` tracked. This is what makes make-pr blob links resolve for remote reviewers. No action needed (the auto-managed `.flow/.gitignore` block does not exclude `artifacts/`).
-       - `Gitignore` — local-open only; make-pr skips blob links. Append the pattern below the auto-managed footer in `.flow/.gitignore` (user patterns there are preserved by flowctl), guarding against duplicates:
-         ```bash
-         grep -qx 'artifacts/' .flow/.gitignore 2>/dev/null || printf 'artifacts/\n' >> .flow/.gitignore
-         # Untrack any artifacts committed before this choice so state converges (no-op when none)
-         git rm -r --cached --quiet .flow/artifacts 2>/dev/null || true
-         ```
-  3. Print the lavish-axi offer verbatim. **The skill detects and instructs; it never installs.** A transcript showing setup running `npm i -g lavish-axi` has broken this — global installs are user-consent territory, the same discipline as /flow-next:map:
-
-     ```
-     HTML artifact mode enabled.
-
-     Optional companion — lavish-axi (annotate spec artifacts in the browser; feedback
-     flows back as markdown-source edits, then the lens regenerates):
-
-       Install:   npm i -g lavish-axi
-                  (or zero-setup, per run: npx lavish-axi <artifact.html>)
-
-       Feedback model — session-spanning, pull-only: annotations queue in the global
-       ~/.lavish-axi/state.json and survive the agent session; any later agent session
-       drains the queue via the lavish-axi poll CLI. Nothing is pushed into the agent.
-
-       Lifecycle: the local server idle-stops after ~30 min; reopening the artifact
-       resumes the session. Without lavish-axi (or after idle-stop) the artifact still
-       renders as a plain static page — it is never a dependency.
-
-     flow-next never auto-installs lavish-axi.
-     ```
 
 **Live QA** (if question was asked; match on the label's leading value):
 - If "off"*: `"${PLUGIN_ROOT}/scripts/flowctl" config set pipeline.qa off --json`
@@ -665,7 +591,7 @@ Use the correct template based on **target file** and **platform**:
 - AGENTS.md on **OpenCode**: use the Claude-flavor snippet rewritten `/flow-next:` → `/flow-next-` via the 6b temp-template block (`$SNIPPET_TEMPLATE`). Never the Codex `$flow-next-` form. Pass that rewritten file as `--template` to every `setup-block apply` / `resolve` for this platform so hashes match the bytes written.
 - CLAUDE.md (any platform — including Grok's default lifecycle target): use [templates/claude-md-snippet.md](templates/claude-md-snippet.md). On OpenCode, if CLAUDE.md is also a resolved target, apply the same `/flow-next:` → `/flow-next-` rewrite (same `$SNIPPET_TEMPLATE`) so both files carry the flat form.
 
-**Resolve the target file set:** an explicit Docs-question answer is authoritative - if the user is asked and selects specific files (or declines one), honor exactly that; never touch a file the user just deselected. The one addition is a backfill for the SKIPPED case: when the Docs question is omitted entirely because the block is already current (per the Note above), still run `apply` on each already-marker-bearing file. Rationale (R8): a current-but-hashless block (written by a pre-hash plugin version) would otherwise never reach `apply`, so its pristine hash never gets backfilled and the NEXT template change wrongly prompts "Overwrite customized?". `apply` on a current block is cheap and idempotent - it returns `unchanged` and records the missing hash. So: resolve targets = files chosen by the Docs question when it was asked; OR, when the Docs question was skipped, the files already carrying the `<!-- BEGIN FLOW-NEXT -->` marker. Run the helper once per resolved file.
+**Resolve the target file set:** an explicit Docs-question answer is authoritative - if the user is asked and selects specific files (or declines one), honor exactly that; never touch a file the user just deselected. The one addition is a backfill for the SKIPPED case: when the Docs question is omitted entirely because the block is already current (per the Note above), still run `apply` on each already-marker-bearing file. Rationale: a current-but-hashless block (written by a pre-hash plugin version) would otherwise never reach `apply`, so its pristine hash never gets backfilled and the NEXT template change wrongly prompts "Overwrite customized?". `apply` on a current block is cheap and idempotent - it returns `unchanged` and records the missing hash. So: resolve targets = files chosen by the Docs question when it was asked; OR, when the Docs question was skipped, the files already carrying the `<!-- BEGIN FLOW-NEXT -->` marker. Run the helper once per resolved file.
 
 For each resolved file (CLAUDE.md and/or AGENTS.md) - the block mechanics (marker-scoped replace, per-`(path, id)` pristine-hash tracking in `.flow/meta.json` `setup.block_hashes` - a nested `{<path>: {<id>: <hash>}}` map; these call sites pass no `--id`, so they always read/write the default `FLOW-NEXT` id) are deterministic flowctl plumbing; this step owns only the ask:
 
@@ -681,7 +607,7 @@ For each resolved file (CLAUDE.md and/or AGENTS.md) - the block mechanics (marke
    - `refreshed` - the existing block matched its recorded pristine hash (never customized), so the helper silently replaced it with the new canonical and updated the hash. Existing installs receive template fixes without a prompt.
    - `unchanged` - the block already matches the canonical template. No write, no mtime bump.
    - `kept` - a previous "Keep mine" recorded the `"customized"` sentinel; the helper never re-asks and never silently overwrites. Leave it alone.
-   - `ask` (reason `customized` or `hash-absent`) - the block differs from canonical and is not provably pristine. The helper wrote nothing; ask via `AskUserQuestion` (sync-codex.sh rewrites this to a plain-text numbered prompt for the Codex mirror):
+   - `ask` (reason `customized` or `hash-absent`) - the block differs from canonical and is not provably pristine. The helper wrote nothing; ask via `AskUserQuestion`:
      - **header**: `Overwrite`
      - **question**: `Overwrite the customized flow-next block in <FILE>? <FILE> contains a flow-next marker block that differs from the canonical template shipped with this plugin version and is not recorded as pristine. Overwriting replaces the marker block only; content outside the markers is untouched either way.`
      - **options**:
@@ -692,12 +618,11 @@ For each resolved file (CLAUDE.md and/or AGENTS.md) - the block mechanics (marke
 The marker-block boundaries are load-bearing: **docs snippets are written through `flowctl setup-block apply`, touching only the bytes inside the flow-next markers.** Prose outside `<!-- BEGIN FLOW-NEXT -->` … `<!-- END FLOW-NEXT -->` that changed, or a write made by anything other than the helper, has broken this. And **an `ask` result prompts Keep mine / Overwrite / abort** — a customized block replaced without that answer has broken this too.
 
 **Routing block** — one proposal, no question. Run this **after** the Docs block
-above and before Ralph/Star. Always re-read target files from disk after Docs;
+above and before Star. Always re-read target files from disk after Docs;
 never interleave the two writes. Two hard outs before the ladder: a **Docs
 answer of `Skip`** is a decline of documentation edits and declines this write
 too — record `skipped (docs declined)` and move on; a **headless or autonomous
-run** (`FLOW_RALPH=1`, `REVIEW_RECEIPT_PATH` set, `FLOW_AUTONOMOUS=1`, or
-`AUTONOMOUS=1`, or `mode:autonomous`) never writes the block — instruction-file edits are the
+run** (`FLOW_AUTONOMOUS=1`, `AUTONOMOUS=1`, or `mode:autonomous`) never writes the block — instruction-file edits are the
 user's, so record `skipped (headless)` and move on.
 
 Resolve the target with this ladder, first match wins:
@@ -736,18 +661,6 @@ Then say what was written, once, in one sentence:
 `Wrote a commented model-routing example to <file> — every line is commented out; edit it to name the models you want for each tier, or delete the block.`
 (Nothing was written → say `kept (yours)` / `skipped (shim)` / `skipped (docs declined)` / `skipped (headless)` instead and move on.)
 
-**Ralph** (only when its question was asked; Cursor/Grok/OpenCode remain
-unsupported and read no Ralph reference):
-
-- `Yes, enable or keep` → **MUST read and follow exactly**
-  [references/ralph-enable.md](references/ralph-enable.md).
-- `No (Recommended)` or an empty/default interactive answer → **MUST read and
-  follow exactly** [references/ralph-disable.md](references/ralph-disable.md).
-
-Unknown answer fails safe to the disable reference. Under any non-interactive
-marker, do not read either Ralph reference, do not register hooks, and set
-`RALPH_OUTCOME="off (non-interactive)"`.
-
 **Star:**
 - If "Yes, star it":
   1. Check if `gh` CLI is available: `which gh`
@@ -780,7 +693,6 @@ Nothing was copied into .flow/ — flowctl comes from the plugin install:
 Cursor host notes:
 - flowctl resolves from the plugin install via the skill's own absolute path (Cursor exposes no plugin-root env vars) — nothing is copied into the repo
 - Review default: host (host-native cross-family subagent; the model is named on the `reviewer` tier of the AGENTS.md routing block)
-- Ralph: unsupported on Cursor (not offered; not registered)
 ```
 
 **If PLATFORM=grok, also show:**
@@ -790,7 +702,7 @@ Grok host notes:
 - Docs: /flow-next: slash snippet (CLAUDE.md default lifecycle target; Grok also reads AGENTS.md)
 - Routing block: AGENTS.md (where host review reads the `reviewer` tier)
 - Review: host offered (single-native-family fail-closed for Grok writers) + rp/codex/copilot/cursor/claude/none
-- No .codex/agents copy; Ralph: unsupported on Grok (not offered; not registered)
+- No .codex/agents copy
 - Detection: GROK_AGENT=1 (not ~/.grok or PATH)
 ```
 
@@ -800,7 +712,7 @@ OpenCode host notes:
 - flowctl resolves from the plugin install via the skill's own absolute path (OpenCode exposes no plugin-root env vars) — nothing is copied into the repo
 - Docs: AGENTS.md with the Claude snippet rewritten /flow-next: → /flow-next- (flat command names; never $flow-next-)
 - Routing block: AGENTS.md
-- Review: default menu (Host + None). Ralph: unsupported on OpenCode (not offered; not registered)
+- Review: default menu (Host + None)
 - Detection: ${PLUGIN_ROOT}/.flow-next-opencode-manifest (installer ownership file; never an env var)
 - Invoke setup later as /flow-next-setup (flat), not /flow-next:setup
 ```
@@ -809,7 +721,6 @@ OpenCode host notes:
 ```
 Codex project setup:
 - .codex/agents/*.toml (<N> agent configs)
-- Ralph hooks: only if Ralph was enabled (via ralph-init → .codex/hooks.json); otherwise none
 ```
 
 **Then always show:**
@@ -819,7 +730,6 @@ Configuration (use flowctl config set to change):
 - Plan-Sync: <enabled|disabled>
 - Plan-Sync cross-spec: <enabled|disabled>
 - GitHub scout: <enabled|disabled>
-- HTML artifacts: <enabled|disabled>
 - Spec ids: <flow|tracker|unset>   # only meaningful when a tracker is configured; tracker is the team default
 - Live QA: <off|on|auto>
 - Review backend: <host|codex|rp|copilot|cursor|claude|none>
@@ -832,12 +742,10 @@ Model routing: <ROUTING_OUTCOME — "written to CLAUDE.md" | "kept (yours)" | "s
 
 Notes:
 - Plugin updates need no per-repo action, on any host — nothing was copied, so nothing goes stale. Re-run /flow-next:setup only when setup says the snippet schema bumped, or to change configuration / seed files.
-- Ralph: answered in the setup ceremony (default off; skipped entirely on Cursor, Grok, and OpenCode — unsupported). To enable later on supported hosts: /flow-next:ralph-init (merges project hooks; plugin ships none)
 - Live QA stage: off by default. Change it with `flowctl config set pipeline.qa <off|on|auto>`; what each value does is in the flow skill's gate-selection reference (`skills/flow-next-flow/references/gate-selection.md`). Needs a running app plus a browser driver
-- Stage chaining (deprecated, removed with the /flow-next:pilot alias next release): off by default. `flowctl config set pipeline.chainStages on` makes /flow-next:flow --auto --tick (and the pilot alias) run make-pr in the same tick as a fresh terminal qa verdict; a long-horizon /flow-next:flow --auto run already runs the two as consecutive hops and ignores the key with one notice
 - Land patience: `flowctl config set land.patienceMinutes <minutes>` sets the wait after the last push when no human authorized the merge in-session.
 - Use Linear / GitHub Issues / GitLab / Jira for project management? Run /flow-next:tracker-sync to configure the (opt-in) two-way tracker bridge — it runs a discovery ceremony (detects Linear MCP / LINEAR_API_KEY / gh auth / glab auth or GITLAB_TOKEN / JIRA_BASE_URL + credential, asks, writes config), then syncs specs ⇄ issues; on Linear it additionally makes your PRs reviewable as Linear Diffs. Skips cleanly if you don't use a tracker; adds nothing to the base install until enabled.
-- Uninstall (run manually): remove the <!-- BEGIN/END FLOW-NEXT --> and <!-- flow-next:model-routing:start/end --> blocks from docs (plus any legacy .flow/bin, .flow/templates, .flow/usage.md leftovers, if you kept them) — or run /flow-next:uninstall for full cleanup (also strips Ralph guard hook entries from project settings)
+- Uninstall (run manually): remove the <!-- BEGIN/END FLOW-NEXT --> and <!-- flow-next:model-routing:start/end --> blocks from docs (plus any legacy .flow/bin, .flow/templates, .flow/usage.md leftovers, if you kept them) — or run /flow-next:uninstall for full cleanup
 - This setup is optional - plugin works without it
 ```
 **Tracker-sync proposal (always show, after the Notes block).** Surface the tracker bridge as an explicit optional next step — the discovery ceremony is the bridge's own setup, separate from this skill (which never touches tracker config, keeping the zero-dep base clean):

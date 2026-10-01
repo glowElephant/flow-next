@@ -1,4 +1,4 @@
-# Hybrid identity / naming model (R16)
+# Hybrid identity / naming model
 
 How a synced spec is keyed. The two id schemes **coexist**; resolution is provided by flowctl's widened resolver (`is_spec_id` / `expand_bare_spec_id`), so the scaffold just calls flowctl and relies on it. **Ids NEVER change — there is no rename-on-push.**
 
@@ -35,7 +35,7 @@ $FLOWCTL spec create --tracker-first --tracker-identifier "WOR-17" --tracker-id 
 
 ### Flow-first — keep `fn-NN`, gain a resolvable alias
 
-A spec authored in flow (capture/interview/plan) keeps its sequential `fn-NN-slug` handle (project convention preserved). On push, the tracker key is stored in the single `tracker.identifier` field (R4) as a **resolvable alias**:
+A spec authored in flow (capture/refine/plan) keeps its sequential `fn-NN-slug` handle (project convention preserved). On push, the tracker key is stored in the single `tracker.identifier` field as a **resolvable alias**:
 
 ```bash
 $FLOWCTL sync set-tracker-id "fn-42-foo" "$ISSUE_UUID" --identifier "WOR-99" --url "$ISSUE_URL"
@@ -52,7 +52,7 @@ Now `work wor-99`, `show wor-99`, etc. resolve to `fn-42-foo` **without renaming
 
 > The id-grammar widening had to cover the FULL command surface, not just the named lifecycle commands (memory: `id-grammar-widening-must-cover-the-full`). That work is flowctl's; the scaffold relies on it being complete and only calls `flowctl <cmd> wor-17`.
 
-## Create-first - issue exists before the local id (R19)
+## Create-first - issue exists before the local id
 
 When `tracker.specIds=tracker` and no issue exists yet, the caller cannot mint a tracker-keyed id without a key. **Create-first** (steps.md §2 Identity and linking) creates the issue first and returns `{id, identifier, url}` with **no local spec id as input**. Create-first does not write sync state itself; the mint carries the returned identity.
 

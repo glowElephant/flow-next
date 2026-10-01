@@ -105,7 +105,6 @@ The following paths are flow-next / project-pipeline artifacts. Never recommend 
 - `.flow/memory/*` — learnings store
 - `.flow/specs/*.md`, `.flow/tasks/*.md` — decision artifacts
 - `docs/plans/*`, `docs/solutions/*` — plan/solution artifacts (if project uses them)
-- `scripts/ralph/*` — Ralph harness (when present)
 
 These files are intentionally committed. Flag content issues inside them if you see any, but never the files' existence.
 
@@ -266,7 +265,7 @@ Skip entirely if no DESIGN.md in project root. If DESIGN.md exists and the diff 
 
 **9. File-size crossing (mechanical)** — a file that crosses the 1000-line threshold **in this diff** is a Should-Fix finding. Crossing only — never files already past the threshold (introduced-only discipline). Compute it from data already in hand: the shared diff step's `--numstat` gives per-file added/deleted lines; current line count minus (added − deleted) is the pre-diff count. Pre-diff ≤ 1000 and current > 1000 → crossed.
 
-You cannot read the repo's maintainer docs, so the baseline travels with you. Each line is *what it looks like → the fix shape*:
+The smell baseline travels with you. Each line is *what it looks like → the fix shape*:
 
 - **Duplicated code** — the same logic in two or more places, drifting independently → extract the shared unit; keep one owner.
 - **Speculative generality** — abstraction, hook, or parameter with exactly one caller and no second use in sight → inline it; add the seam when the second case arrives.

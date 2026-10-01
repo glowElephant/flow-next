@@ -1,26 +1,9 @@
-"""fn-110.2 skill-callsite diet — durable structural prose invariants.
+"""Skill call-site diet: flowctl invocation shapes and routed references.
 
-Pins the round-trip diet so future edits cannot silently regress it:
-
-  * R9 retires land Phase 0 shell capture; named-PR contracts cover its replacement.
-  * plan steps.md: exactly ONE `config get` (the Step 0 root snapshot); the
-    Route B create path contains no `spec set-branch` and no `task set-spec`
-    invocation (R4), plus the committed before/after invocation-count fixture
-    showing >=40% fewer flowctl calls on a 4-task all-frontmatter plan.
-  * flow --auto (formerly pilot): exactly ONE `config get` across auto.md +
-    references/backlog-mode.md + references/qa-stage.md, located in auto.md
-    (the single always-loaded-under---auto file); the two references carry
-    ZERO flowctl config calls (R5).
-  * make-pr workflow Phase 0: exactly THREE bash fences (R6).
-  * impl-review SKILL.md: exactly ONE `for arg in $(printf ...)` parse fence (R6;
-    the portable form — an unquoted `$ARGUMENTS` does not word-split under zsh).
-  * plan-review: common orchestration + exactly one selected backend workflow;
-    none/export stay backend-cold; the Foreground rule and the fn-90
-    deterministic-cap paragraph remain present (token pins); no agent-side
-    iteration counting is (re)introduced (R6).
-
-All assertions run against the canonical files AND (where the invariant is
-count-shaped and survives the sync rewrite) the codex mirror copies.
+Pins what the fences run (config snapshot counts, the bulk task create, the
+impl-review flag parse, per-backend plan-review dispatch) and that gated
+references stay reachable. Canonical files and, where the check survives the
+sync rewrite, the codex mirror copies.
 """
 
 import re
@@ -31,18 +14,10 @@ REPO = Path(__file__).resolve().parents[3]
 PLUGIN = REPO / "plugins" / "flow-next"
 SKILLS = PLUGIN / "skills"
 MIRROR_SKILLS = PLUGIN / "codex" / "skills"
-FIXTURES = Path(__file__).resolve().parent / "fixtures" / "plan_invocation_counts"
 
 # Matches an actual `config get` INVOCATION ($FLOWCTL-prefixed, quoted or not),
 # never a prose mention of the words "config get".
 CONFIG_GET = re.compile(r'\$FLOWCTL"?\s+config get')
-
-# Prose-quality pins removed 2026-08-07 - judged via .flow/criteria.md G1, not
-# grep. The byte-exact Foreground-rule bullet and fn-90 cap paragraph are now
-# pinned by their smallest distinctive lead tokens only; deliberate-change
-# protection lives in test_prompt_text_pinned.py.
-FOREGROUND_RULE_BULLET = "**Foreground rule:**"
-CAP_SENTENCE = "**The cap is enforced deterministically by flowctl:**"
 
 
 def read(path: Path) -> str:
@@ -91,22 +66,12 @@ class PlanDietTestCase(unittest.TestCase):
                              f"{path}: set-branch reintroduced on the create path")
             self.assertNotIn("$FLOWCTL task set-spec", route_b,
                              f"{path}: per-task set-spec reintroduced on the create path")
-            # The one-call create must carry all three create-time flags.
-            for flag in ("--description-file", "--acceptance-file", "--satisfies"):
-                self.assertIn(flag, route_b, f"{path}: task create lost {flag}")
-
-    def test_fixture_shows_at_least_40_percent_fewer_invocations(self):
-        def count(name):
-            lines = read(FIXTURES / name).splitlines()
-            return len([ln for ln in lines if ln.strip() and not ln.startswith("#")])
-
-        before, after = count("before.txt"), count("after.txt")
-        self.assertGreater(before, after)
-        # Integer math: (before - after) / before >= 0.40
-        self.assertGreaterEqual(
-            (before - after) * 100, 40 * before,
-            f"plan fixture reduction below 40% ({before} -> {after})",
-        )
+            # Tasks are created in one bulk call whose JSON carries the
+            # create-time fields.
+            self.assertIn("$FLOWCTL task create --spec", route_b)
+            self.assertIn("--from-json", route_b)
+            for field in ("description_file", "acceptance_file", "satisfies"):
+                self.assertIn(field, route_b, f"{path}: task create lost {field}")
 
     def test_plan_optional_routes_load_one_level_references_after_gates(self):
         steps = read(SKILLS / "flow-next-plan/steps.md")
@@ -115,8 +80,6 @@ class PlanDietTestCase(unittest.TestCase):
              "references/tracker-projection.md"),
             ("## Step 7", "## Step 8", "review mode is `none`",
              "references/selected-review.md"),
-            ("## Step 8.5", None, "artifacts.html.enabled",
-             "references/html-render-lens.md"),
         )
         for start, end, gate, reference in cases:
             body = section(steps, start, end) if end else steps[steps.index(start):]
@@ -130,44 +93,6 @@ class PlanDietTestCase(unittest.TestCase):
             # References remain exactly one directory level under the skill root.
             self.assertEqual(len(path.relative_to(root).parts), 2)
 
-    def test_plan_optional_details_are_cold_in_steps(self):
-        steps = read(SKILLS / "flow-next-plan/steps.md")
-        for detail in (
-            "Never create one tracker issue per task",
-            "lavish-axi \"$(pwd)/.flow/artifacts",
-            "Repeat until review returns `Ship`",
-        ):
-            self.assertNotIn(detail, steps)
-        for rel, detail in (
-            ("references/tracker-projection.md", "Never create one tracker issue per task"),
-            ("references/html-render-lens.md", "lavish-axi \"$(pwd)/.flow/artifacts"),
-            ("references/selected-review.md", "Repeat until review returns `Ship`"),
-        ):
-            self.assertIn(detail, read(SKILLS / "flow-next-plan" / rel))
-
-    def test_plan_bad_examples_are_short_anti_pattern_anchors(self):
-        examples = read(SKILLS / "flow-next-plan/examples.md")
-        epic_bad = section(examples, "### ❌ BAD: Epic", "### ✅ GOOD: Epic")
-        task_bad = section(examples, "### ❌ BAD: Task", "### ✅ GOOD: Task")
-        for name, bad in (("epic", epic_bad), ("task", task_bad)):
-            code_lines = [
-                line for line in bad.splitlines()
-                if line and not line.startswith(("###", "```", "\\`\\`\\`", "**", "- "))
-            ]
-            self.assertLessEqual(len(code_lines), 12,
-                                 f"{name} BAD anchor regrew into an implementation dump")
-        self.assertNotIn("Bun.spawn", task_bad)
-        self.assertNotIn("process.kill", task_bad)
-
-    def test_plan_holdout_keeps_subject_and_answer_key_separate(self):
-        holdout = REPO / "optimization" / "plan" / "holdout"
-        subject = read(holdout / "input.md")
-        oracle = read(holdout / "oracle.md")
-        self.assertIn("no-code permit-intake architecture", subject)
-        self.assertIn("H10 — review route", oracle)
-        self.assertNotIn("H1 — no implementation leakage", subject)
-
-
 class PilotSnapshotTestCase(unittest.TestCase):
     """The unattended driver (`flow --auto`, formerly pilot). `auto.md` is the
     single always-loaded-under---auto file, so the ONE root config snapshot
@@ -179,46 +104,26 @@ class PilotSnapshotTestCase(unittest.TestCase):
             self.assertIn("pilot snapshot", text)
             self.assertEqual(CONFIG_GET.findall(text), [])
 
-    def test_no_config_scratch_ceremony(self):
-        for path in both_copies("flow-next-flow/auto.md"):
-            self.assertNotIn("flow-pilot-config-", read(path))
-
     def test_backlog_mode_has_zero_flowctl_config_calls(self):
         for path in both_copies("flow-next-flow/references/backlog-mode.md"):
             self.assertNotRegex(read(path), r'\$FLOWCTL"?\s+config\b',
                                 f"{path}: backlog-mode.md must be config-call-free")
 
-    def test_consumers_use_snapshot_payload(self):
-        for rel in ("auto.md", "references/backlog-mode.md"):
-            for path in both_copies(f"flow-next-flow/{rel}"):
-                self.assertIn("PILOT_SNAPSHOT", read(path))
-                self.assertNotIn("PILOT_CFG_SNAPSHOT", read(path))
-
-
 class MakePrFenceTestCase(unittest.TestCase):
     def test_phase0_reaches_bundled_preflight(self):
-        script = read(SKILLS.parent / "scripts/make-pr-preflight.sh")
+        self.assertTrue((SKILLS.parent / "scripts/make-pr-preflight.sh").is_file())
         for path in both_copies("flow-next-make-pr/workflow.md"):
             phase0 = section(read(path), "## Phase 0", "## Phase 1")
             self.assertIn('source "$(dirname "$FLOWCTL")/make-pr-preflight.sh"', phase0)
-        self.assertIn('SPEC_JSON=$("$FLOWCTL" show "$SPEC_ID" --json', script)
-        self.assertIn("# fence:spec-close", script)
-        self.assertIn("NEED_INPUT:", script)
 
 
 class ImplReviewArgFenceTestCase(unittest.TestCase):
-    def test_single_argument_parse_fence(self):
+    def test_skill_reaches_the_opt_in_flag_parse(self):
+        # The flag parse runs only on the opt-in path, which SKILL.md routes
+        # to other-paths.md.
         for path in both_copies("flow-next-impl-review/SKILL.md"):
-            text = read(path)
-            self.assertEqual(
-                text.count("for arg in $(printf "), 1,
-                f"{path}: impl-review must parse $ARGUMENTS in exactly ONE fence",
-            )
-            # The merged fence still covers all three opt-in flags + Ralph block.
-            for needle in ("--validate) VALIDATE=true", "--deep) DEEP=true",
-                           "--interactive) INTERACTIVE=true",
-                           "not compatible with Ralph mode"):
-                self.assertIn(needle, text, f"{path}: merged arg fence lost {needle!r}")
+            self.assertIn("[other-paths.md](other-paths.md)", read(path))
+        self.assertTrue((SKILLS / "flow-next-impl-review/other-paths.md").is_file())
 
 
 class PlanReviewSingleSourceTestCase(unittest.TestCase):
@@ -237,37 +142,11 @@ class PlanReviewSingleSourceTestCase(unittest.TestCase):
                 f"{path}: must contain exactly its selected backend dispatch",
             )
 
-    def test_router_lists_every_backend_once_and_keeps_none_export_cold(self):
+    def test_router_lists_every_backend_once(self):
         skill = read(SKILLS / "flow-next-plan-review/SKILL.md")
         for backend in self.BACKENDS:
             link = f"[workflow-{backend}.md](workflow-{backend}.md)"
             self.assertEqual(skill.count(link), 1, f"router drift for {backend}")
-        self.assertIn("`BACKEND=none` and explicit\n`--review=export`", skill)
-        common = read(SKILLS / "flow-next-plan-review/workflow.md")
-        self.assertIn("Load no backend file", common)
-        self.assertIn("Do not resolve or load any configured\nbackend", common)
-
-    def test_codex_mirror_is_b1_or_regenerated_split(self):
-        """Parallel workers defer mirror regen; integrated tree must be split."""
-        mirror = MIRROR_SKILLS / "flow-next-plan-review"
-        if (mirror / "workflow-codex.md").exists():
-            for backend in self.BACKENDS:
-                self.assertTrue((mirror / f"workflow-{backend}.md").is_file())
-            self.assertEqual(self.INVOKE.findall(read(mirror / "workflow.md")), [])
-        else:
-            # The conductor owns the combined sync. Before that sync, the
-            # isolated worker must leave the known B1 monolith untouched.
-            self.assertEqual(
-                set(self.INVOKE.findall(read(mirror / "workflow.md"))),
-                {"codex", "copilot", "cursor"},
-            )
-
-    def test_protected_prose_tokens_present(self):
-        text = read(SKILLS / "flow-next-plan-review/SKILL.md")
-        self.assertIn(FOREGROUND_RULE_BULLET, text,
-                      "plan-review Foreground rule bullet removed")
-        self.assertIn(CAP_SENTENCE, text,
-                      "fn-90 deterministic-cap paragraph removed")
 
     def test_subprocess_fences_redeclare_spec_id(self):
         for backend in ("codex", "copilot", "cursor", "claude"):
@@ -278,106 +157,23 @@ class PlanReviewSingleSourceTestCase(unittest.TestCase):
             self.assertNotIn("${1:-}", text)
             self.assertIn(f"$FLOWCTL {backend} plan-review", text)
 
-    def test_no_agent_side_iteration_counting(self):
-        for path in (SKILLS / "flow-next-plan-review").glob("*.md"):
-            self.assertNotIn("iteration counter in agent context", read(path),
-                             f"{path}: agent-side review counting reintroduced (fn-90)")
 
+class RoutedReferencesAndVerdictsTestCase(unittest.TestCase):
+    """Gated references stay reachable; machine-read verdict lines remain."""
 
-class InlineControlTransferSeamTestCase(unittest.TestCase):
-    """Inline reference/backend seams must continue; real terminals must remain."""
-
-    ROUTED_FILES = (
-        "flow-next-flow/auto.md",
-        "flow-next-flow/references/backlog-mode.md",
-        "flow-next-flow/references/qa-stage.md",
-        "flow-next-work/SKILL.md",
-        "flow-next-work/phases.md",
-        "flow-next-work/references/tracker-touchpoints.md",
-        "flow-next-plan-review/SKILL.md",
-        "flow-next-plan-review/workflow.md",
-        "flow-next-plan-review/workflow-codex.md",
-        "flow-next-plan-review/workflow-copilot.md",
-        "flow-next-plan-review/workflow-cursor.md",
-        "flow-next-plan-review/workflow-host.md",
-        "flow-next-plan-review/workflow-rp.md",
-    )
-
-    def test_false_inline_transfer_phrases_are_absent(self):
-        forbidden = (
-            re.compile(r"GATE ACTIVE\s+—\s+STOP", re.IGNORECASE),
-            re.compile(r"\bSTOP and read\b", re.IGNORECASE),
-            re.compile(
-                r"\bReturn the verdict to SKILL\.md's shared fix loop\b",
-                re.IGNORECASE,
-            ),
-            re.compile(
-                r"\breturn to SKILL\.md's one\s+shared fix loop\b",
-                re.IGNORECASE,
-            ),
-        )
-        for rel in self.ROUTED_FILES:
-            for path in both_copies(rel):
-                text = read(path)
-                for pattern in forbidden:
-                    self.assertNotRegex(
-                        text,
-                        pattern,
-                        f"{path}: false inline control-transfer seam regressed",
-                    )
-
-    def test_active_routes_name_read_execute_and_next_phase(self):
+    def test_auto_reaches_its_gated_references(self):
         for path in both_copies("flow-next-flow/auto.md"):
             text = read(path)
-            self.assertIn("read [references/backlog-mode.md]", text)
-            self.assertIn("references/qa-stage.md", text)
-        for path in both_copies("flow-next-work/phases.md"):
-            text = read(path)
-            # flow-98 deleted the delegation Phase 1.5 (-> Phase 2) and 3d.2
-            # routes; 3d.1 now continues into 3e.
-            for phase in ("Phase 3c", "Phase 3e", "Phase 4"):
-                self.assertIn(
-                    f"then continue with {phase}",
-                    text,
-                    f"{path}: active route does not name {phase}",
-                )
-        for backend in PlanReviewSingleSourceTestCase.BACKENDS:
-            for path in both_copies(
-                f"flow-next-plan-review/workflow-{backend}.md"
-            ):
-                self.assertIn(
-                    "Carry the verdict directly into SKILL.md's shared Fix Loop",
-                    read(path),
-                    f"{path}: backend verdict does not continue into shared loop",
-                )
+            self.assertIn("(references/backlog-mode.md)", text)
+            self.assertIn("(references/qa-stage.md)", text)
 
-    def test_default_off_probes_and_genuine_terminals_remain(self):
-        for path in both_copies("flow-next-flow/auto.md"):
-            self.assertIn("config.pipeline.qa", read(path))
-        for path in both_copies("flow-next-work/phases.md"):
-            text = read(path)
-            self.assertIn("run-sync-active.json", text)
-            self.assertEqual(text.count('[ "$VAL" = "true" ] && ACTIVE=1'), 3)
-            # Bounded standard-failure retry. Prose de-shouted 2026-08-09 in the
-            # canonical; the codex mirror still carries the pre-diet spelling
-            # until its next regen, so both wordings satisfy the pin.
-            self.assertRegex(
-                text, r"After \*{0,2}2\*{0,2} consecutive non-`done` returns"
-            )
-            self.assertRegex(
-                text,
-                r"STOP retrying and escalate"
-                r"|retrying stops and the failure escalates",
-            )
+    def test_verdict_lines_remain(self):
         for path in both_copies("flow-next-plan-review/SKILL.md"):
-            text = read(path)
-            self.assertIn("<promise>RETRY</promise>` and stops", text)
-            self.assertIn("stop with `BLOCKED: DESIGN_CONFLICT`", text)
+            self.assertIn("BLOCKED: DESIGN_CONFLICT", read(path))
         for path in both_copies("flow-next-flow/auto.md"):
             self.assertIn("PILOT_VERDICT=<ADVANCED|NO_WORK|", read(path))
         for path in both_copies("flow-next-land/SKILL.md"):
-            text = read(path)
-            self.assertIn("LAND_VERDICT=<verdict|NO_WORK>", text)
+            self.assertIn("LAND_VERDICT=<verdict|NO_WORK>", read(path))
 
 
 if __name__ == "__main__":

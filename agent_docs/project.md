@@ -43,6 +43,14 @@ fitters and truncators are not a remedy. Genuine transport limits stay explicit.
   changes with their source; CI's `./scripts/sync-codex.sh --check` enforces
   freshness. Preserve transform/guard pairs and validate the installed
   consumer layout, not just the source tree.
+- Cross-route agent behaviour (scope, design, tests, attended versus
+  unattended, review, pull requests and follow-ups, handoff) lives only in
+  [working-rules.md](../plugins/flow-next/references/working-rules.md).
+  Skills and agents link it near the top and keep only their own
+  instructions; never restate or contradict it elsewhere.
+- Shipped skill, agent and reference text follows
+  [Shipped skill text](adding-skills.md#shipped-skill-text): written for agents in other
+  people's repositories, with no flow-next history or repo facts.
 - Read [setup.md](setup.md) before changing setup, snippets, artifact resolution,
   or their transforms. Setup-block rejects symlink targets deliberately.
 - Avoid feature flags and compatibility scaffolding without a demonstrated
@@ -87,8 +95,7 @@ correctness-only rules are explained in `ruff.toml`. Do not add or remove a
 rule merely to make a diff pass; document evidence for a policy change there.
 Do not use unsafe fixes or lint fixes on generated `.flow/` and `codex/` copies.
 Never enable lint rules that rewrite prompt strings (ISC, Q, UP032, COM, W291,
-D). Intentional prompt changes update `test_prompt_text_pinned.py` in the same
-commit with a wording-change rationale; lint/refactor work must not alter them.
+D); lint/refactor work must not alter prompt text.
 
 The four extracted review prompt fallbacks are byte-identical template mirrors.
 `VALIDATOR_TEMPLATE_FALLBACK` and `DEEP_PASSES_FALLBACK` are intentional
@@ -161,6 +168,7 @@ maintenance does not require a customer release announcement.
 | Prompt optimization or an evaluation | [optimizing-skills.md](optimizing-skills.md) |
 | Documentation or changelog prose | [writing-docs.md](writing-docs.md), [releasing.md](releasing.md#changelog-writing-gate) |
 | Subsystem reference | [documentation index](../plugins/flow-next/docs/README.md) |
+| Shipped docs, Codex mirror, review internals | [docs-conventions.md](docs-conventions.md), [sync-codex.md](sync-codex.md), [review-architecture.md](review-architecture.md) |
 
 For performance/evaluation work, also read the maintainer-local notes in
 `.claude/CLAUDE.md` if present, on any host. They point to private research;

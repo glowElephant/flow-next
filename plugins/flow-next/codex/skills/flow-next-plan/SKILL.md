@@ -6,19 +6,15 @@ user-invocable: false
 
 # Flow plan
 
-Turn a rough idea into a spec with tasks in `.flow/`. This skill does not write code.
+Turn an idea or an existing spec into a spec with right-sized tasks in `.flow/`, grounded in repo research. Plan writes no code.
 
-Follow this skill and linked workflows exactly. Deviations cause drift, bad gates, retries, and user frustration.
+Read [working-rules.md](../../references/working-rules.md) first; it holds for every step of this skill.
 
-**`.flow/` is the only task tracker.** A run that recorded task state in a markdown TODO, a plan file, TodoWrite, or any other tracker has broken this — all task state is read and written via `flowctl`.
-
-### Chart boundary
-
-A **ready** (or already-captured) spec whose work is understood stays in plan - chart is too late. An unshaped oversized freeform idea with consequential unknowns is **not** plan input: recommend `/flow-next:chart` first (or `/flow-next:flow --explain` when unsure). Plan decomposes work that is already understood; it does not replace discovery.
+**`.flow/` is the only task tracker.** Every spec and task is created or changed through `flowctl`. A markdown TODO list, a TodoWrite call, or a plan file outside `.flow/` has broken this.
 
 ## Preamble
 
-**CRITICAL: flowctl is BUNDLED — NOT installed globally.** `which flowctl` will fail (expected). Define once; subsequent blocks (here and in `steps.md`) use `$FLOWCTL`:
+**flowctl is bundled, not installed globally** (`which flowctl` fails). Define it once; later blocks here and in `steps.md` use `$FLOWCTL`:
 
 ```bash
 FLOWCTL="${CODEX_HOME:-$HOME/.codex}/scripts/flowctl"
@@ -26,9 +22,7 @@ FLOWCTL="${CODEX_HOME:-$HOME/.codex}/scripts/flowctl"
 [ -x "$FLOWCTL" ] || FLOWCTL=".flow/bin/flowctl"
 ```
 
-## Leftover copy artifacts (one-line nudge)
-
-Before Step 0, check once whether this repo still carries flowctl copies from an older install layout — the same residue list flowctl exports as `LEGACY_COPY_ARTIFACTS`:
+Check once for flowctl copies left by an older install layout:
 
 ```bash
 LEFTOVERS=""
@@ -39,88 +33,35 @@ for p in .flow/bin/flowctl .flow/bin/flowctl.cmd .flow/bin/flowctl.py \
 done   # || true: an empty LEFTOVERS (the normal case) must read as success
 ```
 
-**None present → say nothing.** Silence is the normal case.
+None present: say nothing. Any present: print one line saying nothing reads them and they can be deleted by hand or by `/flow-next:setup`, then continue. Never ask, stop, or delete here.
 
-**Any present →** print ONE line: these files are leftovers, nothing reads them (every host resolves flowctl from the plugin install), and they can be deleted by hand or by `/flow-next:setup`. Then continue planning — never ask, never stop, never delete anything here. Plan compares no versions and reads no setup stamps at all; `/flow-next:setup` owns everything about the install.
+## No implementation code
 
-**Role**: product-minded planner with strong repo awareness.
-**Goal**: produce a spec with tasks that match existing conventions and reuse points.
-**Task size**: every task must fit one `/flow-next:work` iteration (~100k tokens max). If it won't, split it.
-
-## The Golden Rule: No Implementation Code
-
-**Plans are specs, not implementations.** Never write the code that will be implemented.
-
-### Code the plan may contain:
-- **Signatures/interfaces** (what, not how): `function validate(input: string): Result`
-- **Patterns from this repo** (with file:line ref): "Follow pattern at `src/auth.ts:42`"
-- **Recent/surprising APIs** (from docs-scout): "React 19 changed X — use `useOptimistic` instead"
-- **Non-obvious gotchas** (from practice-scout): "Must call `cleanup()` or memory leaks"
-
-### Code the plan never contains:
-- Complete function implementations
-- Full class/module bodies
-- "Here's what you'll write" blocks
-- Copy-paste ready snippets (>10 lines)
-
-**A spec that already contains the implementation is not a spec.** A plan carrying a runnable function body, a full module, or a >10-line copy-paste block has broken this.
-
-**Why:** Implementation happens in `/flow-next:work` with fresh context. Writing it here wastes tokens in planning, review, and implementation — then causes drift when the implementer does it differently anyway.
+The spec states what and why as contracts; each task states how: named files, the repo pattern to follow (`file:line`), ordering, and non-obvious gotchas. Code in a plan is limited to signatures and interfaces, pointers to existing patterns, a recent or surprising API from docs-scout, and a gotcha from practice-scout. A full function or module body, or a copy-paste block over about 10 lines, has broken this: implementation happens in `/flow-next:work` with fresh context, and code written here is paid for again there and drifts.
 
 ## Input
 
 Full request: $ARGUMENTS
 
-Accepts:
-- Feature/bug description in natural language
-- Flow spec ID `fn-N-slug` (e.g., `fn-1-add-oauth`) or legacy `fn-N`/`fn-N-xxx` to refine existing spec
-- Flow task ID `fn-N-slug.M` (e.g., `fn-1-add-oauth.2`) or legacy `fn-N.M`/`fn-N-xxx.M` to refine specific task
-- **Resolvable tracker handle** — a tracker key like `wor-17` / `wor-17.2` that `flowctl show` resolves to the linked spec/task. Treated as the existing spec/task, **never** as a new idea (R16). See the handle-recognition rule in Step 1.
-- Chained instructions like "then review with /flow-next:plan-review"
+Accepts a freeform idea; a spec id `fn-N-slug` (legacy `fn-N`, `fn-N-xxx`); a task id `fn-N-slug.M` (legacy `fn-N.M`, `fn-N-xxx.M`); a tracker handle such as `wor-17` that `flowctl show` resolves (always the existing spec or task, never a new idea; see Step 1); and chained instructions such as "then review with /flow-next:plan-review".
 
-Examples:
-- `/flow-next:plan Add OAuth login for users`
-- `/flow-next:plan fn-1-add-oauth`
-- `/flow-next:plan fn-1` (legacy formats fn-1, fn-1-xxx still supported)
-- `/flow-next:plan fn-1-add-oauth then review via /flow-next:plan-review`
+Empty input: ask "What should I plan? Give me the feature or bug in 1-5 sentences." Under autonomy, report `NEEDS_HUMAN: no planning input provided` and stop.
 
-If empty, ask: "What should I plan? Give me the feature or bug in 1-5 sentences." Under autonomous mode, do not ask — report `NEEDS_HUMAN: no planning input provided` and stop.
+A ready or captured spec is plan input. An unshaped, oversized idea with several consequential unknowns is not: recommend `/flow-next:chart` (or `/flow-next:flow --explain` when unsure) and stop. Plan decomposes understood work; it does not replace discovery.
 
-## FIRST: Parse Options or Ask Questions
+## Options
 
-### Autonomous mode (mode:autonomous / FLOW_AUTONOMOUS)
+**Autonomy.** The literal token `mode:autonomous` in `$ARGUMENTS` (strip it) or `FLOW_AUTONOMOUS=1` sets `AUTONOMOUS=1`. Then no question is ever asked: explicit flags win, and anything unset takes its default (depth below, research `repo-scout`, review the configured backend, `none` when it is `ASK`). A genuinely unanswerable ambiguity stops with a one-line `NEEDS_HUMAN: <reason>`.
 
-Parse `$ARGUMENTS` for the literal token `mode:autonomous` (strip it, same shape as capture's `mode:autofix` — a NEW parse branch, never overloading that token). Also honor the env var `FLOW_AUTONOMOUS=1` as a secondary signal (process-level drivers). Either signal → `AUTONOMOUS=1`.
+**Depth.** `--depth=short` ("quick", "minimal"), `--depth=standard` ("normal"), `--depth=deep` ("comprehensive", "detailed"). Default SHORT. Depth picks the scout set (Step 1) and the spec sections (Step 4).
 
-Under `AUTONOMOUS=1`:
-- **No setup question is asked.** A question surfaced under `AUTONOMOUS=1` has broken this. Explicit passthrough flags (`--depth`, `--research`, `--review`) win as usual; for anything unset, apply the defaults: depth per **Plan depth** below, research = `repo-scout`, review = configured backend (`none` when `REVIEW_BACKEND` is `ASK`).
-- **Never hang on a question.** If a genuinely unanswerable ambiguity remains (e.g. empty input), stop cleanly with a one-line `NEEDS_HUMAN: <reason>` report instead of asking.
-- Autonomy ≠ Ralph: neither `mode:autonomous` nor `FLOW_AUTONOMOUS` activates ralph-guard hooks or any receipt path — they gate question suppression only.
+**Research.** Always `repo-scout`; `--research=grep` is a no-op and any other value is ignored.
 
-### Option Parsing (skip questions if found in arguments)
+**Review.** `--review=codex` ("review with codex", "codex review", "use codex"), `--review=rp` ("rp chat", "repoprompt review"), `--review=host` ("host review", "use host": the host-native fresh-context reviewer), `--review=export` ("export review", "external llm"), `--review=none` or `--no-review` ("no review", "skip review").
 
-Parse the arguments for these patterns. If found, use them and skip questions:
+An option found in the arguments, as a flag or in these words, skips its setup question.
 
-**Research approach**: always `repo-scout` — there is no research-backend choice. `--research=grep` is accepted as a no-op; any other `--research` value is ignored.
-
-**Review mode**:
-- `--review=codex` or "review with codex" or "codex review" or "use codex" → Codex CLI
-- `--review=rp` or "review with rp" or "rp chat" or "repoprompt review" → RepoPrompt chat (via `flowctl rp chat-send`)
-- `--review=host` or "review with host" or "host review" or "use host" → host-native fresh-context reviewer subagent (pins in AGENTS.md model-routing)
-- `--review=export` or "export review" or "external llm" → export for external LLM
-- `--review=none` or `--no-review` or "no review" or "skip review" → no review
-
-### If options NOT found in arguments
-
-**Plan depth** (parse from args or ask):
-- `--depth=short` or "quick" or "minimal" → SHORT
-- `--depth=standard` or "normal" → STANDARD
-- `--depth=deep` or "comprehensive" or "detailed" → DEEP
-- Default: SHORT (simpler is better). The one depth default, fixed here before Step 1 picks the scout tier; steps.md Step 4 renders its sections.
-
-**If `AUTONOMOUS=1`:** skip every question below — apply the autonomous defaults above and continue.
-
-Initialize and capture one preflight bundle before routing or scouting (also run this block under autonomy; its question gate remains suppressed). Reuse the literal snapshot path in steps.md:
+Initialize and capture one preflight snapshot before routing or scouting (also under autonomy). Every later config read uses this literal path:
 
 ```bash
 $FLOWCTL init --json
@@ -128,63 +69,33 @@ PLAN_CFG="${TMPDIR:-/tmp}/flow-plan-config-<suffix>.json"
 $FLOWCTL preflight --json > "$PLAN_CFG" 2>/dev/null || printf '{"key":null,"value":{}}' > "$PLAN_CFG"
 ```
 
-Check the configured backend from that bundle and route:
-
 ```bash
 ACTIVE=0
-# NO pipelines in the probe — a failed producer masked by a healthy consumer
-# fails CLOSED. Capture raw first, rc-checked; parse separately.
-RAW="$(jq -er 'if .probes.review_backend.status == "ok" then .probes.review_backend.value.backend else error("review backend probe") end' "${TMPDIR:-/tmp}/flow-plan-config-<suffix>.json" 2>/dev/null)" || ACTIVE=1        # probe ERROR ⇒ ACTIVE (fail open)
+# No pipelines in the probe: capture raw first, rc-checked; parse separately.
+RAW="$(jq -er 'if .probes.review_backend.status == "ok" then .probes.review_backend.value.backend else error("review backend probe") end' "${TMPDIR:-/tmp}/flow-plan-config-<suffix>.json" 2>/dev/null)" || ACTIVE=1        # probe error => ACTIVE
 if [ "$ACTIVE" = "0" ]; then
-  REVIEW_BACKEND="$(printf '%s' "$RAW" | tr -d '[:space:]' 2>/dev/null)" || ACTIVE=1   # parse ERROR ⇒ ACTIVE
+  REVIEW_BACKEND="$(printf '%s' "$RAW" | tr -d '[:space:]' 2>/dev/null)" || ACTIVE=1   # parse error => ACTIVE
   [ "$REVIEW_BACKEND" = "ASK" ] && ACTIVE=1
 fi
-[ "${AUTONOMOUS:-0}" = "1" ] && ACTIVE=0        # autonomous NEVER asks — defaults apply
+[ "${AUTONOMOUS:-0}" = "1" ] && ACTIVE=0        # autonomous never asks
 if [ "$ACTIVE" = "1" ]; then
   echo "SETUP-QUESTIONS GATE ACTIVE — STOP. Read references/setup-questions.md before continuing."
 fi
 ```
 
-`review-backend` returns: `ASK` (not configured), or `rp`/`codex`/`copilot`/`cursor`/`claude`/`host`/`none` (configured).
-
-When the sentinel prints, STOP and Read [`references/setup-questions.md`](references/setup-questions.md) before any further step — it owns RepoPrompt eligibility, the two question variants, and the empty/ambiguous defaults.
-
-**If REVIEW_BACKEND is rp, codex, copilot, cursor, claude, host, or none** (already configured): ask nothing — depth defaults apply unless passed, research is `repo-scout`, review is the configured backend. Show the override hint:
+When the sentinel prints, read [`references/setup-questions.md`](references/setup-questions.md) before any further step. When a backend is configured (`rp`, `codex`, `copilot`, `cursor`, `claude`, `host`, `none`), ask nothing: flags win, depth defaults, review uses that backend. Show the hint:
 
 ```
 (Tip: --depth=short|standard|deep, --review=rp|codex|copilot|cursor|claude|host|none)
 ```
 
-## Spec-id scheme (team default)
-
-When Route B mints a brand-new spec, **tracker-first is the recommended team default** if `tracker.specIds=tracker` and the bridge is active — the tracker is the distributed allocator (`KEY-N-slug` / synthetic `gh-N` / `gl-N`). Gate lives in steps.md Route B (create-first then `--tracker-first`; silent flow-first degrade; explicit override wins). Setup owns the one-time question; no runtime nag.
-
 ## Workflow
 
-Read [steps.md](steps.md) and follow each step in order.
+Read [steps.md](steps.md) and follow each step in order. Its optional paths (readiness warning, Route A, tracker-first mint, tracker projection, review, next-steps menu) load their references only when the step's condition holds.
 
-**Step 1 readiness soft-check**: existing-spec inputs get an adoption-gated readiness check BEFORE the scout fan-out — warn-not-block, default proceed; repos that never adopted readiness see nothing. Details in steps.md Step 1.
-
-**Optional paths**: `steps.md` gates the readiness warning, the Route A refine
-path, the tracker-first mint, tracker projection, selected review, the
-interactive next-steps menu, and the HTML render lens after their existing
-config/choice/route signals. Their references stay cold when the path is not
-taken; the preflight bundle above remains the only config snapshot.
-
-**Step 1 (Research) launches every scout in the depth-appropriate set as parallel multi-agent threads (Codex spawns them concurrently).** The set is the steps.md tier table — the full set at STANDARD/DEEP, at SHORT skip the three web-research scouts and fold docs-gap-scout’s charter into repo-scout. A plan whose research skipped a scout inside its own tier, or ran the set sequentially, has broken this. Each scout in the set provides unique signal.
+**Step 1 launches every scout in the depth-appropriate set as parallel multi-agent threads (Codex spawns them concurrently).** A plan whose research skipped a scout in its tier, or ran the set sequentially, has broken this.
 
 ## Output
 
-All plans go into `.flow/`:
-- Spec: `.flow/specs/fn-N-slug.json` + `.flow/specs/fn-N-slug.md`
-- Tasks: `.flow/tasks/fn-N-slug.M.json` + `.flow/tasks/fn-N-slug.M.md`
-- Render lens (only when `artifacts.html.enabled`): `.flow/artifacts/fn-N-slug/spec.html` (steps.md Step 8.5)
-
-**Never write plan files outside `.flow/`. Never use TodoWrite for task tracking.**
-
-## Output rules
-
-- Only create/update specs and tasks via flowctl
-- No code changes
-- No plan files outside `.flow/`
-- R-IDs are mandatory on new spec acceptance criteria — use `- **Rn:** ...` prose prefix format; never renumber after first review cycle; each behavioral R-ID enumerates error/boundary cases or records "no error surface beyond X" (see `steps.md` R-ID rule)
+- Spec: `.flow/specs/<spec-id>.json` + `.md`; tasks: `.flow/tasks/<spec-id>.M.json` + `.md`.
+- No code changes and no plan files outside `.flow/`.

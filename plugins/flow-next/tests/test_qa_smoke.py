@@ -13,12 +13,12 @@ dispatch the host agent actually shells), not an in-process import:
   2. `config get tracker.perEvent.qa` — the opt-in verdict-post leaf
      (workflow.md Phase A / §6); defaults `off` so the skill stays silent
      until opted in. (The full round-trip + sibling-isolation lives in
-     test_qa_tracker_event.py; here we only assert the touchpoint resolves.)
+     test_perevent_leaves.py; here we only assert the touchpoint resolves.)
   3. The receipt write path — `.flow/review-receipts/` is the committed
      directory the skill writes `qa-<spec-id>.json` into when no explicit
-     `--receipt` / `REVIEW_RECEIPT_PATH` is supplied. (Receipt schema +
-     four-outcome projection live in test_qa_receipt.py; here we only assert
-     the write target is reachable.)
+     `--receipt` / `REVIEW_RECEIPT_PATH` is supplied. (The real receipt writer
+     runs in test_qa_writer_shell.py; here we only assert the write target is
+     reachable.)
 
 This is a hermetic plumbing smoke, NOT a live drive — it never starts an app
 or invokes a driver. Each test runs in its own `tempfile.TemporaryDirectory`

@@ -1,7 +1,7 @@
 #!/bin/bash
 # Generate pre-built Codex files from canonical skills/ and agents/ sources.
 # Output: plugins/flow-next/codex/{skills/,agents/}
-# (No hooks.json: Ralph hooks are opt-in via ralph-init project settings, not the mirror.)
+# (No hooks.json: the plugin ships no hooks.)
 #
 # Idempotent — running twice produces identical output.
 # Run after modifying skills/ or agents/ and commit the result.
@@ -191,9 +191,8 @@ if [ -d "$PLUGIN_DIR/templates" ]; then
   cp -R "$PLUGIN_DIR/templates" "$CODEX_DIR/"
 fi
 
-# Mirror canonical references dir (fn-62.2: shared disclosure files such as
-# references/html-artifacts.md, loaded by skills only when the matching config
-# gate is on). Same shape as the templates copy above: skills cite the file by
+# Mirror canonical references dir (fn-62.2: shared files such as
+# references/working-rules.md). Same shape as the templates copy above: skills cite the file by
 # repo-relative path; in the mirror, `../../references/<name>.md` from
 # `codex/skills/<name>/<file>.md` resolves to `codex/references/<name>.md`.
 # Reference files are tool-name-agnostic by contract, so NO rewrite pass below
@@ -203,7 +202,7 @@ if [ -d "$PLUGIN_DIR/references" ]; then
 fi
 
 # Mirror canonical docs dir (fn-202 / #363 codex P2 + P1: skill prose
-# cross-links `../../docs/<name>.md` — pipeline-variations.md, ralph.md,
+# cross-links `../../docs/<name>.md` — pipeline-variations.md,
 # flowctl.md, the reach/ pages...). The mirror carries them under the
 # flow-next-OWNED namespace `codex/docs/flow-next/` (never loose under
 # `codex/docs/`): install-codex.sh replaces ONLY `$CODEX_HOME/docs/flow-next/`
@@ -285,7 +284,7 @@ done
 # --- Docs-mirror invocation banner (#363 codex P2, rounds 7-8) ---------------
 # The mirrored docs pages mention `/flow-next:<cmd>` in examples and prose. A
 # REWRITE cannot work here: docs contain host-SPECIFIC examples (`claude -p
-# "/flow-next:ralph-init"`, `/loop` recipes) where `$flow-next-*` is wrong and
+# "/flow-next:flow --auto"`, `/loop` recipes) where `$flow-next-*` is wrong and
 # even dangerous (`$flow` expands inside double quotes in bash). Two attempts
 # proved any rewrite/exclude-list is an enumeration racing the next page. The
 # invariant instead: docs prose ships VERBATIM, and every mirrored page opens
@@ -336,12 +335,11 @@ find "$CODEX_DIR/skills" -name "*.md" -type f | while read -r f; do
     -e 's|FLOWCTL="$HOME/.codex/scripts/flowctl"|FLOWCTL="${CODEX_HOME:-$HOME/.codex}/scripts/flowctl"|g' \
     "$f"
 
-  # fn-48.6: canonical files now use a once-per-skill `PLUGIN_ROOT` prelude
-  # (e.g. flow-next-ralph-init/SKILL.md) to collapse 10+ inline expansions.
+  # fn-48.6: canonical files may use a once-per-skill `PLUGIN_ROOT` prelude
+  # to collapse repeated inline expansions.
   # Rewrite the PLUGIN_ROOT assignment to the runtime Codex form so subsequent
   # `$PLUGIN_ROOT/...` references resolve. Then path-remap specific subtrees
-  # that have different on-disk layouts in the Codex install (templates land
-  # at `~/.codex/templates/<skill>` rather than `~/.codex/skills/<skill>/templates`).
+  # that have different on-disk layouts in the Codex install.
   sed -i.bak \
     -e 's|PLUGIN_ROOT="\${DROID_PLUGIN_ROOT:-\${CLAUDE_PLUGIN_ROOT}}"|PLUGIN_ROOT="${CODEX_HOME:-$HOME/.codex}"|g' \
     "$f"
@@ -357,18 +355,16 @@ find "$CODEX_DIR/skills" -name "*.md" -type f | while read -r f; do
   # Template/script path patches — both legacy inline form and the new
   # fn-48.6 `$PLUGIN_ROOT/...` consolidated form.
   sed -i.bak \
-    -e 's|\${DROID_PLUGIN_ROOT:-\${CLAUDE_PLUGIN_ROOT}}/skills/flow-next-ralph-init/templates|${CODEX_HOME:-$HOME/.codex}/templates/flow-next-ralph-init|g' \
     -e 's|\${DROID_PLUGIN_ROOT:-\${CLAUDE_PLUGIN_ROOT}}/skills/flow-next-worktree-kit/scripts|${CODEX_HOME:-$HOME/.codex}/scripts|g' \
-    -e 's|\$PLUGIN_ROOT/skills/flow-next-ralph-init/templates|${CODEX_HOME:-$HOME/.codex}/templates/flow-next-ralph-init|g' \
     -e 's|\$PLUGIN_ROOT/skills/flow-next-worktree-kit/scripts|${CODEX_HOME:-$HOME/.codex}/scripts|g' \
     -e 's|\${DROID_PLUGIN_ROOT:-\${CLAUDE_PLUGIN_ROOT}}/skills/|${CODEX_HOME:-$HOME/.codex}/skills/|g' \
     -e 's|\$PLUGIN_ROOT/skills/|${CODEX_HOME:-$HOME/.codex}/skills/|g' \
     "$f"
   # The two generic /skills/ rules above are a catch-all for skill-local asset
   # paths (e.g. resolve-pr's SCRIPTS dir) — install-codex.sh copies each skill
-  # dir wholesale to CODEX_HOME/skills/, so that root always resolves. Specific
-  # destinations (ralph-init templates, worktree-kit scripts) are rewritten
-  # first and therefore win. $HOME (not ~) so the path expands inside quotes.
+  # dir wholesale to CODEX_HOME/skills/, so that root always resolves. The
+  # specific worktree-kit scripts destination is rewritten first and therefore
+  # wins. $HOME (not ~) so the path expands inside quotes.
 
   sed -i.bak \
     -e 's|AGENTS_SRC="$HOME/.codex/agents"|AGENTS_SRC="${CODEX_HOME:-$HOME/.codex}/agents"|g' \
@@ -450,9 +446,11 @@ for nf in \
   "$CODEX_DIR/skills/flow-next-audit/SKILL.md" \
   "$CODEX_DIR/skills/flow-next-audit/workflow.md" \
   "$CODEX_DIR/skills/flow-next-flow/references/route-matrix.md" \
+  "$CODEX_DIR/skills/flow-next-flow/references/route-matrix-more.md" \
   "$CODEX_DIR/skills/flow-next-flow/references/plan-vs-no-plan.md" \
   "$CODEX_DIR/skills/flow-next-flow/auto.md" \
   "$CODEX_DIR/skills/flow-next-work/phases.md" \
+  "$CODEX_DIR/skills/flow-next-work/references/multi-task.md" \
   "$CODEX_DIR/skills/flow-next-work/references/no-plan-route.md"; do
   [ -f "$nf" ] || continue
   sed -i.bak \
@@ -478,7 +476,7 @@ for nf in \
     -e 's|Body inspection → /flow-next:make-pr|Body inspection → $flow-next-make-pr|g' \
     -e 's|re-run /flow-next:make-pr (skill detects the existing branch and re-tries)|re-run $flow-next-make-pr (skill detects the existing branch and re-tries)|g' \
     -e 's|Use `/flow-next:plan fn-N`|Use `$flow-next-plan fn-N`|g' \
-    -e 's|→ `/flow-next:work fn-N` (or more interview|→ `$flow-next-work fn-N` (or more interview|g' \
+    -e 's|→ `/flow-next:work fn-N` (or more refine|→ `$flow-next-work fn-N` (or more refine|g' \
     -e 's|→ `/flow-next:work fn-N.M`|→ `$flow-next-work fn-N.M`|g' \
     -e 's|→ `/flow-next:capture` to turn the refined document|→ `$flow-next-capture` to turn the refined document|g' \
     -e 's|`/flow-next:visual fn-N` for a spec input|`$flow-next-visual fn-N` for a spec input|g' \
@@ -545,7 +543,7 @@ FLOW_DISPATCH_TRANSFORM
 
 # --- STRUCTURAL: Task tool → agent invocation ---
 
-phases="$CODEX_DIR/skills/flow-next-work/phases.md"
+phases="$CODEX_DIR/skills/flow-next-work/references/multi-task.md"
 if [ -f "$phases" ]; then
 
   # Replace section 3c with agent invocation
@@ -559,7 +557,7 @@ if [ -f "$phases" ]; then
 
 Implementation is the **implementer** tier: absent any preference, the worker runs on the session model. **Routing precedence, highest first: an explicit argument in the invocation, then the project routing block in the instruction file, then the agent definition's own default, then the session model.** How this harness reaches a non-session model — and what the degradation is when it cannot — lives in its reach page (`plugins/flow-next/docs/reach/`), never here.
 
-Before spawning, apply [references/judge-tier.md](references/judge-tier.md) once for this task. Use its selected model in the host spawn-model parameter as well as the `IMPLEMENTER:` line; an explicit invocation always wins.
+Before spawning, apply [judge-tier.md](judge-tier.md) once for this task. Use its selected model in the host spawn-model parameter as well as the `IMPLEMENTER:` line; an explicit invocation always wins.
 
 **When the implementer tier resolves to a model this harness reaches only over a CLI bridge, the worker bridges and the conductor never does.** The dispatch below is unchanged: the worker resolves the tier itself (worker Phase 1b), hands the task to the bridged child with the usage guide's brief, and reviews the child's commit range before its own review dispatch. The bridged child owns the task and its own delegation; a conductor that composed a brief, ran a bridge call, or fanned out on the implementer's behalf has broken this.
 
@@ -574,8 +572,7 @@ conductor's checkout does not exist inside it — and a freshly planned spec is
 uncommitted by default. A worker dispatched into such a workspace cannot
 re-anchor at all: `$FLOWCTL show <task-id>` finds no task there, and the failure
 looks like a broken worker rather than a missing commit. Commit `.flow/` first
-(`git add -A`), then create the workspaces from that commit. Verified 2026-08-14
-on the first live wave dispatch. Single-worker runs are unaffected — they share
+(`git add -- .flow/`), then create the workspaces from that commit. Single-worker runs are unaffected — they share
 the conductor's checkout.
 
 The worker gets fresh context and handles:
@@ -603,7 +600,6 @@ TASK_ID: fn-X.Y
 SPEC_ID: fn-X
 FLOWCTL: $FLOWCTL
 REVIEW_MODE: none|rp|codex|copilot|cursor|claude|host|host-deferred
-RALPH_MODE: true|false
 PARALLEL_WAVE: true|false
 WORKSPACE: <isolated mutable workspace>
 HANDOVER_SUMMARY: <task-unique summary path>
@@ -644,7 +640,7 @@ host-deferred shape is independent of `REVIEW_MODE`; the conductor preserves
 the resolved backend and applies it after integration. The prompt fields are an
 internal handoff, not a public CLI or stored schema.
 
-**Host review routes OUTSIDE the worker (fn-123 R5) — and gates BEFORE done.** On the wave route's single-worker path only, when the resolved review mode is \`host\`, pass \`REVIEW_MODE: host-deferred\`: the worker skips review dispatch AND defers \`flowctl done\` (returns with the task still in_progress + summary/evidence files written). The conductor then runs \`$flow-next-impl-review <task-id> --review=host\` as the mandatory gate and only on SHIP runs \`flowctl done\` with the worker-prepared summary/evidence plus the review receipt; terminal NEEDS_WORK escalates after impl-review's internal bounded fix loop; never re-invoke it. Read references/host-deferred-review.md for the task-base and memory auto-capture gates.
+**Host review routes OUTSIDE the worker — and gates BEFORE done.** On the wave route's single-worker path only, when the resolved review mode is \`host\`, pass \`REVIEW_MODE: host-deferred\`: the worker skips review dispatch AND defers \`flowctl done\` (returns with the task still in_progress + summary/evidence files written). The conductor then runs \`$flow-next-impl-review <task-id> --review=host\` as the mandatory gate and only on SHIP runs \`flowctl done\` with the worker-prepared summary/evidence plus the review receipt; terminal NEEDS_WORK escalates after impl-review's internal bounded fix loop; never re-invoke it. Read references/host-deferred-review.md for the task-base and memory auto-capture gates.
 
 **Worker returns** (both paths): task id, terminal status, commit range, `actual_model` when evidenced, and the
 summary/evidence paths (plus the review receipt path when the single-worker path
@@ -669,8 +665,8 @@ SECTION3C
     -e 's|Next: /flow-next:make-pr <spec-id>   # or /flow-next:qa <spec-id> first|Next: $flow-next-make-pr <spec-id>   # or $flow-next-qa <spec-id> first|g' \
     -e 's/spawn worker/run worker agent/g' \
     -e 's/\*\*For each task\*\*, spawn a worker subagent with fresh context/**For each task**, use the worker agent with fresh context/g' \
-    "$phases"
-  rm -f "${phases}.bak"
+    "$phases" "$CODEX_DIR/skills/flow-next-work/phases.md"
+  rm -f "${phases}.bak" "$CODEX_DIR/skills/flow-next-work/phases.md.bak"
 
   # fn-208.2 guard: SECTION3C above is a HARDCODED replacement of canonical 3c,
   # so a canonical dispatch-template field the heredoc misses vanishes silently
@@ -683,7 +679,7 @@ SECTION3C
     "IMPLEMENTER: <model> at <effort>" \
     "the worker bridges and the conductor never does"; do
     if ! grep -qF "$dispatch_field" "$phases"; then
-      echo "SYNC-FAIL: mirror phases.md 3c lost dispatch field: $dispatch_field (update SECTION3C in sync-codex.sh)" >&2
+      echo "SYNC-FAIL: mirror multi-task.md 3c lost dispatch field: $dispatch_field (update SECTION3C in sync-codex.sh)" >&2
       exit 1
     fi
   done
@@ -1141,7 +1137,7 @@ text = re.sub(
 )
 
 # E. Anti-mandate "do NOT use AskUserQuestion tool" — used in
-#    flow-next-plan/SKILL.md:117 + flow-next-ralph-init/SKILL.md:37 to tell
+#    flow-next-plan/SKILL.md to tell
 #    the agent "ask in plain text ad-hoc, not via the structured tool". On
 #    Codex there IS no structured tool, so the negation is a tautology.
 #    Strip the parenthetical entirely (along with optional surrounding
@@ -1525,14 +1521,14 @@ def is_negative_context(line):
     is NOT a live ask — auto-fix-loop sites, skip/no-prompt prose,
     reference/checklist bullets about what something IS NOT or what is
     skipped. Injecting R2 here either contradicts the surrounding prose
-    or pollutes deterministic/Ralph branches."""
+    or pollutes deterministic/autonomous branches."""
     # Auto-fix-loop hard mandates.
     if 'Never use' in line and 'plain-text numbered prompt' in line:
         return True
     if 'do NOT use' in line and 'plain-text numbered prompt' in line:
         return True
     # Hard-error / no-user prose ("questions hard-error ...", "no user to
-    # ask ..."). These lines DESCRIBE a Ralph/autonomous branch that refuses
+    # ask ..."). These lines DESCRIBE an autonomous branch that refuses
     # to ask — injecting the R2 ask block here would contradict the branch
     # semantics (observed: make-pr autonomous bullet, fn-59.3 review).
     if ('hard-error' in line or 'no user to ask' in line) \
@@ -1569,7 +1565,7 @@ def is_negative_context(line):
     # "no path reaches `plain-text numbered prompt`", "NO code path may reach
     # `plain-text numbered prompt`", "Never asks interactively". Injecting the R2
     # ask block here contradicts the surface-don't-block / autonomous contract
-    # (fn-68 R14: the backlog/Ralph path never reaches an interactive prompt).
+    # (fn-68 R14: the backlog path never reaches an interactive prompt).
     # The verb regex mis-reads the leading "Asking ..." / "Never asks ..." OR the
     # trailing "ask the human" as an active-ask anchor, so this guard must catch
     # the negation explicitly.
@@ -1743,10 +1739,6 @@ generate_openai_yaml() {
 generate_openai_yaml "flow-next-plan"      "Flow Plan"      "Create structured build plans from feature requests" "#3B82F6" true "Plan out this feature: "
 generate_openai_yaml "flow-next-work"      "Flow Work"      "Execute planned tasks with worker subagents"          "#3B82F6" true "Work on: "
 generate_openai_yaml "flow-next-refine"    "Flow Refine"    "Refine a spec or task: deep Q&A, or a read-only external-docs research pass" "#3B82F6" true
-# fn-238 R15: one-release deprecated alias. Catalog flag OFF so prose never resolves it;
-# the stub forwards to flow-next-refine. Remove this line and the stub dir in the
-# release after the rename ships.
-generate_openai_yaml "flow-next-interview" "Flow Interview (deprecated alias)" "Deprecated alias for flow-next-refine; invoke the refine skill instead" "#3B82F6" false
 generate_openai_yaml "flow-next-setup"     "Flow Setup"     "Initialize flow-next in current project"              "#3B82F6" true
 generate_openai_yaml "flow-next-prospect"  "Flow Prospect"  "Generate ranked candidate ideas grounded in the repo" "#3B82F6" true "What should we build next? "
 generate_openai_yaml "flow-next-chart"     "Flow Chart"     "Decision-map discovery for one oversized unclear idea before capture" "#3B82F6" true "Chart out: "
@@ -1759,10 +1751,6 @@ generate_openai_yaml "flow-next-memory-migrate" "Flow Memory Migrate" "Migrate l
 generate_openai_yaml "flow-next-make-pr" "Flow Make PR" "Render a cognitive-aid PR body from flow-next state and open via gh" "#3B82F6" true
 generate_openai_yaml "flow-next-tracker-sync" "Flow Tracker Sync" "Project a spec to a tracker (Linear/GitHub/GitLab/Jira) and reconcile two-way — NOT plan-sync" "#3B82F6" true
 generate_openai_yaml "flow-next-qa" "Flow QA" "Live-app real-user QA pass derived from the spec — drives the running app, files P0/P1/P2 findings, emits a YES/NO verdict" "#3B82F6" true
-# fn-239 R4: one-release deprecated alias. Catalog flag OFF so prose never resolves it;
-# the stub forwards to flow-next-flow --auto --tick. Remove this line and the stub dir in
-# the release after flow --auto ships.
-generate_openai_yaml "flow-next-pilot" "Flow Pilot (deprecated alias)" "Deprecated alias for flow-next-flow --auto --tick; invoke the flow skill with --auto instead" "#3B82F6" false
 generate_openai_yaml "flow-next-land" "Flow Land" "Resolve and merge one named, authorized PR; terminal LAND_VERDICT line" "#3B82F6" true
 
 # Review skills (red, implicit)
@@ -1787,7 +1775,6 @@ generate_openai_yaml "flow-next-visual" "Flow Visual" "Restate a spec, task, dif
 # drafting-moment shape so Codex matches it the same way other hosts match
 # the canonical description.
 generate_openai_yaml "flow-next-prose" "Flow Prose" "Use while drafting a substantial reply, report, or summary for the user - read the prose contract before writing and draft under its rules" "#F59E0B" true
-generate_openai_yaml "flow-next-ralph-init" "Flow Ralph Init" "Scaffold the repo-local Ralph autonomous harness" "#3B82F6" true
 
 # Internal skills (gray, explicit-only). These are spawned by other skills,
 # never by user prose. Codex defaults allow_implicit_invocation to TRUE when
@@ -1826,7 +1813,6 @@ codex_dir = pathlib.Path(sys.argv[1])
 DIET = {
     "flow-next-plan": "Plan a feature into a flow-next spec with tasks in .flow/. Use when asked to plan, spec out, or break down work (fn-N ids).",
     "flow-next-work": "Execute a flow-next spec or task end-to-end with worker subagents, gates, and commits. Use when asked to work on, implement, or execute fn-N.",
-    "flow-next-pilot": "Deprecated alias for flow-next-flow --auto --tick (one hop, PILOT_VERDICT line); removed next release. Invoke the flow skill with --auto instead.",
     "flow-next-land": "Resolve feedback and CI for one named pull request, then merge when authorized and ready. Emits LAND_VERDICT. Use when asked to land a pull request.",
     "flow-next-make-pr": "Open a PR with a cognitive-aid body rendered from flow-next spec state via gh. Use whenever asked to make or open a PR in a flow-next repo.",
     "flow-next-resolve-pr": "Resolve PR review feedback. Fetches unresolved threads, triages, fixes, replies and resolves via GraphQL. Use when asked to address review comments.",
@@ -1847,7 +1833,6 @@ DIET = {
     "flow-next-impl-review": "Carmack-level implementation review of changes via the configured backend. Use when asked to review code or a diff in a flow-next repo.",
     "flow-next-plan-review": "Carmack-level review of a flow-next spec or plan via the configured backend. Use when asked to review a plan or spec.",
     "flow-next-spec-completion-review": "Verify that a spec's completed tasks fully implement the spec requirements. Use at spec completion before close.",
-    "flow-next-ralph-init": "Scaffold the repo-local Ralph autonomous harness and project hooks. Use when asked to set up Ralph.",
     "flow-next": "Manage .flow/ tasks and specs. Use for show or list tasks, task status, what is ready, show fn-N. NOT for planning or executing (use the plan and work skills).",
     "flow-next-prose": "Use while drafting a substantial reply, report, or summary for the user - read the prose contract before writing and draft under its rules. Not for short turns or file/PR output.",
 }
@@ -1885,7 +1870,6 @@ REQUIRED_OPENAI_YAML_SKILLS=(
   "flow-next-plan"
   "flow-next-work"
   "flow-next-refine"
-  "flow-next-interview"   # fn-238 R15 deprecated alias (catalog flag off); drop next release
   "flow-next-setup"
   "flow-next-prospect"
   "flow-next-capture"
@@ -1895,7 +1879,6 @@ REQUIRED_OPENAI_YAML_SKILLS=(
   "flow-next-make-pr"
   "flow-next-tracker-sync"
   "flow-next-qa"
-  "flow-next-pilot"   # fn-239 R4 deprecated alias (catalog flag off); drop next release
   "flow-next-land"
   "flow-next-impl-review"
   "flow-next-plan-review"
@@ -1905,7 +1888,6 @@ REQUIRED_OPENAI_YAML_SKILLS=(
   "flow-next-prime"
   "flow-next-map"
   "flow-next-visual"
-  "flow-next-ralph-init"
   "flow-next-drive"
   "flow-next-sync"
   "flow-next-export-context"
@@ -2064,9 +2046,8 @@ for path in sorted(Path(sys.argv[1]).rglob("*")):
 SKILL_ID_TRANSFORM
 
 # ─── 3. Hooks (none by default; fn-114) ───────────────────────────────────────
-# Codex mirror ships ZERO hooks. Plugin hooks/ is gone; Ralph guard registration
-# is agent-driven via /flow-next:ralph-init into project .codex/hooks.json.
-# Remove any stale mirror hooks.json left from older sync runs.
+# Codex mirror ships ZERO hooks. Remove any stale mirror hooks.json left from
+# older sync runs.
 echo -e "${BLUE}Hooks: zero-default (no codex/hooks.json)...${NC}"
 if [ -f "$CODEX_DIR/hooks.json" ]; then
   rm -f "$CODEX_DIR/hooks.json"
@@ -2114,7 +2095,7 @@ fi
 
 # Assert no default hooks.json in the Codex mirror (fn-114 zero-default)
 if [ -f "$CODEX_DIR/hooks.json" ]; then
-  echo -e "  ${RED}✗${NC} codex/hooks.json must not ship (Ralph is opt-in via ralph-init)"
+  echo -e "  ${RED}✗${NC} codex/hooks.json must not ship (the plugin ships no hooks)"
   errors=$((errors + 1))
 else
   echo -e "  ${GREEN}✓${NC} no codex/hooks.json (zero-default)"
@@ -2216,9 +2197,8 @@ fi
 # skill prose — should all have been rewritten to the plain-text numbered
 # prompt by Stage 3 (fn-45). Bare AskUserQuestion in the Codex skill prose
 # is a sync bug.
-# Exclude templates/ subdirs (those are user-script templates, not skill prose
-# that the agent reads — e.g., ralph-init/templates/watch-filter.py uses the
-# tool name as a dict key for hook event emoji mapping, which is intentional).
+# Exclude templates/ subdirs (those are user-facing templates, not skill prose
+# that the agent reads).
 askq_refs=$( { grep -rE 'AskUserQuestion|ToolSearch select:AskUserQuestion' "$CODEX_DIR/skills/" 2>/dev/null || true; } | { grep -v '/templates/' || true; } | wc -l | tr -d ' ')
 if [ "$askq_refs" != "0" ]; then
   echo -e "  ${RED}✗${NC} $askq_refs Claude-native tool refs (AskUserQuestion / ToolSearch) remain in codex skill prose — extend sync transforms"
@@ -2233,8 +2213,7 @@ fi
 # `.flow/bin` rung exactly once. This guard is the pair of the deleted fallback
 # injectors: with the canonical text carrying all three rungs, the failure mode
 # flipped from "missing rung" to "duplicated rung".
-# Scope: skill/agent PROSE only. `templates/` holds self-contained user scripts
-# (ralph's harness resolves its own sibling launcher, never the plugin root).
+# Scope: skill/agent PROSE only. `templates/` holds user-facing templates.
 chain_problems=$( { grep -rlE '^[[:space:]]*FLOWCTL=' "$CODEX_DIR/skills/" "$CODEX_DIR/agents/" 2>/dev/null || true; } | { grep -v '/templates/' || true; } | while read -r cf; do
   [ -f "$cf" ] || continue
   awk -v file="$cf" '
@@ -2410,12 +2389,6 @@ while IFS="$(printf '\t')" read -r rel pat expect; do
     closer_literal_fails=$((closer_literal_fails + 1))
   fi
 done <<'CLOSER_ROSTER'
-flow-next-capture/workflow.md	  /flow-next:plan <SPEC_ID>	  $flow-next-plan <SPEC_ID>
-flow-next-capture/workflow.md	  /flow-next:refine <SPEC_ID>	  $flow-next-refine <SPEC_ID>
-flow-next-capture/workflow.md	  /flow-next:visual <SPEC_ID>	  $flow-next-visual <SPEC_ID>
-flow-next-capture/references/rewrite-mode.md	  /flow-next:plan <SPEC_ID>	  $flow-next-plan <SPEC_ID>
-flow-next-capture/references/rewrite-mode.md	  /flow-next:refine <SPEC_ID>	  $flow-next-refine <SPEC_ID>
-flow-next-capture/references/rewrite-mode.md	  /flow-next:visual <SPEC_ID>	  $flow-next-visual <SPEC_ID>
 flow-next-capture/references/split-proposal.md	; /flow-next:refine <id> can still split later	; $flow-next-refine <id> can still split later
 flow-next-plan/references/next-steps-menu.md	`/flow-next:work fn-N-slug`	`$flow-next-work fn-N-slug`
 flow-next-plan/references/next-steps-menu.md	`/flow-next:refine fn-N-slug`	`$flow-next-refine fn-N-slug`
@@ -2425,7 +2398,7 @@ flow-next-make-pr/create-and-finalize.md	Reviewer feedback → /flow-next:resolv
 flow-next-make-pr/create-and-finalize.md	Body inspection → /flow-next:make-pr	Body inspection → $flow-next-make-pr
 flow-next-make-pr/create-and-finalize.md	re-run /flow-next:make-pr (skill detects	re-run $flow-next-make-pr (skill detects
 flow-next-refine/SKILL.md	Use `/flow-next:plan fn-N`	Use `$flow-next-plan fn-N`
-flow-next-refine/SKILL.md	→ `/flow-next:work fn-N` (or more interview	→ `$flow-next-work fn-N` (or more interview
+flow-next-refine/SKILL.md	→ `/flow-next:work fn-N` (or more refine	→ `$flow-next-work fn-N` (or more refine
 flow-next-refine/SKILL.md	→ `/flow-next:work fn-N.M`	→ `$flow-next-work fn-N.M`
 flow-next-refine/SKILL.md	→ `/flow-next:capture` to turn the refined document	→ `$flow-next-capture` to turn the refined document
 flow-next-refine/SKILL.md	`/flow-next:visual fn-N` for a spec input	`$flow-next-visual fn-N` for a spec input
@@ -2442,7 +2415,7 @@ flow-next-chart/references/chart-mode.md	separate `/flow-next:chart <id>` (or pi
 flow-next-audit/SKILL.md	recommends `/flow-next:memory-migrate` first	recommends `$flow-next-memory-migrate` first
 flow-next-audit/SKILL.md	`/flow-next:memory-migrate` first to make these auditable	`$flow-next-memory-migrate` first to make these auditable
 flow-next-audit/workflow.md	`/flow-next:memory-migrate` first to make these auditable	`$flow-next-memory-migrate` first to make these auditable
-flow-next-flow/references/route-matrix.md	| `/flow-next:strategy`	| `$flow-next-strategy`
+flow-next-flow/references/route-matrix-more.md	| `/flow-next:strategy`	| `$flow-next-strategy`
 flow-next-flow/references/route-matrix.md	| `/flow-next:capture`	| `$flow-next-capture`
 flow-next-flow/references/route-matrix.md	| `/flow-next:work <spec-id> --no-plan`	| `$flow-next-work <spec-id> --no-plan`
 flow-next-flow/references/route-matrix.md	then `/flow-next:make-pr <spec-id>`	then `$flow-next-make-pr <spec-id>`
@@ -2462,8 +2435,6 @@ flow-next-flow/auto.md	`work`: `/flow-next:work 	`work`: `$flow-next-work
 flow-next-flow/auto.md	`qa`: `/flow-next:qa 	`qa`: `$flow-next-qa
 flow-next-flow/auto.md	`make-pr`: `/flow-next:make-pr 	`make-pr`: `$flow-next-make-pr
 flow-next-refine/SKILL.md	use `/flow-next:plan-review fn-N`	use `$flow-next-plan-review fn-N`
-flow-next-capture/workflow.md	`/flow-next:flow --explain <SPEC_ID>`	`$flow-next-flow --explain <SPEC_ID>`
-flow-next-capture/references/rewrite-mode.md	`/flow-next:flow --explain <SPEC_ID>`	`$flow-next-flow --explain <SPEC_ID>`
 flow-next-plan/references/next-steps-menu.md	`/flow-next:flow --explain fn-N-slug`	`$flow-next-flow --explain fn-N-slug`
 flow-next-refine/SKILL.md	`/flow-next:flow --explain`	`$flow-next-flow --explain`
 flow-next-refine/references/write-back.md	`/flow-next:flow --explain fn-N`	`$flow-next-flow --explain fn-N`
@@ -2544,7 +2515,6 @@ fi
 # allowlist narrow so a newly baked primary-home path fails closed.
 is_narrative_primary_home_ref() {
   case "$1" in
-    *'sync-codex.sh rewrites it to `$HOME/.codex/scripts/flowctl` for the Codex mirror'* | \
     *'`config.toml` (`$CODEX_HOME`, default `~/.codex`)'* | \
     *'`agents/` (`$CODEX_HOME`, default `~/.codex`)'* | \
     *'**There is NO "defer to `~/.codex/config.toml`"'* | \

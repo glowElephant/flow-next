@@ -41,7 +41,7 @@ esac''',
         self.body.write_text("Grounded body\n")
         self.env = dict(os.environ, PATH=str(self.bin) + os.pathsep + os.environ["PATH"],
                         CALLS=str(self.root / "calls"), FLOWCTL=str(self.bin / "flowctl"),
-                        RALPH="0", AUTONOMOUS="0", OPEN_ITEMS_COUNT="0", DRAFT_FORCE="auto",
+                        AUTONOMOUS="0", OPEN_ITEMS_COUNT="0", DRAFT_FORCE="auto",
                         BODY_FILE=str(self.body), BASE_REF="origin/main", PR_TITLE="Title",
                         REPO_ROOT=str(self.root), PHASE0_CONTEXT="{}", SPEC_ID="fn-1")
 

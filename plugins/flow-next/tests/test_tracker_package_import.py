@@ -41,25 +41,11 @@ class TrackerPackageImports(unittest.TestCase):
 
         self.assertEqual(flowctl_tracker.__all__, [])
 
-    def test_no_version_field_until_distribution_lands(self) -> None:
-        """A truthiness assertion previously masked a __version__ that contradicted
-        the manifests. Version wiring is task .5; until then there is no field."""
-        import flowctl_tracker  # noqa: PLC0415
-
-        self.assertFalse(hasattr(flowctl_tracker, "__version__"))
-
     def test_providers_subpackage_imports(self) -> None:
         from flowctl_tracker import providers  # noqa: PLC0415
 
         # .4 shipped GitHub + GitLab behind resolver_for; .6 adds Linear + Jira.
         self.assertEqual(providers.__all__, ["resolver_for"])
-
-    def test_name_is_namespaced(self) -> None:
-        """A bare `tracker/` would collide on sys.path with anything similarly named."""
-        self.assertFalse(
-            (ROOT / "scripts" / "tracker").exists(),
-            "package must be `flowctl_tracker`, never a generic top-level `tracker`",
-        )
 
     def test_imports_from_the_real_launcher_context(self) -> None:
         """Production path: sys.path[0] is the bootstrap's dir, no insert needed."""

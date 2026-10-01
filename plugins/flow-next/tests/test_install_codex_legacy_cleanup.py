@@ -221,13 +221,13 @@ class TestInstallCodexLegacyCleanup(unittest.TestCase):
             )
             skill_dir = custom_codex / "skills" / "flow-next-qa"
             self.assertTrue(
-                (skill_dir / "../../docs/flow-next/ralph.md").resolve().is_file(),
+                (skill_dir / "../../docs/flow-next/pipeline-variations.md").resolve().is_file(),
                 "../../docs/flow-next/ link dangles from an installed skill dir",
             )
             # And the installed prose actually carries the namespaced spelling.
             self.assertIn(
-                "](../../../docs/flow-next/pipeline-variations.md)",
-                (ref_dir / "rewrite-mode.md").read_text(encoding="utf-8"),
+                "](../../../docs/flow-next/prose.md)",
+                (ref_dir / "glossary-terms.md").read_text(encoding="utf-8"),
                 "installed skill prose lost the namespaced docs link",
             )
             # Round 5 (#363 codex P2): the mirrored docs pages' OWN links are
@@ -255,16 +255,14 @@ class TestInstallCodexLegacyCleanup(unittest.TestCase):
                 (owned / "reach" / "../orchestration.md").resolve().is_file(),
                 "reach-page ../orchestration.md link dangles from installed reach/",
             )
-            # ...and a link to a non-installed target (repo-root STRATEGY.md,
-            # linked from the docs index) is an absolute canonical URL —
+            # ...and a link to a non-installed target (the config schema,
+            # linked from running-lean.md) is an absolute canonical URL —
             # resolves everywhere, never dangles on disk (string assertion
-            # only; no network). pipeline-variations.md used to carry the
-            # pinned link into README.md#compose-the-pipeline; that section
-            # now lives on flow-next.dev and the page links the site directly.
-            docs_index = (owned / "README.md").read_text(encoding="utf-8")
+            # only; no network).
+            lean_page = (owned / "running-lean.md").read_text(encoding="utf-8")
             self.assertIn(
-                "](https://github.com/gmickel/flow-next/blob/main/STRATEGY.md)",
-                docs_index,
+                "](https://github.com/gmickel/flow-next/blob/main/plugins/flow-next/schema/flow-config.schema.json)",
+                lean_page,
                 "non-installed-target docs link not rewritten to the absolute canonical URL",
             )
 

@@ -493,7 +493,7 @@ class PopulatedFixtureTest(BriefRepoTestCase):
 # ── 2. Budget fixture (20/50/30) ──────────────────────────────────────────
 
 
-class BudgetFixtureTest(BriefRepoTestCase):
+class _BudgetFixtureBase(BriefRepoTestCase):
     """20 specs / 50 tasks / 30 memory — both forms <= 8000; tiers ordered."""
 
     memory_enabled = True
@@ -535,6 +535,8 @@ class BudgetFixtureTest(BriefRepoTestCase):
                 title=f"Memory entry {i} " + "M" * 30,
             )
 
+
+class BudgetFixtureTest(_BudgetFixtureBase):
     def test_both_forms_under_budget(self) -> None:
         md_r = self._brief()
         js_r = self._brief("--json")
@@ -791,7 +793,7 @@ class DeterminismTest(BriefRepoTestCase):
 # ── 6. md / JSON parity ───────────────────────────────────────────────────
 
 
-class MdJsonParityTest(BudgetFixtureTest):
+class MdJsonParityTest(_BudgetFixtureBase):
     """Identical retained ids/omissions; both <= 8000; per-section truncated flags."""
 
     def test_parity_retained_ids_and_flags(self) -> None:
@@ -1087,7 +1089,7 @@ class NoWritesTest(BriefRepoTestCase):
 # ── 11. --full lifts budget ───────────────────────────────────────────────
 
 
-class FullFlagTest(BudgetFixtureTest):
+class FullFlagTest(_BudgetFixtureBase):
     """`--full` lifts the 8000 budget; default truncates where full exceeds."""
 
     def test_full_exceeds_budget_where_default_truncates(self) -> None:

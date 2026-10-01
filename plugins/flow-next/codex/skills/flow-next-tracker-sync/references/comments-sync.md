@@ -1,4 +1,4 @@
-# Comments / evidence reconciliation — two-way append + dedup (R8)
+# Comments / evidence reconciliation — two-way append + dedup
 
 The comments-sync reconcile body behind the [../steps.md](../steps.md) `push` /
 `pull` / `reconcile` hooks (`postComment` / `listComments`). It syncs **comments and
@@ -22,15 +22,7 @@ shape + pull fold policy.
 > adds complexity, drop it and append; the append-only contract for every other
 > comment is non-negotiable.
 
-> **Live-verification status (this environment).** Posting a comment to / listing
-> comments from a real Linear issue needs live credentials — unavailable in the
-> build environment. The **strictly-live `postComment` / `listComments` round-trip
-> is deferred to the post-PR smoke-testing phase** the maintainer drives (same
-> posture as the [linear-ladder.md](linear-ladder.md) round-trip spike,
-> [body-merge.md](body-merge.md), and [status-sync.md](status-sync.md)). Everything
-> else here — the marker format, the pull fold rules, the lifecycle-event → comment
-> mapping — is a complete, runnable procedure with
-> worked fixtures and explicit oracles below, exercisable without a live tracker.
+> The worked fixtures and explicit oracles below are exercisable without a live tracker.
 
 ## Two directions, both append-only
 
@@ -47,9 +39,9 @@ every `perEvent` leaf defaulting to `off`, **nothing is posted until a user opts
 
 Comment wording follows the artifact prose contract in [docs/prose.md](../../../docs/flow-next/prose.md) under its "structural contracts win" precedence — the marker, envelope, and projection-only constraints in this file stay authoritative; proceed without the doc when it is absent.
 
-### Which lifecycle events post a comment (R8 / R10)
+### Which lifecycle events post a comment
 
-The R10 lifecycle touchpoints (wired into the 7 lifecycle skills) that produce a
+The lifecycle touchpoints (wired into the 7 lifecycle skills) that produce a
 **comment** here:
 
 | Event (`tracker.perEvent` key) | Comment posted to the issue |
@@ -68,7 +60,7 @@ they post a comment only when explicitly opted into `comment`.
 The actual wiring (calling this reconcile from each skill's lifecycle hook) lives
 in the lifecycle skills; this file defines the comment shape + dedup the wiring relies on.
 
-## Dedup — the whole problem (R8)
+## Dedup — the whole problem
 
 Appends don't conflict, but a naive re-sync re-posts everything. The facade
 deduplicates posts by marker. The pull fold is the agent's: it skips flow's own
@@ -148,7 +140,7 @@ the exact-match fence.
 
 ### Human-paste fold rule (agent-side)
 
-The hard case R8 names explicitly: **a human copy-pastes a flow comment** (e.g.
+The hard case: **a human copy-pastes a flow comment** (e.g.
 pastes the evidence block into a *new* tracker comment) — it has **no marker** and
 a **new id**, so the marker check misses it. The facade receives an already-folded spec and
 does not filter pasted copies, so the pull fold applies this rule over the fetched
@@ -163,7 +155,7 @@ listing:
    **do NOT import** it.
 
 This is the rule that makes "a human-pasted copy of a flow comment must not be
-re-imported" (R8) actually hold.
+re-imported" actually hold.
 
 ### Dedup decision flow
 
@@ -199,7 +191,7 @@ like a requirement is **logged as a comment, never promoted to an R-ID** (same
 [body-merge.md](body-merge.md) Step 3). Promotion is a flow-authoring act
 (interview/plan), not a sync act.
 
-## Evidence comments (R8) — the flow → tracker payload
+## Evidence comments — the flow → tracker payload
 
 A `work.done` evidence comment renders the flow evidence (tests, PR) into a readable
 tracker comment. The caller's file starts with `evidence=a1b2c3d`; the facade turns
@@ -295,10 +287,10 @@ weakened to accommodate it. It is opt-in and droppable; the append-only fence is
 ## Worked fixtures (runnable without a live tracker)
 
 Each fixture is an input comment set + the expected dedup/append outcome — the
-oracles for R8, exercisable by the host agent reading them (no live Linear; the live
-`postComment`/`listComments` is the smoke phase).
+oracles for this file, exercisable by the host agent reading them (no live Linear
+needed).
 
-### Fixture C-B — human-pasted flow comment is NOT re-imported (R8 headline)
+### Fixture C-B — human-pasted flow comment is NOT re-imported (headline)
 
 **Setup:** flow posted an evidence comment (marker + body). A human then **copied
 that body** (without the marker) into a *new* tracker comment, with different
@@ -312,9 +304,9 @@ same listing (human-paste fold rule) → **do NOT import** it into the sync log.
 
 **Oracle:** the sync log gains **zero** entries from the paste; the normalized
 bodies matched despite the whitespace difference. PASS iff the paste is recognized as
-flow's own content and skipped (this is the R8 anti-echo guarantee).
+flow's own content and skipped (this is the anti-echo guarantee).
 
-### Fixture C-C — genuine tracker comment IS imported (R8)
+### Fixture C-C — genuine tracker comment IS imported
 
 **Setup:** a PM posted a real question on the issue — no marker, unique text, new id.
 
@@ -327,7 +319,7 @@ crediting the PM + timestamp.
 **Oracle:** exactly one new sync-log line with the PM's text and author; it is NOT
 promoted to an R-ID. PASS iff the genuine comment is logged (and only logged).
 
-### Fixture C-D — flow's own marked comment is skipped on pull (R8)
+### Fixture C-D — flow's own marked comment is skipped on pull
 
 **Setup:** the issue has flow's `work.done` comment (its body carries the
 `<!-- flow-next:sync … evt=work.done … -->` marker).
@@ -340,7 +332,7 @@ never re-import flow's structured comment into the sync log.
 **Oracle:** the sync log gains nothing from flow's own comment. PASS iff the marked
 comment is not echoed back into the spec.
 
-### Fixture C-E — rolling status comment updates in place, append fence intact (R8)
+### Fixture C-E — rolling status comment updates in place, append fence intact
 
 **Setup:** the opt-in rolling `flow-next:status … rolling` comment exists; two prior
 `work.done` append comments also exist.

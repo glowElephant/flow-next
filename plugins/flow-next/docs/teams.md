@@ -4,7 +4,7 @@ Agentic engineering compresses implementation from weeks to hours - and the touc
 
 The vocabulary on this page - *handover objects*, *Delegate / Review / Own*, *lifecycle steps [1]-[9]* - comes from the [AI-x-SDLC Starter-Kit methodology guide](https://github.com/gmickel/AI-x-SDLC-Starter-Kit/blob/main/guides/methodology.md). That document is the *theory*. This page is the *implementation* - the same lifecycle, mapped to concrete `flowctl` commands and `.flow/` artefacts.
 
-> **Solo dev?** You can skip most of this page. For a ready cohesive spec and a capable coding agent, start with `capture → work --no-plan → make-pr`, covered in the [root README](../../../README.md). Chart is only for one oversized/unclear idea; skip it when intent is already stateable. This page is for teams running multiple humans + multiple agents against the same repo.
+> **Solo dev?** You can skip most of this page. For a ready cohesive spec and a capable coding agent, start with `capture → work --no-plan → make-pr`, covered in [Your first 30 minutes](https://flow-next.dev/first-30-minutes/). Chart is only for one oversized/unclear idea; skip it when intent is already stateable. This page is for teams running multiple humans + multiple agents against the same repo.
 
 ---
 
@@ -23,7 +23,7 @@ The vocabulary on this page - *handover objects*, *Delegate / Review / Own*, *li
   - [Decision records](#decision-records)
   - [Strategy alignment](#strategy-alignment)
 - [Multi-developer coordination](#multi-developer-coordination)
-- [Autonomous mode (Ralph) in a team](#autonomous-mode-ralph-in-a-team)
+- [Autonomous work in a team](#autonomous-work-in-a-team)
 - [Tracker sync & Linear Diffs](#tracker-sync--linear-diffs)
 - [Standing criteria (`.flow/criteria.md`)](#standing-criteria-flowcriteriamd)
 - [What flow-next does *not* replace](#what-flow-next-does-not-replace)
@@ -67,13 +67,14 @@ flowchart LR
     Plan --> Work[/flow-next:work/]
     Work --> ImplReview[/flow-next:impl-review/]
     ImplReview -->|SHIP| SpecCompletionReview[/flow-next:spec-completion-review/]
-    ImplReview -->|NEEDS_WORK| Work
+    ImplReview -->|NEEDS_WORK| FixPass["one fix pass,<br/>one re-review of the fixes"]
+    FixPass --> SpecCompletionReview
     SpecCompletionReview -->|qa on, or auto qualifying| QA[/flow-next:qa/]
     SpecCompletionReview -->|qa off, or auto skip recorded| MakePR
     QA -.opt-in live-app QA.-> QAGate{{"live deploy + driver?<br/>YES → drive · NO → BLOCKED · no UI → N/A"}}
     QA -->|YES or N.A.| MakePR[/flow-next:make-pr/]
     QA -->|NO| Work
-    MakePR --> DraftPR([Draft PR, default stop])
+    MakePR --> DraftPR([Open PR, default stop])
     DraftPR -.scoped consent or --until=merge.-> Land[/flow-next:land/]
     Land -->|gates pass| Merged([🚀 Merged])
     DraftPR -.manual stage.-> ResolvePR[/flow-next:resolve-pr/]
@@ -83,7 +84,7 @@ flowchart LR
     Audit -.-> Memory[(.flow/memory/)]
 ```
 
-The map is not strictly linear. `/prospect` is optional. `/flow-next:chart` is an **optional pre-capture discovery route** for one oversized or unclear idea - never a mandatory stage and never a stage of `flow --auto`. Skip chart when intent and boundaries are already stateable (`signal absent`); if you skip despite residual risk, evidence/consent/review contracts still apply later. `/flow-next:flow` runs this map for you. Say what you have and it picks the smallest sufficient route, runs it, and stops at the next decision that is yours; `/flow-next:flow --explain` shows the route without running it. `/capture` and `/interview` remain entry points depending on whether the spec emerged from conversation or a chart briefing (`/capture`) or needs structured discovery on an existing spec (`/interview`). `/flow-next:refine` is one interview, optionally focused by a free-text `--scope` lens. Teams that split a spec between a product owner and a tech lead run it once per person (`--biz`, then `--tech`) against the same `.flow/specs/<id>.md` file; solo devs run it once without a lens. The implementation review loop (`/work` ↔ `/impl-review`) iterates until SHIP. `/flow-next:qa` is an **optional live-app QA stage** between spec-completion review and make-pr - it only runs when there's a live deploy + a driver, and a NO verdict reports an open P0/P1 confirmed against the running app. In an attended run those findings guide fixes; `flow --auto` can carry findings or an inability to verify into a draft PR. QA defaults off (`pipeline.qa` is `off | on | auto`; what each value does is in [`gate-selection.md`](../skills/flow-next-flow/references/gate-selection.md)) and grants no merge approval. Flow stops at the draft PR by default. Add `--until=merge` to carry the selected spec through land's convergence and gated merge, or invoke `/flow-next:resolve-pr` and `/flow-next:land` directly. An attended rerun with an existing PR offers landing and asks once unless current scoped authorization already exists. See [the destination and consent rules](pipeline-variations.md#choose-where-flow-stops). Maintenance (`/audit`) runs out-of-band against `.flow/memory/`. The diagram includes the direct route and optional coordination and verification stages. Plan runs only on a positive signal; the signals and the exclusions are in [`plan-vs-no-plan.md`](../skills/flow-next-flow/references/plan-vs-no-plan.md). Review and QA do not guarantee every regression will be caught. See [`pipeline-variations.md`](pipeline-variations.md) for six worked examples and the risk-and-unknowns reasoning that selects between them.
+The map is not strictly linear. `/prospect` is optional. `/flow-next:chart` is an **optional pre-capture discovery route** for one oversized or unclear idea - never a mandatory stage and never a stage of `flow --auto`. Skip chart when intent and boundaries are already stateable (`signal absent`); if you skip despite residual risk, evidence/consent/review contracts still apply later. `/flow-next:flow` runs this map for you. Say what you have and it picks the smallest sufficient route, runs it, and stops at the next decision that is yours; `/flow-next:flow --explain` shows the route without running it. `/capture` remains the entry point when the spec emerged from conversation or a chart briefing; `/flow-next:refine` adds structured discovery on an existing spec. `/flow-next:refine` is one interview, optionally focused by a free-text `--scope` lens. Teams that split a spec between a product owner and a tech lead run it once per person (`--biz`, then `--tech`) against the same `.flow/specs/<id>.md` file; solo devs run it once without a lens. Implementation review runs by risk: attended, it is one fix pass and one re-review of the fixes; `flow --auto` loops until SHIP. `/flow-next:qa` is an **optional live-app QA stage** between spec-completion review and make-pr - it only runs when there's a live deploy + a driver, and a NO verdict reports an open P0/P1 confirmed against the running app. In an attended run those findings guide fixes; `flow --auto` can carry findings or an inability to verify into a draft PR. QA defaults off (`pipeline.qa` is `off | on | auto`; what each value does is in [`gate-selection.md`](../skills/flow-next-flow/references/gate-selection.md)) and grants no merge approval. Flow stops at the open PR by default: ready for review, or a draft when open items remain. Add `--until=merge` to carry the selected spec through land's convergence and gated merge, or invoke `/flow-next:resolve-pr` and `/flow-next:land` directly. An attended rerun with an existing PR offers landing and asks once unless current scoped authorization already exists. See [the destination and consent rules](pipeline-variations.md#choose-where-flow-stops). Maintenance (`/audit`) runs out-of-band against `.flow/memory/`. The diagram includes the direct route and optional coordination and verification stages. Plan runs only on a positive signal; the signals and the exclusions are in [`plan-vs-no-plan.md`](../skills/flow-next-flow/references/plan-vs-no-plan.md). Review and QA do not guarantee every regression will be caught. See [`pipeline-variations.md`](pipeline-variations.md) for six worked examples and the risk-and-unknowns reasoning that selects between them.
 
 ---
 
@@ -124,11 +125,9 @@ When an effort is too large and unclear for a single capture session, `/flow-nex
 
 **One attended decision per session.** Resolving more than one attended decision in a session reintroduces context collapse. Parallel unattended fan-out is allowed only as separate invocations - never a batch tick that aggregates mixed outcomes.
 
-**Capture is the handoff.** Chart never writes under `.flow/specs/` and never sets `ready`. Capture ingests the briefing as attributable evidence (chart id, B-ID, cluster, D-ID links, assets), applies criterion source tags only to newly authored acceptance criteria, and records `chart link-spec`. D-ID/evidence provenance stays structural and distinct from `[user]` / `[paraphrase]` / `[inferred]` author tags.
+**Capture is the handoff.** Chart never writes under `.flow/specs/` and never sets `ready`. Capture ingests the briefing as attributable evidence (chart id, B-ID, cluster, D-ID links, assets), applies criterion source tags only to newly authored acceptance criteria, and records `chart link-spec`. D-ID/evidence provenance stays structural and distinct from the `[paraphrase]` / `[inferred]` author tags.
 
 Example journeys (research-led, prototype-led reversal with supersession, multi-spec split, skip-chart) are **illustrative**, not a canonical checklist - chart has no fixed discovery phase order.
-
-> **Optional render-lens companions (2.0.0+).** With HTML artifact mode on (`flowctl config set artifacts.html.enabled true`), the two human review surfaces gain a rendered companion: spec review gets a self-contained spec visualizer at `.flow/artifacts/<spec-id>/spec.html` (acceptance criteria with provenance chips; task DAG + R-ID coverage once planned - useful for POs/PMs reviewing handovers #1-#3) and diff review gets a read-only PR instrument at `pr.html` (churn map, R-ID → evidence table, where-to-look checklist - handover #6). The markdown artefacts above remain the record; lenses are regenerable derivations. OFF by default. See [`html-artifacts.md`](html-artifacts.md).
 
 ---
 
@@ -164,7 +163,7 @@ Both produce a spec at `.flow/specs/<id>.md`. Survives `rm -rf .flow/` only if `
 
 ### [2] Spec, business-layer complete: Handover #1
 
-`/flow-next:capture` source-tags every acceptance criterion as `[user]` (verbatim from the user), `[paraphrase]` (rephrased), or `[inferred]` (the agent inferred it). Capture writes the spec, then shows a compact summary (title, criteria count, source tally, recommended route) and offers the saved file in the editor, per the [read-back contract](read-back.md). The full body prints on request. The `[inferred]` count identifies assumptions the user can edit or reject. Saving alone does not mark the spec ready or authorize implementation.
+`/flow-next:capture` leaves the user's verbatim words untagged and tags only what it authored: `[paraphrase]` (rephrased) or `[inferred]` (the agent inferred it). Capture writes the spec, then shows a compact summary (title, criteria count, source tally, recommended route) and offers the saved file in the editor, per the [read-back contract](read-back.md). The full body prints on request. The `[inferred]` count identifies assumptions the user can edit or reject. Saving alone does not mark the spec ready or authorize implementation.
 
 For specs that emerge from a longer back-and-forth, run `/flow-next:refine <spec-id> --biz` instead. The business lens focuses the interview on the product decisions that would change what gets built and that the spec leaves unclear - who it is for, what done looks like, what is explicitly out, a constraint the domain implies. Asking nothing is a valid outcome. The codebase is read-only context, not the subject of questions.
 
@@ -196,7 +195,7 @@ Run `/flow-next:plan-review` again on the plan itself. The plan is a separate ha
 
 ### [5] Working implementation: Handover #4
 
-`/flow-next:work <spec-id>` inspects the full ready frontier on every loop. When several tasks are independent and their mutable surfaces can be isolated, the host may dispatch a safe subset concurrently; otherwise it explains the constraint and serializes. Each task runs in a **worker subagent with fresh context** (no token bleed from prior tasks). Before each task, the worker re-anchors: re-reads the spec, the task, and `git log` since branch base.
+`/flow-next:work <spec-id>` inspects the full ready frontier on every loop. When several tasks are independent and their mutable surfaces can be isolated, the host may dispatch a safe subset concurrently; otherwise it explains the constraint and serializes. Each task runs in a **worker subagent with fresh context** (no token bleed from prior tasks); a run with a single task to implement is implemented inline by the conductor, following the same worker phases. Before each task, the worker re-anchors: re-reads the spec, the task, and `git log` since branch base.
 
 **Which model implements is a team routing choice, not a flag on this command.** Workers run on the session model unless the project's routing block names an `implementer` tier - one `<tier>: <model>` line in the repo's `CLAUDE.md` / `AGENTS.md`, which every teammate's harness reads. What each tier means: [`orchestration.md`](orchestration.md#tiers-what-kind-of-model-a-job-wants); what your harness can actually reach: [`reach/`](reach/README.md).
 
@@ -208,11 +207,11 @@ Branch strategy is a per-team choice:
 
 | Choice | Best for | Trade-off |
 |--------|----------|-----------|
-| `--branch=current` | One spec at a time, single dev | No isolation between specs |
-| `--branch=new` (default) | Multiple in-flight specs, single dev | One PR per spec |
+| `--branch=current` (default off the default branch) | One spec at a time, single dev | No isolation between specs |
+| `--branch=new` (default on the default branch) | Multiple in-flight specs, single dev | One PR per spec |
 | `--branch=worktree` | Parallel specs + parallel workers | Disk overhead; CI parallelism |
 
-*(+ optional tracker sync)* - `tracker.perEvent.work.firstClaim` flips the linked issue to in-progress on the first task claim; `tracker.perEvent.work.done` posts a status comment + evidence on task completion. Both on by default once the bridge is hooked up (opt-out per event); conflicts queue (never block) - see [`ralph.md`](ralph.md).
+*(+ optional tracker sync)* - `tracker.perEvent.work.firstClaim` flips the linked issue to in-progress on the first task claim; `tracker.perEvent.work.done` posts a status comment + evidence on task completion. Both on by default once the bridge is hooked up (opt-out per event); conflicts queue (never block) - see [`tracker-sync.md`](tracker-sync.md).
 
 ### [6] Cross-model code review: Handover #5
 
@@ -220,7 +219,7 @@ Branch strategy is a per-team choice:
 
 Backends: `rp` (RepoPrompt), `codex` (Codex CLI), `copilot` (GitHub Copilot CLI), `cursor` (Cursor `cursor-agent` CLI), `claude` (Claude Code CLI, `claude -p` headless and read-only), `host` (host-native cross-family reviewer subagent; bare-only), `none`. Spec-form: `backend[:model[:effort]]` - pin a backend to a concrete model id and reasoning effort (cursor folds effort into the model name - no `:effort` rung). Model ids are volatile, so this page names roles, not ids; current concrete examples live in [`docs/flowctl.md`](flowctl.md), which also documents the `flowctl review-backend` command.
 
-The review surfaces findings on five confidence anchors (0 / 25 / 50 / 75 / 100) and gates `<75` except P0 @ 50+. Findings classified `introduced` vs `pre_existing` - only `introduced` counts toward the verdict. Receipts at `.flow/review-receipts/<branch>.json` carry `unaddressed: [R-IDs]`, `suppressed_count`, `verdict_before_validate`, etc. The receipt is itself a handover artefact.
+The review surfaces findings on five confidence anchors (0 / 25 / 50 / 75 / 100) and gates `<75` except P0 @ 50+. Findings classified `introduced` vs `pre_existing` - only `introduced` counts toward the verdict. A large or cross-cutting diff, or one touching persisted or shared state, concurrency, security or data layout, gets three reviewers; anything else gets one. On `NEEDS_WORK` the author fixes what the change got wrong, commits a `Declined #<n>: <reason>` line for each finding left as a follow-up, and the same reviewer session re-reviews only the fix commits: it may withdraw a declined finding, and only a problem the fixes introduced can block. That re-review is final in an attended run. An unattended run (`flow --auto`, any destination), or one where someone asked to review until SHIP, loops instead, bounded by flowctl's round cap and stall check; the author may end that loop over declined findings below Major, recording each in the pull request. Receipts at `.flow/review-receipts/<branch>.json` carry `unaddressed: [R-IDs]`, `suppressed_count`, `verdict_before_validate`, etc. The receipt is itself a handover artefact.
 
 Opt-in flags for hardened review: `--validate` (validator pass on `NEEDS_WORK` to drop confirmed false positives), `--deep` (security + adversarial + performance passes), `--interactive` (per-finding Apply/Defer/Skip walkthrough).
 
@@ -230,7 +229,7 @@ Opt-in flags for hardened review: `--validate` (validator pass on `NEEDS_WORK` t
 
 Configure as a required gate via `--require-completion-review` (in `flowctl next`). The work skill blocks spec-close until the completion-review requirement is satisfied: a SHIP verdict, or the `not_required` status work's own 3g policy skip records when review policy excuses the spec - satisfied never claims a review ran; `ship` alone does. The fix loop happens internally - the skill keeps iterating until it passes or escalates.
 
-*(+ optional tracker sync)* - `tracker.perEvent.completionReview` posts the verdict + R-ID coverage as a comment on the linked issue when the closing gate passes (and at most leaves it at `In Review`); it **never** flips the issue to `Done`/`verified` (fn-66 - `Done` is reserved for a merged PR and driven solely by `land.merged`). On by default once the bridge is hooked up (opt-out per event).
+*(+ optional tracker sync)* - `tracker.perEvent.completionReview` posts the verdict + R-ID coverage as a comment on the linked issue when the closing gate passes (and at most leaves it at `In Review`); it **never** flips the issue to `Done`/`verified` (`Done` is reserved for a merged PR and driven solely by `land.merged`). On by default once the bridge is hooked up (opt-out per event).
 
 ### [7.5] Live-app QA: optional, before the PR
 
@@ -248,7 +247,7 @@ The QA discipline (P0/P1/P2 taxonomy, evidence rules, session hygiene) is a lean
 
 `/flow-next:make-pr <spec-id>` authors one aid artifact from the spec, task evidence, review receipts, decisions, and diff. flowctl renders its short briefing: Why, What changes for a user or operator, Scope, Blast radius, Verification, Tradeoffs, and Open items. Empty sections are omitted.
 
-Scope groups files into diff-fenced trees with purposes and requirement IDs. Undescribed files collapse to a count; canonical attention means must read, while mechanical and generated changes are safe to skim. The complete walkthrough stays in the stored artifact for the HTML lens and other consumers. See [`pr-cognitive-aid.md`](pr-cognitive-aid.md) for the rendering and consumer contract.
+Scope groups files into diff-fenced trees with purposes and requirement IDs. Undescribed files collapse to a count; canonical attention means must read, while mechanical and generated changes are safe to skim. The complete walkthrough stays in the stored artifact for other consumers. See [`pr-cognitive-aid.md`](pr-cognitive-aid.md) for the rendering and consumer contract.
 
 A structural sketch appears only when structure actually changed, preferably in a diff fence. Proof cells draw their outcomes from gates that ran and their receipts; unrun steps stay unverified. Open items and Tradeoffs carry findings that the spec requires to be recorded in the PR.
 
@@ -287,7 +286,7 @@ Adapted from the methodology guide's *Delegate → Review → Own* framework, wi
 | **Build** | Drafts implementations, tests, docs | Design choices, performance, security, domain alignment | New abstractions, cross-cutting changes, ambiguity | `/flow-next:work` (worker subagent) |
 | **Test** | Generates cases, identifies edge cases, suggests failures | Tests aren't stubbed, runnable by agents, coverage | Coverage aligned with specs, adversarial thinking | Evidence requirements in spec; per-task evidence record |
 | **Review** | Initial code review, catches P0/P1 before human | Architectural alignment, conventions, requirements match | Final review, merge decision | `/flow-next:impl-review` (cross-model) → `/flow-next:make-pr` |
-| **Deploy** | Generates release notes, identifies breaking changes | Smoke validation, customer-facing copy | Production responsibility, incident response | `/flow-next:make-pr` opens the draft PR → optional authorized land stage through convergence and merge (`flow <spec> --until=merge`), or direct `/flow-next:resolve-pr` and `/flow-next:land` invocations |
+| **Deploy** | Generates release notes, identifies breaking changes | Smoke validation, customer-facing copy | Production responsibility, incident response | `/flow-next:make-pr` opens the PR → optional authorized land stage through convergence and merge (`flow <spec> --until=merge`), or direct `/flow-next:resolve-pr` and `/flow-next:land` invocations |
 | **Maintain** | Reviews stale memory, drift, dead conventions | Per-entry classification | Direction of `STRATEGY.md`, what stays load-bearing | `/flow-next:audit` |
 
 The pattern is the same in every row: **first pass is delegated to the agent, validation is the reviewing human's job, and strategic decisions stay with the owner**. Flow-Next is the structure that makes this concrete - every command in the right column corresponds to one of the three columns on the left.
@@ -399,7 +398,7 @@ HANDOVER #2 — spec fully complete → developer
 
 ### Decision records
 
-When a load-bearing architectural choice is made during `/work` or `/interview`, the host agent prompts (under doc-aware mode) to write a decision record to `.flow/memory/knowledge/decisions/<slug>.md`. The record carries:
+When a load-bearing architectural choice is made during `/work` or `/refine`, the host agent prompts (under doc-aware mode) to write a decision record to `.flow/memory/knowledge/decisions/<slug>.md`. The record carries:
 
 - `decision_status`: `proposed` | `accepted` | `superseded`
 - `superseded_by`: id of the replacing decision (when superseded)
@@ -432,25 +431,21 @@ What `.flow/` looks like with N developers in parallel:
 
 - **Spec-level isolation.** Each spec is `fn-<N>-<slug>` with its markdown at `.flow/specs/fn-<N>-<slug>.md`, sidecar JSON at `.flow/specs/fn-<N>-<slug>.json`, and its own task tree under `.flow/tasks/fn-<N>-<slug>.M.json|md`. Two devs working on `fn-12-...` and `fn-15-...` never touch each other's files.
 - **Task-level dependencies.** Within a spec, `requires: [task-ids]` frontmatter is the contract. A task is *ready* when all its requires have status `done`. `flowctl ready --spec fn-12-...` lists ready tasks.
-- **Branch strategy.** Per-spec branch is the default (`--branch=new`). Worktrees scale to several specs in flight (`--branch=worktree`). Current-branch is for solo, single-spec work.
+- **Branch strategy.** Work never asks: it stays on the current branch when that is not the default branch, and otherwise creates a per-spec branch (`--branch=new`). Worktrees scale to several specs in flight (`--branch=worktree`). Current-branch is for solo, single-spec work.
 - **Spec-level dependencies chain, they do not wait.** A spec whose parent (`depends_on_epics`) has every task done and its branch on origin builds as a **chain**: its branch forks from the parent's tip and its PR targets the parent's branch, so a reviewer sees only that layer's diff; on GitHub the PR is also linked into the parent's **stack**. Chains are linear (one open parent, one child at a time). Humans merge from the bottom layer up, from the stack UI or through land; a parent reworked after the child branched may leave the child needing a rebase. See the [orchestration guide](orchestration.md#chaining-the-loops).
 - **Worker isolation has two layers.** Each task runs in a fresh-context worker, preventing context bleed. Concurrent writers also need separate mutable workspaces and a conductor-owned integration step; an atomic task claim alone provides neither.
-- **Memory tree as shared state.** `.flow/memory/` is the only multi-writer surface. The convention: bug entries are auto-written by Ralph on review-loop iteration; knowledge entries (`decisions/`, `architecture-patterns/`, `conventions/`) are written by humans or by `/work` with explicit confirmation. `/flow-next:audit` reconciles drift periodically.
+- **Memory tree as shared state.** `.flow/memory/` is the only multi-writer surface. The convention: bug entries are written by `/work` and `/qa` from review and QA findings; knowledge entries (`decisions/`, `architecture-patterns/`, `conventions/`) are written by humans or by `/work` with explicit confirmation. `/flow-next:audit` reconciles drift periodically.
 - **`.flow/` lives in the repo.** Commit it. Code review it. The spec PRs and implementation PRs both touch `.flow/` - that's intentional. The team's `.flow/` evolves alongside the code.
 
 **Conflict resolution:** when two specs evolve overlapping memory entries (same `<slug>` under `bug/runtime-errors/`, for example), the second writer creates the entry with a `related_to: [first-id]` frontmatter pointer rather than overwriting. `/flow-next:audit` later surfaces the pair for Consolidate.
 
 ---
 
-<a id="autonomous-mode-ralph-in-a-team"></a>
-
 ## Autonomous work in a team
 
-Use `/flow-next:flow --auto` to drive one ready spec at a time to its draft PR. Add `--until=merge` for the selected spec to continue through land under the team's authorized merge policy, or run land independently. The configured tracker touchpoint runs after a confirmed merge; release preparation is a separate step following the repository's release documentation. Repeat the invocation per item, or run `flow --auto --tick` under a host loop where sessions are short. Keep overlapping runs in separate clones or isolated workspaces and give each a clear scope.
+Use `/flow-next:flow --auto` to drive one ready spec at a time to its PR. Add `--until=merge` for the selected spec to continue through land under the team's authorized merge policy, or run land independently. The configured tracker touchpoint runs after a confirmed merge; release preparation is a separate step following the repository's release documentation. Repeat the invocation per item, or run `flow --auto --tick` under a host loop where sessions are short. Keep overlapping runs in separate clones or isolated workspaces and give each a clear scope.
 
 Humans approve the intent and the conditions for merging. The spec and PR remain the handover surfaces whether the run is supervised or unattended. Use the [orchestration guide](orchestration.md#chaining-the-loops) for driver recipes.
-
-Ralph is deprecated. Existing installations retain their [reference](ralph.md); new team setups should use `flow --auto` and land.
 
 ## Tracker sync & Linear Diffs
 
@@ -458,7 +453,7 @@ Teams that live in Linear, GitHub Issues, GitLab, or Jira don't have to leave th
 
 **Tracker-keyed ids are the recommended team default.** Parallel agents and branches that each scan only local `.flow/specs/` collide on `fn-N` - that is structural, not unlucky. With a tracker configured, set `flowctl config set tracker.specIds tracker` so new specs mint from the issue key (Linear/Jira `WOR-17` → `wor-17-slug`; GitHub `#123` → `gh-123-slug`; GitLab iid → `gl-N-slug`). The tracker is the distributed allocator; mixed `fn-*` and tracker-keyed stores coexist and both resolve. `/flow-next:setup` asks this once when a tracker is configured and the key is still unset. Full model: [`tracker-sync.md`](tracker-sync.md) § Hybrid id model.
 
-**Linear Diffs - review the PR inside the issue.** When `tracker.type == linear`, Flow-Next makes your PRs [Linear Diffs](https://linear.app/docs/diffs)-ready automatically: `/flow-next:make-pr` writes a **non-closing** `Ref WOR-N` line into the PR body (plus a rich PR attachment on the GraphQL transport), so Linear's GitHub integration auto-links the PR and renders its full diff, file changes, checks, and inline review threads **directly on the issue** - you approve / request changes / merge without leaving Linear. *Non-closing* (`Ref`, not `Fixes`) is deliberate: the PR renders as a diff but does **not** auto-complete the issue on merge - `/flow-next:land`'s `land.merged` touchpoint owns the `Done` transition (fn-66), gated on a GitHub-confirmed `MERGED` probe (completion review only posts a verdict comment + at most `In Review`). The PR↔issue link **and the move to `In Review`** are unconditional once the bridge is active (no `makePr` opt-in needed); `land.merged`'s move to `Done` is likewise active-by-default. One-time Linear-side setup is required (the GitHub integration with code access, your personal GitHub connection, and "Enable code reviews"). **GitHub-, GitLab-, and Jira-tracker** users get no Linear Diffs - the PR is cross-linked natively (`Refs #N` on GitHub; `Ref <project>#<iid>` on GitLab; a **remote link / PR-URL comment** on the Jira issue - Jira has neither PR auto-linkify nor `gh`, so the adapter writes the link in-adapter) and review happens on the host.
+**Linear Diffs - review the PR inside the issue.** When `tracker.type == linear`, Flow-Next makes your PRs [Linear Diffs](https://linear.app/docs/diffs)-ready automatically: `/flow-next:make-pr` writes a **non-closing** `Ref WOR-N` line into the PR body (plus a rich PR attachment on the GraphQL transport), so Linear's GitHub integration auto-links the PR and renders its full diff, file changes, checks, and inline review threads **directly on the issue** - you approve / request changes / merge without leaving Linear. *Non-closing* (`Ref`, not `Fixes`) is deliberate: the PR renders as a diff but does **not** auto-complete the issue on merge - `/flow-next:land`'s `land.merged` touchpoint owns the `Done` transition, gated on a GitHub-confirmed `MERGED` probe (completion review only posts a verdict comment + at most `In Review`). The PR↔issue link **and the move to `In Review`** are unconditional once the bridge is active (no `makePr` opt-in needed); `land.merged`'s move to `Done` is likewise active-by-default. One-time Linear-side setup is required (the GitHub integration with code access, your personal GitHub connection, and "Enable code reviews"). **GitHub-, GitLab-, and Jira-tracker** users get no Linear Diffs - the PR is cross-linked natively (`Refs #N` on GitHub; `Ref <project>#<iid>` on GitLab; a **remote link / PR-URL comment** on the Jira issue - Jira has neither PR auto-linkify nor `gh`, so the adapter writes the link in-adapter) and review happens on the host.
 
 Full reference: setup ceremony, hybrid ids, flowctl-owned transport and capabilities, who-wins reconciliation: [`tracker-sync.md`](tracker-sync.md). A screenshot of a Flow-Next PR rendered as a Linear Diff is on [flow-next.dev](https://flow-next.dev/integrations/tracker-sync/#linear-diffs--review-the-pr-inside-the-issue).
 
@@ -497,7 +492,7 @@ The collaboration doesn't disappear. The *ceremony tax* does. Standups, refineme
 
 ## Adoption ladder
 
-Don't try to roll out all 27 commands at once. Layer them in.
+Don't try to roll out all 26 commands at once. Layer them in.
 
 ### Week 1: Prove it works
 
@@ -507,7 +502,7 @@ Turn on three commands. Use them on one spec.
 - `/flow-next:plan` - break the spec into tasks.
 - `/flow-next:work` - implement.
 
-Skip review for the first spec. Skip Ralph. The goal is to feel the lifecycle on a real piece of work.
+Skip review for the first spec. Skip `flow --auto`. The goal is to feel the lifecycle on a real piece of work.
 
 ### Month 1: Establish the pattern
 
@@ -515,7 +510,7 @@ Add cross-model review and the PR-as-cognitive-aid surface.
 
 - Configure `flowctl review-backend` at the team level (`codex` or `copilot` is the lowest-friction starting point).
 - Run `/flow-next:plan-review` after every `/plan`. Surface gaps before they reach `/work`.
-- Run `/flow-next:impl-review` after every `/work` task. Use the SHIP/NEEDS_WORK gate to drive iteration.
+- Run `/flow-next:impl-review` after every `/work` task. A `NEEDS_WORK` verdict gets one fix pass and one re-review of the fixes; say "review until SHIP" when you want it to loop.
 - Use `/flow-next:make-pr` for every PR. The team gets used to reading the cognitive-aid body before the diff.
 
 By the end of month 1, every spec has been through the full handover chain at least once.
@@ -526,11 +521,11 @@ Add the patterns that scale across multiple in-flight specs + multiple developer
 
 - Adopt **Spec-as-PR** as the team norm - every spec gets reviewed and merged before any code lands.
 - Adopt **R-ID frozen-at-handover** as the team norm - never renumber, always reference, always trace.
-- Run `/flow-next:strategy` and write the repo's `STRATEGY.md`. Let the active tracks flow into `/prospect`, `/plan`, and `/interview`.
+- Run `/flow-next:strategy` and write the repo's `STRATEGY.md`. Let the active tracks flow into `/prospect`, `/plan`, and `/refine`.
 - Start writing **decision records** under `knowledge/decisions/` for load-bearing choices. The PR briefing can then explain the chosen approach and rejected alternatives from evidence.
 - Schedule periodic `/flow-next:audit` runs against `.flow/memory/`. Once a month is plenty for most teams.
 - **If the team lives in Linear, GitHub Issues, GitLab, or Jira, turn on `/flow-next:tracker-sync`.** Run the discovery ceremony - on confirmation it activates the **whole pipeline by default** (`tracker.perEvent.*`); you opt out of any event (`flowctl config set tracker.perEvent.<event> off`) rather than opt in. The spec stays the source of truth; the tracker becomes a co-editable mirror for stakeholder visibility. **Projection, not coordination** - see [`tracker-sync.md`](tracker-sync.md). (Don't confuse it with `/flow-next:sync` plan-sync.)
-- Trial **Ralph** on a single mechanical spec (test backfill, lint migration, dependency bump). Watch the morning review. Decide whether to expand.
+- Trial **`flow --auto`** on a single mechanical spec (test backfill, lint migration, dependency bump). Watch the morning review. Decide whether to expand.
 
 By the end of quarter 1, the team has crossed from *using a tool* to *running a methodology*.
 
@@ -540,7 +535,7 @@ By the end of quarter 1, the team has crossed from *using a tool* to *running a 
 
 - **Theory.** [AI-x-SDLC-Starter-Kit methodology guide](https://github.com/gmickel/AI-x-SDLC-Starter-Kit/blob/main/guides/methodology.md) - *why* the lifecycle changes, the touch-point collapse, the productivity disconnect, the cultural-debt problem.
 - **Command reference.** [`docs/flowctl.md`](flowctl.md) - every `flowctl` subcommand, every flag, every JSON shape. The [skills catalog on flow-next.dev](https://flow-next.dev/skills/) table covers the user-facing slash commands.
-- **Autonomous mode.** [docs/ralph.md](ralph.md) - Ralph architecture, configuration, morning review workflow.
+- **Autonomous mode.** [docs/orchestration.md](orchestration.md) - `flow --auto`, land, and driver recipes.
 - **CLI reference.** [docs/flowctl.md](flowctl.md) - every `flowctl` subcommand and JSON shape.
 - **Memory schema.** [`docs/memory-schema.md`](memory-schema.md) - categories, frontmatter, audit lifecycle.
 - **Glossary + strategy.** [`docs/glossary.md`](glossary.md) and [Strategy on flow-next.dev](https://flow-next.dev/skills/strategy/).

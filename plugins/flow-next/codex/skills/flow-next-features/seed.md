@@ -6,7 +6,7 @@ Autonomy refusal and `MODE=seed` are already resolved in [SKILL.md](SKILL.md). F
 
 **CLI surfaces drive directly.** A `**Surface:** cli` route needs no driver ladder: run the documented command in an isolated session this run owns and capture stdout, stderr, and the exit code per the proof standards (the drive-skill pointer below is for UI surfaces - web, desktop, and anything the ladder classifies). Doctor still applies (right build, owned session, no shared instance), and QA's own scenario scope is unchanged - cli map entries serve seed/maintain proofs and human readers.
 
-**Live driving of UI surfaces consumes the drive skill by pointer.** Read [`plugins/flow-next/skills/flow-next-drive/SKILL.md`](../flow-next-drive/SKILL.md) (surface detection + universal flow + ladder) and the relevant rung reference under `plugins/flow-next/skills/flow-next-drive/references/`. **That prose stays there.** A copy of CDP / agent-browser / Computer-Use actuation detail written into this file has broken this. Execute the universal flow (`observe → snapshot fresh refs → act → verify → capture`) yourself. A transcript that "calls" flow-next-drive as if it were an API has broken this too.
+**Live driving of UI surfaces consumes the drive skill by pointer.** Read [`flow-next-drive/SKILL.md`](../flow-next-drive/SKILL.md) (surface detection + universal flow + ladder) and the relevant rung reference under `plugins/flow-next/skills/flow-next-drive/references/`. **That prose stays there.** A copy of CDP / agent-browser / Computer-Use actuation detail written into this file has broken this. Execute the universal flow (`observe → snapshot fresh refs → act → verify → capture`) yourself. A transcript that "calls" flow-next-drive as if it were an API has broken this too.
 
 Run notes and live evidence land under `.flow/tmp/features-<run-id>/` (gitignored, same per-run tmp convention QA uses), referenced by path, never inlined. The committed map is `.flow/features/` only.
 
@@ -28,7 +28,7 @@ Read first. Grep/Glob second. Ask third, and only for a remaining unknown.
 
 **Ask the user via plain text.** Render the options below as a numbered list `1.` … `N.`, followed by a final option `N+1. Other — type your own answer`. Print the question, then the numbered list, then **stop and wait for the user's next message before continuing**. Parse the reply as: a bare number `1`–`N+1` → that option; the literal text of an option label → that option; free text after `Other` → custom answer.
 
-Ask **one question at a time** via `plain-text numbered prompt`. On portable hosts without that tool, a plain-text numbered prompt with a final `Other - type your own answer` option. Never silently skip.
+Ask via `plain-text numbered prompt`. On portable hosts without that tool, a plain-text numbered prompt with a final `Other - type your own answer` option. Never silently skip.
 
 A repo with **no drivable user surface** (a pure library) ends `REFUSED` with the reason. Do not manufacture a map.
 

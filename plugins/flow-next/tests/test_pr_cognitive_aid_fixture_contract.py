@@ -7,7 +7,6 @@ import struct
 import subprocess
 import sys
 import unittest
-from html.parser import HTMLParser
 from pathlib import Path
 
 
@@ -24,13 +23,6 @@ FIXTURE_DIR = (
 GOLDEN = FIXTURE_DIR / "golden.json"
 METADATA = FIXTURE_DIR / "golden.meta.json"
 CONSUMER_DOC = REPO_ROOT / "plugins/flow-next/docs/pr-cognitive-aid.md"
-HTML_DOC = REPO_ROOT / "plugins/flow-next/docs/html-artifacts.md"
-HTML_REFERENCE = (
-    REPO_ROOT / "plugins/flow-next/references/html-artifacts.md"
-)
-HTML_LENS = (
-    REPO_ROOT / "plugins/flow-next/skills/flow-next-make-pr/html-lens.md"
-)
 SPEC = (
     REPO_ROOT
     / ".flow/specs/fn-136-structured-review-artifact-schema-in.md"
@@ -101,31 +93,6 @@ def _relative_markdown_targets(path: Path) -> list[Path]:
     return targets
 
 
-class _SemanticCarrierParser(HTMLParser):
-    def __init__(self) -> None:
-        super().__init__()
-        self._capturing = False
-        self.payload = ""
-
-    def handle_starttag(
-        self, tag: str, attrs: list[tuple[str, str | None]]
-    ) -> None:
-        values = dict(attrs)
-        self._capturing = (
-            tag == "script"
-            and values.get("id") == "flow-next-pr-cognitive-aid"
-            and values.get("type") == "application/json"
-        )
-
-    def handle_data(self, data: str) -> None:
-        if self._capturing:
-            self.payload += data
-
-    def handle_endtag(self, tag: str) -> None:
-        if tag == "script":
-            self._capturing = False
-
-
 class FixtureMetadataTests(unittest.TestCase):
     def test_metadata_pins_exact_canonical_bytes(self) -> None:
         metadata = _read_json(METADATA)
@@ -171,22 +138,6 @@ class FixtureMetadataTests(unittest.TestCase):
             ["problem", "principle", *(["step"] * 7), "kept", "verify"],
         )
 
-    def test_consumer_doc_defines_offline_byte_pinned_vendoring(self) -> None:
-        text = " ".join(
-            CONSUMER_DOC.read_text(encoding="utf-8").split()
-        )
-        for phrase in (
-            "byte-identical copies of both files",
-            "pinned upstream `sha256`",
-            "No Flow-Next checkout",
-            "cross-repository network",
-            "schema requires a new versioned fixture directory",
-            "Never regenerate or pretty-print",
-            "strict `<100 ms p95` over 30 warm runs",
-            "`performanceBudget.p95MillisecondsExclusive` as an exclusive upper bound",
-        ):
-            self.assertIn(phrase, text)
-
 
 class CrossRenderParityTests(unittest.TestCase):
     @classmethod
@@ -194,8 +145,8 @@ class CrossRenderParityTests(unittest.TestCase):
         cls.artifact = _read_json(GOLDEN)
         cls.rendered = flowctl.render_pr_cognitive_aid_markdown(cls.artifact)
 
-    # fn-252 makes markdown a bounded briefing; lossless parity belongs to
-    # html-input below, not to visible per-file tables or provenance badges.
+    # fn-252 makes markdown a bounded briefing; the stored artifact stays the
+    # lossless record, not visible per-file tables or provenance badges.
     def test_markdown_keeps_identity_in_one_comment(self) -> None:
         artifact = self.artifact
         self.assertEqual(re.findall(r"<!--.*?-->", self.rendered), [
@@ -206,74 +157,6 @@ class CrossRenderParityTests(unittest.TestCase):
         self.assertIn("## Why", self.rendered)
         self.assertIn("Coverage:", self.rendered)
         self.assertNotIn("<details", self.rendered)
-
-    def test_optional_html_contract_consumes_same_validated_object(self) -> None:
-        canonical = flowctl.validate_pr_cognitive_aid(_read_json(GOLDEN))
-        carrier = flowctl.render_pr_cognitive_aid_html_input(canonical)
-        parser = _SemanticCarrierParser()
-        parser.feed(f"<!doctype html><html><body>{carrier}</body></html>")
-        html_input = json.loads(parser.payload)
-        self.assertEqual(html_input, canonical)
-        self.assertEqual(
-            [
-                item["path"]
-                for group in html_input["changeWalkthrough"]["groups"]
-                for item in group["files"]
-            ],
-            [
-                item["path"]
-                for group in canonical["changeWalkthrough"]["groups"]
-                for item in group["files"]
-            ],
-        )
-        self.assertEqual(
-            sum(
-                len(group["files"])
-                for group in html_input["changeWalkthrough"]["groups"]
-            ),
-            500,
-        )
-        combined = "\n".join(
-            path.read_text(encoding="utf-8")
-            for path in (CONSUMER_DOC, HTML_DOC, HTML_REFERENCE, HTML_LENS)
-        )
-        for phrase in (
-            "exact validated object",
-            "artifact identity/currentness",
-            "group order",
-            "file membership",
-            "changeType",
-            "attentionClass",
-            "file-level R-ID/task links",
-            "deliberate non-changes",
-            "verification",
-            "never mixed",
-            "flow-next-pr-cognitive-aid",
-            "local-only",
-        ):
-            self.assertIn(phrase, combined)
-
-    def test_optional_html_runs_after_aid_and_cannot_stale_current_input(self) -> None:
-        workflow = (
-            REPO_ROOT
-            / "plugins/flow-next/skills/flow-next-make-pr/workflow.md"
-        ).read_text(encoding="utf-8")
-        aid_phase = workflow.index(
-            "## Phase 1.5: Structured PR cognitive-aid"
-        )
-        html_phase = workflow.index(
-            "## Phase 1.5b: HTML render lens"
-        )
-        self.assertLess(aid_phase, html_phase)
-        lens = HTML_LENS.read_text(encoding="utf-8")
-        current_branch = lens.split(
-            'if [[ "$HTML_AID_STATUS" == "current" ]]; then', 1
-        )[1].split(
-            "elif git check-ignore --no-index -q", 1
-        )[0]
-        self.assertIn("LINK_MODE=local", current_branch)
-        self.assertNotIn("git add", current_branch)
-        self.assertNotIn("git commit", current_branch)
 
 
 class ReferenceAssetTests(unittest.TestCase):
@@ -304,13 +187,6 @@ class ReferenceAssetTests(unittest.TestCase):
         for name in IMAGE_NAMES:
             self.assertIn(name, spec_text)
             self.assertIn(name, consumer_text)
-        self.assertIn(
-            "normative interaction and information-architecture references",
-            spec_text,
-        )
-        self.assertIn(
-            "normative hierarchy and interaction", consumer_text
-        )
 
 
 if __name__ == "__main__":

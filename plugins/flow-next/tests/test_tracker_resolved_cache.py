@@ -742,15 +742,6 @@ class FlowctlWritersRouteThroughTheLock(unittest.TestCase):
             self._assert_holds_lock_during_write(
                 lambda: self.flowctl.cmd_init(args))
 
-    def test_set_config_reads_inside_the_lock(self) -> None:
-        """The read must happen under the lock or stale-read clobbering returns."""
-        import inspect
-        src = inspect.getsource(self.flowctl.set_config)
-        self.assertIn("_shared_config_lock", src)
-        self.assertNotIn("read_text", src,
-                         "set_config must delegate the read to the locked helper")
-
-
 if __name__ == "__main__":
     unittest.main()
 

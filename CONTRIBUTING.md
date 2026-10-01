@@ -4,7 +4,7 @@ Thanks for wanting to make flow-next better. This file is a router, not a manual
 
 ## Quick orientation
 
-- The repo **is** the flow-next plugin (`plugins/flow-next/`), plus the bundled `flowctl` Python CLI and the Ralph TUI (`flow-next-tui/`).
+- The repo **is** the flow-next plugin (`plugins/flow-next/`), plus the bundled `flowctl` Python CLI.
 - Strategic intent: [`STRATEGY.md`](STRATEGY.md). Vocabulary discipline (load-bearing terms + the synonyms to avoid): [`GLOSSARY.md`](GLOSSARY.md). Architecture rules (skill-vs-flowctl split, cross-platform patterns): [`CLAUDE.md`](CLAUDE.md).
 - This repo dogfoods itself — work is tracked as specs/tasks under `.flow/` via flow-next. You don't have to use it for a small PR, but reading [the teams guide](plugins/flow-next/docs/teams.md) explains the artefacts you'll see.
 
@@ -12,7 +12,7 @@ Thanks for wanting to make flow-next better. This file is a router, not a manual
 
 | You want to… | Read |
 |---|---|
-| Set up local dev, run smoke tests, run the Ralph e2e | [`agent_docs/local-dev.md`](agent_docs/local-dev.md) |
+| Set up local dev, run smoke tests | [`agent_docs/local-dev.md`](agent_docs/local-dev.md) |
 | Add a new `/flow-next:<name>` skill | [`agent_docs/adding-skills.md`](agent_docs/adding-skills.md) — mind the three-edit rule |
 | Optimize an existing skill/agent prompt | [`agent_docs/optimizing-skills.md`](agent_docs/optimizing-skills.md) |
 | Cut a release (maintainers) | [`agent_docs/releasing.md`](agent_docs/releasing.md) |

@@ -18,11 +18,9 @@ from pathlib import Path
 PLUGIN = Path(__file__).resolve().parents[1]
 SKILL_ID = re.compile(r"(?<![/\w$])flow-next:flow-next-([a-z][a-z-]*[a-z])")
 SOURCE_DIRS = ("skills", "agents", "references", "templates")
-# User-facing text that names a command after an invoke/run verb: deprecated
-# stub descriptions shown to the user, an exit message, and a hypothetical.
+# User-facing text that names a command after an invoke/run verb: an exit
+# message and a hypothetical.
 USER_FACING = {
-    "skills/flow-next-interview/SKILL.md: Invoke /flow-next:refine",
-    "skills/flow-next-pilot/SKILL.md: Invoke /flow-next:flow",
     "skills/flow-next-capture/references/duplicate-branch.md: invoke /flow-next:refine",
     "skills/flow-next-capture/references/must-ask-cases.md: runs `/flow-next:plan",
 }

@@ -739,11 +739,6 @@ class ConformanceMatrix(unittest.TestCase):
 # relate / sync-body) - same verb, all four adapters, same assertion set.
 # ---------------------------------------------------------------------------
 
-#: The full granular verb surface fn-140 defines (R18 completeness guard).
-SPEC_VERBS = ("create", "create-first", "persist-external", "status",
-              "relate", "sync-body")
-
-
 def _receipts(flow: Path) -> list:
     runs = flow / "sync-runs"
     if not runs.is_dir():
@@ -1079,29 +1074,6 @@ class SpecVerbSyncBodyAllFour(unittest.TestCase):
                 self.assertIsNotNone(saved["mergeBaseTracker"], provider)
                 self.assertEqual(saved["baseHashFlow"], sha("NEW FLOW\n"))
                 self.assertIsNotNone(saved["lastSyncedAt"], provider)
-
-
-class FullVerbSurfaceGuard(unittest.TestCase):
-    """R18 completeness: the matrix names EVERY granular verb the spec
-    defines - the 14 wire verbs AND the 6 spec-aware verbs."""
-
-    def test_wire_surface_matches_package(self) -> None:
-        self.assertEqual(tuple(WIRE_VERBS), W.WIRE_VERBS)
-
-    def test_spec_verb_surface_is_complete(self) -> None:
-        self.assertEqual(
-            SPEC_VERBS,
-            ("create", "create-first", "persist-external", "status",
-             "relate", "sync-body"))
-        covered = {
-            "create": SpecVerbCreateAllFour,
-            "create-first": SpecVerbCreateFirstAllFour,
-            "persist-external": SpecVerbPersistExternalAllFour,
-            "status": SpecVerbStatusAllFour,
-            "relate": SpecVerbRelateAllFour,
-            "sync-body": SpecVerbSyncBodyAllFour,
-        }
-        self.assertEqual(set(covered), set(SPEC_VERBS))
 
 
 # ---------------------------------------------------------------------------

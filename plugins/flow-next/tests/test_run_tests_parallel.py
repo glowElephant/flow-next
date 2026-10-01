@@ -643,6 +643,10 @@ class ProcessTreeCleanupTest(unittest.TestCase):
             "terminate",
             lambda _self: "process-tree: kill suppressed (test)",
         ), mock.patch.object(self.mod, "POST_KILL_COLLECT_S", 2), mock.patch.object(
+            # The neutered kill leaves the shard alive, so the post-kill wait
+            # always runs to its limit; keep it short.
+            self.mod, "TREE_KILL_TIMEOUT_S", 2
+        ), mock.patch.object(
             self.mod.subprocess, "Popen", side_effect=launch_shard
         ):
             rc, out, wall = self._run()

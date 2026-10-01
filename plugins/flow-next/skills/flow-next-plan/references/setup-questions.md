@@ -4,7 +4,7 @@ Load this reference only when the SKILL.md setup gate fired — `REVIEW_BACKEND`
 is `ASK` (not configured) and the run is not autonomous. Configured backends and
 `AUTONOMOUS=1` never reach this file.
 
-Ask the setup questions below as plain text — never via the `AskUserQuestion` tool.
+Ask the setup questions below as plain text — never via the `AskUserQuestion` tool. Drop a question whose option the arguments already set.
 
 **RepoPrompt eligibility** (compute once, before any question below):
 
@@ -62,6 +62,6 @@ Quick setup before planning:
 Wait for response. Parse naturally — user may reply terse ("1a 2b") or ramble via voice.
 
 **Defaults when empty/ambiguous:**
-- Depth = the SKILL.md **Plan depth** default
+- Depth = the SKILL.md **Depth** default
 - Research = `repo-scout`
 - Review = configured backend if set, else `none`

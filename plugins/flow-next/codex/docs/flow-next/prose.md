@@ -29,7 +29,7 @@ A sentence that restates the heading above it wastes the reader's first fixation
 
 ### 6. A vague intensifier is a missing measurement
 
-The drafting agent replaces `substantially reduced` with the measured delta or the concrete before/after. If neither exists, the claim does not belong in the artifact. The rule covers degree adverbs such as `substantially`, `significantly`, and `dramatically`. An adverb that fixes a bound (`never deletes`, `runs only in Ralph mode`) or names a mechanism (`automatically`) carries the information rule 10 requires, and stays.
+The drafting agent replaces `substantially reduced` with the measured delta or the concrete before/after. If neither exists, the claim does not belong in the artifact. The rule covers degree adverbs such as `substantially`, `significantly`, and `dramatically`. An adverb that fixes a bound (`never deletes`, `runs only under --auto`) or names a mechanism (`automatically`) carries the information rule 10 requires, and stays.
 
 ### 7. The plain word
 
@@ -66,5 +66,5 @@ The contract covers the durable artifact surfaces named in the opening paragraph
 ## See also
 
 - [`../skills/flow-next-make-pr/workflow.md`](../../skills/flow-next-make-pr/workflow.md) - grounding and artifact authoring
-- [`../../../GLOSSARY.md`](https://github.com/gmickel/flow-next/blob/main/GLOSSARY.md) - the `Emission point` term and vocabulary discipline
+- [Glossary](https://flow-next.dev/reference/glossary/) - the `Emission point` term and vocabulary discipline
 - [`README.md`](README.md) - the docs index this page is registered in

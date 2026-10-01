@@ -69,9 +69,12 @@ jq . plugins/flow-next/.codex-plugin/plugin.json   # 3. verify version
 #    exist in skill prose are the failure mode this step closes.
 
 git add -A && git commit -m "chore(flow-next): bump version to X.Y.Z"
-git push
+git push   # on main (a release from another branch merges to main first)
 
-git tag flow-next-vX.Y.Z && git push origin flow-next-vX.Y.Z   # triggers release + Discord
+# 9. WAIT for the green main-push CI run on this exact SHA. The release job
+#    (require_release_ci.py) refuses a tag whose SHA has no green main CI; if a tag
+#    raced CI, rerun the Release workflow once CI is green.
+git tag flow-next-vX.Y.Z && git push origin flow-next-vX.Y.Z   # triggers the release
 ```
 
 ## Changelog writing gate
@@ -215,7 +218,7 @@ fine WHERE THE READER ACTS ON THEM. Blank lines around this block so MDX renders
   Function names, LOC counts, fence/prose-contract mechanics, fn-task numbering,
   test counts, and compatibility contracts belong in the repo CHANGELOG or the
   technical tail - reference them earlier only when the reader must act on them.
-- **Upgrade actions are imperative and come right after the gains.** If the reader must do something ("re-run ralph-init", "switch off the legacy JSON keys"), it is the first paragraph after the ones that say what the release gives them, under a "What changes when you upgrade" lead - never buried mid-list, never ahead of the gains. **If `SNIPPET_SCHEMA_VERSION` bumped in this release, say so there** - it is the only thing that makes a user re-run `/flow-next:setup` (plugin updates never do).
+- **Upgrade actions are imperative and come right after the gains.** If the reader must do something ("re-run setup", "switch off the legacy JSON keys"), it is the first paragraph after the ones that say what the release gives them, under a "What changes when you upgrade" lead - never buried mid-list, never ahead of the gains. **If `SNIPPET_SCHEMA_VERSION` bumped in this release, say so there** - it is the only thing that makes a user re-run `/flow-next:setup` (plugin updates never do).
 - **Numbers are outcomes, not inventory.** "30 seconds to half a second" and "half the wall-clock" persuade; "-1,251 LOC" and "ran=1935" are inventory. Keep measured evidence (that is the register: proof-backed, never adjective-backed), drop bookkeeping.
 - **Honesty stays, beside the claim** (prose.md rule 10, load-bearing in this register). A bound sits next to the number it bounds ("about 35% of runs still force a full suite as the safety floor"), and what did NOT change gets its own short "What you keep" paragraph. The development story does not belong here: what was tried and dropped, what measured worse first, and what has not yet run live go in the pull request, the measurement record and the maintainer's notes. The register is confident practitioner, zero hype - see the messaging architecture (claim hierarchy) in the maintainer's private config.
 
@@ -229,6 +232,7 @@ a schema/type name, or an internal artifact name.
 - **Heading is `### X.Y.Z - title`** (h3). This is what makes the TOC a version index and gives visual breaks. Never use a bare bullet.
 - **Bold summary is mandatory** - it's the scannable summary. One or two short sentences; never a chain of clauses joined by semicolons.
 - **`<details>` only for verbose releases** (multi-paragraph behavior changes). Trivial patches (a one-liner fix) can skip the disclosure and just carry the bold summary + a sentence or two of plain prose.
+- **A featured release stays pinned (7.0.0, decided 2026-09-30).** While 7.0.0 is the latest release, its entry sits atop `## Latest` with `<details open>`. When 7.0.1 or any later 7.x release ships, move the 7.0.0 entry (with its `<a id="flow-next-7-0-0">` anchor) into a new `## Featured release` section above `## Latest`, change it back to a plain `<details>` (collapsed), and add the new entry at the top of `## Latest` as usual. 7.0.0 stays featured until the maintainer names another release.
 - **Newest at the top of `## Latest`.** When `## Latest` grows past ~10 entries, migrate the oldest ones down to `## Earlier releases` (same format; collapse their detail or trim to the one-liner). The threshold is deliberately generous - the release cadence is part of the story the page tells (raised from ~4-5, 2026-08-09).
 - **Don't duplicate the whole repo CHANGELOG.** The docs-site page is the public story, not every commit. The repo `CHANGELOG.md` stays canonical; link to it from an entry when a reader needs detail the entry leaves out. Translating repo-changelog substance into the customer register above is the actual work of this step - budget for it; a copy-paste-and-trim is the failure mode.
 - **Bump the docs-site version refs** in the same commit: `src/lib/site.ts` `FLOW_NEXT_VERSION` + `package.json` `version` → `X.Y.Z`.

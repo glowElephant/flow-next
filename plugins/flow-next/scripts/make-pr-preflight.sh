@@ -1,10 +1,6 @@
 #!/usr/bin/env bash
 # Source from make-pr after setting its documented inputs; outputs remain in the caller.
 set -e
-RALPH=0
-if [[ -n "${REVIEW_RECEIPT_PATH:-}" || "${FLOW_RALPH:-}" == "1" ]]; then
-  RALPH=1
-fi
 if [[ "$DRY_RUN" != "1" ]]; then
   if ! command -v gh >/dev/null 2>&1; then
     echo "Error: gh CLI not installed. Install gh from https://cli.github.com then run gh auth login --hostname github.com." >&2; exit 1; fi
@@ -34,8 +30,7 @@ if [[ -z "$SPEC_ID" ]]; then
   CLOSED_IDS='{"spec_ids":[]}'; [[ -z "${BASE_REF:-$CHAIN_BASE}" ]] || CLOSED_IDS=$("$FLOWCTL" spec closed-in-range --base "${BASE_REF:-$CHAIN_BASE}" --json) || { printf '%s\n' "$CLOSED_IDS" >&2; exit 1; }
   SPEC_ID=$(printf '%s' "$CLOSED_IDS" | jq -r '.spec_ids[-1] // empty')
   if [[ -z "$SPEC_ID" ]]; then
-    [[ "$RALPH" == "1" || "$AUTONOMOUS" == "1" ]] && exit 2
-    echo "NEED_INPUT: SPEC_ID"; exit 3
+    echo "NO_SPEC"; exit 4
   fi
 fi
 CHAIN_PARENT=""; CHAIN_PARENT_BRANCH=""; CHAIN_BOUNDARY=""; PARENT_PR=""; PARENT_PR_STATE=""; CHAIN_REWRITE=0; REWRITE_ONTO=""
@@ -107,7 +102,7 @@ if [[ -n "$CHAIN_PARENT" ]]; then
 fi
 [[ -z "$BASE_REF" ]] && BASE_REF="$CHAIN_BASE"
 if [[ -z "$BASE_REF" ]]; then
-  if [[ "$RALPH" == "1" || "$AUTONOMOUS" == "1" ]]; then
+  if [[ "$AUTONOMOUS" == "1" ]]; then
     echo "Error: no base ref detected (origin/main, main, origin/master, master all missing). Pass --base <ref> explicitly." >&2; exit 2; fi
   echo "NEED_INPUT: BASE_REF (origin/main, main, origin/master, master all missing)"
   exit 3
@@ -134,7 +129,7 @@ OPEN_TASKS=$(printf '%s' "$SPEC_JSON" | jq -r '[.tasks[]? | select(.status != "d
 TASK_COUNT=$(printf '%s' "$SPEC_JSON" | jq '[.tasks[]?] | length')
 OPEN_COUNT=$(printf '%s' "$SPEC_JSON" | jq '[.tasks[]? | select(.status != "done")] | length')
 if [[ "$OPEN_COUNT" -gt 0 ]]; then
-  if [[ "$RALPH" == "1" || "$AUTONOMOUS" == "1" ]]; then
+  if [[ "$AUTONOMOUS" == "1" ]]; then
     echo "Error: $OPEN_COUNT task(s) under $SPEC_ID still open ($OPEN_TASKS). Autonomous context cannot open PRs for incomplete specs." >&2
     exit 2
   else

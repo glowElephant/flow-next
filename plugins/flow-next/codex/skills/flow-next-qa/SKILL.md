@@ -7,25 +7,35 @@ allowed-tools: Read, Bash, Grep, Glob, Write, Edit, Task
 
 # /flow-next:qa — live-app real-user QA pass
 
-flow-next's review surface today is all static: `impl-review`, `spec-completion-review`, `quality-auditor`, `code-review`. Nothing drives the *running* app like an unforgiving real user. `/flow-next:qa` fills that gap — it drives the deployed app (via **flow-next-drive**), files structured P0/P1/P2 findings with evidence, and ends with a YES/NO ship verdict emitted as a proof-of-work receipt.
+Drive the running app the way an unforgiving real user would, with scenarios taken from the spec,
+file P0/P1/P2 findings with captured evidence, and end with a YES/NO ship verdict written as a
+`qa_verdict` receipt. The spec is the source of intent: acceptance criteria become scenarios,
+R-IDs become the coverage table, boundaries say what not to test, decision context says what the
+app should do.
 
-**Augments, never replaces.** QA is the cheap *first* live pass — the app already runs on the dev's machine during `work`, so run an initial agentic pass over the complete build before a human opens the PR. Like everything in flow-next it **reduces human work agentically and surfaces problems to humans**; it does **not** stand in for CI/staging QA or manual QA, which still happen downstream. Findings are advisory: they ride the draft PR + the bug-memory track, and the human reviewer + the land gate decide.
+QA is a cheap first live pass over the finished build. It does not replace CI, staging or manual
+QA, and it does not fix product code: it files, surfaces and hands off. Findings are advisory; the
+human reviewer and the land gate decide.
 
-**Two entry points, one skill.** Run it user-invoked, or as the optional `pipeline.qa` stage (`off | on | auto`, default `off`) that `/flow-next:flow` runs at the all-tasks-done juncture before make-pr in both its shapes. When setting or reading that key, read [gate-selection.md](../flow-next-flow/references/gate-selection.md); it owns what each value does and the skip line a skipped stage records. See [`flowctl.md`](../../docs/flow-next/flowctl.md) for the config row.
+It runs when the user invokes it, or as the optional `pipeline.qa` stage (`off | on | auto`,
+default `off`) that `/flow-next:flow` runs after all tasks are done and before make-pr. When
+setting or reading that key, read [gate-selection.md](../flow-next-flow/references/gate-selection.md);
+[`flowctl.md`](../../docs/flow-next/flowctl.md) has the config row. Enable the stage only where
+`/flow-next:prime` reports the app is QA-ready (seeded data, a documented dev login, a drivable
+surface, readable runtime evidence); otherwise every run ends BLOCKED.
 
-**Prerequisite - `/flow-next:prime` gates the recommendation.** Prime's QA-readiness line is the upstream signal for setting `pipeline.qa` to `auto` or `on`: it recommends enabling this stage ONLY when the repo reaches operability tier 3 AND the DR-core prerequisites pass (seeded data, documented dev login, a drivable surface, readable runtime evidence). If prime reports "QA stage would fail here" or "not applicable to this shape", the app cannot be driven yet - fix the named prerequisites (or leave the stage off) rather than wiring in a stage that BLOCKs every run.
+Read [working-rules.md](../../references/working-rules.md) first; it holds for every step.
 
-The differentiator vs spec-less QA tools is **the spec is the source of intent**: flow-next derives test scenarios directly from the spec — acceptance criteria → scenarios, R-IDs → coverage, boundaries → what NOT to test, decision context → expected behavior. The host already encodes intent instead of reconstructing it. The QA discipline (P0/P1/P2 taxonomy, evidence rules, session hygiene) is a lean borrow from Ray Fernando's `running-bug-review-board` skill (Apache-2.0 — credited in CHANGELOG); flow-next stays lean (no 18-reference port, ≤500-line skill cap).
+## The hard rule
 
-**Read [workflow.md](workflow.md) for the full phase-by-phase execution** (discover → derive → prepare → execute → file → verdict).
-
-## The hard rule — PASS is forbidden from source inspection
-
-**A SHIP verdict rests on captured evidence from the running app** — screenshots, console dumps, observed state. **A SHIP reached by reading source or the diff has broken this.** So has one resting on agent narration, on "the code looks correct", or on inferring behavior from the diff. A live-app QA pass is the gap that all other flow-next review already covers statically; if no live app is reachable (no deploy or no driver), the outcome is **BLOCKED** (could not verify), never PASS. This rule is load-bearing — it is what makes the skill a real-user QA pass rather than a second static review.
+**SHIP rests on evidence captured from the running app** (screenshots, console output, observed
+state). A SHIP reached by reading the source or the diff, from narration, or from "the code looks
+right" has broken this. With no reachable app or no driver, the outcome is BLOCKED, never a pass.
+Reading source to explain a failure you already captured is fine.
 
 ## Preamble
 
-**CRITICAL: flowctl is BUNDLED — NOT installed globally.** `which flowctl` will fail (expected). Define once; subsequent blocks (here and in `workflow.md`) use `$FLOWCTL`. Subagents that run in fresh context fall back to the repo-local copy:
+flowctl is bundled, not on `PATH`. Define it once; later blocks here and in `workflow.md` use `$FLOWCTL`:
 
 ```bash
 FLOWCTL="${CODEX_HOME:-$HOME/.codex}/scripts/flowctl"
@@ -33,82 +43,44 @@ FLOWCTL="${CODEX_HOME:-$HOME/.codex}/scripts/flowctl"
 [ -x "$FLOWCTL" ] || FLOWCTL=".flow/bin/flowctl"
 ```
 
-**Ask the user via plain text.** Render the options below as a numbered list `1.` … `N.`, followed by a final option `N+1. Other — type your own answer`. Print the question, then the numbered list, then **stop and wait for the user's next message before continuing**. Parse the reply as: a bare number `1`–`N+1` → that option; the literal text of an option label → that option; free text after `Other` → custom answer.
+This skill runs inline on the host (not forked) so it can ask the user for undocumented facts.
 
-**Inline skill (no `context: fork`)** — runs on the host agent, not a forked subagent, because the **prepare** phase must ask the user for undocumented facts (target URL / test account — info-only, never a confirm gate) and a forked subagent cannot ask the user back (Claude Code issues #12890, #34592). The host asks via `plain-text numbered prompt`.
+## Arguments
 
-## Mode Detection
-
-Parse `$ARGUMENTS`. The first non-flag token is the spec id (required). The value-taking caller overrides the downstream phases honor — `--target <url>` (Phase 3.1), `--receipt <path>` (Phase 6.3), and `--base <ref>` (§1.2 base-branch override) — **must consume their operand here** (both `--flag value` and `--flag=value` forms, mirroring make-pr's `--base`), or the operand falls through to the `*)` arm and is mis-assigned as `SPEC_ID` (Phase 1 then rejects the URL/path as "Not a spec"). They populate `QA_TARGET_URL` / `QA_RECEIPT_OVERRIDE` / `QA_BASE_REF` — the exact variables Phases 3.1 / 6.3 / §1.2 read. Other flags (viewport, autonomy) are reserved for later tasks; the skeleton shifts them harmlessly.
+The first non-flag token is the spec id. `--target <url>`, `--receipt <path>` and `--base <ref>`
+take a value (as `--flag value` or `--flag=value`). `mode:autonomous` turns on autonomous mode.
 
 ```bash
+SPEC_ID=""; PREV=""
+# No positional parameters: the host rewrites them inside skill code blocks.
+# Quote the pasted arguments once so a URL's `&` or `;` stays data.
 RAW_ARGS="$ARGUMENTS"
-SPEC_ID=""
-
-# The loop handles both `--flag=value` and space-separated `--flag value`
-# forms via a PREV token holder. No bash positional parameters here — the
-# host's argument interpolation rewrites positional tokens inside skill code
-# blocks (pilot dogfood finding, 1.13.0).
-PREV=""
 for ARG in $RAW_ARGS; do
   case "$PREV" in
-    --target)  QA_TARGET_URL="$ARG"; PREV=""; continue ;;        # Phase 3.1 caller override
-    --receipt) QA_RECEIPT_OVERRIDE="$ARG"; PREV=""; continue ;;  # Phase 6.3 receipt path
-    --base)    QA_BASE_REF="$ARG"; PREV=""; continue ;;          # §1.2 base-branch override
+    --target)  QA_TARGET_URL="$ARG"; PREV=""; continue ;;
+    --receipt) QA_RECEIPT_OVERRIDE="$ARG"; PREV=""; continue ;;
+    --base)    QA_BASE_REF="$ARG"; PREV=""; continue ;;
   esac
   case "$ARG" in
     --target|--receipt|--base) PREV="$ARG" ;;
-    --target=*)  QA_TARGET_URL="${ARG#--target=}" ;;        # Phase 3.1 caller override
-    --receipt=*) QA_RECEIPT_OVERRIDE="${ARG#--receipt=}" ;; # Phase 6.3 receipt path
-    --base=*)    QA_BASE_REF="${ARG#--base=}" ;;            # §1.2 base-branch override
-    mode:autonomous) QA_AUTONOMOUS=1 ;;                     # strip the literal token (see "Autonomous mode" below)
-    -*) echo "Unknown flag: $ARG (reserved for a later task)" >&2 ;;
+    --target=*)  QA_TARGET_URL="${ARG#--target=}" ;;
+    --receipt=*) QA_RECEIPT_OVERRIDE="${ARG#--receipt=}" ;;
+    --base=*)    QA_BASE_REF="${ARG#--base=}" ;;
+    mode:autonomous) QA_AUTONOMOUS=1 ;;
+    -*) echo "Unknown flag: $ARG (ignored)" >&2 ;;
     *)  [[ -z "$SPEC_ID" ]] && SPEC_ID="$ARG" ;;
   esac
 done
 [[ -n "$PREV" ]] && echo "Flag $PREV given without a value (ignored)" >&2
-# Secondary autonomy signal: the FLOW_AUTONOMOUS=1 env var (process-level drivers
-# like the flow --auto QA stage). Either signal flips QA_AUTONOMOUS on.
 [[ "${FLOW_AUTONOMOUS:-}" == "1" ]] && QA_AUTONOMOUS=1
-export QA_TARGET_URL QA_RECEIPT_OVERRIDE QA_BASE_REF QA_AUTONOMOUS   # carry the resolved overrides + autonomy into workflow.md (Phases 3.1 / 6.3 / §1.2 + the preamble)
+NO_PROMPT=0
+[[ "${QA_AUTONOMOUS:-}" == "1" || "${AUTONOMOUS:-}" == "1" ]] && NO_PROMPT=1
+export QA_TARGET_URL QA_RECEIPT_OVERRIDE QA_BASE_REF QA_AUTONOMOUS NO_PROMPT
 ```
 
-When `SPEC_ID` is empty, the **discover** phase resolves it (branch-match, or by asking the user via `plain-text numbered prompt` as an info prompt) — never silently default.
+**Autonomous mode** (`NO_PROMPT=1`; `flow --auto` dispatches with `mode:autonomous`) asks
+nothing. Each fact the interactive run would ask for is resolved from the spec, config or
+environment; when it cannot be, the run writes a BLOCKED receipt and exits cleanly. The one
+exception is an unresolvable spec id, which is an error (non-zero exit, message on stderr).
 
-## Autonomous mode (mode:autonomous / FLOW_AUTONOMOUS)
-
-`QA_AUTONOMOUS=1` (set above from the literal `mode:autonomous` token — stripped, same shape as plan's autonomous branch — or the `FLOW_AUTONOMOUS=1` env var) means **the run asks nothing**. This is the signal the `flow --auto` QA stage passes so the build loop can't hang on an `plain-text numbered prompt`. The workflow honors it **at the preamble, before any prompt path** (workflow.md "Autonomous-mode gate") — not in the post-verdict preflight, because the early phases (1.1 spec id, 1.2 base, 3.1 target, 3.2 accounts) all prompt.
-
-Under `QA_AUTONOMOUS=1`:
-- **The run asks nothing.** Every `plain-text numbered prompt` info-prompt path becomes a deterministic branch: resolve from spec / config / env, else surface a limitation. A prompt anywhere on this path has broken it.
-- **Undocumented target URL / required accounts / no reachable local app / undetermined spec id ⇒ emit a `BLOCKED` `qa_verdict` + clean exit** (the §6.3 writer), never an interactive prompt and never a hang.
-- **Autonomy ≠ Ralph.** Neither `mode:autonomous` nor `FLOW_AUTONOMOUS` activates ralph-guard hooks or any receipt-path gate — they gate **question suppression** only. Ralph (`FLOW_RALPH=1` / `REVIEW_RECEIPT_PATH`) is the separate, additive signal detected in Phase A; the two compose (a `flow --auto` run may be autonomous-but-not-Ralph).
-
-Ralph mode (`FLOW_RALPH=1` or `REVIEW_RECEIPT_PATH` set) is detected in workflow.md §AUTONOMY — the skill is **aware but not Ralph-blocked** (R11). Ralph independently suppresses prompts too (Phase A), so a Ralph run is implicitly autonomous; `QA_AUTONOMOUS` covers the non-Ralph autonomous caller (the `flow --auto` QA stage).
-
-## flow-next-drive consumption — a read-and-drive contract, not a callable API
-
-A skill is not a function. **The host agent reads flow-next-drive's workflow + references and executes the universal driving flow itself** — `observe → snapshot fresh refs → act → verify → capture`. A transcript that "calls" flow-next-drive as if it were an API has broken this. flow-next-drive owns the driver ladder and all actuation prose; QA owns scenario authoring, evidence capture, and the verdict. **CDP / agent-browser / Computer-Use prose stays in flow-next-drive's references** — a copy of it in this skill has broken this too. Point at them:
-
-- Surface detection + universal flow + the web/native ladder: [`skills/flow-next-drive/SKILL.md`](../flow-next-drive/SKILL.md)
-- Driver command detail (per rung): `skills/flow-next-drive/references/` (`agent-browser.md`, `chrome-devtools-mcp.md`, `playwright.md`, `computer-use.md`, …)
-
-Per scenario, record an **evidence tuple**: `{driver_rung, target_url, viewport, screenshot_path, console_path}`. flow-next-drive's SKILL.md explicitly defers the QA workflow — scenario authoring, bug filing, verdict — downstream to this skill; the seam is designed, QA orchestrates and flow-next-drive actuates.
-
-## Forbidden
-
-- **Marking PASS / SHIP from source inspection.** See "The hard rule" above. PASS requires captured live-app evidence; no live app → BLOCKED, never PASS.
-- **Re-implementing driving.** QA consumes flow-next-drive via the read-and-drive contract; it never reimplements CDP / agent-browser / Computer Use, and never duplicates flow-next-drive's ladder prose.
-- **Inventing findings or evidence.** Every finding cites real captured evidence (screenshot / console / URL). No "I think this might be broken" without a reproduction.
-- **Ralph-blocking the skill.** QA is aware of Ralph but is not a hard Ralph-block (R11). A `FLOW_RALPH`/`REVIEW_RECEIPT_PATH` exit-2 guard at the top of the skill has broken this.
-
-## Workflow
-
-Execute the phases in [workflow.md](workflow.md) in order:
-
-1. **discover** — resolve the spec id (arg / branch-match / info prompt); pull the cognitive-aid payload.
-2. **derive** — AC → scenarios, R-IDs → coverage spine, boundaries → exclusions, decision context → expected behavior.
-3. **prepare** — target URL, test accounts, session hygiene, device matrix.
-4. **execute** — drive the live app via the flow-next-drive read-and-drive contract; capture the evidence tuple per scenario.
-5. **file** — structured P0/P1/P2 findings with evidence; feed the bug memory track.
-6. **verdict** — YES/NO ship verdict + open P0/P1 list; emit the `qa_verdict` receipt.
+Now follow [workflow.md](workflow.md): discover, derive, prepare, execute, file, verdict.

@@ -1,14 +1,6 @@
-# Refine — research scope (loaded when `SCOPE == research`)
+# Refine — research scope
 
-> Read at the Setup routing line in SKILL.md. The interview never reads this file.
-
-**Decision record**
-
-- Source: fn-238 R16, the read-first signal on the route matrix's ready-spec row.
-- Trigger: a spec or task names a library or API the repo does not already use, and nobody has read its current docs yet.
-- Purpose: resolve library versions, changed APIs, gotchas, the docs that must change, and the project memory that applies, once, into one section both refine and plan recognise, before work starts on either route.
-- Evidence: a worker that meets an unfamiliar API mid-task either guesses from training data or stops to research inside its implementation context; plan already runs the same scouts and used to keep their findings only in task bodies, where a no-plan spec never sees them.
-- Disposition: keep. One artifact (`## Resolved via Research`), one skip rule shared with plan, never run by default.
+Read when the invocation carries `--scope=research`. The interview never reads this file.
 
 ## Contract
 
@@ -28,7 +20,7 @@ case " $ARGUMENTS " in *" --force "*) FORCE=1 ;; esac
 ARGUMENTS="$(printf '%s' "$ARGUMENTS" | sed -E 's/(^| )--force( |$)/ /g' | xargs)"
 ```
 
-Then Detect Input Type exactly as SKILL.md states it. A file-path target is out of scope for this pass: print `research: skipped(policy: research writes a spec or task section; give a spec or task id)` and stop.
+Then detect the input as SKILL.md states it. A file-path target is out of scope for this pass: print `research: skipped(policy: research writes a spec or task section; give a spec or task id)` and stop.
 
 ## Skip rule (observable)
 
@@ -68,6 +60,6 @@ One sub-block per scout that ran (omit a scout's block when it returned nothing,
 
 ## Write-back
 
-The pass writes this one section and nothing else. Follow `write-back.md`'s single-emission write pattern and the print-then-ask approval in [docs/read-back.md](../../../docs/flow-next/read-back.md): summary first (target, bullet count per scout, sources, the skip or rerun line), then one ask with approve and write, open in editor, abort. The section is appended after the last auxiliary section for a spec (`flowctl spec set-plan --file`) or the task body (`flowctl task set-spec --file`); every other section comes back byte-for-byte. Under `--force` the old section is replaced in full; under a delta rerun, new bullets append below the existing ones in their scout's sub-block.
+The pass writes this one section and nothing else. Follow the write pattern in [write-back.md](write-back.md) and the print-then-ask approval in [docs/read-back.md](../../../docs/flow-next/read-back.md): summary first (target, bullet count per scout, sources, the skip or rerun line), then one ask with approve and write, open in editor, abort. The section is appended after the last auxiliary section for a spec (`flowctl spec set-plan --file`) or the task body (`flowctl task set-spec --file`); every other section comes back byte-for-byte. Under `--force` the old section is replaced in full; under a delta rerun, new bullets append below the existing ones in their scout's sub-block.
 
-Done when: either nothing was written and the summary names the skip reason, or the target carries one `## Resolved via Research` section with one sub-block per scout that returned findings, a source on every bullet, every other section byte-identical to the copy read at Detect Input Type, and the summary reports the bullet count per scout.
+Done when: either nothing was written and the summary names the skip reason, or the target carries one `## Resolved via Research` section with one sub-block per scout that returned findings, a source on every bullet, every other section byte-identical to the copy read when detecting the input, and the summary reports the bullet count per scout.

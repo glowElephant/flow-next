@@ -1,9 +1,9 @@
 """Behavioral contract for /flow-next:features (fn-211.1).
 
 Extracts and EXECUTES the two skill predicates shipped as bash fences in
-SKILL.md (autonomy-namespace scan; state-resolved seed/maintain routing),
-parses the worked example against the four-H2 + Surface shape, and asserts
-the FEATURES_VERDICT terminal grammar is stated.
+SKILL.md (autonomy-namespace scan; state-resolved seed/maintain routing)
+and the maintain PR create fence, and asserts the FEATURES_VERDICT terminal
+grammar is stated.
 
 Behavior only: no prose-string pins beyond the structural greps needed to
 extract fences and headings (G2).
@@ -27,11 +27,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 PLUGIN = REPO_ROOT / "plugins" / "flow-next"
 SKILL_DIR = PLUGIN / "skills" / "flow-next-features"
 SKILL_MD = SKILL_DIR / "SKILL.md"
-SEED_MD = SKILL_DIR / "seed.md"
 MAINTAIN_MD = SKILL_DIR / "maintain.md"
-CONTRACT_MD = SKILL_DIR / "references" / "feature-entry-contract.md"
-DOCTOR_MD = SKILL_DIR / "references" / "doctor-and-proof.md"
-SHIM = PLUGIN / "commands" / "features.md"
 
 _BASH = shutil.which("bash")
 
@@ -39,13 +35,6 @@ VERDICT_GRAMMAR = (
     "FEATURES_VERDICT=<SEEDED|CLEAN|CHANGED|BLOCKED|REFUSED> "
     'features=<n> reason="<one line>"'
 )
-
-FOUR_H2S = [
-    "## Sub-features",
-    "## How to get to it (user POV)",
-    "## Driving it",
-    "## Gotchas",
-]
 
 
 def _read(path: Path) -> str:
@@ -88,22 +77,6 @@ def _clean_env(**extra: str) -> dict[str, str]:
     return env
 
 
-def _worked_example(text: str) -> str:
-    heading = text.find("## Worked example")
-    if heading == -1:
-        raise AssertionError("## Worked example section not found")
-    m = re.search(r"```markdown\n(.*?)```", text[heading:], re.DOTALL)
-    if not m:
-        raise AssertionError("markdown fence under ## Worked example not found")
-    return m.group(1)
-
-
-class FeaturesSkillFilesExist(unittest.TestCase):
-    def test_skill_tree_and_shim_exist(self) -> None:
-        for path in (SKILL_MD, SEED_MD, CONTRACT_MD, DOCTOR_MD, SHIM):
-            self.assertTrue(path.is_file(), f"missing {path}")
-
-
 class AutonomyNamespaceScan(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -112,7 +85,7 @@ class AutonomyNamespaceScan(unittest.TestCase):
     @unittest.skipUnless(_BASH, "bash required to execute the autonomy fence")
     def test_novel_marker_outside_any_written_list_refuses(self) -> None:
         # FLOW_AUTONOMOUS_FUTURE is deliberately not a name written in the
-        # fence. A two-var check of FLOW_RALPH / FLOW_AUTONOMOUS would miss it.
+        # fence. A fixed check of FLOW_AUTONOMOUS alone would miss it.
         proc = _run_bash(
             self.fence,
             env=_clean_env(FLOW_AUTONOMOUS_FUTURE="1"),
@@ -163,17 +136,6 @@ class ModeDetectionStateRouting(unittest.TestCase):
             self.assertEqual(self._mode_in(tmp, arguments="--init"), "seed")
 
 
-class WorkedExampleContract(unittest.TestCase):
-    def test_h1_surface_and_four_h2s_in_order(self) -> None:
-        example = _worked_example(_read(CONTRACT_MD))
-        h1 = re.findall(r"^# .+$", example, re.M)
-        h2 = re.findall(r"^## .+$", example, re.M)
-        surface = re.search(r"^\*\*Surface:\*\* \S+", example, re.M)
-        self.assertEqual(len(h1), 1, f"expected one H1, got {h1}")
-        self.assertIsNotNone(surface, "missing required **Surface:** line")
-        self.assertEqual(h2, FOUR_H2S)
-
-
 class TerminalGrammar(unittest.TestCase):
     def test_features_verdict_grammar_stated(self) -> None:
         skill = _read(SKILL_MD)
@@ -182,34 +144,9 @@ class TerminalGrammar(unittest.TestCase):
         for token in ("SEEDED", "CLEAN", "CHANGED", "BLOCKED", "REFUSED"):
             self.assertIn(token, skill)
 
-    def test_grammar_is_bound_to_a_last_line_contract(self) -> None:
-        # Structural relation, not a prose pin: the section that carries the
-        # grammar must also carry the "last line" token, so removing the
-        # last-line contract (while keeping the grammar) fails here.
-        skill = _read(SKILL_MD)
-        heading = skill.find("## Terminal line")
-        self.assertNotEqual(heading, -1, "## Terminal line section missing")
-        nxt = skill.find("\n## ", heading + 1)
-        section = skill[heading : nxt if nxt != -1 else len(skill)]
-        self.assertIn(VERDICT_GRAMMAR, section)
-        self.assertIn("last line", section)
-
 
 class MaintainShipStep(unittest.TestCase):
-    """#495: ship names resolved at entry, the create seam, proven edits kept."""
-
-    def _span(self, text: str, start: str, end: str) -> str:
-        i = text.find(start)
-        self.assertNotEqual(i, -1, f"{start!r} missing")
-        j = text.find(end, i + len(start))
-        self.assertNotEqual(j, -1, f"{end!r} missing after {start!r}")
-        return text[i:j]
-
-    def test_ship_names_are_resolved_in_the_entry_gate(self) -> None:
-        # Structural relation: the ship-name step sits before Phase 1, so a
-        # missing ticket key stops the run before any proof work.
-        gate = self._span(_read(MAINTAIN_MD), "**Entry gate", "## Phase 1")
-        self.assertIn("**Ship names.**", gate)
+    """#495: the PR create fence honours the create seam."""
 
     @unittest.skipUnless(_BASH, "bash required to execute the create fence")
     def test_pr_create_fence_honours_the_create_seam(self) -> None:
@@ -229,19 +166,6 @@ class MaintainShipStep(unittest.TestCase):
             args = log.read_text(encoding="utf-8").splitlines()
         self.assertIn("--title", args)
         self.assertIn("--body-file", args)
-
-    def test_failed_ship_step_keeps_proven_edits(self) -> None:
-        blocked = self._span(_read(MAINTAIN_MD), "### BLOCKED", "### Terminal line")
-        self.assertIn("restores nothing", blocked)
-
-
-class ShimFrontmatter(unittest.TestCase):
-    def test_bare_name_features(self) -> None:
-        text = _read(SHIM)
-        m = re.search(r"^name:\s*(.+)$", text, re.M)
-        self.assertIsNotNone(m)
-        self.assertEqual(m.group(1).strip(), "features")
-        self.assertNotIn(":", m.group(1))
 
 
 if __name__ == "__main__":

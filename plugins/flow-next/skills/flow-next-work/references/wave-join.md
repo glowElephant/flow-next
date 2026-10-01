@@ -1,8 +1,8 @@
 # Wave join, integrate, and verify (gated reference)
 
-> **Loaded only when this run dispatched a parallel wave** (phases.md 3a
+> **Loaded only when this run dispatched a parallel wave** (multi-task.md 3a
 > `Dispatch count` > 1) **or a reviewer-overlap one-task wave**. A run whose
-> waves are all single, non-overlapped workers never reads this file — phases.md 3d's
+> waves are all single, non-overlapped workers never reads this file — multi-task.md 3d's
 > inline single-worker verify + failure rules cover it.
 
 Contents:
@@ -94,17 +94,20 @@ two passes:
    shipped. Rewrite the SHAs to the integrated ones before step 5, not after.
    **Failure signature:** `flowctl validate` warning
    "evidence commit &lt;sha&gt; is not reachable from HEAD" on a task this wave just
-   completed. Observed 2026-08-14 on the first live wave dispatch;
-3. when its resolved `REVIEW_MODE` is not `none`, run
+   completed.
+3. when its resolved `REVIEW_MODE` is not `none` and the working-rules.md risk rule
+   selects the task's change, run
    `flow-next:flow-next-impl-review <task-id> --base <task-normalized-integrated-base> --review=<backend>`
    from a safe review context whose `HEAD` is that task's normalized integrated
    head. The host chooses that context and isolation mechanism; it must not use
    the wave target's later `HEAD` when peer commits extend it. Apply the existing
    bounded fix loop, integrate any review-fix commits onto the target branch,
-   and append them to that task's evidence.
+   and append them to that task's evidence. When the risk rule does not select
+   the change, record `stage: impl-review - skipped(policy: risk - <reason>)` in
+   the task's summary instead.
 
-After every successful task has the required SHIP verdict (or review is `none`)
-and all review-fix commits are integrated:
+After every successful task has the required SHIP verdict (or review is `none` or
+skipped by the risk rule) and all review-fix commits are integrated:
 
 4. run the existing Phase 5 Verify contract once on the final integrated target
    **immediately before tasks are marked done**. This verification is mandatory
@@ -120,7 +123,7 @@ and all review-fix commits are integrated:
 
 ## Partial failures
 
-Partial failures use the ground-truth recovery rules in phases.md 3d, but first
+Partial failures use the ground-truth recovery rules in multi-task.md 3d, but first
 diagnose each failed or missing-result worker **inside its assigned workspace**.
 The conductor already knows that workspace plus the task-unique
 `HANDOVER_SUMMARY` and `HANDOVER_EVIDENCE` paths from dispatch; enter and

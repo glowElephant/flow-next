@@ -1,4 +1,4 @@
-# Body reconciliation — agentic 3-way merge + format translation + scoped conflict (R6/R9)
+# Body reconciliation — agentic 3-way merge + format translation + scoped conflict
 
 The body-sync reconcile body behind the [../steps.md](../steps.md) Phase 3 `reconcile` /
 `push` / `pull` hooks. This is the spec's **early proof point**: a two-way,
@@ -24,15 +24,7 @@ merge bug stays here.
 > gate** below are the only mechanical steps — and they exist to *narrow* what
 > the agent judges, not to replace the judgment.
 
-> **Live-verification status (this environment).** A full end-to-end exercise of the
-> merge over a real Linear round-trip needs live credentials (a registered MCP
-> server OR a `LINEAR_API_KEY` against a real workspace) — unavailable in the build
-> environment. The **strictly-live step is deferred to the post-PR smoke-testing
-> phase** the maintainer drives (same posture as the [linear-ladder.md](linear-ladder.md)
-> round-trip spike). Everything else here — the pre-reduction, the format
-> translation, the structural gate, the scoped-conflict judgment — is a complete,
-> runnable procedure with worked fixtures and explicit oracles below, exercisable
-> without a live tracker.
+> The worked fixtures and explicit oracles below are exercisable without a live tracker.
 
 ## The three inputs (real 3-way, never a 2-way guess)
 
@@ -97,7 +89,7 @@ base / flow-side / tracker-side and produces the merged body. Per section
 
 1. **Section / unit only one side touched** → take that side's version. (A PM
    clarified the Goal in Linear; a dev left the Acceptance untouched → keep the
-   dev's Acceptance, take the PM's Goal.) **This is the headline R6 case: two
+   dev's Acceptance, take the PM's Goal.) **This is the headline case: two
    non-conflicting two-sided edits both survive.**
 2. **Both sides added different new content to the same section** (additive, not
    contradictory — e.g. flow added a new acceptance bullet, the tracker added a
@@ -113,7 +105,7 @@ thing reworded is NOT a conflict; a one-word change that inverts the meaning IS.
 This is precisely the judgment a deterministic line-merge gets wrong and the host
 agent gets right — the reason the merge is agentic.
 
-## Step 3 — Format translation (flow-structured ↔ tracker free-form) (R6)
+## Step 3 — Format translation (flow-structured ↔ tracker free-form)
 
 The two sides are in different formats. Flowctl renders Flow-to-tracker on push;
 the agent folds tracker edits into Flow and judges conflicts.
@@ -144,13 +136,13 @@ the agent folds tracker edits into Flow and judges conflicts.
   **prose, not a promoted requirement** — fold it as prose under the right section;
   do not allocate a new R-ID, do not add a coverage-table row, do not stamp a
   `[user]`/`[paraphrase]`/`[inferred]` source tag. R-ID allocation and source
-  tagging are flow-authoring acts (capture/interview/plan), not sync acts. The
+  tagging are flow-authoring acts (capture/refine/plan), not sync acts. The
   bridge **projects**; it does not author requirements.
 - Tracker free text that matches no existing section folds into the nearest
   sensible section (or a `## Notes` section) — never dropped, never invented into a
   fake structured element.
 
-## Step 3.5 — Structural verification gate (before ANY write-back) (R6)
+## Step 3.5 — Structural verification gate (before ANY write-back)
 
 A mechanical gate the merged body MUST pass **before** writing the spec or calling
 the facade. This is the second (and last) deterministic step — it guards the
@@ -172,7 +164,7 @@ invariants above against base/flow/tracker). If it FAILS, do NOT write the spec 
 do NOT call the facade — re-merge, or queue it with `sync defer`. Never a
 partial or half-merged write.
 
-## Step 4 — Scoped conflict (genuine contradiction only) (R9)
+## Step 4 — Scoped conflict (genuine contradiction only)
 
 Reached ONLY from Step 2 case 3 — a genuine semantic contradiction. The conflict is
 **scoped to the one section** that contradicts; the rest of the body merges cleanly
@@ -192,9 +184,9 @@ Show the human the **merged body** (every cleanly-merged section already folded)
 
 The confirmation shows the *whole merged body* (so the human sees the merge is
 correct everywhere else) but the *decision* is scoped to the contradicting section.
-That is the R9 guarantee: focused, not whole-body.
+That is the scoped-conflict guarantee: focused, not whole-body.
 
-### Autonomous / Ralph mode — queue, never block (R9/R11)
+### Autonomous mode — queue, never block
 
 Confident merges (Steps 1–3 with no Step 4 contradiction) proceed unattended. A
 genuine contradiction — **including the `always-ask` tiebreak default** — does NOT
@@ -203,8 +195,7 @@ resolves to "queue for the human" in autonomous mode (same policy, surface-depen
 delivery — mirrors flow-next-drive's surface-aware ladder).
 
 ```bash
-# Any autonomy marker (FLOW_RALPH, REVIEW_RECEIPT_PATH, FLOW_AUTONOMOUS,
-# AUTONOMOUS, or mode:autonomous): queue the scoped conflict, write
+# Any autonomy marker (FLOW_AUTONOMOUS, AUTONOMOUS, or mode:autonomous): queue the scoped conflict, write
 # NO body, skip the facade call, continue the batch.
 $FLOWCTL sync defer "$SPEC_ID" \
   --summary "Goal section rewritten on both sides to mean different things (flow: OAuth-only; tracker: OAuth+SAML)" \
@@ -212,10 +203,10 @@ $FLOWCTL sync defer "$SPEC_ID" \
   --reason "genuine-contradiction"
 ```
 
-The conflict-tiebreak default (`flow-wins | tracker-wins | always-ask`, R1) governs
+The conflict-tiebreak default (`flow-wins | tracker-wins | always-ask`) governs
 the rare unresolvable case: `flow-wins`/`tracker-wins` auto-resolve the scoped
 section to that side (still a confident merge → proceed); `always-ask` queues in
-Ralph (above) and prompts interactively.
+autonomous mode (above) and prompts interactively.
 
 ## Step 5 — Write-back
 
@@ -226,7 +217,7 @@ pull or reconcile whose `--flow-file` differs from the spec on disk
 the server readback, the paired merge-base and `lastSyncedAt` writes, and the
 aggregate receipt; a failure there leaves the prior base intact.
 
-## First-sync / no-base bootstrap (no merge base yet) (R6)
+## First-sync / no-base bootstrap (no merge base yet)
 
 When `sync get-state` shows no `mergeBaseFlow`/`mergeBaseTracker` (a first link),
 there is no 3-way ancestor — so **never run Step 2** (it would over-surface the
@@ -245,11 +236,9 @@ The link/unlink ceremony that calls these is in [../steps.md](../steps.md) Phase
 ## Worked fixtures (runnable without a live tracker)
 
 These are the merge engine's oracles — each is a base + two divergent sides + the
-expected outcome, exercisable by the host agent reading them (no live Linear needed;
-the live round-trip is the smoke phase). They double as the acceptance evidence for
-R6/R9.
+expected outcome, exercisable by the host agent reading them (no live Linear needed).
 
-### Fixture A — non-conflicting two-sided edits both survive (R6 headline)
+### Fixture A — non-conflicting two-sided edits both survive (headline)
 
 **Base** (`mergeBaseFlow`):
 
@@ -300,7 +289,7 @@ Add login to the dashboard. Must support SSO via the corporate IdP for the launc
 present; no conflict surfaced; structural gate passes (no section dropped, both
 additions present). PASS iff both survive.
 
-### Fixture B — format translation, no invented R-IDs (R6)
+### Fixture B — format translation, no invented R-IDs
 
 **Tracker-side** free text a PM typed in Linear (folds into flow on a tracker-first
 pull):
@@ -321,14 +310,14 @@ Let users export their data.
 
 ## Notes
 Also we should rate-limit the export endpoint. (PM note from the tracker — not yet a
-tracked requirement; promote via interview/plan if it should become one.)
+tracked requirement; promote via refine/plan if it should become one.)
 ~~~
 
 **Oracle:** the `R17:` prose folded under a real flow section; **no `[R17]` R-ID was
 allocated, no coverage-table row added, no source tag stamped.** PASS iff the bridge
 did not invent a requirement.
 
-### Fixture C — genuine contradiction scoped to one section (R9)
+### Fixture C — genuine contradiction scoped to one section
 
 **Base** Goal: `Support OAuth login.`
 **Flow-side** Goal: `Support OAuth login only — SAML is explicitly out of scope.`
@@ -340,15 +329,15 @@ did not invent a requirement.
 sides → no conflict, fold once. Goal rewritten on both sides to mean **different
 things** (flow excludes SAML; tracker includes it) → Step 4 scoped conflict.
 
-**Oracle (the R9 proof):**
+**Oracle:**
 - The conflict is surfaced **scoped to the `## Goal & Context` section only** — the
   Acceptance section merged cleanly and is NOT presented as a conflict.
 - It is **NOT a whole-body diff**: the human (interactive) or the deferred-sink entry
-  (Ralph) references only the Goal contradiction, with the rest already merged.
+  (autonomous) references only the Goal contradiction, with the rest already merged.
 - No silent overwrite: neither Goal version is written until the human picks.
 
 ```bash
-# Ralph proof for Fixture C — exactly ONE scoped conflict queued, no body written:
+# Autonomous proof for Fixture C — exactly ONE scoped conflict queued, no body written:
 $FLOWCTL sync defer "$SPEC_ID" \
   --summary "Goal contradicts: flow excludes SAML, tracker includes it" \
   --suggested "Human picks OAuth-only vs OAuth+SAML" --reason "genuine-contradiction"

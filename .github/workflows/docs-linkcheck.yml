@@ -38,7 +38,6 @@ jobs:
             --exclude-path plugins/flow-next/codex
             --exclude-path .flow
             --exclude-path node_modules
-            --exclude-path flow-next-tui/node_modules
             README.md
             CONTRIBUTING.md
             SECURITY.md

@@ -4,7 +4,7 @@ Contributor-facing map of the install system. Read this BEFORE touching the setu
 
 ## One mode: nothing is copied into the repo
 
-`/flow-next:setup` has a single mode on every host. It runs `flowctl init`, writes the versioned docs-snippet block, walks the config ceremony, and optionally seeds **user-owned** files (`SPEC.md`, `.flow/criteria.md`, `.codex/agents/*.toml` on Codex, Ralph). It never writes `.flow/bin/`, `.flow/templates/spec.md`, or `.flow/usage.md`.
+`/flow-next:setup` has a single mode on every host. It runs `flowctl init`, writes the versioned docs-snippet block, walks the config ceremony, and optionally seeds **user-owned** files (`SPEC.md`, `.flow/criteria.md`, `.codex/agents/*.toml` on Codex). It never writes `.flow/bin/`, `.flow/templates/spec.md`, or `.flow/usage.md`.
 
 Repos set up before fn-197 carry those snapshots. They are inert: nothing reads them, deleting them changes nothing observable. Setup (unconditional offer) and `/flow-next:plan` (one-line nudge) both detect them from flowctl's `LEGACY_COPY_ARTIFACTS` list and offer deletion — never silently. Old `setup_mode` / `setup_version` stamps in `.flow/meta.json` are tolerated as inert metadata and never read.
 

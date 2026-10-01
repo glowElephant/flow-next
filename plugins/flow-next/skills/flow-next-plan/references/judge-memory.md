@@ -1,18 +1,11 @@
-# Memory without a scout spawn
+# Memory in one search
 
-When `memory.enabled` is true, run `$FLOWCTL memory search "<task or planning query>" --rerank --json` directly. Use relevant module/category filters as before; status remains active, excluding stale and hardened entries. One request scores the top 15 hits; consume the returned order and do not rerank it in the host.
+When `memory.enabled` is true, run one search on a sentence that states the task (add a module or category filter when the task names one; status stays active, which excludes stale and hardened entries):
 
-When `rerank` is `jev`, replace the memory-scout dispatch with the returned findings: render `## Memory findings` and the unchanged `Track | Category | Entry | Why relevant` table, one short title/relevance bullet per entry, no bodies. Print the returned `stage_line`: `memory: reranked (jev, <input count> -> <count>)`. Zero hits needs no judge or scout and renders the existing no-relevant-entries result.
-
-When `rerank` is `bm25` because the judge is unavailable, print the returned `stage_line`, `memory: bm25 (jev-unavailable(<rerank_reason>))` and dispatch `flow-next:memory-scout` as before, including when `matches` is empty: pass the BM25 result (empty or not) and the unavailability reason so the scout refines keywords and runs its one to three targeted queries without retrying the judge for that same query. A failed search is `Memory scan FAILED: <first error line>`, never an empty-memory claim. The scout retains the existing module, deduplication and recency rules and table format.
-
-Consume the JSON without changing its ordering. `spawn_memory_scout` selects the fallback dispatch; `memory_matches` supplies either the direct table or that scout's input:
-
-```python
-# fence:judge-memory-consumer
-memory_matches = result["matches"]
-spawn_memory_scout = result["rerank"] == "bm25"
-memory_line = result["stage_line"]
+```bash
+$FLOWCTL memory search "<task sentence>" --limit 15 --rerank --json
 ```
 
-Plan consumes the table directly; workers run their own `--rerank` search at anchor time. A reranked retrieval with no hits is complete; an unavailable one with no hits still gets the scout's refinement.
+The same command serves both paths. Without a key, or with the judge off or failing, the matches come back in BM25 order; with a key, Jev reorders the same entries (`jev_score`, `jev_rank`) and drops none. Either way, read the titles and snippets and keep the entries whose lesson applies to this task; that choice is yours on both paths, and `$FLOWCTL memory read <entry-id>` settles a snippet that is not enough. Print the returned `stage_line`.
+
+Render `## Memory findings` with the `Track | Category | Entry | Why relevant` table and one short title/relevance bullet per kept entry, no bodies. Nothing kept, or no matches, renders `No relevant entries in project memory.` A failed search is `Memory scan FAILED: <first error line>`, never an empty-memory claim. Do not spawn `flow-next:memory-scout` for this; the search is the whole retrieval.

@@ -25,10 +25,6 @@ spec.loader.exec_module(f)
 
 def state_for(preset):
     states = {
-        "route": {"view": "intent", "view_meaning": "An intent at intake", "repo": ".", "intent": "Fix the crash",
-                  "status": None, "ready": False, "no_plan": False, "tasks_total": 0,
-                  "tasks_done": 0, "pr_exists": False, "pr_ref": None, "startable_target_fact": "npm run dev"},
-        "qa-gate": {"acceptance": "The button opens a modal", "startable_target_fact": "npm run dev"},
         "fork-gate": {"text": "Should this be a modal or a separate page?"},
         "memory-rerank": {"query": "auth", "entries": [{"entry_id": str(i)} for i in range(15)]},
         "tier": {"task_title": "Rename field", "task_body": "Rename field in fixture", "acceptance": "Updated fixture",
@@ -84,7 +80,7 @@ class JudgeTests(unittest.TestCase):
                 self.assertEqual(body["state"], state_for(preset))
                 self.assertEqual(body["questions"], f.judge_questions(preset, state_for(preset)))
                 self.assertEqual(body["model"], "jev-latest")
-                self.assertEqual("candidates" in result["decision"], preset in ("route", "tier"))
+                self.assertEqual("candidates" in result["decision"], preset == "tier")
 
     def test_availability_never_sends(self):
         for enabled, key, reason in [(True, "", "no_key"), (False, "secret", "disabled")]:
@@ -125,15 +121,15 @@ class JudgeTests(unittest.TestCase):
         self.connection.request.assert_not_called()
 
     def test_bad_answers_fail_closed(self):
-        for mutation in (lambda p: p["answers"].pop("kind"),
-                         lambda p: p["answers"]["kind"]["probabilities"].pop("tiny"),
-                         lambda p: p["answers"]["kind"].update(confidence=float("nan")),
-                         lambda p: p["answers"]["kind"].update(choice="imaginary"),
-                         lambda p: p["answers"]["reports_defect"].update(noul=True),
+        for mutation in (lambda p: p["answers"].pop("tier"),
+                         lambda p: p["answers"]["tier"]["probabilities"].pop("moderate"),
+                         lambda p: p["answers"]["tier"].update(confidence=float("nan")),
+                         lambda p: p["answers"]["tier"].update(choice="imaginary"),
+                         lambda p: p["answers"]["purely_mechanical_edit"].update(noul=True),
                          lambda p: p.update(model=None)):
-            payload = payload_for("route")
+            payload = payload_for("tier")
             mutation(payload)
-            self.assertEqual(self.request("route", payload=payload)["reason"], "bad_answer")
+            self.assertEqual(self.request("tier", payload=payload)["reason"], "bad_answer")
         payload = payload_for("memory-rerank")
         del payload["answers"]["entry_3"]["probabilities"]["1"]
         self.assertEqual(self.request("memory-rerank", payload=payload)["reason"], "bad_answer")
@@ -154,24 +150,19 @@ class JudgeTests(unittest.TestCase):
             f.judge_evaluate("clean-review", {"body": "No findings"})
         self.connection.request.assert_not_called()
 
-    def test_route_floor_and_no_match_fallback_only_candidates(self):
-        for choice, confidence, expected in [("defect", .7, "defect"), ("build", .699, "host"), ("none_of_the_above", 1, "host")]:
-            answers = payload_for("route")["answers"]
-            answers["kind"].update(choice=choice, confidence=confidence)
-            result = f.judge_decide("route", state_for("route"), answers)
-            self.assertEqual(result["value"], expected)
-            self.assertEqual(len(result["candidates"]), 3)
+    def test_retired_qa_gate_preset_rejected(self):
+        # The QA gate never asks Jev: the host judges the UI half, code resolves the target.
+        with self.assertRaisesRegex(ValueError, "registered presets"):
+            f.judge_evaluate("qa-gate", {"acceptance": "The button opens a modal", "startable_target_fact": "npm run dev"})
+        self.connection.request.assert_not_called()
 
-    def test_qa_requires_both_halves(self):
-        for ui, target, expected, reason in [(.5, "npm run dev", "qa_runs", None), (.49, "npm run dev", "qa_skipped", "no UI-observable criteria"), (.9, None, "qa_skipped", "no startable target")]:
-            decision = f.judge_decide("qa-gate", {"startable_target_fact": target}, {"ui_observable_criteria": {"noul": ui}})
+    def test_fork_gate_is_a_kind_hint_and_never_cancels_a_fork(self):
+        self.assertEqual(list(f.judge_questions("fork-gate", state_for("fork-gate"))), ["fork_kind"])
+        for choice, confidence, expected in [("observable", .5, "observable"), ("product_or_preference", .8, "product_or_preference"),
+                                             ("observable", .49, "host"), ("none_of_the_above", 1, "host")]:
+            decision = f.judge_decide("fork-gate", {}, {"fork_kind": {"choice": choice, "confidence": confidence}})
             self.assertEqual(decision["value"], expected)
-            self.assertEqual(decision.get("reason"), reason)
-
-    def test_fork_gate_none_and_host_residue(self):
-        for gate, choice, confidence, expected in [(.49, "observable", 1, "none"), (.5, "observable", .5, "observable"), (.9, "product_or_preference", .8, "product_or_preference"), (.9, "observable", .49, "host"), (.9, "none_of_the_above", 1, "host")]:
-            decision = f.judge_decide("fork-gate", {}, {"fork_present": {"noul": gate}, "fork_kind": {"choice": choice, "confidence": confidence}})
-            self.assertEqual(decision["value"], expected)
+            self.assertNotEqual(decision["value"], "none")
 
     def test_tier_only_extremes_act(self):
         for tier, confidence, expected in [("mechanical", .8, "mechanical"), ("long_running", .8, "long_running"), ("mechanical", .79, "session"), ("moderate", 1, "session"), ("intelligent", 1, "session")]:
@@ -179,32 +170,38 @@ class JudgeTests(unittest.TestCase):
             answers["tier"].update(choice=tier, confidence=confidence)
             self.assertEqual(f.judge_decide("tier", {}, answers)["value"], expected)
 
-    def test_memory_stable_order_floor_cap_and_empty(self):
+    def test_memory_reorders_every_entry_stably_and_empty(self):
         state = state_for("memory-rerank")
         answers = payload_for("memory-rerank")["answers"]
-        answers["entry_0"]["score"] = .99
+        answers["entry_0"]["score"] = .1
         answers["entry_5"]["score"] = 2
         ranked = f.judge_decide("memory-rerank", state, answers)["value"]
-        self.assertEqual([p[0] for p in ranked], ["5", "1", "2", "3", "4", "6", "7", "8", "9", "10"])
+        # Reorder only: a low score moves an entry down, never out of the host's list.
+        self.assertEqual([p[0] for p in ranked], ["5"] + [str(i) for i in range(1, 15) if i != 5] + ["0"])
         result = f.judge_evaluate("memory-rerank", {"query": "auth", "entries": []})
         self.assertEqual(result["decision"]["value"], [])
         self.connection.request.assert_not_called()
 
-    def test_kind_criteria_match_route_matrix_verbatim(self):
-        matrix = (SCRIPTS.parent / "skills/flow-next-flow/references/route-matrix.md").read_text()
-        rows = [tuple(c.strip() for c in line.strip("|").split("|")) for line in matrix.splitlines() if line.startswith("| ")][1:]
-        indices = {"build": [4], "capture_brief": [5], "defect": [6], "cleanup": [7], "slowness": [8], "hillclimb": [9], "question": [10], "fork": [11], "tiny": [12], "theme": [3], "discovery": [0, 1, 2], "refine": [13], "plan_review": [14]}
-        actual = f.JUDGE_PRESETS["route"]["questions"]["kind"]["criteria"]
-        for kind, indices_for_kind in indices.items():
-            self.assertEqual(actual[kind], "; ".join(rows[i][0] + ". " + rows[i][2] for i in indices_for_kind))
-        self.assertEqual(set(actual), set(indices) | {"none_of_the_above"})
-
-    def test_route_qa_off_sends_no_qa_question(self):
-        with patch.object(f, "get_config", side_effect=lambda key, default=None: "off" if key == "pipeline.qa" else True):
-            result = self.request("route")
-        self.assertTrue(result["available"])
-        self.assertNotIn("qa", result["decision"])
-        self.assertNotIn("ui_observable_criteria", json.loads(self.connection.request.call_args.kwargs["body"])["questions"])
+    def test_route_is_code_only_and_never_sends_with_a_key(self):
+        live = {"spec_body": "Build it", "status": "open", "ready": True, "no_plan": False,
+                "tasks_total": 0, "tasks_done": 0, "pr_exists": False, "pr_ref": None,
+                "startable_target_fact": "npm run dev"}
+        cases = [({"pr_exists": True}, "existing_pr_tail"), ({"tasks_total": 2}, "work_planned"),
+                 ({"ready": False}, "host"), ({"tasks_total": 2, "tasks_done": 2}, "all_done_make_pr"),
+                 ({}, "work_no_plan_default"), ({"spec_body": "Ship in two PRs"}, "plan")]
+        for overrides, value in cases:
+            with self.subTest(value=value):
+                result = f.judge_route({**live, **overrides})
+                self.assertEqual((result["available"], result["reason"]), (False, "routing_is_code"))
+                self.assertEqual(result["decision"]["value"], value)
+                self.assertEqual(set(result["decision"]), {"value", "rule", "met", "pr_ref", "startable_target_fact"})
+                self.assertNotIn("answers", result)
+        failed = f.judge_route({**live, "pr_exists": None})
+        self.assertTrue(failed["pr_probe_failed"])
+        self.assertNotIn("decision", failed)
+        with self.assertRaisesRegex(ValueError, "registered presets"):
+            f.judge_evaluate("route", live)
+        self.connection.request.assert_not_called()
 
     def test_memory_command_applies_rerank_and_preserves_unavailable_order(self):
         entries = [{"entry_id": str(i), "title": "auth pitfall", "track": "bug", "category": "runtime-errors",
@@ -231,9 +228,15 @@ class JudgeTests(unittest.TestCase):
                 payload["answers"][f"entry_{i}"]["score"] = score
             self.connection.getresponse.return_value = Mock(status=200, read=lambda: json.dumps(payload).encode())
             ranked = run()
-            self.assertEqual([m["entry_id"] for m in ranked["matches"]], ["2", "1"])
-            self.assertEqual([m["jev_rank"] for m in ranked["matches"]], [1, 2])
-            self.assertEqual(ranked["stage_line"], "memory: reranked (jev, 3 -> 2)")
+            self.assertEqual([m["entry_id"] for m in ranked["matches"]], ["2", "1", "0"])
+            self.assertEqual([m["jev_rank"] for m in ranked["matches"]], [1, 2, 3])
+            self.assertEqual(ranked["stage_line"], "memory: reranked (jev, 3 entries)")
+            sent = json.loads(self.connection.request.call_args.kwargs["body"])["state"]["entries"]
+            self.assertTrue(all("path" not in e and "score" not in e for e in sent))
+            self.assertTrue(all("path" in m and "score" in m for m in ranked["matches"]))
+            args.limit = 2
+            self.assertEqual([m["entry_id"] for m in run()["matches"]], ["2", "1"])
+            args.limit = None
             args.json = False
             self.assertIn("| Track | Category | Entry | Why relevant |", run())
             with patch.object(f, "_memory_iter_entries", return_value=[]):
@@ -246,7 +249,7 @@ class JudgeTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "state.json"
             path.write_text(json.dumps({"text": "No issues — très bien"}))
-            args = argparse.Namespace(preset="fork-gate", state_file=str(path), spec=None, explain=False, json=True)
+            args = argparse.Namespace(preset="fork-gate", state_file=str(path), spec=None, json=True)
             before = {p.name: p.read_bytes() for p in Path(directory).iterdir()}
             stdout, stderr = io.StringIO(), io.StringIO()
             self.connection.getresponse.return_value = Mock(status=401)
@@ -264,27 +267,10 @@ class JudgeTests(unittest.TestCase):
             self.assertNotEqual(proc.returncode, 0)
             self.assertIn("fork-gate", proc.stderr)
 
-    def test_intake_state_as_the_skill_writes_it_reaches_the_judge(self):
-        """The host supplies only view and its text; code assembles every other route fact."""
+    def test_workflow_writes_no_intake_route_state(self):
         workflow = (SCRIPTS.parent / "skills/flow-next-flow/workflow.md").read_text()
-        self.assertIn('{"view": "intent", "intent": "<text>"}', workflow)
-        self.assertIn('{"view": "brief", "spec_title": "<title>", "spec_body": "<body>"}', workflow)
-        for written in ({"view": "intent", "intent": "Fix the crash on save"},
-                        {"view": "brief", "spec_title": "Crash on save", "spec_body": "Fix the crash on save"}):
-            with tempfile.TemporaryDirectory() as directory:
-                path = Path(directory) / "state.json"
-                path.write_text(json.dumps(written))
-                args = argparse.Namespace(preset="route", state_file=str(path), spec=None, explain=False, json=True)
-                self.connection.reset_mock()
-                self.connection.getresponse.return_value = Mock(
-                    status=200, read=lambda: json.dumps(payload_for("route", state_for("route"))).encode())
-                stdout = io.StringIO()
-                with patch.object(f, "get_repo_root", return_value=Path(directory)), redirect_stdout(stdout):
-                    f.cmd_judge(args)
-                self.assertTrue(json.loads(stdout.getvalue())["available"])
-                sent = json.loads(self.connection.request.call_args.kwargs["body"])["state"]
-                self.assertEqual(set(f.JUDGE_PRESETS["route"]["required"]) - set(sent), set())
-                self.assertEqual((sent["status"], sent["tasks_total"], sent["pr_exists"]), (None, 0, False))
+        self.assertNotIn('"view": "intent"', workflow)
+        self.assertNotIn("--preset route --state-file", workflow)
 
     def test_spec_flag_reaches_the_live_route_through_the_command(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -293,10 +279,7 @@ class JudgeTests(unittest.TestCase):
             body.write_text("Implement feature")
             spec_data = {"title": "Feature", "status": "open", "ready": True, "branch_name": None}
             inventory = Mock(by_spec={"fn-1-feature": [{"status": "todo"}]})
-            args = argparse.Namespace(preset="route", state_file=None, spec="fn-1-feature", explain=False, json=True)
-            live = {"view": "live", "spec_title": "Feature", "spec_body": "Implement feature"}
-            self.connection.getresponse.return_value = Mock(
-                status=200, read=lambda: json.dumps(payload_for("route", live)).encode())
+            args = argparse.Namespace(preset="route", state_file=None, spec="fn-1-feature", json=True)
             stdout = io.StringIO()
             with patch.object(f, "get_repo_root", return_value=repo), patch.object(f, "get_flow_dir", return_value=repo), \
                     patch.object(f, "resolve_spec_id_arg", return_value="fn-1-feature"), \
@@ -306,28 +289,20 @@ class JudgeTests(unittest.TestCase):
                     patch.object(f.TaskInventory, "load", return_value=inventory), redirect_stdout(stdout):
                 f.cmd_judge(args)
             result = json.loads(stdout.getvalue())
-            self.assertTrue(result["available"])
+            self.assertEqual((result["available"], result["reason"]), (False, "routing_is_code"))
             self.assertEqual(result["decision"]["value"], "work_planned")
+            self.connection.request.assert_not_called()
 
     def test_every_missing_field_is_named_at_once(self):
-        for preset in ("route", "tier"):
-            with tempfile.TemporaryDirectory() as directory:
-                path = Path(directory) / "state.json"
-                path.write_text(json.dumps({"view": "live"} if preset == "route" else {}))
-                args = argparse.Namespace(preset=preset, state_file=str(path), spec=None, explain=False, json=True)
-                stdout = io.StringIO()
-                with patch.object(f, "get_repo_root", return_value=Path(directory)), redirect_stdout(stdout), self.assertRaises(SystemExit):
-                    f.cmd_judge(args)
-                for field in ("task_title", "repo") if preset == "tier" else ("status", "pr_ref", "spec_body"):
-                    self.assertIn(field, stdout.getvalue())
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "state.json"
-            path.write_text(json.dumps({"view": "intent", "intent": 5}))
-            args = argparse.Namespace(preset="route", state_file=str(path), spec=None, explain=False, json=True)
+            path.write_text(json.dumps({}))
+            args = argparse.Namespace(preset="tier", state_file=str(path), spec=None, json=True)
             stdout = io.StringIO()
             with patch.object(f, "get_repo_root", return_value=Path(directory)), redirect_stdout(stdout), self.assertRaises(SystemExit):
                 f.cmd_judge(args)
-            self.assertIn("must be a string: intent", stdout.getvalue())
+            for field in ("task_title", "repo"):
+                self.assertIn(field, stdout.getvalue())
         self.connection.request.assert_not_called()
 
 

@@ -14,11 +14,11 @@ REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 
 Bash vars do not survive across tool calls - re-declare the FLOWCTL block at the top of any later bash block that needs it.
 
-**Blocking questions:** use bare `AskUserQuestion`. If unreachable, print a plain-text numbered prompt with a final `Other - type your own answer` option and wait for the typed reply. (sync-codex.sh rewrites AskUserQuestion for the Codex mirror.)
+**Blocking questions:** use bare `AskUserQuestion`. If unreachable, print a plain-text numbered prompt with a final `Other - type your own answer` option and wait for the typed reply.
 
 **Read-only scouts:** use `Task` with `subagent_type: Explore`. On hosts without an Explore builtin (e.g. Cursor), use the host's generic read-only dispatch with Edit/Write disallowed. Facts with safe path/revision references only - never judgments that settle attended decisions.
 
-**Unattended driver** (any one signal): `FLOW_RALPH=1`, non-empty `REVIEW_RECEIPT_PATH`, non-empty `FLOW_AUTONOMOUS`, or host loop with no human present. Interactive terminal = attended.
+**Unattended driver** (any one signal): non-empty `FLOW_AUTONOMOUS`, or host loop with no human present. Interactive terminal = attended.
 
 ---
 
@@ -80,7 +80,7 @@ When the sentinel prints, STOP and Read [references/tracker-projection.md](refer
 
 ### 0.3 - Human pairings
 
-Every human-facing list of decisions pairs **title + D-ID + record link**. Never dump bare identifiers alone (R36).
+Every human-facing list of decisions pairs **title + D-ID + record link**. Never dump bare identifiers alone.
 
 ---
 

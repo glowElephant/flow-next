@@ -17,7 +17,6 @@
 #  10.  search --status all returns both
 #  11.  list --status stale (existing fn-30 path) still works (regression)
 #  12.  schema validation accepts last_audited + audit_notes (round-trip via memory read)
-#  13.  Ralph regression — mark-stale + mark-fresh + search work under FLOW_RALPH=1
 #
 # Pure shell + Python harness — no LLM invocations. Targets <30s runtime.
 # Pattern follows prospect_smoke_test.sh (fn-33.6).
@@ -489,26 +488,6 @@ assert_eq_jq "$READ_JSON" "d['frontmatter']['last_audited']" "$TODAY" \
   "Case 12: last_audited round-trips through validator"
 assert_eq_jq "$READ_JSON" "d['frontmatter']['audit_notes']" "hand-rolled smoke entry" \
   "Case 12: audit_notes round-trips through validator"
-
-# =============================================================================
-# CASE 13: Ralph regression — plumbing works under FLOW_RALPH=1
-# =============================================================================
-echo -e "${YELLOW}--- Case 13: Ralph regression (plumbing not gated) ---${NC}"
-
-# Spec is explicit: skill is Ralph-aware, plumbing is not. mark-stale /
-# mark-fresh / search must run cleanly under FLOW_RALPH=1 because Ralph's
-# auto-capture path calls mark-stale on conflict.
-rc=0
-( cd "$REPO" && FLOW_RALPH=1 "$FLOWCTL" memory mark-stale "$ENTRY_B" --reason "ralph-mode test" >/dev/null 2>&1 ) || rc=$?
-assert_rc 0 "$rc" "Case 13a: mark-stale under FLOW_RALPH=1 returns rc=0"
-
-rc=0
-( cd "$REPO" && FLOW_RALPH=1 "$FLOWCTL" memory mark-fresh "$ENTRY_B" >/dev/null 2>&1 ) || rc=$?
-assert_rc 0 "$rc" "Case 13b: mark-fresh under FLOW_RALPH=1 returns rc=0"
-
-rc=0
-( cd "$REPO" && FLOW_RALPH=1 "$FLOWCTL" memory search auth --status all --json >/dev/null 2>&1 ) || rc=$?
-assert_rc 0 "$rc" "Case 13c: search --status all under FLOW_RALPH=1 returns rc=0"
 
 # =============================================================================
 # Results

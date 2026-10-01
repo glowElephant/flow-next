@@ -9,7 +9,7 @@ said so. Two additive signals, no staging and no commit from inside flowctl:
   * ONE stderr advisory naming that path when it is tracked and now dirty -
     and none when the file was never committed, or when there is no repo.
 
-Exit codes and the existing `status` key are untouched (Ralph / pilot / land
+Exit codes and the existing `status` key are untouched (pilot / land
 guards read exit + status only).
 
 Run:

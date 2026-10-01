@@ -1,13 +1,12 @@
-"""Spec-scaffold invariants for refine (fn-44.9, trimmed in fn-276).
+"""Spec-scaffold invariants.
 
   (e) `flowctl spec skeleton` produces byte-for-byte identical output to
-      the bundled templates/spec.md with YAML frontmatter stripped
-      (fn-220 moved the baseline off the 1.0.2 six-heading skeleton).
+      the bundled templates/spec.md with YAML frontmatter stripped, run from
+      a directory with no repo-root SPEC.md / spec.md override.
 
-Additionally: auxiliary sections are named in refine's SKILL.md, R-IDs are
-append-only, and a spec written under the pre-fn-276 layout (scope-owner
-markers, `### Motivation` / `### Implementation Tradeoffs` under Decision
-Context) still loads unchanged (fn-276 R4).
+Additionally: a spec written under the older layout (scope-owner markers,
+`### Motivation` / `### Implementation Tradeoffs` under Decision Context)
+still loads unchanged.
 """
 
 from __future__ import annotations
@@ -29,7 +28,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 HERE = Path(__file__).resolve()
 PLUGIN_DIR = HERE.parent.parent
 FLOWCTL_PY = PLUGIN_DIR / "scripts" / "flowctl.py"
-INTERVIEW_DIR = PLUGIN_DIR / "skills" / "flow-next-refine"
 
 
 def _run(*args: str, cwd: Path | None = None) -> subprocess.CompletedProcess:
@@ -74,10 +72,16 @@ def _expected_skeleton_from_template() -> str:
 
 class TestR22E_SpecSkeletonByteForByte(unittest.TestCase):
     """R22 (e): `flowctl spec skeleton` equals bundled templates/spec.md
-    with YAML frontmatter stripped (baseline moved in fn-220)."""
+    with YAML frontmatter stripped. Runs outside this repo, whose own
+    root SPEC.md would otherwise win the template cascade."""
+
+    def setUp(self) -> None:
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.cwd = Path(tmp.name)
 
     def test_skeleton_byte_for_byte_matches_baseline(self) -> None:
-        proc = _run("spec", "skeleton")
+        proc = _run("spec", "skeleton", cwd=self.cwd)
         self.assertEqual(proc.returncode, 0)
         expected = _expected_skeleton_from_template()
         self.assertEqual(
@@ -90,7 +94,7 @@ class TestR22E_SpecSkeletonByteForByte(unittest.TestCase):
 
     def test_skeleton_carries_canonical_h2s(self) -> None:
         """CLI skeleton is the canonical template, including its seven H2s."""
-        proc = _run("spec", "skeleton")
+        proc = _run("spec", "skeleton", cwd=self.cwd)
         self.assertEqual(proc.returncode, 0)
         skeleton = proc.stdout
         self.assertIn("## Goal & Context", skeleton)
@@ -104,61 +108,11 @@ class TestR22E_SpecSkeletonByteForByte(unittest.TestCase):
     def test_skeleton_json_envelope_matches(self) -> None:
         """`flowctl spec skeleton --json` wraps the same text in a JSON
         envelope; the embedded skeleton field is byte-for-byte identical."""
-        proc = _run("spec", "skeleton", "--json")
+        proc = _run("spec", "skeleton", "--json", cwd=self.cwd)
         self.assertEqual(proc.returncode, 0)
         payload = json.loads(proc.stdout)
         self.assertTrue(payload["success"])
         self.assertEqual(payload["skeleton"], _expected_skeleton_from_template())
-
-
-class TestR23_AuxiliarySectionEnumerationCompleteness(unittest.TestCase):
-    """R23 section-merge contract: auxiliary sections preserved. The full
-    auxiliary-section enumeration must be Strategy Alignment + Strategy
-    Conflicts + Glossary Conflicts + Conversation Evidence + Resolved via
-    Codebase + Resolved via Project Docs (per fn-44.2 review fix) +
-    Resolved via Experiment (fn-266) + Parked
-    unknowns (the optional fog slot — preserved like the others, and the
-    only aux section refine may delete a resolved bullet from).
-
-    SKILL.md preservation lists must enumerate all of them — fn-44.2's bug was
-    that an earlier draft omitted `Strategy Conflicts` from four of the
-    preservation lists.
-    """
-
-    def setUp(self) -> None:
-        self.skill_body = (INTERVIEW_DIR / "SKILL.md").read_text(encoding="utf-8")
-
-    def test_all_auxiliary_sections_named_in_skill(self) -> None:
-        for aux in (
-            "Strategy Alignment",
-            "Strategy Conflicts",
-            "Glossary Conflicts",
-            "Conversation Evidence",
-            "Resolved via Codebase",
-            "Resolved via Project Docs",
-            "Resolved via Experiment",
-            "Parked unknowns",
-        ):
-            self.assertIn(
-                aux,
-                self.skill_body,
-                f"SKILL.md must enumerate auxiliary section {aux!r}",
-            )
-
-
-class TestR23_RIDsAppendOnlyDocumented(unittest.TestCase):
-    """R23: R-IDs are append-only across refine sessions; SKILL.md says so."""
-
-    def setUp(self) -> None:
-        self.skill_body = (INTERVIEW_DIR / "SKILL.md").read_text(encoding="utf-8")
-
-    def test_skill_documents_r_ids_append_only(self) -> None:
-        # Accept variations: "append-only" or "never renumber".
-        body_lower = self.skill_body.lower()
-        self.assertTrue(
-            "append-only" in body_lower or "never renumber" in body_lower,
-            "SKILL.md must document R-IDs append-only rule",
-        )
 
 
 class TestOldLayoutSpecLoadsUnchanged(unittest.TestCase):

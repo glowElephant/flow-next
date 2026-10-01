@@ -70,8 +70,8 @@ DESCRIPTIONS: dict[str, str] = {
     "review": "Review subsystem settings.",
     "review.backend": (
         "Default review backend (rp, codex, copilot, cursor, claude, host, "
-        "none) or spec form backend[:model[:effort]], e.g. codex:gpt-5.4:high "
-        "or claude:claude-opus-5:high. cursor folds effort into the model "
+        "none) or spec form backend[:model[:effort]], e.g. codex:<model>:high "
+        "or claude:<model>:high. cursor folds effort into the model "
         "name (no :effort rung); rp, host, and none are bare-only. copilot "
         "accepts no none/minimal effort; claude takes the claude CLI's own "
         "low|medium|high|xhigh|max. If "
@@ -86,9 +86,9 @@ DESCRIPTIONS: dict[str, str] = {
     "review.maxIterations": (
         "Cumulative review-round cap per scope (default 8, minimum 1 - the cap "
         "can never be disabled). The env var MAX_REVIEW_ITERATIONS takes "
-        "precedence over this key. Raising it is a human act: ralph-guard blocks "
-        "the config write, the config file, and the env assignment so an "
-        "autonomous agent cannot extend its own review gate."
+        "precedence over this key. In an autonomous run (flow --auto) this key "
+        "may only lower the cap, so an autonomous agent cannot extend its own "
+        "review gate."
     ),
     "scouts": "Planning-scout settings.",
     "scouts.github": "Enable github-scout during planning (requires the gh CLI).",
@@ -255,8 +255,8 @@ DESCRIPTIONS: dict[str, str] = {
     "tracker.conflictTiebreak": (
         "Status who-wins tiebreak: flow-wins | tracker-wins | always-ask. "
         "Strict enum: invalid CLI writes are rejected; malformed persisted "
-        "values fail before status work. In Ralph mode always-ask resolves "
-        "to queue, not prompt."
+        "values fail before status work. In autonomous mode always-ask "
+        "resolves to queue, not prompt."
     ),
     "tracker.readyState": (
         "Readiness projection: the tracker workflow state meaning ready for "
@@ -307,7 +307,7 @@ DESCRIPTIONS: dict[str, str] = {
     ),
     "land": "/flow-next:land settings for one named pull request. Unknown legacy keys are ignored.",
     "land.patienceMinutes": (
-        "Minutes since the last push to wait when no human authorized the merge in-session."
+        "Minutes since the last push to wait, so review bots can post, when no human authorized the merge in-session."
     ),
     "land.mergeVerdictCommand": (
         "Optional merge-verdict command run once after the other merge gates pass. "
@@ -322,17 +322,6 @@ DESCRIPTIONS: dict[str, str] = {
         "flow-next's built-in default shapes; never required and not part "
         "of the seeded defaults."
     ),
-    "artifacts": "HTML artifact mode settings (fn-62).",
-    "artifacts.html": "HTML render-lens settings.",
-    "artifacts.html.enabled": (
-        "Enable optional HTML artifacts: participating skills emit "
-        "self-contained lenses at .flow/artifacts/<spec-id>/. OFF by "
-        "default - markdown stays the sole source of truth. It costs an "
-        "extra render step on capture, plan, and make-pr plus an artifact "
-        "tree to commit or ignore; enable it when specs go to business "
-        "reviewers, or ask for a render in conversation when you need one. "
-        "See docs/running-lean.md."
-    ),
     "pipeline": "Pilot pipeline stage gates.",
     "pipeline.qa": (
         "Optional live QA stage. String-enum off | on | auto, NOT a bool; "
@@ -340,17 +329,6 @@ DESCRIPTIONS: dict[str, str] = {
         "each value does is defined by the flow skill's gate-selection "
         "reference (skills/flow-next-flow/references/gate-selection.md); "
         "flowctl stores the value and never interprets it. See "
-        "docs/running-lean.md."
-    ),
-    "pipeline.chainStages": (
-        "Deprecated; removal is scheduled for a later release. "
-        "String-enum, NOT a bool: only the literal on activates; "
-        "any other value, including bool true, is OFF. It is honoured only "
-        "under flow --auto --tick (and the pilot alias), where a tick that "
-        "completed the qa stage with a fresh terminal verdict runs make-pr "
-        "in the same tick - the one closed chain pair (qa -> make-pr). A "
-        "long-horizon flow --auto run ignores it with one stderr notice, "
-        "because the hop loop already runs make-pr as the next hop. See "
         "docs/running-lean.md."
     ),
     "chart": (
@@ -629,12 +607,8 @@ def _build_table() -> list[tuple[str, dict]]:
                 },
             },
         ),
-        ("artifacts", {"kind": "object", "open": False}),
-        ("artifacts.html", {"kind": "object", "open": False}),
-        ("artifacts.html.enabled", {"type": "boolean"}),
         ("pipeline", {"kind": "object", "open": False}),
         ("pipeline.qa", {"enum": ["off", "on", "auto"]}),
-        ("pipeline.chainStages", {"enum": ["off", "on"]}),
         ("chart", {"kind": "object", "open": False}),
         ("chart.maxDecisions", {"type": "integer"}),
         ("chart.claimStaleAfter", {"type": "number"}),

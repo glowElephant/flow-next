@@ -1,9 +1,8 @@
 # Plan next-steps menu (interactive only)
 
 Load this reference only when the Step 8 interactivity gate printed its
-sentinel — no non-interactive marker is set. Autonomous, Ralph, and
-receipt-driven runs never reach this file; they run Step 8.5 directly after
-Step 6/7 complete.
+sentinel — no non-interactive marker is set. Autonomous runs never
+reach this file.
 
 **Above the numbered list, print exactly ONE recommendation line** — mandatory, never silently omitted — and re-judge it at every menu print: a go-deeper/simplify round changes the risk picture, and stale advice is worse than none.
 
@@ -34,4 +33,4 @@ Loop back to options after changes until user selects 1, 2, or 3. Any task or
 dependency change re-runs Step 6 and recomputes the execution waves before the
 final summary.
 
-**On loop exit (user picked 1, 2, or 3):** run Step 8.5 BEFORE dispatching the chosen next step or finishing — never on first arrival at this menu. Options 4/5 mutate tasks; generating earlier would render a lens the user is still editing.
+**On loop exit (user picked 1, 2, or 3):** dispatch the chosen next step or finish.

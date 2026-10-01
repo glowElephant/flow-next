@@ -1,20 +1,16 @@
-# Interview — doc-aware behaviors and flag matrix (loaded on demand)
+# Refine — doc-aware behaviors and flag matrix
 
-> Loaded when the doc-aware gate sentinel prints (`DOC_AWARE=1` or `STRATEGY_AWARE=1`, from the
-> `--docs`/`--strategy` flags or autodetect in SKILL.md Setup), or when the invocation carried any of
-> the four doc/strategy flags (§ Flag matrix). On the default no-docs, no-flag path
-> this file is never read.
+Read when the doc-aware gate sentinel prints, or when the invocation carried any of the four doc/strategy flags.
 
 Contents:
 
 - [Flag parsing](#flag-parsing) — the strip block for `--docs` / `--no-docs` / `--strategy` / `--no-strategy` and the cascade rules.
 - [Flag matrix](#flag-matrix) — what each flag combination drives.
-- [Why counts, not file presence](#why-counts-not-file-presence) — rationale for the autodetect predicates.
-- [Doc-aware behaviors](#doc-aware-behaviors) — (a) phase-zero glossary scan, (b) fuzzy-term sharpening, (c) code-versus-assertion contradiction, (d) decision-record write, (e) code-versus-strategy contradiction.
+- [Doc-aware behaviors](#doc-aware-behaviors) — glossary lookups, (a) phase-zero glossary scan, (b) fuzzy-term sharpening, (c) code-versus-assertion contradiction, (d) decision-record write, (e) code-versus-strategy contradiction.
 
 ## Flag parsing
 
-Strip the four doc-aware override flags from `$ARGUMENTS` before input-type detection so they don't get confused for a Flow ID or path:
+Strip the four flags from the arguments before detecting the input so they are not mistaken for an id or path. Carry the resulting force values into the SKILL.md gate block:
 
 ```bash
 RAW_ARGS="$ARGUMENTS"
@@ -68,18 +64,18 @@ Doc-aware flags (rows describe glossary / decisions / strategy gates):
 
 The `--scope` lens is orthogonal to this matrix: any lens combines with any doc/strategy flag.
 
-## Why counts, not file presence
-
-**Why `total_terms > 0` and `sections_filled >= 1` rather than `[[ -f <file> ]]`:** `flowctl glossary remove` leaves a `# Glossary` H1 husk after the last term is removed; `flowctl strategy` leaves a frontmatter-plus-H1 husk under the same R18 invariant. Both files are project state, intentionally retained. A presence-only check would false-positive on an empty husk and surface phantom doc-aware questions when no canonical vocabulary / strategic intent is actually defined. `glossary list --json` and `strategy status --json` walk the file and count populated entries; both report zero for a husk.
-
 ## Doc-aware behaviors
 
-Five behaviors layer onto the standard interview workflow when their respective gate is open:
+These behaviors layer onto the interview when their gate is open:
 
 - Behaviors (a)-(d) are gated on `DOC_AWARE=1` (glossary + decisions signal). When `DOC_AWARE=0`, skip them.
 - Behavior (e) is gated on `STRATEGY_AWARE=1` (strategy signal). When `STRATEGY_AWARE=0`, skip it.
 
 The two gates are independent (see the flag matrix above) — `DOC_AWARE` and `STRATEGY_AWARE` may differ within the same interview session.
+
+### Glossary lookups (`DOC_AWARE=1`)
+
+A question about a term with a canonical entry in the nearest-ancestor `GLOSSARY.md` is answered from the entry, silently. Log it under `## Glossary Conflicts` only when the person's wording diverges from the canonical term and the term is load-bearing (behavior (a)).
 
 ### Behavior (a) — Phase-zero glossary scan
 
@@ -107,7 +103,7 @@ JSON shape:
 }
 ```
 
-For each defined term across `groups[].entries`, scan the user's request for occurrences. Term match is **case-insensitive whitespace-collapsed** — the same rule as `flowctl glossary read` (see `_glossary_term_matches` in `flowctl.py`). Do NOT reinvent matching logic; the canonical contract is "lowercase both sides, collapse runs of whitespace to single space, compare equal." Alias hits via `entries[].avoid`: if the user wrote `consumer` and the entry's `avoid` list contains `consumer`, that's a canonical-mismatch hit on `Worker`.
+For each defined term across `groups[].entries`, scan the user's request for occurrences. Term match is **case-insensitive whitespace-collapsed**, the same rule as `flowctl glossary read`: lowercase both sides, collapse runs of whitespace to one space, compare equal. Alias hits via `entries[].avoid`: if the user wrote `consumer` and the entry's `avoid` list contains `consumer`, that's a canonical-mismatch hit on `Worker`.
 
 For each hit, evaluate one filter before surfacing:
 
@@ -144,7 +140,7 @@ Across the conversation, watch for overloaded language — words the user keeps 
 
    Use `--definition-file -` (stdin) so multi-sentence definitions and quoted phrasing round-trip cleanly. `glossary add` is upsert — case-insensitive match replaces the existing entry in full; new terms append at the end of the file. If the user picked `redefine` in behavior (a), this is the same call site (one path, one upsert).
 
-3. The next question can re-read the glossary. There is no in-memory cache to invalidate — re-read on every doc-aware round that needs canonical lookup. The cost is one stat + one file read per round; sub-millisecond at typical sizes.
+3. Re-read the glossary on every doc-aware round that needs a canonical lookup; there is no cache to invalidate.
 
 **When to skip behavior (b):** if a term is single-use, or if the user volunteered a clear definition the first time they used it, or if the conversation is short enough (≤6 user replies) that consolidation buys nothing yet. The behavior triggers when overloading is real and persistent, not on every undefined word.
 
@@ -186,7 +182,7 @@ When all three hold:
 
    Entry title and body prose follows the artifact prose contract in [docs/prose.md](../../../docs/flow-next/prose.md); proceed without it when the doc is absent.
 
-2. **Print-then-ask before writing** — same print-then-ask contract as `/flow-next:capture` Phase 4 (R13):
+2. **Print-then-ask before writing** — same print-then-ask contract as `/flow-next:capture` Phase 4:
    - **Print first:** emit the FULL decision-entry draft (title, body markdown, optional module/tags, optional Considered Options / Consequences blocks) as an ordinary assistant markdown message. Never embed the multi-paragraph body in the ask.
    - **Then short ask** via `plain-text numbered prompt`:
      - **header**: `Write decision?`
@@ -209,7 +205,7 @@ When all three hold:
    EOF
    ```
 
-   The `decisions` category is registered in flowctl's memory schema (Task 1 of the original decisions epic). Optional fields `--decision-status` (default `accepted`), `--superseded-by`, and `--alternatives-considered` are available; pass them when the conversation supplies them and skip otherwise.
+   The `decisions` category is registered in flowctl's memory schema. Optional fields `--decision-status` (default `accepted`), `--superseded-by`, and `--alternatives-considered` are available; pass them when the conversation supplies them and skip otherwise.
 
 4. **On `edit`**, ask one follow-up `plain-text numbered prompt` for which field changes (title / body / module / tags), capture the revision, **reprint the full revised draft as ordinary markdown**, then re-issue the short approval ask; loop. Hard cap at 2 edit cycles before defaulting to `approve` / `skip`.
 

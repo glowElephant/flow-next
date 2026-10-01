@@ -90,7 +90,7 @@ specs emit the complete coverage table and `Unaddressed R-IDs: [...]`.
 For each gap emit Severity, Confidence exactly 0/25/50/75/100, and
 Classification introduced or pre_existing. Suppress below 75 except P0 at
 50+; only introduced gaps block. Never recommend deleting protected `.flow/*`, generated
-plugin mirrors, spec/task records, review receipts, or Ralph artifacts.
+plugin mirrors, spec/task records, or review receipts.
 Emit suppression/classification/protected-path tallies when applicable.
 End with exactly one tag: <verdict>SHIP</verdict>,
 <verdict>NEEDS_WORK</verdict>, or <verdict>NEEDS_HUMAN</verdict>.
@@ -168,18 +168,18 @@ fi
 source "$SETUP_FILE"
 
 if [[ -z "${W:-}" || -z "${T:-}" || -z "${RP_MODE:-}" ]]; then
-  echo "<promise>RETRY</promise>"
+  echo "RETRY: no verdict (backend or transport failure)"
   exit 0
 fi
 if [[ "$RP_MODE" == "ce" && ( -z "${CHAT_ID:-}" || ! -s "$RESPONSE_FILE" ) ]]; then
-  echo "<promise>RETRY</promise>"
+  echo "RETRY: no verdict (backend or transport failure)"
   exit 0
 fi
 
 echo "Setup complete: mode=$RP_MODE W=$W T=$T"
 ```
 
-If this block fails, output `<promise>RETRY</promise>` and stop. Do not improvise.
+If this block fails, output `RETRY: no verdict (backend or transport failure)` and stop. Do not improvise.
 **Do NOT re-run setup-review** — the builder runs inside it. Re-running = double context build.
 
 ---
@@ -408,9 +408,8 @@ The following paths are flow-next / project-pipeline artifacts. Any gap/finding 
 - `.flow/tasks/*.md` — task specs (decision artifacts)
 - `docs/plans/*` — plan artifacts (if project uses this convention)
 - `docs/solutions/*` — solutions artifacts (if project uses this convention)
-- `scripts/ralph/*` — Ralph harness (when present)
 
-These files are intentionally committed. They are the pipeline's state, not clutter. An agent that deletes them destroys the project's planning trail and breaks Ralph autonomous runs.
+These files are intentionally committed. They are the pipeline's state, not clutter. An agent that deletes them destroys the project's planning trail.
 
 If you notice genuine issues with content INSIDE these files (e.g., a spec that contradicts itself, a stale runtime value, a memory entry that's wrong), flag the content — not the file's existence.
 
@@ -465,7 +464,7 @@ live cap counters from `review-rounds attempts`.
 At the cap this refuses with an `ESCALATE:` marker + exit 4. That is NOT a
 retryable error: do NOT dispatch the review or invent a completion verdict.
 Surface the ESCALATE message to the caller and stop without writing completion
-status (Ralph/autonomous: NEEDS_HUMAN). Only proceed to `chat-send` when the
+status (autonomous: NEEDS_HUMAN). Only proceed to `chat-send` when the
 increment succeeds.
 
 Redirect the review response to the literal response file — it must enter context exactly ONCE, via a single Read of that file (command substitution + `echo` would be the second copy; redirection keeps stdout out of context entirely):
@@ -585,7 +584,7 @@ if [[ -n "${REVIEW_RECEIPT_PATH:-}" && -n "$VERDICT" ]]; then
 {"type":"completion_review","id":"$SPEC_ID","mode":"rp","verdict":"$VERDICT","base":"$REVIEW_BASE_SHA","head":"$REVIEW_HEAD_SHA","timestamp":"$ts","attempt_timestamp":""}
 EOF
   then
-    echo "<promise>RETRY</promise>"
+    echo "RETRY: no verdict (backend or transport failure)"
     exit 0
   fi
   RECEIPT_ARGS=(--receipt-target "$REVIEW_RECEIPT_PATH" --receipt-payload-file "$RECEIPT_INPUT")
@@ -625,7 +624,7 @@ fi
 
 if [[ -z "$VERDICT" ]]; then
   echo "No verdict tag found in response"
-  echo "<promise>RETRY</promise>"
+  echo "RETRY: no verdict (backend or transport failure)"
   exit 0
 fi
 echo "VERDICT=$VERDICT"
@@ -634,7 +633,7 @@ if [[ -n "${REVIEW_RECEIPT_PATH:-}" && -n "$VERDICT" ]]; then
   ATTEMPT_AT="$(printf '%s' "$RECORD_JSON" \
     | jq -r '.attempts[-1].timestamp // ""')"
   if [[ -z "$ATTEMPT_AT" ]]; then
-    echo "<promise>RETRY</promise>"
+    echo "RETRY: no verdict (backend or transport failure)"
     exit 0
   fi
   # Publish the journaled payload only — never re-derive it here.
@@ -642,7 +641,7 @@ if [[ -n "${REVIEW_RECEIPT_PATH:-}" && -n "$VERDICT" ]]; then
     --reservation-id "$RESERVATION_ID" \
     --receipt "$REVIEW_RECEIPT_PATH" \
     --json >/dev/null; then
-    echo "<promise>RETRY</promise>"
+    echo "RETRY: no verdict (backend or transport failure)"
     exit 0
   fi
   if ! jq -e --arg id "$SPEC_ID" --arg attempt_at "$ATTEMPT_AT" --arg verdict "$VERDICT" \
@@ -652,7 +651,7 @@ if [[ -n "${REVIEW_RECEIPT_PATH:-}" && -n "$VERDICT" ]]; then
      and .mode == "rp"
      and .attempt_timestamp == $attempt_at' \
     "$REVIEW_RECEIPT_PATH" >/dev/null; then
-    echo "<promise>RETRY</promise>"
+    echo "RETRY: no verdict (backend or transport failure)"
     exit 0
   fi
   echo "REVIEW_RECEIPT_WRITTEN: $REVIEW_RECEIPT_PATH"
@@ -668,21 +667,21 @@ fi
 
 ## Fix Loop (RP)
 
-**The fix loop never pauses for user confirmation.** Every valid finding is fixed and re-reviewed automatically — the goal is complete spec compliance. A loop that stops to ask, or that exits with a valid finding unfixed, has broken this. Never use the plain-text numbered prompt in this loop.
+**Ask the user via plain text.** Render the options below as a numbered list `1.` … `N.`, followed by a final option `N+1. Other — type your own answer`. Print the question, then the numbered list, then **stop and wait for the user's next message before continuing**. Parse the reply as: a bare number `1`–`N+1` → that option; the literal text of an option label → that option; free text after `Other` → custom answer.
+
+**The fix loop never pauses for user confirmation**; never use plain-text numbered prompt in it. Which findings it fixes, and which it lists as follow-ups, follows the Review section of [working-rules.md](../../references/working-rules.md).
 
 **Committed code changes land before every re-review.** A re-review dispatched with no change since the last verdict has broken this — the reviewer just returns NEEDS_WORK again.
 
 **MAX ITERATIONS**: Limit fix+re-review cycles to
-**${MAX_REVIEW_ITERATIONS:-8}** iterations (default 8, configurable in Ralph's
-config.env). The `review-rounds increment` gate (step 6 below and Phase 3)
+**${MAX_REVIEW_ITERATIONS:-8}** iterations (default 8). The `review-rounds increment` gate (step 6 below and Phase 3)
 enforces this deterministically across fresh invocations — completion reviews
 share the spec-scoped plan counter, so plan + completion rounds cannot each
 spend a full cap. When a delivered `NEEDS_WORK` consumes the final round,
 continue immediately to SKILL.md Step 3, write terminal `needs_work` exactly
 once, then emit `ESCALATE:` and exit 4. Do not attempt another increment first.
 An entry-time cap refusal with no delivered completion verdict remains
-non-terminal: surface it and stop without a status write (Ralph:
-`NEEDS_HUMAN`).
+non-terminal: surface it and stop without a status write.
 
 If verdict is NEEDS_WORK:
 
@@ -819,7 +818,7 @@ If verdict is NEEDS_WORK:
    the next round's gaps.
    A nonzero recorder exit stops that round immediately; never echo a verdict
    or continue to the shared status owner afterward.
-7. **Repeat** until SHIP
+7. **Stop** or loop as workflow-common.md's Fix Loop step 5 says
 
 **Anti-pattern**: Re-adding already-selected files before re-review. RP auto-refreshes; re-adding can cause issues.
 

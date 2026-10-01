@@ -6,14 +6,14 @@ Read this ONLY when actually minting a brand-new spec (the spec-file and spec-le
 
 Network cost is conditional: when the matching `tracker.perEvent.*` touchpoint is already active, tracker-first REORDERS an existing remote write; when it is off (the default, and a bridge-active repo can have every lifecycle event disabled) it adds an EARLIER remote write that flow-first would not make.
 
-Explicit user override in the invocation always wins. No runtime nag here - setup owns the one-time question (withdrawn R10).
+Explicit user override in the invocation always wins. No runtime nag here - setup owns the one-time question.
 
 ```bash
 FLOWCTL="${CODEX_HOME:-$HOME/.codex}/scripts/flowctl"
 [ -x "$FLOWCTL" ] || FLOWCTL="<plugin-root>/scripts/flowctl"   # <plugin-root> = the directory two levels above this skill's SKILL.md file (the harness gave you that file's absolute path when the skill loaded); substitute it literally
 [ -x "$FLOWCTL" ] || FLOWCTL=".flow/bin/flowctl"
 # REUSE the root snapshot the Phase 1 mint gate just took - do NOT take another
-# config read here, and never a per-leaf `config get tracker.specIds` (R7).
+# config read here, and never a per-leaf `config get tracker.specIds`.
 # Literal path; re-type it because variables die across prompt turns.
 WORK_CFG="${TMPDIR:-/tmp}/flow-work-config-<suffix>.json"
 SPEC_IDS=$(jq -r '.value.tracker.specIds // "flow"' "$WORK_CFG" 2>/dev/null)

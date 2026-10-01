@@ -6,11 +6,11 @@
 
 This is the plugin source directory. The canonical README for flow-next lives at the [repository root](../../README.md).
 
-- Install + 5-command happy path → [root README](../../README.md#quick-start)
-- How the flow works (workflow narrative) → [root README → How the flow works](../../README.md#how-the-flow-works)
-- Skills catalog (all 31 skills) → [`docs/skills.md`](docs/skills.md)
+- Install and your first change → [root README](../../README.md#install)
+- What it does and how fast → [root README](../../README.md#how-much-faster-and-how-much-better)
+- Skills catalog (all 30 skills) → [`docs/skills.md`](docs/skills.md)
 - Adopting in a team → [`docs/teams.md`](docs/teams.md)
 - `flowctl` CLI reference → [`docs/flowctl.md`](docs/flowctl.md)
-- Going autonomous (pilot / land / Ralph) → [root README → Land a pull request](../../README.md#land-a-pull-request) · [`docs/ralph.md`](docs/ralph.md)
+- Going autonomous (`flow --auto` / land) → [root README → Land a pull request](../../README.md#land-a-pull-request). Ralph was removed in 7.0; pin 6.7.x if you still need it.
 - Architecture + `.flow/` layout → [`docs/architecture.md`](docs/architecture.md)
 - Full doc index → [`docs/README.md`](docs/README.md)

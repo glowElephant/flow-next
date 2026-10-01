@@ -5,7 +5,6 @@
 
 `GLOSSARY.md` is a human-readable, project-canonical terminology file shipped in v0.39.0. Lives at the **repo root** (and optionally subdirectories), NOT inside `.flow/`. Survives `rm -rf .flow/` - terminology is the project's, not flow-next's.
 
-> Vocabulary discipline for this repo: [`../../../GLOSSARY.md`](https://github.com/gmickel/flow-next/blob/main/GLOSSARY.md) - a compact dictionary of load-bearing terms with `_Avoid_` aliases, not an encyclopedia (its retired long-form text is archived at [`../../../agent_docs/archive/GLOSSARY-full.md`](https://github.com/gmickel/flow-next/blob/main/agent_docs/archive/GLOSSARY-full.md)).
 > Glossary files are written/maintained via the `flowctl glossary` subcommands (`add` / `list` / `read` / `remove`), driven by `/flow-next:refine`, `/flow-next:audit`, and `/flow-next:sync`. (There is no standalone `flow-next-glossary` skill - `flowctl glossary` is the mechanism.)
 
 ## Format
@@ -51,12 +50,7 @@ Last-term `remove` leaves a `# Glossary` H1 husk on disk - the file is **never**
 - **`/flow-next:sync`** Phase 3b.1: glossary renames replace `_Avoid_` aliases with the canonical term inline across downstream task specs, with a `<!-- Updated by plan-sync: glossary rename ... -->` breadcrumb.
 - **`docs-gap-scout`** in the planning phase: reads `GLOSSARY.md` on the ancestor chain to surface canonical terminology in the planning context; flags terminology mismatches between the proposed feature description and the glossary.
 
-## Forbidden vocabulary (R17)
-
-A small list of jargon terms is grep-guarded out of canonical skill / agent / command / flowctl prose by `ci_test.sh` section 5c (canonical scan, prints `file:line` on hit), and out of the Codex mirror by `scripts/sync-codex.sh` validation block (mirror scan, prints count + remediation hint). The forbidden list is enumerated only inside the grep pattern itself; documentation refers to "the R17 forbidden list" without re-enumeration to avoid teaching the very vocabulary it's meant to suppress.
-
 ## See also
 
-- [`../../../GLOSSARY.md`](https://github.com/gmickel/flow-next/blob/main/GLOSSARY.md) - this repo's own glossary: 18 load-bearing terms (Spec, Task, R-ID, Receipt, Gate, plan-sync, Tier, Reach, ...) with `_Avoid_` aliases. Long-form text: [`../../../agent_docs/archive/GLOSSARY-full.md`](https://github.com/gmickel/flow-next/blob/main/agent_docs/archive/GLOSSARY-full.md).
 - [Strategy on flow-next.dev](https://flow-next.dev/skills/strategy/) - the repo-root `STRATEGY.md` file; the `flowctl strategy` commands are in [`flowctl.md`](flowctl.md#strategy).
 - [`memory-schema.md`](memory-schema.md) - categorized memory schema; the `knowledge/decisions/` subtree pairs naturally with glossary as terminology + load-bearing choices.

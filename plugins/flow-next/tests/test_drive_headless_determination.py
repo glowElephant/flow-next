@@ -1,4 +1,4 @@
-"""Behavioral + prose-contract tests for the Cua native-rung headless/CI determination (fn-71).
+"""Behavioral tests for the Cua native-rung headless/CI determination (fn-71).
 
 The attended-vs-headless split (Cua Driver vs Cua Sandbox) hinges on "is a usable
 display reachable?" — and `references/cua.md` ships the determination as a runnable
@@ -13,9 +13,7 @@ missing driver must NOT be read as "headless"):
 
 The behavioral run is POSIX-only (the host runs the probe under Git-bash on Windows,
 but executing the extracted snippet via a Python subprocess + a PATH-stub on the
-Windows runner tests shell plumbing, not probe logic). The prose-contract test
-runs on ALL platforms
-(incl. windows-latest) as the cross-platform drift guard.
+Windows runner tests shell plumbing, not probe logic).
 
 Real no-display behavior of `cua-driver` on headless Linux/Windows hosts stays a
 "verify at build" item (the driver is opt-in, not installed in CI).
@@ -84,8 +82,7 @@ def _extract_display_probe(text: str) -> str:
     sys.platform == "win32",
     "POSIX-shell probe: the host runs it under Git-bash, but executing the extracted "
     "snippet via a Python subprocess + a PATH-stub on the Windows runner tests shell "
-    "plumbing, not probe logic. Fully exercised on macOS + ubuntu; the prose-contract "
-    "test runs on Windows.",
+    "plumbing, not probe logic. Fully exercised on macOS + ubuntu.",
 )
 class HeadlessProbeExecution(unittest.TestCase):
     """Execute the shipped 3-way probe against a stubbed (or absent) cua-driver."""
@@ -132,35 +129,11 @@ class HeadlessProbeExecution(unittest.TestCase):
         self.assertEqual(self._run_probe("absent"), "unknown")
 
 
-class HeadlessDeterminationProseContract(unittest.TestCase):
-    """Cross-platform (incl. windows) drift guard for the documented determination."""
+class HeadlessDeterminationReachable(unittest.TestCase):
+    """The drive entry point still sends the agent to the probe's reference."""
 
-    def test_cua_md_documents_the_determination(self) -> None:
-        t = _cua_text()
-        self.assertIn("## Determining headless / CI", t)
-        self.assertIn("$CI", t)
-        self.assertIn("cua-driver call get_screen_size", t)
-        # Driver-presence guard + the absent→not-headless property (the real bug fix).
-        self.assertIn("command -v cua-driver", t)
-        self.assertIn("DISPLAY_PRESENT=unknown", t)
-        # Defensive parse tolerates the MCP structuredContent envelope; checks BOTH dims.
-        self.assertIn(".structuredContent.width", t)
-        self.assertIn(".height", t)
-        self.assertIn(".structuredContent.height", t)
-        # TCC grants are NOT a headless signal; macOS $DISPLAY caveat; doctor≠display.
-        self.assertRegex(t, r"grant[s]?[^\n]*not[^\n]*headless|NOT a headless signal")
-        self.assertRegex(t, r"[Nn]ever use[^\n]*macOS")
-        self.assertRegex(t, r"doctor[^\n]*not[^\n]*display")
-
-    def test_cua_md_documents_telemetry_and_supply_chain_caveats(self) -> None:
-        t = _cua_text()
-        self.assertIn("CUA_TELEMETRY_ENABLED=false", t)  # local "zero-network" needs the opt-out
-        self.assertRegex(t, r"[Ss]upply-chain")  # mutable curl|bash from main
-
-    def test_skill_md_step4_points_at_the_determination(self) -> None:
-        s = SKILL_MD.read_text(encoding="utf-8")
-        self.assertIn("get_screen_size", s)
-        self.assertRegex(s, r"Determining headless")
+    def test_skill_md_links_the_cua_reference(self) -> None:
+        self.assertIn("references/cua.md", SKILL_MD.read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

@@ -4,7 +4,7 @@ For a ready cohesive spec and a capable coding agent, the recommended route is *
 
 This page names the two **operating profiles** those layers serve, prices each layer in structural terms, and gives the manual invocation for people who want the capability without the standing cost. It is the source of the optionality caveat that appears at the top of each optional subsystem's page.
 
-> Adjacent, not the same: [`../../../README.md`](../../../README.md) is the happy path, and [`pipeline-variations.md`](pipeline-variations.md) owns the **stage** axis - which stages one piece of work runs, chosen by risk and unknowns (the docs-site page *Menu, Not a Rail* is its doctrine). This page is about which **layers** you switch on at all, and what each one costs you to keep on.
+> Adjacent, not the same: [Your first 30 minutes](https://flow-next.dev/first-30-minutes/) is the happy path, and [`pipeline-variations.md`](pipeline-variations.md) owns the **stage** axis - which stages one piece of work runs, chosen by risk and unknowns (the docs-site page *Menu, Not a Rail* is its doctrine). This page is about which **layers** you switch on at all, and what each one costs you to keep on.
 
 ## What you pay for
 
@@ -28,8 +28,6 @@ The failure mode this page exists to prevent is paying autonomous-profile costs 
 Profiles are per run, not per team and not per repo. The same repo can drain a backlog autonomously overnight and take a lean human-driven change the next morning.
 
 ## The optionality caveat: canonical pattern
-
-**Change this pattern here first.** Each optional subsystem's page carries an instance of it at the top, in this repo and on flow-next.dev. Those instances are deliberate copies (a top-of-page caveat cannot be a link), so edit the shape here and propagate; never fix the shape at an instance.
 
 Three variants, one family:
 
@@ -56,13 +54,11 @@ Defaults below are read from the published schema ([`../schema/flow-config.schem
 | [Tracker sync](#tracker-sync) | `tracker.enabled` | off | `/flow-next:tracker-sync` |
 | [Live QA stage](#live-qa-stage) | `pipeline.qa` (`off \| on \| auto`) | off | `/flow-next:qa <spec>` |
 | [Cross-model review backend](#cross-model-review-backend) | `review.backend` | unset | `/flow-next:impl-review` (draw topology is prose-steered, not a knob) |
-| [HTML render lenses](#html-render-lenses) | `artifacts.html.enabled` | off | ask for a render in conversation |
 | [Plan-sync](#plan-sync) | `planSync.enabled` | **off** | `/flow-next:sync` |
 | [Memory](#memory-and-the-audit-sweep) | `memory.enabled` | **on** | `/flow-next:audit` |
 | [Pre-capture discovery](#pre-capture-discovery) | none | manual | `/flow-next:chart`, `/flow-next:prospect` |
-| [Autonomous loops](#autonomous-loops) | none to enable; `land.patienceMinutes` sets the wait after the last push when flow authorizes without a human's in-session merge authorization (`pipeline.chainStages` is deprecated) | manual (30-minute patience) | `/flow-next:flow --auto`, `/flow-next:land <PR>` |
+| [Autonomous loops](#autonomous-loops) | none to enable; `land.patienceMinutes` sets the wait after the last push when flow authorizes without a human's in-session merge authorization | manual (10-minute patience) | `/flow-next:flow --auto`, `/flow-next:land <PR>` |
 | [GitHub scouts](#github-scouts) | `scouts.github` | off | ask a scout in conversation |
-| [Ralph](#ralph-deprecated) | none | off, **deprecated** | see below |
 
 ### Tracker sync
 
@@ -111,20 +107,11 @@ Between the two: `host` trades the second CLI for zero setup while keeping the g
 
 On the codex and host backends the first review round of a scope fans out three concurrent axis draws (correctness / contracts / integration) and merges them into one fix pass - a structural trade of parallel review passes for serial fix-and-re-review rounds. The dial is a per-invocation prose instruction, never a flag or config key, and the whole layer is optional to begin with:
 
-- **The default** - three axis draws, one merged fix pass. The right shape when agent-written diffs get merged without a human reading them line by line.
+- **The default** - three axis draws, one merged fix pass, for a large or cross-cutting diff or one touching persisted or shared state, concurrency, security or data layout; a small diff in one area already gets one reviewer. The right shape when agent-written diffs get merged without a human reading them line by line.
 - **Single-reviewer economy** - `/flow-next:work fn-12 - use 1 reviewer instead of 3` collapses the round to one draw: the lean setting for small, clean diffs, where a three-draw harvest costs extra review passes for findings one draw would surface anyway.
 - **Cross-family upgrade** - `use three different model families for the review fan-out` routes each draw to a different family, decorrelating blind spots across families as well as axes: the strongest setting for a high-stakes merge. On the codex backend the primary draw (correctness, or the first draw when correctness is not drawn) stays on codex; secondary draws may name codex, copilot, or cursor. On the host backend the per-draw model pins are unconstrained.
 
 The worked recipes and the evidence behind the default live in [`orchestration.md`](orchestration.md#steering-the-fan-out-worked-recipes).
-
-### HTML render lenses
-
-`artifacts.html.enabled` - **off by default**. Details: [`html-artifacts.md`](html-artifacts.md).
-
-- **Automates away:** rendering a spec or a PR as a self-contained HTML page for people who will not read markdown in a terminal.
-- **Costs:** an extra render step on capture, plan, and make-pr, and an artifact tree to decide whether to commit or ignore.
-- **Earns its keep when:** you are handing a spec to a business reviewer, or a PR to someone reviewing decisions rather than diffs.
-- **Lean invocation:** ask for the render in conversation when you need one. Markdown stays the source of truth in every case, so a lens is always regenerable and never has to exist in advance.
 
 ### Plan-sync
 
@@ -155,13 +142,12 @@ No config key - these are skills you invoke or do not. Details: [`../skills/flow
 
 ### Autonomous loops
 
-No config key to enable; `pilot.autonomy` (`ready` by default) only widens what pilot selects. Details: [`../skills/flow-next-pilot/SKILL.md`](../skills/flow-next-pilot/SKILL.md), [`../skills/flow-next-land/SKILL.md`](../skills/flow-next-land/SKILL.md).
+No config key to enable; `pilot.autonomy` (`ready` by default) only widens what `/flow-next:flow --auto` selects. Details: [`../skills/flow-next-flow/auto.md`](../skills/flow-next-flow/auto.md), [`../skills/flow-next-land/SKILL.md`](../skills/flow-next-land/SKILL.md).
 
-- **Automates away:** the repetition - `flow --auto` drives one ready spec hop after hop to its draft PR by default; add `--until=merge` to continue through land for that item. `--tick` runs one hop, including at most one landing tick. Land also remains independently invocable. [Destination and consent](pipeline-variations.md#choose-where-flow-stops) bound the continuation.
+- **Automates away:** the repetition - `flow --auto` drives one ready spec hop after hop to its PR by default; add `--until=merge` to continue through land for that item. `--tick` runs one hop, including at most one landing tick. Land also remains independently invocable. [Destination and consent](pipeline-variations.md#choose-where-flow-stops) bound the continuation.
 - **Costs:** this is the autonomous profile itself, so it inherits the profile's gates: the layers above stop being optional in the way they are optional for you at a keyboard, because they are what replace you.
 - **Earns its keep when:** there is a queue of blessed, fully specified work and nobody who wants to sit through it.
 - **Lean invocation:** `/flow-next:work` is the human-driven equivalent and needs no loop primitive at all.
-- **Optional idle removal:** a long-horizon `flow --auto` run removes every driver re-anchor between stages by construction, so `pipeline.chainStages` is deprecated; for this release it still runs `make-pr` in the same tick as a fresh terminal `qa` verdict under `--tick` (and the pilot alias), is ignored with one notice in long-horizon mode, and is removed with the alias next release.
 
 ### GitHub scouts
 
@@ -171,10 +157,6 @@ No config key to enable; `pilot.autonomy` (`ready` by default) only widens what 
 - **Costs:** an extra scout dispatch on planning fan-outs, and network reach into repos during a stage that otherwise reads only your checkout.
 - **Earns its keep when:** you are adopting an unfamiliar library or protocol and want prior art rather than first principles.
 - **Lean invocation:** ask for the search in conversation when a plan actually needs it.
-
-### Ralph (deprecated)
-
-**Deprecated.** `/flow-next:flow --auto` to build and `/flow-next:land <PR>` to ship, repeated by a host loop or `cron`, do what the hardened harness does, without the `scripts/ralph/` scaffold, the guard-hook registration, and the second receipt plumbing. Nothing is removed yet and existing Ralph installs keep working unchanged; new adopters should reach for `flow --auto` + land. Details and the full comparison: [`ralph.md`](ralph.md).
 
 ### Implementation offload (no layer to enable)
 
@@ -193,7 +175,7 @@ That is what makes a deliberate layer set auditable later: the difference betwee
 
 ## See also
 
-- [`../../../README.md`](../../../README.md) - the happy path and the 5-command quick start.
+- [Your first 30 minutes](https://flow-next.dev/first-30-minutes/) - the happy path, from install to a draft pull request.
 - [`pipeline-variations.md`](pipeline-variations.md) - the stage axis: six worked routes through the menu, selected by risk and unknowns.
 - [`orchestration.md`](orchestration.md) - which model does what, and how to change it. The routing counterpart to this page: same doctrine, applied to models rather than layers.
 - [`../skills/flow-next-flow/SKILL.md`](../skills/flow-next-flow/SKILL.md) - `/flow-next:flow`, the attended conductor that picks the smallest sufficient route for one specific situation and runs it; `--explain` shows the route only.

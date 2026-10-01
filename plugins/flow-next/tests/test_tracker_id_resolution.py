@@ -60,6 +60,9 @@ class GrammarTestCase(unittest.TestCase):
         self.assertEqual(parsed, ("tracker", "wor", 17, None))
         parsed_task = flowctl.parse_any_id("wor-17.3")
         self.assertEqual(parsed_task, ("tracker", "wor", 17, 3))
+        # A Jira key is the same KEY-N form.
+        self.assertEqual(flowctl.parse_any_id("proj-123"), ("tracker", "proj", 123, None))
+        self.assertEqual(flowctl.parse_any_id("proj-123.1"), ("tracker", "proj", 123, 1))
 
     def test_canonical_grammar(self) -> None:
         self.assertTrue(flowctl.is_spec_id("wor-17-fix-login"))

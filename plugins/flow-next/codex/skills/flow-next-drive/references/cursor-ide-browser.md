@@ -17,7 +17,7 @@ Prefer Cursor's **host cache** over this file — it is version-matched to the i
 
 Re-derive from that directory. Secondary/canonical public page: <https://cursor.com/docs/agent/tools/browser> (fetched 2026-08-13). This file is a router, not a copy of `INSTRUCTIONS.md`.
 
-Live passes (2026-08-13, interactive Cursor on macOS): a flowmeter dashboard at `http://127.0.0.1:8788/` settled the 16-tool inventory, `viewId` (except `browser_tabs`), snapshot YAML, real screenshots, lock-on-existing-tab, and the MCP-drop flake. Follow-ups in this repo attached via id-probe; one re-probe after a drop restored the server, the next call dropped it again. A dedicated R3 target at `http://127.0.0.1:8762/` never loaded — MCP died after lock, before CDP.
+Confirmed live in interactive Cursor on macOS: the 16-tool inventory, `viewId` (except `browser_tabs`), snapshot YAML, real screenshots, lock-on-existing-tab, and the MCP-drop flake below. A target page can fail to load at all when the MCP dies after lock, before CDP.
 
 ## Detection
 
@@ -44,7 +44,7 @@ You **cannot** lock before a tab exists. If a tab already exists (`browser_tabs`
 
 `viewId` is a real param on every tool **except `browser_tabs`** (which targets by `index`). Shapes seen: `stable-browser-session/<hex>`, `glass-browser-<uuid>`. Omit it to use the last-interacted tab.
 
-## Tools (16 — live 2026-08-13)
+## Tools (16)
 
 `browser_tabs`, `browser_navigate`, `browser_lock`, `browser_snapshot`, `browser_take_screenshot`, `browser_click`, `browser_fill`, `browser_type`, `browser_select_option`, `browser_press_key`, `browser_scroll`, `browser_drag`, `browser_mouse_click_xy`, `browser_highlight`, `browser_get_bounding_box`, `browser_cdp`.
 
@@ -64,11 +64,11 @@ Never repeat a failing action without new evidence. After ~4 failed attempts, **
 
 The failure mode is not garbage snapshots. The **whole MCP server unregisters mid-run** (`Error: MCP server does not exist: cursor-ide-browser`) while the Glass pane stays open and the page keeps serving. There is nothing to unlock.
 
-Recover: **re-probe by id**. Observed 2026-08-13: one restoration in several attempts (list after a drop returned the tab; the next navigate dropped it again). Other drops in the same day: re-probe failed until the session ended. **Partial-pass stop is the expected outcome**; a restore is a long shot, not a loop. If it does return: `browser_tabs` list → re-lock → re-snapshot (refs are dead) → retry the single failed op. A dropped MCP can leave a tab **locked** — if the server returns, `browser_lock {action:"unlock"}`; if it does not, the Glass pane **Take Control** control is the only clear (lock-tool schema). Reopening the URL (e.g. `cursor-app-control` `open_resource`) does **not** bring the MCP back. This workspace never grew a `mcps/cursor-ide-browser/` cache dir even after successful list+lock — cache absence is not evidence of absence.
+Recover: **re-probe by id**. Restores are rare: one in several attempts (list after a drop returned the tab; the next navigate dropped it again), and other drops stayed gone until the session ended. **Partial-pass stop is the expected outcome**; a restore is a long shot, not a loop. If it does return: `browser_tabs` list → re-lock → re-snapshot (refs are dead) → retry the single failed op. A dropped MCP can leave a tab **locked** — if the server returns, `browser_lock {action:"unlock"}`; if it does not, the Glass pane **Take Control** control is the only clear (lock-tool schema). Reopening the URL (e.g. `cursor-app-control` `open_resource`) does **not** bring the MCP back. A workspace may never grow a `mcps/cursor-ide-browser/` cache dir even after successful list+lock — cache absence is not evidence of absence.
 
 ## Verify — unresolved
 
-This rung has no console/network MCP tool. Public docs (2026-08-13) say logs are written to files the agent greps, and network traffic is "currently only available in the Agent panel". Cursor's own `INSTRUCTIONS.md` lists `Log.enable` and `Network.enable` as CDP examples — **that is not live evidence**. A dedicated 2026-08-13 attempt against `http://127.0.0.1:8762/` (page emits `console.error` + `fetch('/fail')` → 500) locked the tab, then the MCP dropped before any CDP call returned; after one successful re-probe, navigate dropped it again and it stayed gone. **Do not claim console/network work because a CDP method name appears in a doc.**
+This rung has no console/network MCP tool. Cursor's public docs say logs are written to files the agent greps, and network traffic is "currently only available in the Agent panel". Cursor's own `INSTRUCTIONS.md` lists `Log.enable` and `Network.enable` as CDP examples — **that is not live evidence**. A live attempt against a page that emits `console.error` + `fetch('/fail')` → 500 locked the tab, then the MCP dropped before any CDP call returned; after one successful re-probe, navigate dropped it again and it stayed gone. **Do not claim console/network work because a CDP method name appears in a doc.**
 
 Consequence: rung 4 **cannot** satisfy the drive `verify` contract (clean console + no failed API request) unaided. A `/flow-next:qa` pass that reaches this rung and cannot capture console + network MUST set `QA_OUTCOME=BLOCKED` with `blocked_reason` naming the missing channels (rung 4 has no console/network from the driven surface). Do not invent `console_path` / network path values. Screenshot + snapshot YAML remain the proven drive evidence; they do not make verify complete. Fall through to the QA receipt write (do not stop without a receipt).
 

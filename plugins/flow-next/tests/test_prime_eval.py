@@ -32,7 +32,6 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
-import re
 import shutil
 import subprocess
 import sys
@@ -1729,237 +1728,238 @@ class SubstanceDocsFreshnessTestCase(_SubstanceBase):
         self.assertIsInstance(fresh["src_last_commit_ts"], int)
 
 
+class _Has:
+    """Expected members of a list field (and, optionally, members it lacks)."""
+
+    def __init__(self, *present: str, lacks: tuple = ()) -> None:
+        self.present = present
+        self.lacks = lacks
+
+
+_GH_PUSH = "on: [push]\njobs:\n  t:\n    steps:\n"
+_FMT = "on: [push]\njobs:\n  f:\n    steps:\n      - run: {}\n"
+
+# (case, {path: content}, {"<section>.<field>": expected}). A bool expects the
+# field's truthiness, a list expects equality, _Has expects membership.
+CI_SECRETS_ROWS = (
+    ("gate_triggers_and_mutating_lint",
+     {".github/workflows/ci.yml": "on:\n  pull_request:\n  push:\n    branches: [main]\n"
+      "jobs:\n  t:\n    steps:\n      - run: pytest\n      - run: eslint . --fix\n"},
+     # eslint --fix in CI can never fail
+     {"ci_gate.has_test_step": True, "ci_gate.has_lint_step": True,
+      "ci_gate.triggers": _Has("pull_request", "push"), "ci_gate.mutating_lint": True}),
+    # `on: [push, pull_request]` is a valid gate.
+    ("inline_list_trigger",
+     {".github/workflows/ci.yml": "on: [push, pull_request]\njobs:\n  t:\n    steps:\n      - run: pytest\n"},
+     {"ci_gate.has_gate_trigger": True, "ci_gate.triggers": _Has("push", "pull_request")}),
+    # Inline scalar and block-sequence trigger forms.
+    ("scalar_and_block_sequence_triggers",
+     {".github/workflows/scalar.yml": "on: push\njobs:\n  t:\n    steps:\n      - run: pytest\n",
+      ".github/workflows/seq.yml": "on:\n  - pull_request\njobs:\n  t:\n    steps:\n      - run: pytest\n"},
+     {"ci_gate.has_gate_trigger": True, "ci_gate.triggers": _Has("push", "pull_request")}),
+    # pull_request_target gates PRs and normalizes to pull_request.
+    ("pull_request_target_is_pr_gate",
+     {".github/workflows/pr.yml": "on: pull_request_target\njobs:\n  t:\n    steps:\n      - run: pytest\n"},
+     {"ci_gate.has_gate_trigger": True, "ci_gate.triggers": _Has("pull_request"),
+      "ci_gate.gated_test_step": True}),
+    # Trigger-looking tokens outside the `on:` block never count.
+    ("trigger_tokens_outside_on_block_ignored",
+     {".github/workflows/manual.yml": "on:\n  workflow_dispatch:\njobs:\n  t:\n    strategy:\n"
+      "      matrix:\n        mode:\n          - push\n          - pull_request\n    steps:\n"
+      "      - run: pytest\n      - name: notify\n        with:\n          push: true\n"},
+     {"ci_gate.has_gate_trigger": False, "ci_gate.triggers": []}),
+    # GitLab pipelines run on push by default.
+    ("gitlab_ci_is_push_gated",
+     {".gitlab-ci.yml": "stages:\n  - test\ntest:\n  stage: test\n  script:\n    - pytest\n"},
+     {"ci_gate.has_gate_trigger": True, "ci_gate.triggers": _Has("push"), "ci_gate.has_test_step": True}),
+    ("bitbucket_default_section_gated",
+     {"bitbucket-pipelines.yml": "pipelines:\n  default:\n    - step:\n        script:\n          - pytest\n"},
+     {"ci_gate.has_gate_trigger": True, "ci_gate.triggers": _Has("push")}),
+    ("bitbucket_custom_only_not_gated",
+     {"bitbucket-pipelines.yml": "pipelines:\n  custom:\n    manual-run:\n      - step:\n"
+      "          script:\n            - pytest\n"},
+     {"ci_gate.has_gate_trigger": False, "ci_gate.triggers": []}),
+    # `branches:` nested inside a custom pipeline is not a direct child of `pipelines:`.
+    ("bitbucket_nested_branches_under_custom_not_gated",
+     {"bitbucket-pipelines.yml": "pipelines:\n  custom:\n    deploy:\n      branches:\n        main:\n"
+      "          - step:\n              script:\n                - ./deploy.sh\n"},
+     {"ci_gate.has_gate_trigger": False, "ci_gate.triggers": []}),
+    ("bitbucket_toplevel_branches_gated",
+     {"bitbucket-pipelines.yml": "pipelines:\n  branches:\n    main:\n      - step:\n"
+      "          script:\n            - pytest\n"},
+     {"ci_gate.has_gate_trigger": True, "ci_gate.triggers": _Has("push")}),
+    ("bitbucket_pull_requests_section_gated",
+     {"bitbucket-pipelines.yml": "pipelines:\n  pull-requests:\n    '**':\n      - step:\n"
+      "          script:\n            - pytest\n"},
+     {"ci_gate.has_gate_trigger": True, "ci_gate.triggers": _Has("pull_request")}),
+    # `trigger: none` plus a top-level `pr:` key is Azure's PR-only gate.
+    ("azure_pr_only_pipeline_gated",
+     {"azure-pipelines.yml": "trigger: none\npr:\n  branches:\n    include:\n      - main\n"
+      "steps:\n  - script: pytest\n"},
+     {"ci_gate.has_gate_trigger": True, "ci_gate.triggers": _Has("pull_request", lacks=("push",))}),
+    ("azure_pr_none_not_gated",
+     {"azure-pipelines.yml": "trigger: none\npr: none\nsteps:\n  - script: ./deploy.sh\n"},
+     {"ci_gate.has_gate_trigger": False}),
+    ("azure_trigger_none_not_gated",
+     {"azure-pipelines.yml": "trigger: none\nsteps:\n  - script: pytest\n"},
+     {"ci_gate.has_gate_trigger": False}),
+    ("azure_explicit_trigger_gated",
+     {"azure-pipelines.yml": "trigger:\n  branches:\n    include:\n      - main\nsteps:\n  - script: pytest\n"},
+     {"ci_gate.has_gate_trigger": True, "ci_gate.triggers": _Has("push")}),
+    # A nested pipeline-resource `trigger: none` is not the top-level trigger.
+    ("azure_nested_resource_trigger_none_gated",
+     {"azure-pipelines.yml": "resources:\n  pipelines:\n    - pipeline: upstream\n      trigger: none\n"
+      "steps:\n  - script: pytest\n"},
+     {"ci_gate.has_gate_trigger": True, "ci_gate.triggers": _Has("push")}),
+    # Map-form run steps: `name: Test` is a label; `command:` is unwrapped so
+    # echo-prose filtering applies.
+    ("circleci_name_label_not_executable",
+     {".circleci/config.yml": "version: 2.1\njobs:\n  build:\n    steps:\n      - run:\n"
+      "          name: Test\n          command: echo \"not configured\"\n"},
+     {"ci_gate.has_test_step": False, "ci_gate.has_lint_step": False}),
+    # Children of a skipped `environment:` block are config, not commands.
+    ("circleci_environment_children_not_executable",
+     {".circleci/config.yml": "version: 2.1\njobs:\n  deploy:\n    steps:\n      - run:\n"
+      "          environment:\n            TEST: \"1\"\n            LINT: \"0\"\n"
+      "          command: ./deploy.sh\n"},
+     {"ci_gate.has_test_step": False, "ci_gate.has_lint_step": False}),
+    ("circleci_config_is_ci_gate",
+     {".circleci/config.yml": "version: 2.1\njobs:\n  build:\n    steps:\n      - run: npm test\n"
+      "      - run:\n          command: npm run lint\n"},
+     {"ci_gate.workflow_files": _Has(".circleci/config.yml"), "ci_gate.has_test_step": True,
+      "ci_gate.has_lint_step": True, "ci_gate.has_gate_trigger": True, "ci_gate.triggers": _Has("push")}),
+    # `run: | # main tests` is still a block scalar.
+    ("commented_block_scalar_parsed",
+     {".github/workflows/ci.yml": _GH_PUSH + "      - run: | # main tests\n          pytest\n"},
+     {"ci_gate.has_test_step": True}),
+    # A trailing comment on an inline run value is prose.
+    ("trailing_comment_not_executable",
+     {".github/workflows/ci.yml": _GH_PUSH + "      - run: npm ci # pytest lint gitleaks later\n"},
+     {"ci_gate.has_test_step": False, "ci_gate.has_lint_step": False, "secrets_gate.tools_found": []}),
+    # Only echo/printf segments are prose; a chained command runs.
+    ("command_chained_after_echo_counts",
+     {".github/workflows/ci.yml": _GH_PUSH + "      - run: echo \"running tests\" && pytest\n"},
+     {"ci_gate.has_test_step": True}),
+    ("echoed_prose_is_not_a_gate",
+     {".github/workflows/ci.yml": _GH_PUSH + "      - run: echo \"test lint not configured\"\n"
+      "      - run: ./deploy.sh\n"},
+     {"ci_gate.has_test_step": False, "ci_gate.has_lint_step": False}),
+    # `name: test lint` and comments are not executable content.
+    ("flags_require_executable_content",
+     {".github/workflows/deploy.yml": "on: push\njobs:\n  deploy:\n    steps:\n      - name: test lint\n"
+      "        run: ./deploy.sh --target prod\n      # comment mentioning pytest and eslint\n"},
+     {"ci_gate.has_test_step": False, "ci_gate.has_lint_step": False}),
+    ("run_step_block_scalar_sets_flags",
+     {".github/workflows/ci.yml": "on: push\njobs:\n  t:\n    steps:\n      - name: unit\n        run: |\n"
+      "          pip install -e .\n          pytest -q\n      - run: eslint .\n"},
+     {"ci_gate.has_test_step": True, "ci_gate.has_lint_step": True}),
+    # Installing tools is not running them; a chained invocation still counts.
+    ("installer_arguments_are_not_invocations",
+     {".github/workflows/setup-only.yml": "on: [push]\njobs:\n  s:\n    steps:\n"
+      "      - run: pip install pytest black\n      - run: ./deploy.sh\n"},
+     {"ci_gate.has_test_step": False, "ci_gate.has_lint_step": False, "ci_gate.gated_test_step": False}),
+    ("install_then_run_counts",
+     {".github/workflows/ci.yml": _GH_PUSH + "      - run: pip install pytest && pytest\n"},
+     {"ci_gate.has_test_step": True, "ci_gate.gated_test_step": True}),
+    # gated_* needs trigger AND step in the SAME workflow file.
+    ("gated_flags_require_same_workflow",
+     {".github/workflows/deploy.yml": "on: [push]\njobs:\n  d:\n    steps:\n      - run: ./deploy.sh\n",
+      ".github/workflows/manual-tests.yml": "on:\n  workflow_dispatch:\njobs:\n  t:\n    steps:\n"
+      "      - run: pytest && eslint .\n"},
+     {"ci_gate.has_gate_trigger": True, "ci_gate.has_test_step": True,
+      "ci_gate.gated_test_step": False, "ci_gate.gated_lint_step": False}),
+    ("gated_flags_true_when_same_workflow",
+     {".github/workflows/ci.yml": _GH_PUSH + "      - run: pytest\n"},
+     {"ci_gate.gated_test_step": True}),
+    # A mutating lint needs both patterns on one executable line.
+    ("mutating_lint_requires_same_line",
+     {".github/workflows/ci.yml": _GH_PUSH + "      - run: eslint .\n      - run: node update-cache.js --write\n"},
+     {"ci_gate.has_lint_step": True, "ci_gate.mutating_lint": False}),
+    ("mutating_lint_same_line_flagged",
+     {".github/workflows/ci.yml": _GH_PUSH + "      - run: eslint --fix .\n"},
+     {"ci_gate.mutating_lint": True}),
+    # --check protects only its own segment; the chained isort still writes.
+    ("check_exemption_is_per_segment",
+     {".github/workflows/fmt.yml": _FMT.format("black --check . && isort .")},
+     {"ci_gate.mutating_lint": True}),
+    # black and ruff format write by default; --check is their no-write mode.
+    ("black_default_write_is_mutating",
+     {".github/workflows/fmt.yml": _FMT.format("black .")}, {"ci_gate.mutating_lint": True}),
+    ("ruff_format_default_write_is_mutating",
+     {".github/workflows/fmt.yml": _FMT.format("ruff format .")}, {"ci_gate.mutating_lint": True}),
+    ("ruff_format_check_not_mutating",
+     {".github/workflows/fmt.yml": _FMT.format("ruff format --check .")}, {"ci_gate.mutating_lint": False}),
+    ("black_check_not_mutating",
+     {".github/workflows/fmt.yml": _FMT.format("black --check .")}, {"ci_gate.mutating_lint": False}),
+    # A scanner named only in dependencies is metadata, not enforcement.
+    ("scanner_in_dev_dependencies_not_enforcement",
+     {"package.json": json.dumps({"name": "x", "devDependencies": {"gitleaks": "^8.0.0"}})},
+     {"secrets_gate.tools_found": [], "secrets_gate.locations": []}),
+    # A line that only logs a scanner name is not a gate.
+    ("echoed_scanner_name_not_enforcement",
+     {"package.json": json.dumps({"scripts": {"check": 'echo "gitleaks not configured"'}}),
+      ".github/workflows/sec.yml": _GH_PUSH.replace("  t:", "  s:") + "      - run: echo trufflehog skipped\n"},
+     {"secrets_gate.tools_found": []}),
+    ("scanner_chained_after_echo_counts",
+     {"package.json": json.dumps({"scripts": {"check": 'echo "scanning" && gitleaks detect'}})},
+     {"secrets_gate.tools_found": _Has("gitleaks")}),
+    ("scanner_in_precommit_comment_not_enforcement",
+     {".pre-commit-config.yaml": "repos: []\n# TODO: add gitleaks later\n"},
+     {"secrets_gate.tools_found": [], "secrets_gate.locations": []}),
+    ("scanner_in_precommit_hook_counts",
+     {".pre-commit-config.yaml": "repos:\n  - repo: https://github.com/gitleaks/gitleaks\n"
+      "    hooks:\n      - id: gitleaks\n"},
+     {"secrets_gate.tools_found": _Has("gitleaks")}),
+    ("scanner_in_package_scripts_counts",
+     {"package.json": json.dumps({"name": "x", "devDependencies": {"gitleaks": "^8.0.0"},
+                                  "scripts": {"scan": "gitleaks detect --no-banner"}})},
+     {"secrets_gate.tools_found": _Has("gitleaks"), "secrets_gate.locations": _Has("package.json")}),
+    # Naming a scanner in a step name is not an invocation; a run: line is.
+    ("scanner_named_in_step_name_only",
+     {".github/workflows/name-only.yml": "on: push\njobs:\n  s:\n    steps:\n      - name: gitleaks mention\n"
+      "        run: ./deploy.sh\n"},
+     {"secrets_gate.tools_found": []}),
+    ("scanner_in_ci_run_line_counts",
+     {".github/workflows/name-only.yml": "on: push\njobs:\n  s:\n    steps:\n      - name: gitleaks mention\n"
+      "        run: ./deploy.sh\n",
+      ".github/workflows/scan.yml": "on: push\njobs:\n  s:\n    steps:\n      - run: gitleaks detect\n"},
+     {"secrets_gate.tools_found": _Has("gitleaks"),
+      "secrets_gate.locations": _Has(".github/workflows/scan.yml")}),
+    # Every CI system the exec-line parser reads is a secrets-gate surface.
+    ("scanner_in_bitbucket_pipelines_counts",
+     {"bitbucket-pipelines.yml": "pipelines:\n  default:\n    - step:\n        script:\n          - gitleaks detect\n"},
+     {"secrets_gate.tools_found": _Has("gitleaks"), "secrets_gate.locations": _Has("bitbucket-pipelines.yml")}),
+    ("scanner_in_azure_pipelines_counts",
+     {"azure-pipelines.yml": "trigger:\n  - main\nsteps:\n  - script: trufflehog filesystem .\n"},
+     {"secrets_gate.tools_found": _Has("trufflehog"), "secrets_gate.locations": _Has("azure-pipelines.yml")}),
+)
+
+
 class SubstanceCiSecretsApiTestCase(_SubstanceBase):
-    def test_ci_gate_triggers_and_mutating_lint(self) -> None:
-        _write(
-            self.repo, ".github/workflows/ci.yml",
-            "on:\n  pull_request:\n  push:\n    branches: [main]\n"
-            "jobs:\n  t:\n    steps:\n      - run: pytest\n      - run: eslint . --fix\n",
-        )
-        ci = self._classify()["substance"]["ci_gate"]
-        self.assertTrue(ci["has_test_step"])
-        self.assertTrue(ci["has_lint_step"])
-        self.assertIn("pull_request", ci["triggers"])
-        self.assertIn("push", ci["triggers"])
-        self.assertTrue(ci["mutating_lint"])  # eslint --fix in CI can never fail
-
-    def test_ci_inline_list_trigger_recognized(self) -> None:
-        # Regression (finding 2): `on: [push, pull_request]` is a valid gate and
-        # must NOT report has_gate_trigger=false.
-        _write(
-            self.repo, ".github/workflows/ci.yml",
-            "on: [push, pull_request]\n"
-            "jobs:\n  t:\n    steps:\n      - run: pytest\n",
-        )
-        ci = self._classify()["substance"]["ci_gate"]
-        self.assertTrue(ci["has_gate_trigger"])
-        self.assertIn("push", ci["triggers"])
-        self.assertIn("pull_request", ci["triggers"])
-
-    def test_ci_scalar_and_block_sequence_triggers(self) -> None:
-        # Regression (finding 2): inline scalar (`on: push`) and block-sequence
-        # (`on:\n  - pull_request`) trigger forms are recognized too.
-        _write(
-            self.repo, ".github/workflows/scalar.yml",
-            "on: push\njobs:\n  t:\n    steps:\n      - run: pytest\n",
-        )
-        _write(
-            self.repo, ".github/workflows/seq.yml",
-            "on:\n  - pull_request\njobs:\n  t:\n    steps:\n      - run: pytest\n",
-        )
-        ci = self._classify()["substance"]["ci_gate"]
-        self.assertTrue(ci["has_gate_trigger"])
-        self.assertIn("push", ci["triggers"])
-        self.assertIn("pull_request", ci["triggers"])
-
-    def test_pull_request_target_counts_as_pr_gate(self) -> None:
-        # Regression (PR #207 round 25): pull_request_target is GitHub's
-        # PR-event family - it gates PRs and normalizes to pull_request.
-        _write(
-            self.repo, ".github/workflows/pr.yml",
-            "on: pull_request_target\njobs:\n  t:\n    steps:\n      - run: pytest\n",
-        )
-        ci = self._classify()["substance"]["ci_gate"]
-        self.assertTrue(ci["has_gate_trigger"])
-        self.assertIn("pull_request", ci["triggers"])
-        self.assertTrue(ci["gated_test_step"])
-
-    def test_ci_trigger_tokens_outside_on_block_ignored(self) -> None:
-        # Regression: `- push` list items / `push:` keys OUTSIDE the `on:`
-        # block (steps, matrices, unrelated mappings) must NOT count as gate
-        # triggers - a workflow_dispatch-only workflow stays gate-less.
-        _write(
-            self.repo, ".github/workflows/manual.yml",
-            "on:\n"
-            "  workflow_dispatch:\n"
-            "jobs:\n"
-            "  t:\n"
-            "    strategy:\n"
-            "      matrix:\n"
-            "        mode:\n"
-            "          - push\n"
-            "          - pull_request\n"
-            "    steps:\n"
-            "      - run: pytest\n"
-            "      - name: notify\n"
-            "        with:\n"
-            "          push: true\n",
-        )
-        ci = self._classify()["substance"]["ci_gate"]
-        self.assertFalse(ci["has_gate_trigger"])
-        self.assertEqual(ci["triggers"], [])
-
-    def test_gitlab_ci_counts_as_push_gated(self) -> None:
-        # Regression (PR #207): non-GitHub CI files must not be parsed with the
-        # GitHub `on:` grammar - GitLab pipelines run on push by default.
-        _write(
-            self.repo, ".gitlab-ci.yml",
-            "stages:\n  - test\ntest:\n  stage: test\n  script:\n    - pytest\n",
-        )
-        ci = self._classify()["substance"]["ci_gate"]
-        self.assertTrue(ci["has_gate_trigger"])
-        self.assertIn("push", ci["triggers"])
-        self.assertTrue(ci["has_test_step"])
-
-    def test_bitbucket_default_section_counts_as_gated(self) -> None:
-        _write(
-            self.repo, "bitbucket-pipelines.yml",
-            "pipelines:\n  default:\n    - step:\n        script:\n          - pytest\n",
-        )
-        ci = self._classify()["substance"]["ci_gate"]
-        self.assertTrue(ci["has_gate_trigger"])
-        self.assertIn("push", ci["triggers"])
-
-    def test_bitbucket_custom_only_not_gated(self) -> None:
-        _write(
-            self.repo, "bitbucket-pipelines.yml",
-            "pipelines:\n  custom:\n    manual-run:\n      - step:\n          script:\n            - pytest\n",
-        )
-        ci = self._classify()["substance"]["ci_gate"]
-        self.assertFalse(ci["has_gate_trigger"])
-        self.assertEqual(ci["triggers"], [])
-
-    def test_bitbucket_nested_branches_under_custom_not_gated(self) -> None:
-        # Regression (PR #207): a `branches:` line NESTED inside a custom
-        # (manual-only) pipeline subtree is not a direct child of the
-        # top-level `pipelines:` key and must never count as push-gated.
-        _write(
-            self.repo, "bitbucket-pipelines.yml",
-            "pipelines:\n"
-            "  custom:\n"
-            "    deploy:\n"
-            "      branches:\n"
-            "        main:\n"
-            "          - step:\n"
-            "              script:\n"
-            "                - ./deploy.sh\n",
-        )
-        ci = self._classify()["substance"]["ci_gate"]
-        self.assertFalse(ci["has_gate_trigger"])
-        self.assertEqual(ci["triggers"], [])
-
-    def test_bitbucket_toplevel_branches_still_gated(self) -> None:
-        # Direct-child `branches:` of `pipelines:` keeps gating (indent-scoped
-        # walk must not lose the true positive).
-        _write(
-            self.repo, "bitbucket-pipelines.yml",
-            "pipelines:\n"
-            "  branches:\n"
-            "    main:\n"
-            "      - step:\n"
-            "          script:\n"
-            "            - pytest\n",
-        )
-        ci = self._classify()["substance"]["ci_gate"]
-        self.assertTrue(ci["has_gate_trigger"])
-        self.assertIn("push", ci["triggers"])
-
-    def test_azure_pr_only_pipeline_counts_as_gated(self) -> None:
-        # Regression (PR #207 round 10): `trigger: none` + a top-level `pr:`
-        # key is Azure's documented PR-only gate.
-        _write(
-            self.repo, "azure-pipelines.yml",
-            "trigger: none\n"
-            "pr:\n"
-            "  branches:\n"
-            "    include:\n"
-            "      - main\n"
-            "steps:\n"
-            "  - script: pytest\n",
-        )
-        ci = self._classify()["substance"]["ci_gate"]
-        self.assertTrue(ci["has_gate_trigger"])
-        self.assertIn("pull_request", ci["triggers"])
-        self.assertNotIn("push", ci["triggers"])
-
-    def test_azure_pr_none_not_gated(self) -> None:
-        _write(
-            self.repo, "azure-pipelines.yml",
-            "trigger: none\npr: none\nsteps:\n  - script: ./deploy.sh\n",
-        )
-        ci = self._classify()["substance"]["ci_gate"]
-        self.assertFalse(ci["has_gate_trigger"])
-
-    def test_circleci_name_label_not_executable(self) -> None:
-        # Regression (PR #207 round 15): map-form run steps nest label fields -
-        # `name: Test` is not a test invocation, and a `command:` value is
-        # unwrapped so echo-prose filtering applies to it.
-        _write(
-            self.repo, ".circleci/config.yml",
-            "version: 2.1\n"
-            "jobs:\n"
-            "  build:\n"
-            "    steps:\n"
-            "      - run:\n"
-            "          name: Test\n"
-            "          command: echo \"not configured\"\n",
-        )
-        ci = self._classify()["substance"]["ci_gate"]
-        self.assertFalse(ci["has_test_step"])
-        self.assertFalse(ci["has_lint_step"])
-
-    def test_circleci_environment_children_not_executable(self) -> None:
-        # Regression (PR #207 round 18): children of a skipped non-exec block
-        # (`environment:` -> `TEST: "1"`) are config metadata, not commands.
-        _write(
-            self.repo, ".circleci/config.yml",
-            "version: 2.1\n"
-            "jobs:\n"
-            "  deploy:\n"
-            "    steps:\n"
-            "      - run:\n"
-            "          environment:\n"
-            "            TEST: \"1\"\n"
-            "            LINT: \"0\"\n"
-            "          command: ./deploy.sh\n",
-        )
-        ci = self._classify()["substance"]["ci_gate"]
-        self.assertFalse(ci["has_test_step"])
-        self.assertFalse(ci["has_lint_step"])
-
-    def test_circleci_config_counts_as_ci_gate(self) -> None:
-        # Regression (PR #207 round 14): .circleci/config.yml is a CI gate
-        # surface - run steps count for test/lint and push-gating.
-        _write(
-            self.repo, ".circleci/config.yml",
-            "version: 2.1\n"
-            "jobs:\n"
-            "  build:\n"
-            "    steps:\n"
-            "      - run: npm test\n"
-            "      - run:\n"
-            "          command: npm run lint\n",
-        )
-        ci = self._classify()["substance"]["ci_gate"]
-        self.assertIn(".circleci/config.yml", ci["workflow_files"])
-        self.assertTrue(ci["has_test_step"])
-        self.assertTrue(ci["has_lint_step"])
-        self.assertTrue(ci["has_gate_trigger"])
-        self.assertIn("push", ci["triggers"])
+    def test_ci_and_secrets_gate_rows(self) -> None:
+        for index, (case, files, checks) in enumerate(CI_SECRETS_ROWS):
+            with self.subTest(case=case):
+                self.repo = self.tmp / f"repo-{index}"
+                _init_repo(self.repo)
+                for path, content in files.items():
+                    _write(self.repo, path, content)
+                substance = self._classify()["substance"]
+                for key, want in checks.items():
+                    section, field = key.split(".")
+                    got = substance[section][field]
+                    if isinstance(want, _Has):
+                        for item in want.present:
+                            self.assertIn(item, got, key)
+                        for item in want.lacks:
+                            self.assertNotIn(item, got, key)
+                    elif isinstance(want, bool):
+                        self.assertEqual(bool(got), want, key)
+                    else:
+                        self.assertEqual(got, want, key)
 
     def test_workspace_package_destructive_scripts_scanned(self) -> None:
-        # Regression (PR #207 round 14): a workspace package's scripts are a
-        # destructive-scan surface, same as the root manifest.
+        # A workspace package's scripts are a destructive-scan surface, same as
+        # the root manifest.
         _write(
             self.repo, "packages/app/package.json",
             json.dumps({"name": "app", "scripts": {"clean": "rm -rf /"}}),
@@ -1969,143 +1969,9 @@ class SubstanceCiSecretsApiTestCase(_SubstanceBase):
             any(h["file"] == "packages/app/package.json[scripts]" for h in d["hits"])
         )
 
-    def test_commented_block_scalar_still_parsed(self) -> None:
-        # Regression (PR #207 round 13): `run: | # main tests` is a block
-        # scalar - the trailing comment must not hide the indented commands.
-        _write(
-            self.repo, ".github/workflows/ci.yml",
-            "on: [push]\n"
-            "jobs:\n"
-            "  t:\n"
-            "    steps:\n"
-            "      - run: | # main tests\n"
-            "          pytest\n",
-        )
-        ci = self._classify()["substance"]["ci_gate"]
-        self.assertTrue(ci["has_test_step"])
-
-    def test_trailing_ci_comment_not_executable(self) -> None:
-        # Regression (PR #207 round 12): a trailing shell/YAML comment on an
-        # inline run value is prose (`npm ci # pytest lint later`), while a
-        # URL anchor (no whitespace before #) survives.
-        _write(
-            self.repo, ".github/workflows/ci.yml",
-            "on: [push]\n"
-            "jobs:\n"
-            "  t:\n"
-            "    steps:\n"
-            "      - run: npm ci # pytest lint gitleaks later\n",
-        )
-        payload = self._classify()
-        ci = payload["substance"]["ci_gate"]
-        self.assertFalse(ci["has_test_step"])
-        self.assertFalse(ci["has_lint_step"])
-        sec = payload["substance"]["secrets_gate"]
-        self.assertEqual(sec["tools_found"], [])
-
-    def test_command_chained_after_echo_still_counts(self) -> None:
-        # Regression (PR #207 round 10): only echo/printf SEGMENTS are prose -
-        # `echo "running tests" && pytest` runs a real gate.
-        _write(
-            self.repo, ".github/workflows/ci.yml",
-            "on: [push]\n"
-            "jobs:\n"
-            "  t:\n"
-            "    steps:\n"
-            "      - run: echo \"running tests\" && pytest\n",
-        )
-        ci = self._classify()["substance"]["ci_gate"]
-        self.assertTrue(ci["has_test_step"])
-
-    def test_echoed_prose_is_not_a_test_or_lint_gate(self) -> None:
-        # Regression (PR #207 round 9): echo/printf lines are prose - a
-        # placeholder step echoing the words test/lint is not an invocation.
-        _write(
-            self.repo, ".github/workflows/ci.yml",
-            "on: [push]\n"
-            "jobs:\n"
-            "  t:\n"
-            "    steps:\n"
-            "      - run: echo \"test lint not configured\"\n"
-            "      - run: ./deploy.sh\n",
-        )
-        ci = self._classify()["substance"]["ci_gate"]
-        self.assertFalse(ci["has_test_step"])
-        self.assertFalse(ci["has_lint_step"])
-
-    def test_mutating_lint_requires_same_line(self) -> None:
-        # Regression (PR #207 round 8): a check-only lint step plus an
-        # unrelated --write step in the SAME workflow is not a mutating lint
-        # gate - the flag needs both patterns on one executable line.
-        _write(
-            self.repo, ".github/workflows/ci.yml",
-            "on: [push]\n"
-            "jobs:\n"
-            "  t:\n"
-            "    steps:\n"
-            "      - run: eslint .\n"
-            "      - run: node update-cache.js --write\n",
-        )
-        ci = self._classify()["substance"]["ci_gate"]
-        self.assertTrue(ci["has_lint_step"])
-        self.assertFalse(ci["mutating_lint"])
-
-    def test_installer_arguments_are_not_invocations(self) -> None:
-        # Regression (PR #207 round 23): `pip install pytest black` installs
-        # tools, it does not run them - installer segments never set the
-        # test/lint flags; the chained real invocation still counts.
-        _write(
-            self.repo, ".github/workflows/setup-only.yml",
-            "on: [push]\n"
-            "jobs:\n"
-            "  s:\n"
-            "    steps:\n"
-            "      - run: pip install pytest black\n"
-            "      - run: ./deploy.sh\n",
-        )
-        ci = self._classify()["substance"]["ci_gate"]
-        self.assertFalse(ci["has_test_step"])
-        self.assertFalse(ci["has_lint_step"])
-        self.assertFalse(ci["gated_test_step"])
-
-    def test_install_then_run_still_counts(self) -> None:
-        _write(
-            self.repo, ".github/workflows/ci.yml",
-            "on: [push]\njobs:\n  t:\n    steps:\n      - run: pip install pytest && pytest\n",
-        )
-        ci = self._classify()["substance"]["ci_gate"]
-        self.assertTrue(ci["has_test_step"])
-        self.assertTrue(ci["gated_test_step"])
-
-    def test_gated_flags_require_same_workflow_conjunction(self) -> None:
-        # Regression (PR #207 round 20): a dispatch-only test workflow next to
-        # a push-gated deploy workflow is NOT a test gate - gated_* requires
-        # trigger AND step in the SAME file.
-        _write(
-            self.repo, ".github/workflows/deploy.yml",
-            "on: [push]\njobs:\n  d:\n    steps:\n      - run: ./deploy.sh\n",
-        )
-        _write(
-            self.repo, ".github/workflows/manual-tests.yml",
-            "on:\n  workflow_dispatch:\njobs:\n  t:\n    steps:\n      - run: pytest && eslint .\n",
-        )
-        ci = self._classify()["substance"]["ci_gate"]
-        self.assertTrue(ci["has_gate_trigger"])
-        self.assertTrue(ci["has_test_step"])
-        self.assertFalse(ci["gated_test_step"])
-        self.assertFalse(ci["gated_lint_step"])
-
-    def test_gated_flags_true_when_same_workflow(self) -> None:
-        _write(
-            self.repo, ".github/workflows/ci.yml",
-            "on: [push]\njobs:\n  t:\n    steps:\n      - run: pytest\n",
-        )
-        ci = self._classify()["substance"]["ci_gate"]
-        self.assertTrue(ci["gated_test_step"])
-
     def test_force_push_and_db_drop_not_self_managed(self) -> None:
-        # Regression (PR #207 round 20): non-filesystem destructive ops have
-        # no repo-relative target - they must not launder into self-managed.
+        # Non-filesystem destructive ops have no repo-relative target - they
+        # must not launder into self-managed.
         _write(
             self.repo, "scripts/danger.sh",
             "#!/bin/sh\ngit push --force origin main\n"
@@ -2116,150 +1982,9 @@ class SubstanceCiSecretsApiTestCase(_SubstanceBase):
             h = next(x for x in hits if x["pattern"] == pat)
             self.assertEqual(h["context_class"], "unbounded", pat)
 
-    def test_default_write_check_exemption_is_per_segment(self) -> None:
-        # Regression (PR #207 round 22): in `black --check . && isort .` the
-        # --check protects only black - the chained isort still writes.
-        _write(
-            self.repo, ".github/workflows/fmt.yml",
-            "on: [push]\njobs:\n  f:\n    steps:\n      - run: black --check . && isort .\n",
-        )
-        ci = self._classify()["substance"]["ci_gate"]
-        self.assertTrue(ci["mutating_lint"])
-
-    def test_black_default_write_is_mutating(self) -> None:
-        # Regression (PR #207 round 19): black writes by default - no
-        # --fix/--write flag needed to mutate the checkout; --check is clean.
-        _write(
-            self.repo, ".github/workflows/fmt.yml",
-            "on: [push]\njobs:\n  f:\n    steps:\n      - run: black .\n",
-        )
-        ci = self._classify()["substance"]["ci_gate"]
-        self.assertTrue(ci["mutating_lint"])
-
-    def test_ruff_format_default_write_is_mutating(self) -> None:
-        # Regression (PR #207 round 26): ruff format writes by default;
-        # --check is its no-write mode.
-        _write(
-            self.repo, ".github/workflows/fmt.yml",
-            "on: [push]\njobs:\n  f:\n    steps:\n      - run: ruff format .\n",
-        )
-        ci = self._classify()["substance"]["ci_gate"]
-        self.assertTrue(ci["mutating_lint"])
-
-    def test_ruff_format_check_not_mutating(self) -> None:
-        _write(
-            self.repo, ".github/workflows/fmt.yml",
-            "on: [push]\njobs:\n  f:\n    steps:\n      - run: ruff format --check .\n",
-        )
-        ci = self._classify()["substance"]["ci_gate"]
-        self.assertFalse(ci["mutating_lint"])
-
-    def test_black_check_mode_not_mutating(self) -> None:
-        _write(
-            self.repo, ".github/workflows/fmt.yml",
-            "on: [push]\njobs:\n  f:\n    steps:\n      - run: black --check .\n",
-        )
-        ci = self._classify()["substance"]["ci_gate"]
-        self.assertFalse(ci["mutating_lint"])
-
-    def test_azure_nested_resource_trigger_none_still_gated(self) -> None:
-        # Regression (PR #207 round 19): a nested pipeline-resource
-        # `trigger: none` is not the top-level CI trigger.
-        _write(
-            self.repo, "azure-pipelines.yml",
-            "resources:\n"
-            "  pipelines:\n"
-            "    - pipeline: upstream\n"
-            "      trigger: none\n"
-            "steps:\n"
-            "  - script: pytest\n",
-        )
-        ci = self._classify()["substance"]["ci_gate"]
-        self.assertTrue(ci["has_gate_trigger"])
-        self.assertIn("push", ci["triggers"])
-
-    def test_mutating_lint_same_line_still_flagged(self) -> None:
-        _write(
-            self.repo, ".github/workflows/ci.yml",
-            "on: [push]\n"
-            "jobs:\n"
-            "  t:\n"
-            "    steps:\n"
-            "      - run: eslint --fix .\n",
-        )
-        ci = self._classify()["substance"]["ci_gate"]
-        self.assertTrue(ci["mutating_lint"])
-
-    def test_bitbucket_pull_requests_section_counts_as_gated(self) -> None:
-        # Regression (PR #207 round 7): a PR-only Bitbucket pipeline
-        # (`pipelines: pull-requests:`) is a valid gate-relevant trigger.
-        _write(
-            self.repo, "bitbucket-pipelines.yml",
-            "pipelines:\n"
-            "  pull-requests:\n"
-            "    '**':\n"
-            "      - step:\n"
-            "          script:\n"
-            "            - pytest\n",
-        )
-        ci = self._classify()["substance"]["ci_gate"]
-        self.assertTrue(ci["has_gate_trigger"])
-        self.assertIn("pull_request", ci["triggers"])
-
-    def test_ci_test_lint_flags_require_executable_content(self) -> None:
-        # Regression (PR #207): `name: test lint` and matrix values are not
-        # executable content - a deploy-only workflow stays test/lint-less.
-        _write(
-            self.repo, ".github/workflows/deploy.yml",
-            "on: push\n"
-            "jobs:\n"
-            "  deploy:\n"
-            "    steps:\n"
-            "      - name: test lint\n"
-            "        run: ./deploy.sh --target prod\n"
-            "      # comment mentioning pytest and eslint\n",
-        )
-        ci = self._classify()["substance"]["ci_gate"]
-        self.assertFalse(ci["has_test_step"])
-        self.assertFalse(ci["has_lint_step"])
-
-    def test_ci_run_step_sets_test_flag_including_block_scalar(self) -> None:
-        _write(
-            self.repo, ".github/workflows/ci.yml",
-            "on: push\n"
-            "jobs:\n"
-            "  t:\n"
-            "    steps:\n"
-            "      - name: unit\n"
-            "        run: |\n"
-            "          pip install -e .\n"
-            "          pytest -q\n"
-            "      - run: eslint .\n",
-        )
-        ci = self._classify()["substance"]["ci_gate"]
-        self.assertTrue(ci["has_test_step"])
-        self.assertTrue(ci["has_lint_step"])
-
-    def test_azure_trigger_none_not_gated(self) -> None:
-        _write(
-            self.repo, "azure-pipelines.yml",
-            "trigger: none\nsteps:\n  - script: pytest\n",
-        )
-        ci = self._classify()["substance"]["ci_gate"]
-        self.assertFalse(ci["has_gate_trigger"])
-
-    def test_azure_default_and_explicit_trigger_gated(self) -> None:
-        _write(
-            self.repo, "azure-pipelines.yml",
-            "trigger:\n  branches:\n    include:\n      - main\nsteps:\n  - script: pytest\n",
-        )
-        ci = self._classify()["substance"]["ci_gate"]
-        self.assertTrue(ci["has_gate_trigger"])
-        self.assertIn("push", ci["triggers"])
-
     def test_secrets_config_files_are_evidence_only(self) -> None:
-        # Regression (PR #207): a scanner CONFIG/baseline file is not an
-        # enforced gate - it lands in configs_found, never tools_found.
+        # A scanner CONFIG/baseline file is not an enforced gate - it lands in
+        # configs_found, never tools_found.
         _write(self.repo, ".gitleaks.toml", "[allowlist]\n")
         _write(self.repo, ".secrets.baseline", "{}\n")
         sec = self._classify()["substance"]["secrets_gate"]
@@ -2268,111 +1993,6 @@ class SubstanceCiSecretsApiTestCase(_SubstanceBase):
         configs = {(e["tool"], e["path"]) for e in sec["configs_found"]}
         self.assertIn(("gitleaks", ".gitleaks.toml"), configs)
         self.assertIn(("detect-secrets", ".secrets.baseline"), configs)
-
-    def test_secrets_scanner_in_dev_dependencies_is_not_enforcement(self) -> None:
-        # Regression (PR #207): a scanner named only in package.json
-        # dependencies is metadata, never an enforced invocation.
-        _write(
-            self.repo, "package.json",
-            json.dumps({"name": "x", "devDependencies": {"gitleaks": "^8.0.0"}}),
-        )
-        sec = self._classify()["substance"]["secrets_gate"]
-        self.assertEqual(sec["tools_found"], [])
-        self.assertEqual(sec["locations"], [])
-
-    def test_echoed_scanner_name_is_not_enforcement(self) -> None:
-        # Regression (PR #207 round 11): a script/CI line that only LOGS a
-        # scanner name (`echo "gitleaks not configured"`) is not an enforced
-        # gate; a chained real invocation still counts.
-        _write(
-            self.repo, "package.json",
-            json.dumps({"scripts": {"check": 'echo "gitleaks not configured"'}}),
-        )
-        _write(
-            self.repo, ".github/workflows/sec.yml",
-            "on: [push]\njobs:\n  s:\n    steps:\n      - run: echo trufflehog skipped\n",
-        )
-        sec = self._classify()["substance"]["secrets_gate"]
-        self.assertEqual(sec["tools_found"], [])
-
-    def test_scanner_chained_after_echo_still_counts(self) -> None:
-        _write(
-            self.repo, "package.json",
-            json.dumps({"scripts": {"check": 'echo "scanning" && gitleaks detect'}}),
-        )
-        sec = self._classify()["substance"]["secrets_gate"]
-        self.assertIn("gitleaks", sec["tools_found"])
-
-    def test_secrets_scanner_in_precommit_comment_is_not_enforcement(self) -> None:
-        # Regression (PR #207 round 4): a scanner named only in a comment line
-        # of .pre-commit-config.yaml is not an enforced hook.
-        _write(
-            self.repo, ".pre-commit-config.yaml",
-            "repos: []\n# TODO: add gitleaks later\n",
-        )
-        sec = self._classify()["substance"]["secrets_gate"]
-        self.assertEqual(sec["tools_found"], [])
-        self.assertEqual(sec["locations"], [])
-
-    def test_secrets_scanner_in_precommit_hook_still_counts(self) -> None:
-        _write(
-            self.repo, ".pre-commit-config.yaml",
-            "repos:\n  - repo: https://github.com/gitleaks/gitleaks\n"
-            "    hooks:\n      - id: gitleaks\n",
-        )
-        sec = self._classify()["substance"]["secrets_gate"]
-        self.assertIn("gitleaks", sec["tools_found"])
-
-    def test_secrets_scanner_in_package_scripts_counts(self) -> None:
-        _write(
-            self.repo, "package.json",
-            json.dumps({
-                "name": "x",
-                "devDependencies": {"gitleaks": "^8.0.0"},
-                "scripts": {"scan": "gitleaks detect --no-banner"},
-            }),
-        )
-        sec = self._classify()["substance"]["secrets_gate"]
-        self.assertIn("gitleaks", sec["tools_found"])
-        self.assertIn("package.json", sec["locations"])
-
-    def test_secrets_scanner_in_ci_counts_only_in_executable_lines(self) -> None:
-        # A workflow that merely NAMES a scanner in a step name is not an
-        # enforced invocation; a run: line invoking it is.
-        _write(
-            self.repo, ".github/workflows/name-only.yml",
-            "on: push\njobs:\n  s:\n    steps:\n      - name: gitleaks mention\n        run: ./deploy.sh\n",
-        )
-        sec = self._classify()["substance"]["secrets_gate"]
-        self.assertEqual(sec["tools_found"], [])
-        _write(
-            self.repo, ".github/workflows/scan.yml",
-            "on: push\njobs:\n  s:\n    steps:\n      - run: gitleaks detect\n",
-        )
-        sec = self._classify()["substance"]["secrets_gate"]
-        self.assertIn("gitleaks", sec["tools_found"])
-        self.assertIn(".github/workflows/scan.yml", sec["locations"])
-
-    def test_secrets_scanner_in_bitbucket_pipelines_counts(self) -> None:
-        # Regression (PR #207): the secrets-gate CI surface covers every
-        # `_prime_ci_exec_lines`-parseable system - a `script:` gitleaks gate
-        # in bitbucket-pipelines.yml must not yield tools_found=[].
-        _write(
-            self.repo, "bitbucket-pipelines.yml",
-            "pipelines:\n  default:\n    - step:\n        script:\n          - gitleaks detect\n",
-        )
-        sec = self._classify()["substance"]["secrets_gate"]
-        self.assertIn("gitleaks", sec["tools_found"])
-        self.assertIn("bitbucket-pipelines.yml", sec["locations"])
-
-    def test_secrets_scanner_in_azure_pipelines_counts(self) -> None:
-        _write(
-            self.repo, "azure-pipelines.yml",
-            "trigger:\n  - main\nsteps:\n  - script: trufflehog filesystem .\n",
-        )
-        sec = self._classify()["substance"]["secrets_gate"]
-        self.assertIn("trufflehog", sec["tools_found"])
-        self.assertIn("azure-pipelines.yml", sec["locations"])
 
     def test_api_contract_globs_and_http_flag(self) -> None:
         _write(self.repo, "package.json", json.dumps({"dependencies": {"express": "^4"}}))
@@ -2800,65 +2420,15 @@ class FixtureFamiliesTestCase(unittest.TestCase):
                 assert_raw(payload)
 
 
-# ── R13 re-baselined smoke: report inputs are derivable (resolution 14) ────────
-
-
-# The 48 SCORED legacy criteria + the 3 legacy INFORMATIONAL rows (DC7 frontend-
-# only, DC8 glossary, DE7 feature-map) - the full stable legacy denominator R13
-# forbids diluting. `substance upgrades tighten pass conditions, never remove
-# checks`: every one of these IDs must still carry a table row in pillars.md.
-_LEGACY_CRITERION_IDS = (
-    tuple(f"SV{i}" for i in range(1, 7))    # Pillar 1
-    + tuple(f"BS{i}" for i in range(1, 7))  # Pillar 2
-    + tuple(f"TS{i}" for i in range(1, 7))  # Pillar 3
-    + tuple(f"DC{i}" for i in range(1, 9))  # Pillar 4 (DC7/DC8 informational)
-    + tuple(f"DE{i}" for i in range(1, 8))  # Pillar 5 (DE7 informational)
-    + tuple(f"OB{i}" for i in range(1, 7))  # Pillar 6 (report-only)
-    + tuple(f"SE{i}" for i in range(1, 7))  # Pillar 7 (report-only)
-    + tuple(f"WP{i}" for i in range(1, 7))  # Pillar 8 (report-only)
-)
-_LEGACY_INFORMATIONAL = ("DC7", "DC8", "DE7")
+# ── Emitter non-mutation ──
 
 
 class ReportInputDerivabilityTestCase(unittest.TestCase):
-    """R13 re-baselined (resolution 14): instead of a heavyweight full-prime run,
-    a lightweight CI smoke that the INPUTS the Phase-3 verdict/scoring machinery
-    consumes are still derivable - (a) every legacy criterion ID is present in
-    pillars.md (the level denominator is never silently shrunk), (b) the
-    hard-gate / verdict-headline machinery the skill references actually resolves
-    in the doc, and (c) the emitter classify path is non-mutating (`git status
-    --porcelain` byte-identical pre/post)."""
+    """The emitter classify path is non-mutating."""
 
     @classmethod
     def setUpClass(cls) -> None:
         cls.flowctl = _load_flowctl()
-        cls.pillars = (PRIME_SKILL_DIR / "pillars.md").read_text(encoding="utf-8")
-        cls.workflow = (PRIME_SKILL_DIR / "workflow.md").read_text(encoding="utf-8")
-
-    def test_all_legacy_criterion_ids_present(self) -> None:
-        # 48 scored + 3 informational = 51 total legacy rows.
-        self.assertEqual(len(_LEGACY_CRITERION_IDS), 51)
-        scored = [c for c in _LEGACY_CRITERION_IDS if c not in _LEGACY_INFORMATIONAL]
-        self.assertEqual(len(scored), 48)
-        missing = [
-            c for c in _LEGACY_CRITERION_IDS
-            if not re.search(rf"\|\s*{c}\s*\|", self.pillars)
-        ]
-        self.assertEqual(missing, [], f"legacy criterion rows dropped from pillars.md: {missing}")
-
-    def test_hard_gate_machinery_resolves(self) -> None:
-        # The three gates + the Level-2 cap are defined verbatim in pillars.md,
-        # and the workflow references resolve back to that definition.
-        self.assertIn("## Hard gates", self.pillars)
-        self.assertIn("cap agent readiness at **Level 2**", self.pillars)
-        for gate in ("**G1**", "**G2**", "**G3**"):
-            self.assertIn(gate, self.pillars, gate)
-        # Workflow §2.10 cites the pillars "Hard gates" section and names the
-        # failing gate in the verdict headline; the verdict-assembly section
-        # (the headline inputs the scoring feeds) exists.
-        self.assertIn("Hard gates G1-G3", self.workflow)
-        self.assertIn("name the failure in the verdict headline", self.workflow)
-        self.assertIn("Verdict assembly", self.workflow)
 
     def test_emitter_classify_is_non_mutating(self) -> None:
         # Non-mutation proof for the emitter path: a full classify over a
@@ -2886,89 +2456,14 @@ class ReportInputDerivabilityTestCase(unittest.TestCase):
             shutil.rmtree(tmp, ignore_errors=True)
 
 
-class PrimeProseContractTestCase(unittest.TestCase):
-    """Prose contracts the host-inline scoring depends on, locked on the
-    canonical file AND the Codex mirror (sync-codex.sh must not drop the frozen
-    SV4 wording, the N/A whitelist, or the stacks.md row schema). Prose-only
-    review is NOT acceptable coverage - the strings are pinned in CI."""
-
-    def _pillars(self, base: Path) -> str:
-        return (base / "pillars.md").read_text(encoding="utf-8")
-
-    def _stacks(self, base: Path) -> str:
-        return (base / "stacks.md").read_text(encoding="utf-8")
-
-    def _workflow(self, base: Path) -> str:
-        return (base / "workflow.md").read_text(encoding="utf-8")
-
-    def _assert_sv4_contract(self, base: Path) -> None:
-        text = self._pillars(base)
-        # The SV4 feedback-gate rewrite - the layer-agnostic contract.
-        self.assertIn("Deterministic feedback gate (layer-agnostic)", text, base)
-        # Prose-quality pins removed 2026-08-07 - judged via .flow/criteria.md G1.
-        # (whole-sentence needles: 'Rewritten from "pre-commit hooks configured".',
-        # "headroom warn, never a pass-blocker",
-        # "Prime **NEVER** recommends test-running pre-commit hooks.",
-        # "SV4 grades gate TOPOLOGY")
-
-    def _assert_na_whitelist(self, base: Path) -> None:
-        text = self._pillars(base)
-        # The single N/A whitelist table - the ONLY source of N/A entries.
-        self.assertIn("N/A Whitelist (single source", text, base)
-        self.assertIn("| Criterion(s) | N/A condition |", text, base)
-        # Representative rows must survive the mirror sync.
-        self.assertRegex(text, re.compile(r"\|\s*BS6\s*\|.*[Nn]on-monorepo", re.DOTALL), base)
-        self.assertIn("Greenfield lifecycle", text, base)
-
-    def _assert_stacks_row_schema(self, base: Path) -> None:
-        text = self._stacks(base)
-        # The stacks.md map header columns - the dispatch schema the skill reads.
-        self.assertIn(
-            "| Stack | Detect | Verify (non-interactive) | LSP for agents | Map tooling | Gotchas |",
-            text,
-            base,
-        )
-
-    def test_canonical_sv4(self) -> None:
-        self._assert_sv4_contract(PRIME_SKILL_DIR)
-
-    def test_mirror_sv4(self) -> None:
-        self._assert_sv4_contract(PRIME_MIRROR_DIR)
-
-    def test_canonical_na_whitelist(self) -> None:
-        self._assert_na_whitelist(PRIME_SKILL_DIR)
-
-    def test_mirror_na_whitelist(self) -> None:
-        self._assert_na_whitelist(PRIME_MIRROR_DIR)
-
-    def test_canonical_stacks_row_schema(self) -> None:
-        self._assert_stacks_row_schema(PRIME_SKILL_DIR)
-
-    def test_mirror_stacks_row_schema(self) -> None:
-        self._assert_stacks_row_schema(PRIME_MIRROR_DIR)
-
-    def _assert_metachar_rejection(self, base: Path) -> None:
-        # Regression (PR #207, security): §2.6 executes commands quoted in
-        # repo-authored agent files; an allowlisted leading token must never
-        # license chained shell actions. The argv-only rejection rule is
-        # load-bearing and must survive the mirror sync.
-        text = self._workflow(base)
-        self.assertIn("Metacharacter rejection (argv-only execution)", text, base)
-        self.assertIn("REJECT (do not run; record as skipped with the reason)", text, base)
-        for construct in ("`;`", "`&&`", "`||`", "`|`", "`$(`", "`>>`"):
-            self.assertIn(construct, text, f"{base}: missing rejected construct {construct}")
-
-    def test_canonical_metachar_rejection(self) -> None:
-        self._assert_metachar_rejection(PRIME_SKILL_DIR)
-
-    def test_mirror_metachar_rejection(self) -> None:
-        self._assert_metachar_rejection(PRIME_MIRROR_DIR)
+class PrimeBuildProbeFenceTestCase(unittest.TestCase):
+    """The build probe fence captures the build's own exit code."""
 
     def _assert_build_rc_captured_before_tail(self, base: Path) -> None:
         # Regression (PR #207 round 10, P1): `cmd | tail; BUILD_RC=$?` records
         # tail's status - the build probe must capture its own exit code
         # before truncating output, or a broken build passes BS2/G1.
-        text = self._workflow(base)
+        text = (base / "workflow.md").read_text(encoding="utf-8")
         self.assertIn('> "$BUILD_OUT" 2>&1', text, base)
         self.assertNotIn("| tail -20\nBUILD_RC=$?", text, base)
 
@@ -2977,255 +2472,6 @@ class PrimeProseContractTestCase(unittest.TestCase):
 
     def test_mirror_build_rc_capture(self) -> None:
         self._assert_build_rc_captured_before_tail(PRIME_MIRROR_DIR)
-
-
-class PrimeReachedPathRoutingTestCase(unittest.TestCase):
-    """fn-130.5: mode routing is explicit, B1-linked, and mechanically sized."""
-
-    @classmethod
-    def setUpClass(cls) -> None:
-        cls.skill = (PRIME_SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
-        cls.workflow = (PRIME_SKILL_DIR / "workflow.md").read_text(encoding="utf-8")
-        route_path = (
-            REPO_ROOT
-            / "optimization"
-            / "prime"
-            / "fixtures"
-            / "routes"
-            / "modes.json"
-        )
-        cls.routes = json.loads(route_path.read_text(encoding="utf-8"))
-        character_py = REPO_ROOT / "optimization" / "reached-path" / "character.py"
-        spec = importlib.util.spec_from_file_location(
-            "prime_route_character_under_test", character_py
-        )
-        cls.character = importlib.util.module_from_spec(spec)
-        sys.modules[spec.name] = cls.character
-        spec.loader.exec_module(cls.character)
-
-    def test_root_dispatches_classify_before_workflow(self) -> None:
-        route = self.skill.index("## Route Before Reading References")
-        classify = self.skill.index("**`--classify-only`:**", route)
-        workflow = self.skill.index("**All other modes:**", classify)
-        self.assertLess(route, classify)
-        self.assertLess(classify, workflow)
-        classify_block = self.skill[classify:workflow]
-        self.assertIn("read [classification.md](classification.md) directly", classify_block)
-        self.assertIn("Do **not** read `workflow.md`", classify_block)
-        self.assertIn("and EXIT", classify_block)
-
-    def test_unknown_mode_fails_open_to_full_workflow(self) -> None:
-        self.assertIn(
-            "unknown/malformed mode: use the full workflow",
-            self.skill,
-        )
-
-    def test_report_only_stops_before_remediation_template_read(self) -> None:
-        report_stop = self.workflow.index("**If `--report-only`**: Stop here")
-        remediation_read = self.workflow.index(
-            "Read [remediation.md](remediation.md)",
-        )
-        self.assertLess(report_stop, remediation_read)
-
-    def test_route_fixture_preserves_side_effect_contracts(self) -> None:
-        routes = self.routes["routes"]
-        self.assertFalse(routes["classify-only"]["writes"])
-        self.assertFalse(routes["classify-only"]["asks"])
-        self.assertFalse(routes["report-only"]["writes"])
-        self.assertFalse(routes["report-only"]["asks"])
-        self.assertFalse(routes["full-no-fixes"]["writes"])
-        self.assertTrue(routes["full-no-fixes"]["asks"])
-        self.assertTrue(routes["full-fixes"]["writes"])
-        self.assertFalse(routes["full-fixes"]["asks"])
-
-    # Live-file char freeze removed 2026-08-07 (.flow/criteria.md G1).
-
-    def test_classify_forbids_all_cold_references(self) -> None:
-        forbidden = set(self.routes["routes"]["classify-only"]["forbidden_reads"])
-        for name in ("workflow.md", "pillars.md", "playbooks.md", "remediation.md"):
-            self.assertIn(
-                f"plugins/flow-next/skills/flow-next-prime/{name}",
-                forbidden,
-            )
-
-
-class AgenticEvalIsolationTestCase(unittest.TestCase):
-    """Regression (PR #207): tampering with projection.json - the ONLY arena
-    file - leaves the created-files diff empty, so the harness must catch it
-    via the pre-run content hash and treat the run as an isolation breach.
-    Also (PR #207 round 2): the sentinel token-leak scan covers stderr too
-    (stderr is persisted in stderr_tail), and a leaked token is redacted
-    before persistence."""
-
-    @classmethod
-    def setUpClass(cls) -> None:
-        harness_py = REPO_ROOT / "optimization" / "prime" / "run_agentic_eval.py"
-        spec = importlib.util.spec_from_file_location("prime_agentic_eval_under_test", harness_py)
-        cls.harness = importlib.util.module_from_spec(spec)
-        sys.modules[spec.name] = cls.harness
-        spec.loader.exec_module(cls.harness)
-
-    def setUp(self) -> None:
-        self.tmp = Path(tempfile.mkdtemp(prefix="prime-eval-iso-")).resolve()
-        self.arena = self.harness._prepare_arena(self.tmp, {"family": "t"})
-        self.sentinel, self.token, self.sig = self.harness._plant_sentinel(self.tmp)
-        self.pre = self.harness._fs_snapshot(self.arena)
-        self.proj_hash = self.harness._projection_hash(self.arena)
-
-    def tearDown(self) -> None:
-        shutil.rmtree(self.tmp, ignore_errors=True)
-
-    def _report(self, stdout: str = "", stderr: str = "") -> dict:
-        return self.harness._isolation_report(
-            self.arena, self.pre, self.sentinel, self.token, self.sig, stdout,
-            projection_hash=self.proj_hash, stderr=stderr,
-        )
-
-    def test_untouched_projection_is_not_a_breach(self) -> None:
-        iso = self._report()
-        self.assertFalse(iso["projection_tampered"])
-        self.assertFalse(self.harness._isolation_breached(iso))
-
-    def test_claude_backend_preserves_oauth_isolation_flags(self) -> None:
-        cmd = self.harness._backend_cmd("claude", "sonnet", self.tmp / "schema.json")
-        self.assertIn("--setting-sources", cmd)
-        self.assertIn("project,local", cmd)
-        self.assertIn("--no-session-persistence", cmd)
-        self.assertNotIn("--bare", cmd)
-
-    def test_claude_auth_error_envelope_is_never_a_judgment(self) -> None:
-        transport = json.dumps(
-            {
-                "is_error": True,
-                "result": (
-                    "Failed to authenticate: OAuth session expired "
-                    "and could not be refreshed"
-                ),
-                "usage": {"input_tokens": 0, "output_tokens": 0},
-            }
-        )
-        self.assertIsNone(self.harness._extract_json(transport))
-
-    def test_failed_auth_preflight_is_invalid_not_scored(self) -> None:
-        auth = {
-            "ok": False,
-            "invalid": True,
-            "reason": "zero_token_auth_failure",
-        }
-        with mock.patch.object(
-            self.harness.reached_path_isolation,
-            "auth_probe",
-            return_value=auth,
-        ), mock.patch.object(
-            self.harness.reached_path_isolation,
-            "instruction_leak_probe",
-        ) as leak:
-            verdict = self.harness._claude_preflight("sonnet", 10)
-        self.assertEqual(verdict["status"], "invalid_auth")
-        self.assertFalse(verdict["valid"])
-        leak.assert_not_called()
-
-    def test_stderr_token_leak_is_a_breach(self) -> None:
-        # Regression (PR #207): stderr is captured and persisted in
-        # stderr_tail, so a sentinel token leaked on stderr ONLY (clean
-        # stdout) must count as a breach.
-        iso = self._report(stdout="{}", stderr=f"debug: {self.token}\n")
-        self.assertTrue(iso["sentinel_token_leaked"])
-        self.assertTrue(iso["sentinel_token_leaked_stderr"])
-        self.assertTrue(self.harness._isolation_breached(iso))
-        self.assertFalse(iso["clean"])
-
-    def test_stdout_token_leak_still_a_breach(self) -> None:
-        iso = self._report(stdout=f"answer {self.token}", stderr="")
-        self.assertTrue(iso["sentinel_token_leaked"])
-        self.assertFalse(iso["sentinel_token_leaked_stderr"])
-        self.assertTrue(self.harness._isolation_breached(iso))
-
-    def test_leaked_token_redacted_from_persisted_tail(self) -> None:
-        # A leaked token is never persisted verbatim - redaction runs BEFORE
-        # the tail slice so a boundary-spanning token cannot survive.
-        long_prefix = "x" * 500
-        raw = f"{long_prefix}{self.token} tail"
-        redacted = self.harness._redact_token(raw, self.token)[-400:]
-        self.assertNotIn(self.token, redacted)
-        self.assertIn("[REDACTED-SENTINEL]", redacted)
-
-    def test_overwritten_projection_is_a_breach(self) -> None:
-        (self.arena / "projection.json").write_text("{}", encoding="utf-8")
-        iso = self._report()
-        self.assertTrue(iso["projection_tampered"])
-        self.assertTrue(self.harness._isolation_breached(iso))
-
-    def test_deleted_projection_is_a_breach(self) -> None:
-        (self.arena / "projection.json").unlink()
-        iso = self._report()
-        self.assertTrue(iso["projection_tampered"])
-        self.assertTrue(self.harness._isolation_breached(iso))
-
-    def test_deleted_sentinel_is_a_breach_not_a_crash(self) -> None:
-        # Regression (PR #207 round 3): a backend that DELETES the outside
-        # sentinel used to crash _isolation_report with FileNotFoundError -
-        # it must instead record sentinel_deleted and count as a breach.
-        self.sentinel.unlink()
-        iso = self._report(stdout="{}")
-        self.assertTrue(iso["sentinel_deleted"])
-        self.assertTrue(iso["sentinel_modified"])
-        self.assertTrue(self.harness._isolation_breached(iso))
-        self.assertFalse(iso["clean"])
-
-    def test_intact_sentinel_reports_not_deleted(self) -> None:
-        iso = self._report(stdout="{}")
-        self.assertFalse(iso["sentinel_deleted"])
-        self.assertFalse(iso["sentinel_modified"])
-
-    def test_same_length_sentinel_overwrite_is_a_breach(self) -> None:
-        # Regression (PR #207 round 4): the sentinel signature is a content
-        # hash, not (size, int(mtime)) - a same-length overwrite within the
-        # same second must still trip sentinel_modified.
-        original = self.sentinel.read_text(encoding="utf-8")
-        forged = ("X" * (len(original) - 1)) + "\n"
-        self.assertEqual(len(forged), len(original))
-        self.sentinel.write_text(forged, encoding="utf-8")
-        iso = self._report()
-        self.assertTrue(iso["sentinel_modified"])
-        self.assertFalse(iso["sentinel_deleted"])
-        self.assertTrue(self.harness._isolation_breached(iso))
-
-    def test_timed_out_parseable_output_never_scored(self) -> None:
-        # Regression (PR #207 round 4): a backend that prints valid JSON then
-        # hangs (timed_out=True) must never be scored - even when every
-        # attempt returns parseable output.
-        fam = "timeouttest"
-        fixtures = self.tmp / "fixtures"
-        fixtures.mkdir()
-        (fixtures / f"{fam}.json").write_text(
-            json.dumps({"family": fam, "emitter": {}, "file_listing": []}),
-            encoding="utf-8",
-        )
-        saved = (
-            self.harness.FIXTURES_DIR,
-            self.harness._backend_cmd,
-            self.harness._run_backend,
-        )
-        try:
-            self.harness.FIXTURES_DIR = fixtures
-            self.harness._backend_cmd = lambda backend, model, schema_path: ["true"]
-            self.harness._run_backend = (
-                lambda cmd, prompt, arena, timeout, protect_dir=None: (
-                    124, '{"classification": {}}', "", True, False
-                )
-            )
-            res = self.harness.run_fixture(fam, "mock", "m", {"rows": {fam: {}}}, timeout=1)
-        finally:
-            (
-                self.harness.FIXTURES_DIR,
-                self.harness._backend_cmd,
-                self.harness._run_backend,
-            ) = saved
-        self.assertNotEqual(res["status"], "scored")
-        self.assertIsNone(res["score"])
-        self.assertTrue(res["attempts"])
-        self.assertTrue(all(a["timed_out"] for a in res["attempts"]))
 
 
 if __name__ == "__main__":

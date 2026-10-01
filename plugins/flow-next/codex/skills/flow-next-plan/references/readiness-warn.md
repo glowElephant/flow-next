@@ -5,7 +5,7 @@ sentinel (`READINESS_WARN=true`): the input resolved to an existing SPEC that is
 not marked ready, in a repo that has adopted readiness. Ready specs, task ids,
 freeform ideas (Route B), and non-adopting repos never reach this file.
 
-- **Non-interactive / Ralph / autonomous** (any non-interactive marker: `FLOW_RALPH=1`, `REVIEW_RECEIPT_PATH` set, `FLOW_AUTONOMOUS=1`, or the `mode:autonomous` token parsed in SKILL.md — treat the marker *family* as the gate, not a rigid two-var list): auto-proceed with one stderr line, never block:
+- **Non-interactive / autonomous** (any non-interactive marker: `FLOW_AUTONOMOUS=1`, or the `mode:autonomous` token parsed in SKILL.md — treat the marker *family* as the gate, not a rigid two-var list): auto-proceed with one stderr line, never block:
   ```bash
   echo "[READINESS]: spec <id> not marked ready — proceeding (non-interactive)" >&2
   ```
@@ -21,6 +21,6 @@ freeform ideas (Route B), and non-adopting repos never reach this file.
     - **body**: `<spec-id> is not marked ready; readiness projects from the tracker (state: <readyState>). Recommended: proceed — planning is non-destructive. Confidence: [high].`
     - **options** (frozen): `proceed` (default — continue to research), `abort` (exit 0 — no spec or task changes made), `update-tracker-state-then-rerun` (exit 0 with guidance: move the linked issue to "<readyState>" on the board, pull via /flow-next:tracker-sync, re-run /flow-next:plan)
 
-Never a hard block — `abort` / `update-tracker-state-then-rerun` are user choices, not skill-imposed stops (R6).
+Never a hard block — `abort` / `update-tracker-state-then-rerun` are user choices, not skill-imposed stops.
 
 After the chosen option continues, return to Step 1 and run the scout fan-out.

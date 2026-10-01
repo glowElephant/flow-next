@@ -40,7 +40,7 @@ subagent prompt — it has the same repository you do.
 
 **If no cross-family pin is available:**
 - **Interactive:** ask the user explicitly (blocking question) which reviewer model/family to use — do not silently self-review
-- **Autonomous** (`mode:autonomous` / `FLOW_AUTONOMOUS=1` / Ralph / `REVIEW_RECEIPT_PATH` set): stop with `NEEDS_HUMAN: host review needs a cross-family model pin in AGENTS.md model-routing` — never same-family self-review
+- **Autonomous** (`mode:autonomous` / `FLOW_AUTONOMOUS=1`): stop with `NEEDS_HUMAN: host review needs a cross-family model pin in AGENTS.md model-routing` — never same-family self-review
 
 ## Step 2: Dispatch read-only reviewer subagents
 
@@ -60,7 +60,7 @@ coordinator resuming this scope mid-fix-loop (context lost between a
 `NEEDS_WORK` verdict and its fix pass) must not re-enter the three-draw shape:
 
 ```bash
-# ROUTE (PR #392): ONE deterministic verb owns canonicalization, the
+# ROUTE: ONE deterministic verb owns canonicalization, the
 # repo/scope-keyed receipt path (the same default Step 3 uses; explicit
 # REVIEW_RECEIPT_PATH always wins), receipt identity + verdict routing,
 # stale-receipt rotation, and the task-mode ledger fences (in-flight round,
@@ -138,7 +138,7 @@ if [[ "$REVIEW_BASE_SHA" != "$REVIEW_HEAD_SHA" ]]; then
   [[ "$DIFF_RC" -eq 1 ]] || { echo "git diff failed; not reserving a round" >&2; exit 1; }
 fi
 
-# --exclusive (PR #392 r22): the no-pending pre-check above is fast-fail UX
+# --exclusive: the no-pending pre-check above is fast-fail UX
 # only — this flag makes the refusal ATOMIC inside the reservation lock, so
 # two concurrent coordinators cannot both reserve between the check and here.
 ROUND_JSON="$("$FLOWCTL" review-rounds increment "${TASK_ID%.*}" --kind impl \
@@ -278,6 +278,12 @@ The generated prompt contains:
   `Prior findings: all fixed` may replace the per-finding lines; the two must not be
   mixed, because any per-finding line present wins and disables the aggregate. The `unaddressed` array in the JSON tail is about spec R-ID
   coverage and does **not** vouch for prior findings.
+- **The re-review's scope** (on re-review): only the fix commits since the prior round (pass
+  their range). A new finding blocks only if it is Major or worse and the fixes introduced it;
+  anything else is FYI. A prior finding the author declined (a `Declined #<n>: <reason>` line
+  in a fix commit message) is marked `withdrawn` when the reviewer agrees it does not show the
+  change doing the wrong thing, `not-fixed` when it disagrees. If every prior finding is fixed
+  or withdrawn and nothing new blocks, the verdict is SHIP.
 - Required verdict tags: `SHIP` / `NEEDS_WORK` / `MAJOR_RETHINK` / `NEEDS_HUMAN`
 
 Wait for the subagent result(s) (blocking — do not background).
@@ -385,7 +391,7 @@ if [[ -z "$TASK_ID" ]]; then
   fi
   exit 0
 fi
-# Scope ownership through the optional phases (PR #392, sol round 3): hold
+# Scope ownership through the optional phases: hold
 # the lease BEFORE the record — while the exclusive reservation still stands,
 # so no other dispatch can enter between consumption and lease. Acquisition
 # failure is terminal; Step 4 releases it after the phases.
@@ -441,19 +447,20 @@ held in Step 3 (before the fix pass); a standalone review holds none:
 
 ## Step 5: Continue through the shared fix loop
 
-Carry the verdict directly into SKILL.md's shared Fix Loop in this same skill
+Carry the verdict directly into other-paths.md's shared Fix Loop in this same skill
 run.
 
 - `SHIP`: complete the review contract.
 - `MAJOR_RETHINK`: continue into the shared `BLOCKED: DESIGN_CONFLICT`
   terminal; do not patch the design.
-- `NEEDS_WORK`: parse every valid finding, fix the code, run the relevant
-  tests/lints, and commit the fixes before re-review. Then repeat Steps 1–4
-  with **one new** read-only subagent (never a second fan-out — the fan-out is
+- `NEEDS_WORK`: fix the findings other-paths.md's Fix Loop says to fix, run the
+  relevant tests/lints, and commit the fixes before re-review. Then repeat Steps 1–4
+  once with **one new** read-only subagent (never a second fan-out — the fan-out is
   first-round only), the same cross-family rules, and the full merged
-  prior findings in its prompt. Continue until `SHIP` or the deterministic round cap.
+  prior findings in its prompt. That re-review's verdict is terminal
+  unless working-rules.md's review loop applies (an unattended run, or a request to review until SHIP); the deterministic round cap stays a safety net.
 - Dispatch, malformed-verdict, or receipt failure: output
-  `<promise>RETRY</promise>` and stop. Never self-issue a verdict or switch
+  `RETRY: no verdict (backend or transport failure)` and stop. Never self-issue a verdict or switch
   backends.
 
 ## Anti-patterns (Host backend)

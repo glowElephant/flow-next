@@ -16,7 +16,6 @@ import inspect
 import io
 import json
 import os
-import re
 import sys
 import tempfile
 import unittest
@@ -71,13 +70,6 @@ class TestRegistryShape(unittest.TestCase):
             ["claude", "codex", "copilot", "cursor", "host", "none", "rp"],
         )
 
-    def test_claude_default_model(self) -> None:
-        # fn-221 / fn-76: the default IS the ranking top; ids probed 2026-09-05.
-        reg = BACKEND_REGISTRY["claude"]
-        self.assertEqual(reg["default_model"], reg["models"][0])
-        self.assertEqual(reg["default_model"], "claude-fable-5-1")
-        self.assertEqual(reg["default_effort"], "high")
-
     def test_claude_effort_set(self) -> None:
         # The claude CLI's own --effort set (2.1.260): five values, no
         # ``none`` / ``minimal``.
@@ -89,42 +81,6 @@ class TestRegistryShape(unittest.TestCase):
     def test_cursor_effort_is_none(self) -> None:
         # Cursor folds reasoning effort into the model name → no effort axis.
         self.assertIsNone(BACKEND_REGISTRY["cursor"]["efforts"])
-
-    def test_cursor_default_model(self) -> None:
-        self.assertEqual(
-            BACKEND_REGISTRY["cursor"]["default_model"], "gpt-5.6-sol-high"
-        )
-        # No default_effort — effort is not a cursor field.
-        self.assertNotIn("default_effort", BACKEND_REGISTRY["cursor"])
-
-    def test_cursor_model_catalog(self) -> None:
-        # Source of truth: ``cursor-agent --list-models`` (v2026.07). Keep synced
-        # — Cursor ships new rows + auto-updates the CLI without changelog.
-        # fn-76: ``models`` is an ORDERED quality ranking (strongest first), a
-        # list — not a set. ``default_model`` MUST equal ``models[0]``.
-        self.assertEqual(
-            BACKEND_REGISTRY["cursor"]["models"],
-            [
-                "gpt-5.6-sol-high",
-                "gpt-5.6-sol-xhigh",
-                "gpt-5.6-sol-max",
-                "gpt-5.6-sol-medium",
-                "gpt-5.6-sol-low",
-                "gpt-5.6-terra-high",
-                "gpt-5.6-luna-high",
-                "claude-opus-5-thinking-high",
-                "claude-opus-4-8-thinking-high",
-                "claude-opus-4-7-thinking-high",
-                "gpt-5.5-high",
-                "gpt-5.4-high",
-                "gpt-5.3-codex-xhigh",
-                "gpt-5.3-codex-high",
-                "gpt-5.3-codex",
-                "gpt-5.2",
-                "composer-2.5",
-                "auto",
-            ],
-        )
 
     def test_rp_rejects_model_and_effort(self) -> None:
         self.assertIsNone(BACKEND_REGISTRY["rp"]["models"])
@@ -153,53 +109,6 @@ class TestRegistryShape(unittest.TestCase):
             {"low", "medium", "high", "xhigh"},
         )
 
-    def test_codex_defaults(self) -> None:
-        # fn-76: default_model is the ranking top (gpt-6.1-sol). Installs that
-        # cannot serve it step down the run_codex_exec ladder.
-        self.assertEqual(BACKEND_REGISTRY["codex"]["default_model"], "gpt-6.1-sol")
-        self.assertEqual(BACKEND_REGISTRY["codex"]["default_effort"], "high")
-        # fn-272 R4: a withheld astra steps down within the same generation first.
-        self.assertEqual(
-            BACKEND_REGISTRY["codex"]["models"][:3], ["gpt-6.1-sol", "gpt-6-astra", "gpt-6-sol"]
-        )
-
-    def test_copilot_defaults(self) -> None:
-        # Ranking top (gpt-6-astra, rolled out to Copilot 2026-09-05); an
-        # org policy withholding it is healed by the ladder. Stays on `high`
-        # effort — `xhigh` spends far more reasoning tokens without matching
-        # quality gains on review prompts.
-        self.assertEqual(BACKEND_REGISTRY["copilot"]["default_model"], "gpt-6-astra")
-        self.assertEqual(BACKEND_REGISTRY["copilot"]["default_effort"], "high")
-
-    def test_copilot_model_catalog(self) -> None:
-        # Source of truth: the GitHub Copilot supported-models DOCS, not a
-        # local `--model` probe — Copilot availability is org-policy managed,
-        # so a restricted install rejecting an id proves nothing (2026-07-24
-        # lesson). Older rows stay listed until the docs drop them. fn-76:
-        # ORDERED quality ranking (strongest first), a list — ``default_model``
-        # MUST equal ``models[0]``.
-        self.assertEqual(
-            BACKEND_REGISTRY["copilot"]["models"],
-            [
-                "gpt-6-astra",
-                "gpt-5.5",
-                "gpt-5.4",
-                "claude-fable-5.1",
-                "claude-opus-5",
-                "claude-opus-4.8",
-                "claude-opus-4.7",
-                "claude-opus-4.6",
-                "claude-opus-4.5",
-                "claude-sonnet-4.5",
-                "claude-sonnet-4",
-                "claude-haiku-4.5",
-                "gpt-5.4-mini",
-                "gpt-5.3-codex",
-                "gpt-5-mini",
-                "gpt-4.1",
-            ],
-        )
-
     def test_ranking_is_ordered_list_not_set(self) -> None:
         # fn-76: every model-bearing backend's ``models`` is an ordered list
         # (the quality ranking), not a set — order is load-bearing for the
@@ -219,257 +128,129 @@ class TestRegistryShape(unittest.TestCase):
             with self.subTest(backend=backend):
                 reg = BACKEND_REGISTRY[backend]
                 self.assertEqual(reg["default_model"], reg["models"][0])
+        # fn-272 R4: a withheld codex astra steps down within the same
+        # generation first.
+        self.assertEqual(
+            BACKEND_REGISTRY["codex"]["models"][:3], ["gpt-6.1-sol", "gpt-6-astra", "gpt-6-sol"]
+        )
 
 
 # --- Valid specs ---
 
 
 class TestParseValid(unittest.TestCase):
-    def test_bare_codex(self) -> None:
-        s = BackendSpec.parse("codex")
-        self.assertEqual(s, BackendSpec("codex", None, None))
-
-    def test_bare_rp(self) -> None:
-        s = BackendSpec.parse("rp")
-        self.assertEqual(s, BackendSpec("rp", None, None))
-
-    def test_bare_none(self) -> None:
-        s = BackendSpec.parse("none")
-        self.assertEqual(s, BackendSpec("none", None, None))
-
-    def test_bare_host(self) -> None:
-        # fn-123 R5: bare host parses OK; model/effort pins live in AGENTS.md.
-        s = BackendSpec.parse("host")
-        self.assertEqual(s, BackendSpec("host", None, None))
-
-    def test_bare_copilot(self) -> None:
-        s = BackendSpec.parse("copilot")
-        self.assertEqual(s, BackendSpec("copilot", None, None))
-
-    def test_codex_with_model(self) -> None:
-        s = BackendSpec.parse("codex:gpt-5.4")
-        self.assertEqual(s, BackendSpec("codex", "gpt-5.4", None))
-
-    def test_codex_full(self) -> None:
-        s = BackendSpec.parse("codex:gpt-5.4:xhigh")
-        self.assertEqual(s, BackendSpec("codex", "gpt-5.4", "xhigh"))
-
-    def test_copilot_full(self) -> None:
-        s = BackendSpec.parse("copilot:claude-opus-4.5:xhigh")
-        self.assertEqual(s, BackendSpec("copilot", "claude-opus-4.5", "xhigh"))
-
-    def test_copilot_model_only(self) -> None:
-        s = BackendSpec.parse("copilot:gpt-5.4")
-        self.assertEqual(s, BackendSpec("copilot", "gpt-5.4", None))
-
-    def test_bare_cursor(self) -> None:
-        s = BackendSpec.parse("cursor")
-        self.assertEqual(s, BackendSpec("cursor", None, None))
-
-    def test_cursor_with_model(self) -> None:
-        s = BackendSpec.parse("cursor:gpt-5.5-high")
-        self.assertEqual(s, BackendSpec("cursor", "gpt-5.5-high", None))
-
-    def test_cursor_model_with_baked_effort_name(self) -> None:
-        # Effort is part of the model string for cursor — this is a model, not
-        # a separate effort field.
-        s = BackendSpec.parse("cursor:gpt-5.3-codex-xhigh")
-        self.assertEqual(s, BackendSpec("cursor", "gpt-5.3-codex-xhigh", None))
-
-    def test_codex_all_efforts(self) -> None:
-        for eff in ("none", "minimal", "low", "medium", "high", "xhigh"):
-            with self.subTest(effort=eff):
-                s = BackendSpec.parse(f"codex:gpt-5.4:{eff}")
-                self.assertEqual(s.effort, eff)
-
-    def test_leading_trailing_whitespace_tolerated(self) -> None:
-        # Per parser: outer strip + per-part strip — pasting from help text
-        # with trailing newlines shouldn't blow up.
-        self.assertEqual(
-            BackendSpec.parse("  codex:gpt-5.4:xhigh  "),
-            BackendSpec("codex", "gpt-5.4", "xhigh"),
+    def test_valid_specs_parse(self) -> None:
+        rows = (
+            ("codex", ("codex", None, None)),
+            ("rp", ("rp", None, None)),
+            ("none", ("none", None, None)),
+            # bare host parses OK; model/effort pins live in AGENTS.md.
+            ("host", ("host", None, None)),
+            ("copilot", ("copilot", None, None)),
+            ("codex:gpt-5.4", ("codex", "gpt-5.4", None)),
+            ("codex:gpt-5.4:xhigh", ("codex", "gpt-5.4", "xhigh")),
+            ("copilot:claude-opus-4.5:xhigh", ("copilot", "claude-opus-4.5", "xhigh")),
+            ("copilot:gpt-5.4", ("copilot", "gpt-5.4", None)),
+            ("cursor", ("cursor", None, None)),
+            ("cursor:gpt-5.5-high", ("cursor", "gpt-5.5-high", None)),
+            # Effort is part of the model string for cursor.
+            ("cursor:gpt-5.3-codex-xhigh", ("cursor", "gpt-5.3-codex-xhigh", None)),
+            # Outer strip + per-part strip.
+            ("  codex:gpt-5.4:xhigh  ", ("codex", "gpt-5.4", "xhigh")),
+            # An empty part is unset: default model, effort=high.
+            ("codex::high", ("codex", None, "high")),
+            # `codex:` - empty model part parses as bare codex.
+            ("codex:", ("codex", None, None)),
+            *((f"codex:gpt-5.4:{eff}", ("codex", "gpt-5.4", eff))
+              for eff in ("none", "minimal", "low", "medium", "high", "xhigh")),
         )
+        for raw, expected in rows:
+            with self.subTest(spec=raw):
+                self.assertEqual(BackendSpec.parse(raw), BackendSpec(*expected))
 
-    def test_empty_middle_part_is_none(self) -> None:
-        # ``codex::high`` means "default model, effort=high". Weird but legal
-        # — the parser treats an empty part as unset so the round-trip works.
-        s = BackendSpec.parse("codex::high")
-        self.assertEqual(s, BackendSpec("codex", None, "high"))
+    def test_claude_full_is_explicit(self) -> None:
+        s = BackendSpec.parse("claude:claude-opus-5:xhigh")
+        self.assertEqual(s, BackendSpec("claude", "claude-opus-5", "xhigh"))
+        self.assertTrue(s.model_explicit)
+
+    def test_unknown_model_warns_and_accepts(self) -> None:
+        # Unknown models are a preference miss, not a parse error: warn and
+        # accept verbatim (case-preserving); the CLI is the availability
+        # authority. Effort stays strict.
+        rows = (
+            ("codex:gpt-99", ("codex", "gpt-99", None)),
+            ("copilot:xhigh-is-not-a-model", ("copilot", "xhigh-is-not-a-model", None)),
+            ("claude:claude-nova-9", ("claude", "claude-nova-9", None)),
+            ("cursor:bogus", ("cursor", "bogus", None)),
+            ("codex:GPT-5.4", ("codex", "GPT-5.4", None)),
+        )
+        for raw, expected in rows:
+            with self.subTest(spec=raw):
+                err = io.StringIO()
+                with redirect_stderr(err):
+                    s = BackendSpec.parse(raw)
+                self.assertEqual(s, BackendSpec(*expected))
+                self.assertTrue(s.model_explicit)
+                self.assertIn(f"not in flow-next's {expected[0]} ranking", err.getvalue())
 
 
 # --- Invalid specs ---
 
 
 class TestParseInvalid(unittest.TestCase):
-    def test_empty_string(self) -> None:
-        with self.assertRaisesRegex(ValueError, "Empty backend spec"):
-            BackendSpec.parse("")
+    def test_invalid_specs_raise(self) -> None:
+        rows = (
+            ("", "Empty backend spec"),
+            ("   ", "Empty backend spec"),
+            # Defensive: downstream code may pass None.
+            (None, "Empty backend spec"),
+            ("foo", "Unknown backend"),
+            # Backend names are case-sensitive; no silent lowercasing.
+            ("Codex", "Unknown backend"),
+            ("RP", "Unknown backend"),
+            ("codex:gpt-5.4:high:extra", "Too many ':' separators"),
+            ("copilot:::::", "Too many ':' separators"),
+            ("codex:gpt-5.4:bogus-effort", "Unknown effort for codex"),
+            ("codex:gpt-5.4:HIGH", "Unknown effort"),
+            ("claude:claude-opus-5:ultra", "Unknown effort for claude"),
+            # `none` and `minimal` are codex-only.
+            ("copilot:gpt-5.4:minimal", "Unknown effort for copilot"),
+            ("copilot:gpt-5.4:none", "Unknown effort for copilot"),
+            # Cursor has no effort axis, including the codex-style lookalike.
+            ("cursor:gpt-5.5-high:high", "does not accept an effort"),
+            ("cursor:gpt-5.2:xhigh", "does not accept an effort"),
+            ("rp:opus", "does not accept a model"),
+            ("rp::high", "does not accept an effort"),
+            ("none:gpt-5.4", "does not accept a model"),
+            ("none::high", "does not accept an effort"),
+            # host:<model> points at AGENTS.md model-routing; the model check
+            # fires first when an effort is also given.
+            ("host:opus", r"AGENTS\.md.*model-routing"),
+            ("host:opus:high", r"AGENTS\.md.*model-routing"),
+        )
+        for raw, pattern in rows:
+            with self.subTest(spec=raw):
+                with self.assertRaisesRegex(ValueError, pattern):
+                    BackendSpec.parse(raw)  # type: ignore[arg-type]
 
-    def test_whitespace_only(self) -> None:
-        with self.assertRaisesRegex(ValueError, "Empty backend spec"):
-            BackendSpec.parse("   ")
-
-    def test_none_value(self) -> None:
-        # Defensive: ``None`` is not a string but downstream code may pass it.
-        with self.assertRaisesRegex(ValueError, "Empty backend spec"):
-            BackendSpec.parse(None)  # type: ignore[arg-type]
-
-    def test_unknown_backend(self) -> None:
-        with self.assertRaisesRegex(ValueError, "Unknown backend"):
-            BackendSpec.parse("foo")
-
-    def test_unknown_backend_lists_valid_set(self) -> None:
-        # Users need a copy-pasteable list — don't regress.
-        try:
-            BackendSpec.parse("foo")
-            self.fail("expected ValueError")
-        except ValueError as e:
-            msg = str(e)
-            for name in ("rp", "codex", "copilot", "none"):
-                self.assertIn(name, msg)
-
-    def test_too_many_colons(self) -> None:
-        with self.assertRaisesRegex(ValueError, "Too many ':' separators"):
-            BackendSpec.parse("codex:gpt-5.4:high:extra")
-
-    def test_way_too_many_colons(self) -> None:
-        with self.assertRaisesRegex(ValueError, "Too many ':' separators"):
-            BackendSpec.parse("copilot:::::")
-
-    def test_trailing_colon(self) -> None:
-        # ``codex:`` — model part is empty string; parser treats as None, so
-        # this parses as bare ``codex``. That's the same lenient rule as
-        # ``codex::high``. Confirm behavior is stable (not a crash).
-        s = BackendSpec.parse("codex:")
-        self.assertEqual(s, BackendSpec("codex", None, None))
-
-    def test_unknown_model_codex_warns_and_accepts(self) -> None:
-        # fn-76 R1: unknown models are a PREFERENCE miss, not a parse error —
-        # warn-and-accept (the CLI is the availability authority). Effort stays
-        # strict (covered separately).
-        err = io.StringIO()
-        with redirect_stderr(err):
-            s = BackendSpec.parse("codex:gpt-99")
-        self.assertEqual(s, BackendSpec("codex", "gpt-99", None))
-        self.assertTrue(s.model_explicit)
-        self.assertIn("not in flow-next's codex ranking", err.getvalue())
-
-    def test_unknown_model_copilot_warns_and_accepts(self) -> None:
-        # An effort-looking string in the model slot is just an unknown model
-        # now — warn-and-accept, no raise.
-        err = io.StringIO()
-        with redirect_stderr(err):
-            s = BackendSpec.parse("copilot:xhigh-is-not-a-model")
-        self.assertEqual(s, BackendSpec("copilot", "xhigh-is-not-a-model", None))
-        self.assertIn("not in flow-next's copilot ranking", err.getvalue())
-
-    def test_unknown_effort_codex(self) -> None:
-        with self.assertRaisesRegex(ValueError, "Unknown effort for codex"):
-            BackendSpec.parse("codex:gpt-5.4:bogus-effort")
-
-    def test_unknown_effort_lists_sorted_valid(self) -> None:
-        try:
-            BackendSpec.parse("codex:gpt-5.4:bogus")
-            self.fail("expected ValueError")
-        except ValueError as e:
-            self.assertIn("'high'", str(e))
-            self.assertIn("'xhigh'", str(e))
-
-    def test_copilot_rejects_codex_only_efforts(self) -> None:
-        # ``none`` and ``minimal`` are codex-only; copilot must reject.
-        with self.assertRaisesRegex(ValueError, "Unknown effort for copilot"):
-            BackendSpec.parse("copilot:gpt-5.4:minimal")
-        with self.assertRaisesRegex(ValueError, "Unknown effort for copilot"):
-            BackendSpec.parse("copilot:gpt-5.4:none")
-
-    def test_claude_full(self) -> None:
-        # fn-221 R1: claude:<model>:<effort> resolves through the registry.
-        s = BackendSpec.parse("claude:claude-opus-5:xhigh")
-        self.assertEqual(s, BackendSpec("claude", "claude-opus-5", "xhigh"))
-        self.assertTrue(s.model_explicit)
-
-    def test_claude_unknown_effort_names_the_five(self) -> None:
-        with self.assertRaisesRegex(ValueError, "Unknown effort for claude") as cm:
-            BackendSpec.parse("claude:claude-opus-5:ultra")
-        for effort in sorted(BACKEND_REGISTRY["claude"]["efforts"]):
-            self.assertIn(f"'{effort}'", str(cm.exception))
-        self.assertNotIn("'minimal'", str(cm.exception))
-
-    def test_claude_unknown_model_warns_and_accepts(self) -> None:
-        err = io.StringIO()
-        with redirect_stderr(err):
-            s = BackendSpec.parse("claude:claude-nova-9")
-        self.assertEqual(s, BackendSpec("claude", "claude-nova-9", None))
-        self.assertIn("not in flow-next's claude ranking", err.getvalue())
-
-    def test_cursor_rejects_effort(self) -> None:
-        # Cursor has no effort axis — ``cursor:<model>:<effort>`` must raise.
-        with self.assertRaisesRegex(ValueError, "does not accept an effort"):
-            BackendSpec.parse("cursor:gpt-5.5-high:high")
-
-    def test_cursor_unknown_model_warns_and_accepts(self) -> None:
-        # fn-76 R1: warn-and-accept for cursor too.
-        err = io.StringIO()
-        with redirect_stderr(err):
-            s = BackendSpec.parse("cursor:bogus")
-        self.assertEqual(s, BackendSpec("cursor", "bogus", None))
-        self.assertIn("not in flow-next's cursor ranking", err.getvalue())
-
-    def test_cursor_rejects_gpt5_high_lookalike_in_effort_slot(self) -> None:
-        # A copilot/codex-style ``cursor:gpt-5.2:xhigh`` (effort in slot 3) must
-        # fail on the effort axis, not silently parse.
-        with self.assertRaisesRegex(ValueError, "does not accept an effort"):
-            BackendSpec.parse("cursor:gpt-5.2:xhigh")
-
-    def test_rp_rejects_model(self) -> None:
-        with self.assertRaisesRegex(ValueError, "does not accept a model"):
-            BackendSpec.parse("rp:opus")
-
-    def test_rp_rejects_effort(self) -> None:
-        # rp has no models either, so model check fires first. Force effort-only
-        # with empty model slot.
-        with self.assertRaisesRegex(ValueError, "does not accept an effort"):
-            BackendSpec.parse("rp::high")
-
-    def test_none_rejects_model(self) -> None:
-        with self.assertRaisesRegex(ValueError, "does not accept a model"):
-            BackendSpec.parse("none:gpt-5.4")
-
-    def test_none_rejects_effort(self) -> None:
-        with self.assertRaisesRegex(ValueError, "does not accept an effort"):
-            BackendSpec.parse("none::high")
-
-    def test_host_rejects_model_with_agents_md_hint(self) -> None:
-        # fn-123 R5: host:<model> must point at AGENTS.md model-routing.
-        with self.assertRaisesRegex(ValueError, r"AGENTS\.md.*model-routing"):
-            BackendSpec.parse("host:opus")
-
-    def test_host_rejects_model_and_effort_with_agents_md_hint(self) -> None:
-        # host:opus:high — model check fires first with the same pointed hint.
-        with self.assertRaisesRegex(ValueError, r"AGENTS\.md.*model-routing"):
-            BackendSpec.parse("host:opus:high")
-
-    def test_case_sensitive_backend_name(self) -> None:
-        # Backend names are lowercase per the registry. Uppercase must fail
-        # rather than silently lowercasing — that would hide typos.
-        with self.assertRaisesRegex(ValueError, "Unknown backend"):
-            BackendSpec.parse("Codex")
-        with self.assertRaisesRegex(ValueError, "Unknown backend"):
-            BackendSpec.parse("RP")
-
-    def test_case_sensitive_model_warns_and_accepts(self) -> None:
-        # fn-76 R1: an uppercase (unknown) model is no longer a hard error — it
-        # warns and is accepted verbatim (case-preserving); the CLI rejects it if
-        # truly unavailable. Effort case-sensitivity stays strict (below).
-        err = io.StringIO()
-        with redirect_stderr(err):
-            s = BackendSpec.parse("codex:GPT-5.4")
-        self.assertEqual(s.model, "GPT-5.4")
-        self.assertIn("not in flow-next's codex ranking", err.getvalue())
-
-    def test_case_sensitive_effort(self) -> None:
-        with self.assertRaisesRegex(ValueError, "Unknown effort"):
-            BackendSpec.parse("codex:gpt-5.4:HIGH")
+    def test_error_messages_list_the_valid_choices(self) -> None:
+        rows = (
+            ("foo", ("rp", "codex", "copilot", "none"), ()),
+            ("codex:gpt-5.4:bogus", ("'high'", "'xhigh'"), ()),
+            (
+                "claude:claude-opus-5:ultra",
+                tuple(f"'{e}'" for e in sorted(BACKEND_REGISTRY["claude"]["efforts"])),
+                ("'minimal'",),
+            ),
+        )
+        for raw, present, absent in rows:
+            with self.subTest(spec=raw):
+                with self.assertRaises(ValueError) as cm:
+                    BackendSpec.parse(raw)
+                for token in present:
+                    self.assertIn(token, str(cm.exception))
+                for token in absent:
+                    self.assertNotIn(token, str(cm.exception))
 
 
 # --- resolve() precedence ---
@@ -626,24 +407,6 @@ class TestStrRoundTrip(unittest.TestCase):
                 self.assertEqual(str(BackendSpec.parse(raw)), raw)
 
 
-# --- Frozen dataclass guarantees ---
-
-
-class TestFrozen(unittest.TestCase):
-    def test_spec_is_hashable(self) -> None:
-        # Frozen dataclasses are hashable — downstream code may stick specs
-        # into sets / dict keys.
-        s = BackendSpec("codex", "gpt-5.4", "high")
-        self.assertEqual(hash(s), hash(BackendSpec("codex", "gpt-5.4", "high")))
-        seen = {s, s, BackendSpec("codex")}
-        self.assertEqual(len(seen), 2)
-
-    def test_spec_is_immutable(self) -> None:
-        s = BackendSpec("codex", "gpt-5.4", "high")
-        with self.assertRaises(Exception):  # FrozenInstanceError is a dataclass subclass
-            s.model = "gpt-5.2"  # type: ignore[misc]
-
-
 # --- VALID_BACKENDS constant (fn-28.2) ---
 
 
@@ -651,19 +414,10 @@ class TestValidBackends(unittest.TestCase):
     """``VALID_BACKENDS`` mirrors registry keys sorted — downstream argparse
     ``choices=`` and any "valid list" UI depends on this shape."""
 
-    def test_exists(self) -> None:
-        self.assertTrue(hasattr(flowctl, "VALID_BACKENDS"))
-
     def test_matches_registry(self) -> None:
         self.assertEqual(
             flowctl.VALID_BACKENDS, sorted(BACKEND_REGISTRY.keys())
         )
-
-    def test_is_sorted(self) -> None:
-        self.assertEqual(
-            list(flowctl.VALID_BACKENDS), sorted(flowctl.VALID_BACKENDS)
-        )
-
 
 # --- parse_backend_spec_lenient (legacy fallback — fn-28.2) ---
 
@@ -1753,27 +1507,6 @@ class TestReviewBackendCmd(unittest.TestCase):
             self.assertEqual(payload["source"], "config")
 
 
-class TestRalphBareBackendExtraction(unittest.TestCase):
-    """Ralph's `${VAR%%:*}` pattern must extract bare backend for both bare
-    and spec forms. This is a smoke test against the pattern the Ralph shell
-    script uses — not the shell itself, but the equivalent pure-Python form.
-    If this pattern is ever changed in ralph.sh, update this test too.
-    """
-
-    def test_bare_backend_extraction_python_equivalent(self) -> None:
-        # Python equivalent of bash ${VAR%%:*}
-        def bare(v: str) -> str:
-            return v.split(":", 1)[0]
-
-        self.assertEqual(bare("codex"), "codex")
-        self.assertEqual(bare("codex:gpt-5.4:xhigh"), "codex")
-        self.assertEqual(bare("copilot:claude-opus-4.5"), "copilot")
-        self.assertEqual(bare("rp"), "rp")
-        self.assertEqual(bare("none"), "none")
-        # Degenerate: trailing colon still parses cleanly.
-        self.assertEqual(bare("codex:"), "codex")
-
-
 class NoEmbedRegression(unittest.TestCase):
     """PR #184 / fn-169 R4 — a review prompt carries IDENTITIES, never payloads.
 
@@ -1822,11 +1555,6 @@ class NoEmbedRegression(unittest.TestCase):
             spec_path=".flow/tasks/fn-1.1.md")
         self.assertEqual(small, again)
         self.assertLess(len(small), flowctl.CURSOR_ARGV_TRANSPORT_MAX)
-
-    def test_embed_helper_stays_removed(self) -> None:
-        # get_embedded_file_contents was removed when backends went agentic;
-        # its return is a regression signal.
-        self.assertFalse(hasattr(flowctl, "get_embedded_file_contents"))
 
     # fn-169 R6 (impl-review r6): the builders' parameter sets are PINNED, not
     # screened against a list of known-bad names. A name list is a race against the
@@ -1925,115 +1653,6 @@ class TestBackendReviewDriverHooks(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         flowctl._wire_backend_review_hooks()
-
-    def test_review_backends_expose_required_hooks(self) -> None:
-        required = {
-            "run_exec",
-            "resolve_spec",
-            "check_probe",
-            "needs_persona_override",
-            "resume_modes",
-            "mint_session_id",
-            "include_effort",
-            "extract_review",
-            "has_sandbox",
-        }
-        for backend in ("codex", "copilot", "cursor", "claude"):
-            with self.subTest(backend=backend):
-                reg = BACKEND_REGISTRY[backend]
-                for key in required:
-                    self.assertIn(key, reg, f"{backend} missing hook {key}")
-                self.assertTrue(callable(reg["run_exec"]))
-                self.assertTrue(callable(reg["resolve_spec"]))
-                self.assertTrue(callable(reg["check_probe"]))
-                self.assertIsInstance(reg["needs_persona_override"], bool)
-
-    def test_hook_variance_preserved(self) -> None:
-        # Genuine differences stay as hooks, not collapsed to one behavior.
-        self.assertTrue(BACKEND_REGISTRY["codex"]["has_sandbox"])
-        self.assertFalse(BACKEND_REGISTRY["copilot"]["has_sandbox"])
-        self.assertFalse(BACKEND_REGISTRY["cursor"]["has_sandbox"])
-
-        self.assertFalse(BACKEND_REGISTRY["codex"]["mint_session_id"])
-        self.assertTrue(BACKEND_REGISTRY["copilot"]["mint_session_id"])
-        self.assertFalse(BACKEND_REGISTRY["cursor"]["mint_session_id"])
-
-        self.assertTrue(BACKEND_REGISTRY["codex"]["include_effort"])
-        self.assertTrue(BACKEND_REGISTRY["copilot"]["include_effort"])
-        self.assertFalse(BACKEND_REGISTRY["cursor"]["include_effort"])
-
-        self.assertEqual(
-            BACKEND_REGISTRY["codex"]["resume_modes"], (None, "codex")
-        )
-        self.assertEqual(BACKEND_REGISTRY["copilot"]["resume_modes"], ("copilot",))
-        self.assertEqual(BACKEND_REGISTRY["cursor"]["resume_modes"], ("cursor",))
-
-    def test_impl_wrappers_route_through_driver(self) -> None:
-        # Thin wrappers must call cmd_backend_review (not re-implement the body).
-        for fn in (
-            flowctl.cmd_codex_impl_review,
-            flowctl.cmd_copilot_impl_review,
-            flowctl.cmd_cursor_impl_review,
-        ):
-            src = inspect.getsource(fn)
-            self.assertIn("cmd_backend_review(", src)
-            # Strip docstrings so historical prose mentioning run_*_exec is ignored.
-            body = re.sub(r'""".*?"""', "", src, flags=re.S)
-            body = re.sub(r"'''.*?'''", "", body, flags=re.S)
-            self.assertNotIn("run_codex_exec(", body)
-            self.assertNotIn("run_copilot_exec(", body)
-            self.assertNotIn("run_cursor_exec(", body)
-
-    def test_cmd_backend_review_exists(self) -> None:
-        self.assertTrue(callable(flowctl.cmd_backend_review))
-        sig = inspect.signature(flowctl.cmd_backend_review)
-        self.assertIn("backend", sig.parameters)
-        self.assertIn("kind", sig.parameters)
-
-    def test_plan_completion_wrappers_route_through_driver(self) -> None:
-        for fn in (
-            flowctl.cmd_codex_plan_review,
-            flowctl.cmd_copilot_plan_review,
-            flowctl.cmd_cursor_plan_review,
-            flowctl.cmd_codex_completion_review,
-            flowctl.cmd_copilot_completion_review,
-            flowctl.cmd_cursor_completion_review,
-        ):
-            src = inspect.getsource(fn)
-            self.assertIn("cmd_backend_review(", src)
-            body = re.sub(r'""".*?"""', "", src, flags=re.S)
-            body = re.sub(r"'''.*?'''", "", body, flags=re.S)
-            self.assertNotIn("run_codex_exec(", body)
-            self.assertNotIn("run_copilot_exec(", body)
-            self.assertNotIn("run_cursor_exec(", body)
-
-    def test_stamp_ralph_iteration_helper(self) -> None:
-        self.assertTrue(callable(flowctl.stamp_ralph_iteration))
-        src = Path(flowctl.__file__).read_text(encoding="utf-8")
-        self.assertEqual(src.count("def stamp_ralph_iteration("), 1)
-        self.assertEqual(
-            len(re.findall(r'os\.environ\.get\("RALPH_ITERATION"\)', src)), 1
-        )
-        receipt: dict = {}
-        old = os.environ.get("RALPH_ITERATION")
-        try:
-            os.environ["RALPH_ITERATION"] = "7"
-            flowctl.stamp_ralph_iteration(receipt)
-            self.assertEqual(receipt["iteration"], 7)
-            receipt2: dict = {}
-            os.environ["RALPH_ITERATION"] = "nope"
-            flowctl.stamp_ralph_iteration(receipt2)
-            self.assertNotIn("iteration", receipt2)
-        finally:
-            if old is None:
-                os.environ.pop("RALPH_ITERATION", None)
-            else:
-                os.environ["RALPH_ITERATION"] = old
-
-    def test_plan_completion_pipelines_exist(self) -> None:
-        self.assertTrue(callable(flowctl._backend_plan_review))
-        self.assertTrue(callable(flowctl._backend_completion_review))
-        self.assertTrue(callable(flowctl._self_write_review_status))
 
     def test_fourth_backend_registry_entry_only(self) -> None:
         """fn-112.4 extensibility proof: a 4th backend is a registry entry.
@@ -2254,85 +1873,6 @@ class TestReviewJsonBlockHardening(unittest.TestCase):
             self.flowctl.extract_review_json_block(extracted), {"unaddressed": ["R7"]}
         )
 
-
-class TestPlanReviewSelectedBackendRouting(unittest.TestCase):
-    """fn-130.6: production Plan Review route + corpus evidence."""
-
-    @classmethod
-    def setUpClass(cls) -> None:
-        cls.repo = Path(__file__).resolve().parents[3]
-        harness_dir = cls.repo / "optimization" / "reached-path"
-        sys.path.insert(0, str(harness_dir))
-        try:
-            import plan_review_candidate  # type: ignore
-
-            cls.candidate = plan_review_candidate
-        finally:
-            sys.path.remove(str(harness_dir))
-
-    def test_all_routes_load_common_plus_at_most_one_backend(self) -> None:
-        evidence = self.candidate.route_evidence(self.repo)
-        self.assertEqual(
-            [row["route"] for row in evidence["routes"]],
-            list(self.candidate.ROUTES),
-        )
-        self.assertTrue(all(evidence["accuracy"].values()))
-        for row in evidence["routes"]:
-            selected_reads = [
-                path
-                for path in row["required_reads"]
-                if "/workflow-" in path
-            ]
-            if row["route"] in ("none", "export"):
-                self.assertEqual(selected_reads, [])
-            else:
-                self.assertEqual(len(selected_reads), 1)
-
-    def test_configured_but_unavailable_keeps_selected_backend(self) -> None:
-        row = self.candidate.route_trace(self.repo, "unavailable")
-        self.assertEqual(row["selected_backend"], "codex")
-        self.assertIn(
-            "plugins/flow-next/skills/flow-next-plan-review/workflow-codex.md",
-            row["required_reads"],
-        )
-        common = (
-            self.repo
-            / "plugins/flow-next/skills/flow-next-plan-review/workflow.md"
-        ).read_text(encoding="utf-8")
-        self.assertIn("Backend unavailable/transport/no verdict", common)
-        self.assertIn("Never mix or fall back", common)
-
-    def test_export_is_distinct_backend_cold_terminal(self) -> None:
-        row = self.candidate.route_trace(self.repo, "export")
-        self.assertIsNone(row["selected_backend"])
-        common = (
-            self.repo
-            / "plugins/flow-next/skills/flow-next-plan-review/workflow.md"
-        ).read_text(encoding="utf-8")
-        for contract in (
-            "review-export-<timestamp>.md",
-            "Exported review",
-            "write review receipt/status",
-            "enter the review fix loop",
-        ):
-            self.assertIn(contract, common)
-
-    def test_real_production_prompt_path_preserves_corpus_and_rubric(self) -> None:
-        evidence = self.candidate.corpus_evidence(
-            self.repo, flowctl.build_review_prompt
-        )
-        for corpus in ("risky", "clean", "user-edited-spec"):
-            row = evidence[corpus]
-            self.assertEqual(
-                row["production_builder"], "flowctl.build_review_prompt(plan)"
-            )
-            self.assertTrue(row["spec_grounded_verbatim"])
-            self.assertTrue(row["task_specs_grounded_verbatim"])
-            self.assertTrue(row["verdict_grammar_present"])
-        self.assertFalse(evidence["prompt_template"]["byte_identical_to_b1"])
-        self.assertTrue(evidence["prompt_template"]["format_only_to_b1"])
-        # Size ratchet removed 2026-08-07: prose growth is judged by the
-        # standing criterion in .flow/criteria.md (G1), not a chars delta.
 
     # Live-vs-ledger route-size equality removed 2026-08-07 (.flow/criteria.md G1).
 

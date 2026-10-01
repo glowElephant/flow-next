@@ -5,7 +5,8 @@ work. It owns architecture, source ownership, verification, and delivery rules.
 This file owns host guidance only; keep common rules in that policy.
 
 Canonical spec scaffold: [templates/spec.md](plugins/flow-next/templates/spec.md).
-For skill/platform changes also read [cross-platform patterns](agent_docs/adding-skills.md#cross-platform-patterns).
+When changing shipped skills, agents, references or platform behaviour, also read
+[adding-skills.md](agent_docs/adding-skills.md).
 
 ## Host guidance
 

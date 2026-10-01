@@ -1,12 +1,4 @@
-# Plan versus no-plan rule (routing reference 3 of 6)
-
-**Decision record**
-
-- Source: the maintainer's direction that direct execution is the default; capture's closer, plan's menu, work's zero-task ask, and pipeline-variations each carried a copy before this file.
-- Trigger: a ready spec has no tasks and no recorded route - flow before mint, capture's closer, plan's next-steps menu, work's zero-task fork, `flow --explain`.
-- Purpose: one statement of the default and the positive signals that override it.
-- Evidence: internal benchmarking found the direct route can produce higher-scoring implementations with capable frontier models because the owner sees the whole task; scaffolding around a model's current weakness rots into cost.
-- Disposition: keep, single copy. Decomposition is the exception with a stated reason.
+# Plan versus no-plan rule
 
 ## The rule
 

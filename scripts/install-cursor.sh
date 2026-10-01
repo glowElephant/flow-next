@@ -23,7 +23,7 @@
 #   - Commands:  commands/*.md                 (via the manifest override; flattened, no flow-next/ subdir)
 #   - Agents:    agents/*.md                   (via the manifest override)
 #   - Rules:     rules/*.mdc                   (flow-next.mdc guidance rail)
-#   - Hooks:     none shipped at plugin level (Ralph is opt-in via ralph-init project settings)
+#   - Hooks:     none shipped at plugin level
 #   - flowctl:   scripts/flowctl[.py]          (skills derive the plugin root from their own SKILL.md path)
 #
 # Excludes the Codex mirror (codex/) and tests/ — not needed by Cursor.
@@ -35,8 +35,6 @@
 # Caveats (cosmetic / known):
 #   - Local installs register skills/commands/agents; a grouped "plugin" card in
 #     the marketplace UI is a team-marketplace concern — the components still work.
-#   - Ralph autonomous mode is intentionally not built for Cursor (Cursor has a
-#     full agent-hook set; flow-next does not register Ralph guards there).
 
 set -e
 

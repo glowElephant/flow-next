@@ -8,7 +8,6 @@ import io
 import json
 import os
 from pathlib import Path
-import re
 import shlex
 import subprocess
 import sys
@@ -90,14 +89,14 @@ fi
     def git(self, *args):
         return subprocess.run(["git", *args], cwd=self.repo, check=True, capture_output=True, text=True).stdout.strip()
 
-    def execute(self, *, dry=False, update=False, autonomous=False, ralph=False, failure=False):
+    def execute(self, *, dry=False, update=False, autonomous=False, failure=False):
         if failure:
             flowctl = self.executable("flowctl-fail", '#!/bin/bash\nif [[ "$1 $2" == "spec close" ]]; then echo "injected close failure" >&2; exit 9; fi\nexec ' + shlex.quote(str(SCRIPTS / "flowctl")) + ' "$@"\n')
         else:
             flowctl = SCRIPTS / "flowctl"
         fence = (SCRIPTS / "make-pr-preflight.sh").read_text(encoding="utf-8").split("# --- §0.5:", 1)[1]
         fence = "# --- §0.5:" + fence
-        env = dict(os.environ, PATH=str(self.bin) + os.pathsep + os.environ["PATH"], FLOWCTL=str(flowctl), REPO_ROOT=str(self.repo), SPEC_ID=self.spec_id, HEAD_SHA=self.git("rev-parse", "HEAD"), BASE_REF="main", COMMITS_AHEAD=self.git("rev-list", "--count", "main..HEAD"), DRY_RUN=str(int(dry)), UPDATE_MODE=str(int(update)), AUTONOMOUS=str(int(autonomous)), RALPH=str(int(ralph)), WRITE_MEMORY="0", DRAFT_FORCE="", OBSERVATIONS=str(self.root), SPEC_REL=self.spec_rel)
+        env = dict(os.environ, PATH=str(self.bin) + os.pathsep + os.environ["PATH"], FLOWCTL=str(flowctl), REPO_ROOT=str(self.repo), SPEC_ID=self.spec_id, HEAD_SHA=self.git("rev-parse", "HEAD"), BASE_REF="main", COMMITS_AHEAD=self.git("rev-list", "--count", "main..HEAD"), DRY_RUN=str(int(dry)), UPDATE_MODE=str(int(update)), AUTONOMOUS=str(int(autonomous)), WRITE_MEMORY="0", DRAFT_FORCE="", OBSERVATIONS=str(self.root), SPEC_REL=self.spec_rel)
         # Observe the exact head seen by the artifact/export phase and PR creation.
         tail = '''
 printf '%s' "$PHASE0_CONTEXT" > "$OBSERVATIONS/context.json"
@@ -161,11 +160,9 @@ if [[ "$DRY_RUN" != 1 && "$UPDATE_MODE" != 1 ]]; then gh pr create; fi
         self.assertIn(self.task_id, result.stderr)
         self.assertRegex(result.stderr.lower(), r"(?:not clos|stay[s]? open|remain[s]? open)")
         # The existing autonomous refusal is untouched: nothing opens, nothing closes.
-        for flags in ({"autonomous": True}, {"ralph": True}):
-            with self.subTest(flags=flags):
-                refused = self.execute(**flags)
-                self.assertEqual(refused.returncode, 2, refused.stderr)
-                self.assertEqual(self.git("rev-parse", "HEAD"), before)
+        refused = self.execute(autonomous=True)
+        self.assertEqual(refused.returncode, 2, refused.stderr)
+        self.assertEqual(self.git("rev-parse", "HEAD"), before)
 
     def test_r2_dry_run_closes_nothing(self):
         before = self.git("rev-parse", "HEAD")
@@ -263,22 +260,6 @@ if [[ "$DRY_RUN" != 1 && "$UPDATE_MODE" != 1 ]]; then gh pr create; fi
         self.assertEqual((self.root / "create-head").read_text(encoding="utf-8").strip(), before)
         self.assertEqual(json.loads((self.root / "create-spec.json").read_text(encoding="utf-8"))["status"], "open")
         self.assertFalse(json.loads((self.root / "context.json").read_text(encoding="utf-8"))["spec_closed"])
-
-    def test_r2_html_fallback_preserves_closed_head(self):
-        self.call("spec_close", id=self.spec_id)
-        self.git("add", self.spec_rel, self.task_rel)
-        self.git("commit", "-qm", "Closed")
-        before = self.git("rev-parse", "HEAD")
-        artifact = self.repo / f".flow/artifacts/{self.spec_id}/pr.html"
-        artifact.parent.mkdir(parents=True, exist_ok=True)
-        artifact.write_text("<html>Fallback lens</html>")
-        lens = WORKFLOW.with_name("html-lens.md").read_text(encoding="utf-8")
-        fence = next(f for f in re.findall(r"```bash\n(.*?)\n\s*```", lens, re.S) if "LENS_OK=true" in f)
-        env = dict(os.environ, SPEC_ID=self.spec_id, HTML_AID_STATUS="missing", PHASE0_CONTEXT=json.dumps({"spec_closed": True, "head": before}))
-        result = subprocess.run(["bash", "-c", "set -e\n" + fence + '\nprintf "%s" "$LINK_MODE"'], cwd=self.repo, env=env, capture_output=True, text=True)
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(self.git("rev-parse", "HEAD"), before)
-        self.assertEqual(result.stdout, "local")
 
     def test_r2_head_move_stops_before_push(self):
         fence = next(f for f in (SCRIPTS / "make-pr-create.sh").read_text(encoding="utf-8").split("# end:block") if "PUSH_OUT=$(git push" in f)

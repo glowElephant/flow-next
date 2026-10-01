@@ -2,7 +2,7 @@
 
 Use `flowctl rp` wrappers only.
 
-## Primary Command (Ralph mode)
+## Primary Command
 
 ```bash
 # Atomic setup: resolve/reuse window + open Context Builder
@@ -28,7 +28,7 @@ flowctl rp prompt-set --window "$W" --tab "$T" --message-file /tmp/prompt.md
 # Execute review
 flowctl rp chat-send --window "$W" --tab "$T" --message-file /tmp/review.md --new-chat --chat-name "Review: X"
 
-# Export (non-Ralph)
+# Export
 flowctl rp prompt-export --window "$W" --tab "$T" --out ~/Desktop/export.md
 ```
 

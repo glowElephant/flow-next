@@ -49,7 +49,7 @@ carrying it. A SPEC.md with no such list gets no auxiliary sections.
 
 Full guide:
 flow-next docs, "Customizing the scaffold for your project"
-(plugins/flow-next/docs/spec-template.md - https://flow-next.dev/guides/spec-scaffold/).
+(https://flow-next.dev/guides/spec-scaffold/).
 -->
 
 <!--
@@ -193,14 +193,15 @@ are exempt and unchanged — `**Files:**` / `**Touches:**` are a task's job.
 
 <!--
 Quick commands convention: per-task Quick commands list FOCUSED suites for the
-files the task touches; the FULL suite runs once at the final gate (prefer the
-repo's parallel entrypoint when one exists). See the project instruction file.
+files the task touches; the FULL suite runs only when the repository's
+instructions or the person ask for it (prefer the repo's parallel entrypoint
+when one exists). See the project instruction file.
 -->
 
 <!--
 Cross-links:
-- `plugins/flow-next/docs/teams.md` — "Symmetric interview" pattern (PO → tech-lead handover)
-- `CLAUDE.md` — "Creating a spec" guide (manual + automated paths)
-- `plugins/flow-next/skills/flow-next-capture/` — automated spec capture from conversation
-- `plugins/flow-next/skills/flow-next-refine/` — Q&A refinement (one interview, optional `--scope` lens) and the external-docs research pass (`--scope=research`, writes `## Resolved via Research`)
+- flow-next docs, teams guide — "Symmetric interview" pattern (PO → tech-lead handover)
+- `CLAUDE.md` / `AGENTS.md` — the flow-next section's "Creating a spec" line
+- `/flow-next:capture` — automated spec capture from conversation
+- `/flow-next:refine` — Q&A refinement (one interview, optional `--scope` lens) and the external-docs research pass (`--scope=research`, writes `## Resolved via Research`)
 -->

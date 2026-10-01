@@ -33,15 +33,15 @@ From the emitter payload, derive the five-axis classification per [classificatio
 
 Some classification facts are LOW-CONFIDENCE (probes disagree) or UNINFERABLE IN PRINCIPLE from the working tree alone - org context the filesystem cannot show: do sibling repos exist elsewhere? does a headless-build toolchain / license exist for CI? which subsystems are frozen vs safe agent territory? is this repo's "missing CI" actually run by an external system? Prime asks instead of guessing, under a strict budget.
 
-**Budget (resolution 4 - scoped).** At most **one question call (up to 3 questions) per run**, ONLY for facts that (a) scored low-confidence or are uninferable AND (b) change the playbook or a verdict. This budget covers the Phase 0.5 classification clarification ONLY - it is SEPARATE from and does NOT consume: the Phase 5 remediation consent, the Phase 5.5 glossary read-back, and the setup-version pre-check ask (each has its own gate). Never ask what a probe already answered; every question states what WAS inferred, the evidence, and what hangs on the answer (the stakes + consequences, per the plain-language question contract).
+**Budget (scoped).** At most **one question call (up to 3 questions) per run**, ONLY for facts that (a) scored low-confidence or are uninferable AND (b) change the playbook or a verdict. This budget covers the Phase 0.5 classification clarification ONLY - it is SEPARATE from and does NOT consume: the Phase 5 remediation consent, the Phase 5.5 glossary read-back, and the setup-version pre-check ask (each has its own gate). Never ask what a probe already answered; every question states what WAS inferred, the evidence, and what hangs on the answer (the stakes + consequences, per the plain-language question contract).
 
 **Interactive branch.** Ask via the `AskUserQuestion` tool. Each question names the inferred value, its evidence, and the playbook/verdict that changes with the answer.
 
-**Suppression (hard).** All asks are SUPPRESSED under `--classify-only` (it never asks - Phase 0.5 already exited), `--report-only`, and autonomous markers (`FLOW_RALPH=1`, a review receipt path, `FLOW_AUTONOMOUS=1`, or `mode:autonomous` in the arguments). A suppressed run NEVER blocks: it states each assumption inline and emits an **"Unresolved questions"** list in the report so a human can settle them once.
+**Suppression (hard).** All asks are SUPPRESSED under `--classify-only` (it never asks - Phase 0.5 already exited), `--report-only`, and autonomous markers (`FLOW_AUTONOMOUS=1` or `mode:autonomous` in the arguments). A suppressed run NEVER blocks: it states each assumption inline and emits an **"Unresolved questions"** list in the report so a human can settle them once.
 
 **Repo-context recording offer.** Answers become durable repo facts, not session trivia. On confirmation, offer to record them where the next run can INFER instead of re-asking - a short **"Repo context"** block appended to the repo's agent instruction file (e.g. "part of the acme constellation, home base `../acme`"; "CI builds via `Build.cmd` on a licensed runner"; "modules X, Y frozen"). This simultaneously closes the corresponding DC2 gap. Declined = noted in the report and re-derived next run. (The Repo-context write is an agent-file augment - it follows the same consent + never-bulk-generate rules as any agent-file edit; it is offered here, applied in Phase 6.)
 
-**Re-run reuse (resolution 6).** A Phase 7 re-assessment reuses this session's Phase 0.5 classification and the answers gathered here - only affected criteria/gates re-verify, and a question already answered this session is NOT re-asked.
+**Re-run reuse.** A Phase 7 re-assessment reuses this session's Phase 0.5 classification and the answers gathered here - only affected criteria/gates re-verify, and a question already answered this session is NOT re-asked.
 
 ---
 
@@ -208,10 +208,10 @@ Build exits 0 (and clean) → **tier ≥ 1** evidence for that surface + BS2 ✅
 = BS2 ❌ with the error quoted. Host-unbuildable = "not probed on this host". **G1 = the detected
 build command actually runs OR operability tier ≥ 1 evidence exists.**
 
-### 2.4 Per-surface / per-member sampling (resolution 18) with progress lines (resolution 20)
+### 2.4 Per-surface / per-member sampling with progress lines
 
 Operability and the executed substance checks are graded **PER SURFACE / PER MEMBER, never per
-repo** (resolution 17). For a monorepo (the emitter's topology + workspace members from
+repo**. For a monorepo (the emitter's topology + workspace members from
 `flowctl prime classify --json`, see [classification.md](classification.md)), verification is
 **SAMPLED, not exhaustive**:
 
@@ -222,7 +222,7 @@ repo** (resolution 17). For a monorepo (the emitter's topology + workspace membe
   for many member runs.
 - **Unsampled members are listed NOT ASSESSED** - never silently skipped.
 
-**Progress observability (resolution 20) - a ~10-minute silent run is not acceptable UX.** Emit a
+**Progress observability - a ~10-minute silent run is not acceptable UX.** Emit a
 concise line per surface/member as the loop runs, with elapsed vs the global budget, and print the
 NOT ASSESSED list as the budget exhausts:
 
@@ -322,7 +322,7 @@ evidence live in the Operability-ladder section of the spec and [pillars.md](pil
   cheapest move **SIDEWAYS** into observable/drivable (AO/DR) instead. Desktop's honest tier
   evidence is the repo's own packaged-runtime smoke, not a boot probe. Never prescribe "start the
   app" for a stack OR shape whose realistic ceiling is tier 1-2.
-- **Min-deployable aggregation (resolution 17).** The **headline tier = the MINIMUM verified tier
+- **Min-deployable aggregation.** The **headline tier = the MINIMUM verified tier
   across deployable surfaces** (web service/app, CLI, desktop). Non-deployable surfaces (library,
   plugin/prose, docs) are reported **separately at their own ceilings and NEVER cap a runnable
   surface**. Monorepos carry **per-member tiers**, not one repo tier (a real repo was tier 3 in
@@ -354,11 +354,11 @@ unverified-counts-as-fail rule extends to every executed gate.
 
 Read [pillars.md](pillars.md) for pillar definitions and criteria.
 
-This phase (a) scores the 48 legacy criteria into the maturity level, (b) evaluates the host-inline agent-readiness GROUPS (AO / DR / TO / HP) and consumes the emitter-owned scored FH rows, (c) derives the DR-core QA-readiness line, (d) computes the feedback-latency + gh-CLI lines, and (e) assembles the verdict headline inputs. Everything here is HOST-INLINE and synthesis-only - it introduces **no new execution budget** (the group probes reuse the Phase 2 boot / `--help` output plus bounded greps). **Emitter-owned signals are CONSUMED from the Phase 0.5 `flowctl prime classify --json` payload, never recomputed inline** - the probe-owner column of the [pillars.md](pillars.md) criterion-to-score map (resolution 21a) is authoritative on which rows are emitter-owned vs host-inline. All asks are suppressed in this phase; it is autonomous-safe (any low-confidence assumption is stated inline, never blocked on).
+This phase (a) scores the 48 legacy criteria into the maturity level, (b) evaluates the host-inline agent-readiness GROUPS (AO / DR / TO / HP) and consumes the emitter-owned scored FH rows, (c) derives the DR-core QA-readiness line, (d) computes the feedback-latency + gh-CLI lines, and (e) assembles the verdict headline inputs. Everything here is HOST-INLINE and synthesis-only - it introduces **no new execution budget** (the group probes reuse the Phase 2 boot / `--help` output plus bounded greps). **Emitter-owned signals are CONSUMED from the Phase 0.5 `flowctl prime classify --json` payload, never recomputed inline** - the probe-owner column of the [pillars.md](pillars.md) criterion-to-score map is authoritative on which rows are emitter-owned vs host-inline. All asks are suppressed in this phase; it is autonomous-safe (any low-confidence assumption is stated inline, never blocked on).
 
-**Three states, not two - and the denominator excludes the non-answers.** Map each criterion to ✅ pass, ❌ fail, or one of the excluded states: **N/A** (genuinely inapplicable - the single [pillars.md](pillars.md) N/A whitelist table (resolution 11) is the ONLY source of N/A entries; the model may NOT invent N/A elsewhere), **⚠️** (scout couldn't check - e.g. `gh` unauth, not on GitHub), or **NOT ASSESSED** (scout failed per Phase 1). Excluded criteria are dropped from **both** numerator and denominator and listed separately - never counted as ❌. This stops a healthy library (no monorepo/E2E/Docker) from being capped at 67% and locked out of Level 5, and stops a GitLab-hosted repo from reporting missing GitHub branch-protection it doesn't need.
+**Three states, not two - and the denominator excludes the non-answers.** Map each criterion to ✅ pass, ❌ fail, or one of the excluded states: **N/A** (genuinely inapplicable - the single [pillars.md](pillars.md) N/A whitelist table is the ONLY source of N/A entries; the model may NOT invent N/A elsewhere), **⚠️** (scout couldn't check - e.g. `gh` unauth, not on GitHub), or **NOT ASSESSED** (scout failed per Phase 1). Excluded criteria are dropped from **both** numerator and denominator and listed separately - never counted as ❌. This stops a healthy library (no monorepo/E2E/Docker) from being capped at 67% and locked out of Level 5, and stops a GitLab-hosted repo from reporting missing GitHub branch-protection it doesn't need.
 
-**Where each Pillar 1-5 criterion's grade comes from (probe-owner column, [pillars.md](pillars.md)).** Most criteria map from Phase 1 scout findings. The host-owned substance criteria draw their grade from executed evidence + host judgment, never the scout alone: SV5 / SV6 (check-mode lint / format), BS2 (bounded build), BS3 (boot probe), the DC2 execute check, DE1 (env cross-ref), DE4 / DE5 - all graded in Phase 2 and consumed here as-is. **SV4 (deterministic feedback gate) is a host-inline TOPOLOGY judgment made HERE in Phase 3:** grade which layer owns what from the CI required-check + verify-command + acceptance-requirement config plus the emitter-provided hook content, never from hook existence - report the L1/L2-absence headroom warn, the heavyweight-hook and advisory-only flags, and the "one verify command is the single source of truth" divergence flag per [pillars.md](pillars.md) SV4. SV4 grades gate TOPOLOGY only; workflow TRIGGER correctness is FH3, never double-scored (resolution 2).
+**Where each Pillar 1-5 criterion's grade comes from (probe-owner column, [pillars.md](pillars.md)).** Most criteria map from Phase 1 scout findings. The host-owned substance criteria draw their grade from executed evidence + host judgment, never the scout alone: SV5 / SV6 (check-mode lint / format), BS2 (bounded build), BS3 (boot probe), the DC2 execute check, DE1 (env cross-ref), DE4 / DE5 - all graded in Phase 2 and consumed here as-is. **SV4 (deterministic feedback gate) is a host-inline TOPOLOGY judgment made HERE in Phase 3:** grade which layer owns what from the CI required-check + verify-command + acceptance-requirement config plus the emitter-provided hook content, never from hook existence - report the L1/L2-absence headroom warn, the heavyweight-hook and advisory-only flags, and the "one verify command is the single source of truth" divergence flag per [pillars.md](pillars.md) SV4. SV4 grades gate TOPOLOGY only; workflow TRIGGER correctness is FH3, never double-scored.
 
 ### Agent Readiness Score (Pillars 1-5)
 
@@ -383,11 +383,11 @@ Calculate:
 
 **Overall Score** = average of all 8 pillar scores
 
-The tier GROUPS below are scored separately and reported as pass-count lines; per resolution 1 they are **NOT** part of any pillar average, the maturity level, or the floor checks.
+The tier GROUPS below are scored separately and reported as pass-count lines; they are **NOT** part of any pillar average, the maturity level, or the floor checks.
 
 ### Agent-readiness GROUP evaluation (host-inline - EXCLUDED from the level)
 
-The agent-readiness tier GROUPS - **AO, DR, TO, HP**, plus the scored gap-diff rows **FH1-FH6** - are scored and fix-offered but NEVER fold into the maturity level (resolution 1). Each surfaces as a **group pass-count line** and feeds the verdict headline + ranked actions + remediation. The five states (✅ / ❌ / N/A / ⚠️ / NOT ASSESSED) and the single [pillars.md](pillars.md) N/A whitelist apply unchanged; excluded members (shape/tier N/A, inactive harness) drop from the group's own denominator and are named on the line, never counted as ❌. Pass conditions live in [pillars.md](pillars.md) and are pointed at here, never restated; every verdict quotes its evidence (a file line or a command-output line - no evidence, no verdict).
+The agent-readiness tier GROUPS - **AO, DR, TO, HP**, plus the scored gap-diff rows **FH1-FH6** - are scored and fix-offered but NEVER fold into the maturity level. Each surfaces as a **group pass-count line** and feeds the verdict headline + ranked actions + remediation. The five states (✅ / ❌ / N/A / ⚠️ / NOT ASSESSED) and the single [pillars.md](pillars.md) N/A whitelist apply unchanged; excluded members (shape/tier N/A, inactive harness) drop from the group's own denominator and are named on the line, never counted as ❌. Pass conditions live in [pillars.md](pillars.md) and are pointed at here, never restated; every verdict quotes its evidence (a file line or a command-output line - no evidence, no verdict).
 
 **AO - Agent observability (AO1-AO5).** Reuse the §2.5 boot-probe output: its parseable ready line + bound port ARE the AO3 evidence (never re-run the boot probe). AO1 / AO2 / AO4 / AO5 are bounded greps (POSIX classes) against the agent file + dev config - a readable dev-log path/recipe, a browser-console-capture entry, dev request-logging middleware, a documented DEBUG/LOG_LEVEL escalation path - each quoting the file line it passes or fails on. Non-web shapes and tier-1/2-ceiling stacks take the [pillars.md](pillars.md) whitelist N/A entries.
 
@@ -399,11 +399,11 @@ The agent-readiness tier GROUPS - **AO, DR, TO, HP**, plus the scored gap-diff r
 
 **FH scored rows (FH1-FH6) - CONSUMED from the emitter.** These are emitter-owned per the criterion-to-score map (docs-freshness timestamps vs src churn, scc large-file metrics, CI trigger + mutating-lint greps, secrets-gate config presence, destructive-scan raw hits + context class, conditional API-contract globs). **CONSUME the emitter payload's corresponding fields - do NOT re-grep here.** FH3 alone adds a host step: when `gh` is authed (FH9 below), corroborate the emitter's CI-trigger evidence with required-status / branch-protection; without `gh` the emitter trigger evidence stands and the corroboration is ⚠️ unavailable. FH5 severity is read from the emitter's context class (string-literal/comment/doc-snippet -> dropped; repo-internal dir the same script regenerates -> informational + a LEG7 never-edit line; `$HOME`/bounded path -> ask-tier mention; unbounded or parameterized target -> P1). FH6 is N/A when no HTTP framework was detected.
 
-**Group pass-count aggregates (resolution 1).** Each scored group reports exactly ONE line - `AO: n/m pass`, `DR: n/m pass`, `TO: n/m pass`, `HP: n/m pass` (scored core only), `FH(scored): n/m pass` - with excluded members named inline. These lines NEVER enter the maturity-level formula, the pillar averages, or the floor checks; they feed the verdict headline, the ranked actions, and remediation only. DT1/DT2 are informational (suggestion line only, never a pass-count). Per the [playbooks.md](playbooks.md) compression rule, a group whose members all pass renders as its single pass-count line; a group with a failing member expands only that member with its quoted evidence + ranked fix.
+**Group pass-count aggregates.** Each scored group reports exactly ONE line - `AO: n/m pass`, `DR: n/m pass`, `TO: n/m pass`, `HP: n/m pass` (scored core only), `FH(scored): n/m pass` - with excluded members named inline. These lines NEVER enter the maturity-level formula, the pillar averages, or the floor checks; they feed the verdict headline, the ranked actions, and remediation only. DT1/DT2 are informational (suggestion line only, never a pass-count). Per the [playbooks.md](playbooks.md) compression rule, a group whose members all pass renders as its single pass-count line; a group with a failing member expands only that member with its quoted evidence + ranked fix.
 
 ### DR-core & the QA-readiness line
 
-DR-core is the named four-ID QA-readiness set (defined in [pillars.md](pillars.md)); the report emits the QA-readiness line ONLY from here. Evaluate the four IDs against the group results above, scoped to the **deployable web surface only** (resolution 17):
+DR-core is the named four-ID QA-readiness set (defined in [pillars.md](pillars.md)); the report emits the QA-readiness line ONLY from here. Evaluate the four IDs against the group results above, scoped to the **deployable web surface only**:
 
 1. seeded / demo data one-command (**DR1**)
 2. documented dev login / test user (**DR2**)
@@ -420,7 +420,7 @@ Beside it, always emit one **feature-map line**, whatever the QA-readiness outco
 
 ### Feedback latency (FH8, report-only) + gh-CLI host line (FH9, informational)
 
-**FH8 latency - time only what ALREADY executed (resolution 3).** Local suite wall time is taken from the Phase 2 runs that ALREADY happened - the bounded build (§2.3), the test-discovery run (§2.2), the verify command when a gate ran it. **NEVER run a full suite for timing.** When nothing timeable executed, report **"not measured locally"** and fall back to the CI median. Build-caching config (turbo / nx / actions-cache) is reported alongside. FH8 is report-only - no fix, no score.
+**FH8 latency - time only what ALREADY executed.** Local suite wall time is taken from the Phase 2 runs that ALREADY happened - the bounded build (§2.3), the test-discovery run (§2.2), the verify command when a gate ran it. **NEVER run a full suite for timing.** When nothing timeable executed, report **"not measured locally"** and fall back to the CI median. Build-caching config (turbo / nx / actions-cache) is reported alongside. FH8 is report-only - no fix, no score.
 
 **CI median - derived locally; no `durationMs` field exists.** Pull the last runs and compute `updatedAt - startedAt` per COMPLETED default-branch run, then take the median (the `gh` JSON surface has NO duration field - it must be derived). Each fenced block re-declares its own vars; POSIX shell:
 
@@ -462,7 +462,7 @@ FLOWCTL="${DROID_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/flowctl"
 GLOSSARY_TERMS=$("$FLOWCTL" glossary list --json 2>/dev/null | jq -r '.total_terms // 0')
 ```
 
-Gate on `total_terms == 0`, NEVER on `[[ -f GLOSSARY.md ]]` — `flowctl glossary remove` leaves a `# Glossary` H1 husk after the last term is removed (the file is project state, never deleted), so a presence check false-passes on an empty husk. Same invariant as interview's doc-aware autodetect.
+Gate on `total_terms == 0`, NEVER on `[[ -f GLOSSARY.md ]]` — `flowctl glossary remove` leaves a `# Glossary` H1 husk after the last term is removed (the file is project state, never deleted), so a presence check false-passes on an empty husk. Same invariant as refine's doc-aware autodetect.
 
 - `GLOSSARY_TERMS > 0` → DC8 ✅. Report term coverage in Phase 4. Never rewrite, never re-propose existing terms — staleness/alias pruning belongs to `/flow-next:audit`, not prime.
 - `GLOSSARY_TERMS == 0` (file absent or husk) → DC8 ❌. Phase 5.5 offers the bootstrap.
@@ -477,7 +477,7 @@ Generate prioritized recommendations from **Pillars 1-5 only** (excluding inform
 **Never offer fixes for Pillars 6-8** — these are informational only.
 **Never offer fixes for DC7/DE7** — informational sub-criteria; surface as suggestions in Top Recommendations only.
 
-### Verdict assembly (the headline inputs - R3)
+### Verdict assembly (the headline inputs)
 
 Assemble the inputs the Phase 4 headline renders. The maturity level is DEMOTED to secondary metadata below the scores table; the headline LEADS with:
 
@@ -503,7 +503,7 @@ SELECTION happened in Phase 0.5; the per-shape BODY templates live in [playbooks
 never restate them.
 
 The report **LEADS with the verdict headline; the maturity level is DEMOTED to secondary metadata**
-below the scores table (R3). The headline order is fixed: classification -> operability tier ->
+below the scores table. The headline order is fixed: classification -> operability tier ->
 hard-gate status -> top-5 ranked next-actions.
 
 ```markdown
@@ -549,7 +549,7 @@ _Secondary metadata - the verdict above leads; the level is retained for cross-r
 | Production Readiness (Pillars 6-8) | X% | — |
 | **Overall** | X% | — |
 
-**Scored groups (excluded from the level, resolution 1):** AO n/m pass · DR n/m pass · TO n/m pass · HP(core) n/m pass · FH(scored) n/m pass - excluded members named inline. DT1/DT2 informational (suggestion line only).
+**Scored groups (excluded from the level):** AO n/m pass · DR n/m pass · TO n/m pass · HP(core) n/m pass · FH(scored) n/m pass - excluded members named inline. DT1/DT2 informational (suggestion line only).
 
 ## [Per-shape body - playbooks.md "Report shapes per classification"]
 
@@ -562,7 +562,7 @@ Emit the body for the shape(s) the Phase 0.5 selector fired (more than one block
 - **Constellation-member** - per-repo scored report UNCHANGED + the additive constellation block (full home-base OR light product-family variant per the playbooks.md selector).
 - **Constellation home-base** - the constellation-layer assessment IN PLACE OF the per-repo scorecard.
 
-## Pillar tables (compression rule - [playbooks.md](playbooks.md) resolution 13)
+## Pillar tables (compression rule - [playbooks.md](playbooks.md))
 
 **Failing and ⚠️ criteria render in DETAIL; passing rows compress to one line per pillar.** Spend the report budget on what needs action, never on a wall of green checkmarks. Group pass-count lines follow the same rule - one line each unless a member fails.
 
@@ -598,7 +598,7 @@ For each pillar with a failing or ⚠️ criterion, expand ONLY those rows with 
 
 > Consider: `/flow-next:map` — builds a semantic feature index for richer scope anchoring (optional).
 
-Detection - `flowctl` is **bundled, not on `PATH`** after install, so use the same `FLOWCTL` prelude pattern as the other skills (canonical Droid+Claude fallback; sync-codex.sh rewrites it to `$HOME/.codex/scripts/flowctl` for the Codex mirror). Each fenced block re-declares its own vars; POSIX shell:
+Detection - `flowctl` is **bundled, not on `PATH`** after install, so use the same `FLOWCTL` prelude pattern as the other skills (canonical Droid+Claude fallback). Each fenced block re-declares its own vars; POSIX shell:
 
 ```bash
 FLOWCTL="${DROID_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/flowctl"
@@ -619,7 +619,7 @@ Glossary (DC8) lines — driven by the Phase 3 glossary signal:
 
 - When `GLOSSARY_TERMS > 0`, report coverage instead:
 
-  > GLOSSARY.md: [N] terms — canonical vocabulary available to interview / plan / audit. No action; pruning belongs to `/flow-next:audit`.
+  > GLOSSARY.md: [N] terms — canonical vocabulary available to refine / plan / audit. No action; pruning belongs to `/flow-next:audit`.
 
 DC8 is informational like DE7, but its remediation path differs: it is handled exclusively by the Phase 5.5 bootstrap (read-back gated), never as a Phase 5 question option.
 
@@ -645,11 +645,11 @@ Close with key observations from Pillars 6-8 (informational - no fixes offered).
 
 **Remediation is CATALOG-DRIVEN.** The questions below are NOT a fixed four - they are assembled from the [playbooks.md](playbooks.md) ranked-actions catalog, filtered to the ACTUAL gaps found across Pillars 1-5 + the scored groups (AO / DR / TO / HP-core / FH-scored). Each option maps to a catalog row and carries that row's **tier** (Critical / High / Medium / Bonus) and **consent boundary**. Never offer a fix for a criterion that already passes; never invent an option not in the catalog.
 
-**If `--fix-all`** - the catalog tier column + consent boundaries govern what auto-applies (resolution 5). `--fix-all` auto-applies ONLY **in-root, non-structural, non-harness** fixes at **Critical / High / Medium** tier - the in-root Pillars 1-5 fixes PLUS scored-group agent-file content whose catalog row is marked `--fix-all`-eligible (per the catalog's consent column; **the [playbooks.md](playbooks.md) catalog is authoritative** on which scored-group items qualify). **Explicit-consent-only regardless of `--fix-all`:** anything outside the repo ROOT (the home-base kit), any harness settings / hook file (deny/ask/hook scaffolds), and ALL structural / playbook artifacts (a generated map, nested instruction files, the home base, the greenfield bootstrap plan). **On greenfield, `--fix-all` applies ONLY to exercised hygiene files** (`.gitignore`, lockfile, `.env.example`, `.editorconfig`) - never structural or generated artifacts (playbooks.md greenfield anti-pattern rules). When `--fix-all` is set, skip the questions, apply exactly the auto-eligible set, and continue at Phase 5.5 (the glossary bootstrap keeps its read-back gate even under `--fix-all`); Phase 6 then applies the selected fixes.
+**If `--fix-all`** - the catalog tier column + consent boundaries govern what auto-applies. `--fix-all` auto-applies ONLY **in-root, non-structural, non-harness** fixes at **Critical / High / Medium** tier - the in-root Pillars 1-5 fixes PLUS scored-group agent-file content whose catalog row is marked `--fix-all`-eligible (per the catalog's consent column; **the [playbooks.md](playbooks.md) catalog is authoritative** on which scored-group items qualify). **Explicit-consent-only regardless of `--fix-all`:** anything outside the repo ROOT (the home-base kit), any harness settings / hook file (deny/ask/hook scaffolds), and ALL structural / playbook artifacts (a generated map, nested instruction files, the home base, the greenfield bootstrap plan). **On greenfield, `--fix-all` applies ONLY to exercised hygiene files** (`.gitignore`, lockfile, `.env.example`, `.editorconfig`) - never structural or generated artifacts (playbooks.md greenfield anti-pattern rules). When `--fix-all` is set, skip the questions, apply exactly the auto-eligible set, and continue at Phase 5.5 (the glossary bootstrap keeps its read-back gate even under `--fix-all`); Phase 6 then applies the selected fixes.
 
-**Under any autonomy marker (`FLOW_RALPH=1`, `REVIEW_RECEIPT_PATH` set, `FLOW_AUTONOMOUS=1`, or `mode:autonomous`), this entire phase is SKIPPED - exactly like `--report-only`.** No remediation is offered and no interactive consent is sought; the report states the gaps (and their catalog rows) so a human can settle them later. There is no autonomous person to answer, so the phase produces zero prompts and applies zero fixes.
+**Under any autonomy marker (`FLOW_AUTONOMOUS=1` or `mode:autonomous`), this entire phase is SKIPPED - exactly like `--report-only`.** No remediation is offered and no interactive consent is sought; the report states the gaps (and their catalog rows) so a human can settle them later. There is no autonomous person to answer, so the phase produces zero prompts and applies zero fixes.
 
-**CRITICAL**: You MUST use the `AskUserQuestion` tool for consent. Do NOT just print questions as text. (Call `ToolSearch` with `select:AskUserQuestion` first if its schema isn't loaded. sync-codex.sh rewrites this to a plain-text numbered prompt in the Codex mirror.)
+**CRITICAL**: You MUST use the `AskUserQuestion` tool for consent. Do NOT just print questions as text. (Call `ToolSearch` with `select:AskUserQuestion` first if its schema isn't loaded.)
 
 ### Using AskUserQuestion correctly
 
@@ -713,7 +713,7 @@ Illustrative shape (Tooling category - the exact options come from the catalog f
 
 Runs only when the Phase 3 glossary signal reported `GLOSSARY_TERMS == 0` (GLOSSARY.md absent or husk). When `GLOSSARY_TERMS > 0`, skip this phase entirely — prime never rewrites a populated glossary and never re-proposes existing terms; staleness/alias pruning belongs to `/flow-next:audit`.
 
-**Under any autonomy marker (`FLOW_RALPH=1`, `REVIEW_RECEIPT_PATH` set, `FLOW_AUTONOMOUS=1`, or `mode:autonomous`), this entire phase is SKIPPED - exactly like `--report-only`.** No glossary read-back is presented and no terms are written; the report notes the glossary gap (DC8) so a human can seed it later. There is no autonomous person to confirm the proposed definitions, and canonical vocabulary is never written unseen.
+**Under any autonomy marker (`FLOW_AUTONOMOUS=1` or `mode:autonomous`), this entire phase is SKIPPED - exactly like `--report-only`.** No glossary read-back is presented and no terms are written; the report notes the glossary gap (DC8) so a human can seed it later. There is no autonomous person to confirm the proposed definitions, and canonical vocabulary is never written unseen.
 
 `--fix-all` does NOT bypass the read-back below: term definitions are judgment-bearing canonical vocabulary, not mechanical templates — never write terms unseen. (`--report-only` never reaches this phase; the workflow stops at Phase 4.)
 
@@ -742,7 +742,7 @@ Draft ~10-20 candidates (fewer is fine for small repos — never pad). Each prop
 
 ### 5.5.3 Read-back (mandatory — never write unseen)
 
-Present the FULL proposal — every term with its definition, evidence, and aliases — then ask via `AskUserQuestion` (sync-codex.sh rewrites this to a plain-text numbered prompt in the Codex mirror):
+Present the FULL proposal — every term with its definition, evidence, and aliases — then ask via `AskUserQuestion`:
 
 - **Approve all** — write every proposed term
 - **Select subset** — user indicates which terms to keep (follow up for the list)
@@ -752,7 +752,7 @@ No write happens before this approval. Decline/skip ⇒ DC8 stays ❌, note it i
 
 ### 5.5.4 Write accepted terms
 
-One `flowctl glossary add` per accepted term — stdin definition so multi-sentence text round-trips cleanly (same call shape as interview's doc-aware write). `glossary add` creates `GLOSSARY.md` at the repo root when no ancestor file exists, and upserts on re-runs:
+One `flowctl glossary add` per accepted term — stdin definition so multi-sentence text round-trips cleanly (same call shape as refine's doc-aware write). `glossary add` creates `GLOSSARY.md` at the repo root when no ancestor file exists, and upserts on re-runs:
 
 ```bash
 "$FLOWCTL" glossary add "<term>" --definition-file - --json <<'EOF'
@@ -819,7 +819,7 @@ Offer re-assessment only if changes were made:
 Run assessment again to see updated score?
 ```
 
-**Re-run reuse (resolution 6).** A re-assessment **reuses this session's Phase 0.5 classification and the R15 (Phase 0.6) answers** - it does NOT re-classify from scratch and does NOT re-ask a question already answered this session. Only the criteria/gates **affected by the fixes just applied** re-verify (the ranked catalog is re-ranked from the new state, not re-derived); untouched pillars carry their prior grades forward. Show:
+**Re-run reuse.** A re-assessment **reuses this session's Phase 0.5 classification and the Phase 0.6 answers** - it does NOT re-classify from scratch and does NOT re-ask a question already answered this session. Only the criteria/gates **affected by the fixes just applied** re-verify (the ranked catalog is re-ranked from the new state, not re-derived); untouched pillars carry their prior grades forward. Show:
 
 - New Agent Readiness score and maturity level
 - Score changes per pillar (only the re-verified criteria move)

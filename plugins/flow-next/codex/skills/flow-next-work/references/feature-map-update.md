@@ -12,7 +12,7 @@ note contract: [feature-entry-contract.md](../../flow-next-features/references/f
 This step is the only map writer besides `/flow-next:features`. It edits only
 the entries this change altered; the full maintain pass stays user-invoked and
 this step never dispatches it. It asks nothing, so it follows work's own
-autonomy rules unchanged (attended, `mode:autonomous`, and Ralph runs alike).
+autonomy rules unchanged (attended and `mode:autonomous` runs alike).
 
 ## 1. Find the altered routes
 

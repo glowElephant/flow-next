@@ -25,8 +25,8 @@ primary review. When multiple are set, phases run in a fixed order:
 6. Receipt           each phase writes its own additive block without disturbing others
 ```
 
-Mode split: steps 2-3 mutate the receipt ONLY under autonomy markers
-(FLOW_RALPH=1 / REVIEW_RECEIPT_PATH set / FLOW_AUTONOMOUS=1). In an interactive
+Mode split: steps 2-3 mutate the receipt ONLY under the autonomy marker
+(FLOW_AUTONOMOUS=1). In an interactive
 session deep/validate return raw JSON with host_judges: true and leave the
 receipt unchanged - the host judges merge/promotion/survivors from that JSON
 instead of re-reading the receipt. Both paths are documented per phase below.
@@ -55,9 +55,8 @@ instead of re-reading the receipt. Both paths are documented per phase below.
 | `--validate --deep --interactive` | 1 → 2 → 3 → 4 → 5 → 6 |
 
 **Receipt composition:** each phase appends its own block to the receipt
-without mutating any other block. The receipt schema is additive — old
-Ralph scripts read `verdict` / `mode` / `session_id` and ignore unknown
-keys.
+without mutating any other block. The receipt schema is additive —
+consumers read `verdict` / `mode` / `session_id` and ignore unknown keys.
 
 | Phase | Receipt keys written | Verdict effect |
 |-------|----------------------|----------------|
@@ -81,11 +80,8 @@ keys.
 - `verdict_before_validate` / `verdict_before_deep` are only written when
   their phase actually upgraded the verdict; otherwise absent.
 
-**Ralph compatibility:** the receipt-gate logic reads `verdict`, `mode`,
-and `session_id`. All new fields are optional and ignored by older Ralph
-scripts. `FLOW_VALIDATE_REVIEW=1` and `FLOW_REVIEW_DEEP=1` are the only
-env opt-ins; `--interactive` hard-errors in Ralph mode (see SKILL.md
-Step 0).
+`FLOW_VALIDATE_REVIEW=1` and `FLOW_REVIEW_DEEP=1` are the only env opt-ins;
+`--interactive` has no env form.
 
 ---
 
@@ -104,7 +100,7 @@ Carmack flow is unchanged.
 ### Step D.1: Determine which passes to run
 
 Compute `SELECTED_PASSES` here (the flags `DEEP` / `DEEP_PASSES` and
-`BASE_COMMIT` were parsed in SKILL.md Step 0) using `flowctl review-deep-auto`
+`BASE_COMMIT` were parsed in other-paths.md Step 0) using `flowctl review-deep-auto`
 against the changed-file list. Explicit CSV form
 (`--deep=adversarial,security`) overrides auto-enable.
 
@@ -156,7 +152,7 @@ TASK_ID="$(jq -r '.task_id // empty' <<<"$ROUTE")"
 RECEIPT_PATH="$(jq -r '.receipt_path' <<<"$ROUTE")"
 PRIMARY_FINDINGS="/tmp/primary-findings.jsonl"
 
-for pass in $SELECTED_PASSES; do
+for pass in $(printf '%s\n' $SELECTED_PASSES); do
   case "$BACKEND" in
     codex)
       $FLOWCTL codex deep-pass \
@@ -215,8 +211,7 @@ done
 
 ### Step D.4: Re-compute verdict after merge
 
-Mode split: under autonomy markers (`FLOW_RALPH=1`, `REVIEW_RECEIPT_PATH`
-set, or `FLOW_AUTONOMOUS=1`) each `deep-pass` call writes the merged receipt in
+Mode split: under the autonomy marker (`FLOW_AUTONOMOUS=1`) each `deep-pass` call writes the merged receipt in
 place and the final verdict is read back from the receipt as below. In an
 INTERACTIVE session the call instead returns raw findings with `host_judges: true`
 and does NOT mutate the receipt - read the JSON output, judge merge/promotion
@@ -258,8 +253,7 @@ After deep passes run, the receipt carries:
 }
 ```
 
-All fields are **additive** — existing Ralph scripts and receipt
-consumers that don't know about deep-pass read `verdict` as before and
+All fields are **additive** — receipt consumers that don't know about deep-pass read `verdict` as before and
 ignore the new keys.
 
 ---
@@ -383,7 +377,7 @@ echo "Validator: dropped=$DROPPED kept=$KEPT verdict=$NEW_VERDICT"
 if [[ "$NEW_VERDICT" == "SHIP" ]]; then
   # All findings dropped — verdict upgraded. Done, no fix loop. This exit
   # never reaches the backend workflow's final release step, so release the
-  # optional-phase lease here (PR #392): OWNING_RID is restated as a LITERAL
+  # optional-phase lease here: OWNING_RID is restated as a LITERAL
   # — the fan-out rid from the codex phase-one JSON, or the host reservation
   # id. 0 phases means nothing was held.
   OWNING_RID="<owning rid>"
@@ -429,8 +423,7 @@ object and (when upgraded) a `verdict_before_validate` field:
 }
 ```
 
-All fields are **additive** — existing Ralph scripts and receipt consumers
-that don't know about `validator` read `verdict` as before and ignore the
+All fields are **additive** — receipt consumers that don't know about `validator` read `verdict` as before and ignore the
 new keys. Verdict never downgrades; the validator only drops findings,
 never invents them.
 
@@ -446,9 +439,6 @@ helpers for the defer sink + receipt merge.
 
 **Preserved by default:** when `INTERACTIVE=false`, this entire section is
 skipped — the fix loop runs against all surviving findings as before.
-**Ralph-incompatible:** SKILL.md hard-errors at entry if
-`REVIEW_RECEIPT_PATH` or `FLOW_RALPH=1` is set. No receipt is written in
-that error path.
 
 ### Step W.1: Extract findings for the walkthrough
 
@@ -482,7 +472,7 @@ Write per-bucket JSONL files for downstream helpers:
 "LFG the rest" auto-classifies: P0/P1 @ confidence ≥ 75 → Apply;
 otherwise → Defer.
 
-**Lease renewal while waiting on a human (PR #392).** A walkthrough has no
+**Lease renewal while waiting on a human.** A walkthrough has no
 time bound — it blocks once per finding on a reply — but the optional-phase
 lease expires on the liveness bound, and a reply can arrive after it did.
 When the lease is held (an optional flag is enabled), run the RENEW block

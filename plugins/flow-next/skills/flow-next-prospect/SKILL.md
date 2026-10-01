@@ -17,6 +17,8 @@ Prospect is plural ("what should we do?"). Chart is singular ("how do we get thi
 
 **Role**: idea-prospecting coordinator (sequential single-chat - generate -> critique -> rank -> write -> handoff). Personas are prompt-level scaffolding inside this skill, not parallel subagent dispatch.
 
+Read [working-rules.md](../../references/working-rules.md) first; it holds for every step of this skill.
+
 ## Preamble
 
 **CRITICAL: flowctl is BUNDLED — NOT installed globally.** `which flowctl` will fail (expected). Define once; subsequent blocks (here and in `workflow.md`) use `$FLOWCTL`:
@@ -27,7 +29,7 @@ FLOWCTL="${DROID_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/flowctl"
 [ -x "$FLOWCTL" ] || FLOWCTL=".flow/bin/flowctl"
 ```
 
-**Inline skill (no `context: fork`)** — keeps `AskUserQuestion` available throughout. Subagents can't call blocking question tools (Claude Code issues #12890, #34592), and Phases 0 + 6 both require user choice. (sync-codex.sh rewrites this to a plain-text numbered prompt in the Codex mirror.)
+**Inline skill (no `context: fork`)** — keeps `AskUserQuestion` available throughout. Subagents can't call blocking question tools (Claude Code issues #12890, #34592), and Phases 0 + 6 both require user choice.
 
 ## Input
 
@@ -36,26 +38,25 @@ Arguments: `$ARGUMENTS`
 Format: `[focus hint]` — freeform single string. Optional. May be:
 
 - **Concept** — `DX improvements`, `review-skill polish`, `test-suite health`
-- **Path** — `plugins/flow-next/skills/` (ideate inside a subtree)
+- **Path** — `src/billing/` (ideate inside a subtree)
 - **Constraint** — `quick wins under 200 LOC`, `minor-bump only`, `no new deps`
 - **Volume hint** — `top 3` (exactly 3 survivors), `50 ideas` (generate ≥50), `raise the bar` (60-70% rejection target)
 
 If empty, the skill picks its own coverage targets (15-25 candidates → 5-8 survivors).
 
-## Ralph-block (R8)
+## Autonomy block
 
-`/flow-next:prospect` is exploratory and human-in-the-loop. Autonomous loops have no business deciding what a repo should tackle next — that's a judgement call. Hard-error with exit 2 when running under Ralph.
+`/flow-next:prospect` is exploratory and human-in-the-loop. Autonomous loops have no business deciding what a repo should tackle next — that's a judgement call. Hard-error with exit 2 when running autonomously.
 
 ```bash
-if [[ -n "${REVIEW_RECEIPT_PATH:-}" || "${FLOW_RALPH:-}" == "1" \
-   || "${FLOW_AUTONOMOUS:-}" == "1" || "${AUTONOMOUS:-}" == "1" \
+if [[ "${FLOW_AUTONOMOUS:-}" == "1" || "${AUTONOMOUS:-}" == "1" \
    || " ${ARGUMENTS:-} " == *" mode:autonomous "* ]]; then
-  echo "Error: /flow-next:prospect requires a user at the terminal; not compatible with Ralph mode (REVIEW_RECEIPT_PATH or FLOW_RALPH detected)." >&2
+  echo "Error: /flow-next:prospect requires a user at the terminal; not compatible with autonomous mode." >&2
   exit 2
 fi
 ```
 
-No env-var opt-in. Ralph never decides direction.
+No env-var opt-in. Autonomous runs never decide direction.
 
 ## Workflow
 
@@ -73,7 +74,7 @@ The artifact verbs are `flowctl prospect promote` and `flowctl prospect archive`
 
 ## Forbidden
 
-- Running under Ralph — hard-block via the guard above.
+- Running autonomously — hard-block via the guard above.
 - Setting `context: fork` — blocking question tools must stay reachable.
 - Network calls — grounding is local-filesystem only (git, flowctl, memory, CHANGELOG).
 - Writing to `.flow/specs/` directly — only `flowctl prospect promote` may do that.

@@ -24,7 +24,7 @@ One oversized/unclear idea whose **destination is nameable but route is not** (a
 
 ## Common Commands
 
-The typical flow. Everything else (deps, block/reset, memory, glossary, config, tracker sync, checkpoints, Ralph): `flowctl --help` and `flowctl <cmd> --help`.
+The typical flow. Everything else (deps, block/reset, memory, glossary, config, tracker sync, checkpoints): `flowctl --help` and `flowctl <cmd> --help`.
 
 ```bash
 flowctl list                          # all specs + tasks grouped
@@ -44,7 +44,7 @@ flowctl validate --all                # check structure
 
 flow-next skills are prompts the host agent executes — so you (the host) can route work across model families with zero code. **Defaults are pre-tuned; none of this is required** — reach for it only when your model mix, subscriptions, or taste differ. Full guide: [`docs/orchestration.md`](https://github.com/gmickel/flow-next/blob/main/plugins/flow-next/docs/orchestration.md) · https://flow-next.dev/guides/model-routing/
 
-**Tiers and reach.** A **tier** is what kind of model a job wants — `reviewer`, `implementer`, `fast scout`, `thinking scout`, or unset (the session model, and the majority). **Reach** is how *this* harness gets one: the in-session model, an in-host subagent, another CLI over a bridge, or not available. Write your preferences once as `<tier>: <model>` (optionally `at <effort>`) in `CLAUDE.md` / `AGENTS.md` — `/flow-next:setup` scaffolds the block commented out, and the model names are yours, verified against your own account. Routing precedence, highest first: an explicit argument in the invocation, then that routing block, then the agent definition's own default, then the session model — a model this harness cannot reach falls back to the session model, says so once, and continues. Tier definitions: [`docs/orchestration.md`](https://github.com/gmickel/flow-next/blob/main/plugins/flow-next/docs/orchestration.md#tiers--what-kind-of-model-a-job-wants); per-harness reach: [`docs/reach/`](https://github.com/gmickel/flow-next/blob/main/plugins/flow-next/docs/reach/README.md).
+**Tiers and reach.** A **tier** is what kind of model a job wants — `reviewer`, `implementer`, `fast scout`, `thinking scout`, or unset (the session model, and the majority). **Reach** is how *this* harness gets one: the in-session model, an in-host subagent, another CLI over a bridge, or not available. Write your preferences once as `<tier>: <model>` (optionally `at <effort>`) in `CLAUDE.md` / `AGENTS.md` — `/flow-next:setup` scaffolds the block commented out, and the model names are yours, verified against your own account. Routing precedence, highest first: an explicit argument in the invocation, then that routing block, then the agent definition's own default, then the session model — a model this harness cannot reach falls back to the session model, says so once, and continues. Tier definitions: [`docs/orchestration.md`](https://github.com/gmickel/flow-next/blob/main/plugins/flow-next/docs/orchestration.md#tiers-what-kind-of-model-a-job-wants); per-harness reach: [`docs/reach/`](https://github.com/gmickel/flow-next/blob/main/plugins/flow-next/docs/reach/README.md).
 
 **Headless CLI bridges** — drive another harness from a Bash call with a *self-contained* prompt (full context in, digest back). **Safety rule for every recipe below: the bridged child writes code and may commit checkpoints on the branch the host names; the host keeps push, review, `flowctl done`, task state, and any history rewrite.** The child never pushes, never rebases or rewrites history, never decides scope, never issues a review verdict, and never spawns a bridge of its own. A local commit is reversible and reviewable; push, rewrite, scope, and verdict are the bounds that matter.
 
@@ -79,17 +79,17 @@ grok -m <model> --reasoning-effort high -p "<self-contained prompt>" </dev/null 
 grok --always-approve --no-plan -m <model> --reasoning-effort high -p "<self-contained prompt>" </dev/null  # WRITE mode (blanket; trusted git dir ONLY - acceptEdits skips Bash and silently truncates shell-using tasks). Extras: --check, --best-of-n N, --json-schema. Ask the CLI what it offers (`grok --help`, host catalog) rather than copying an identifier from a doc.
 ```
 
-The codex bridge also works FROM a Codex host (same-family self-bridge): `codex exec -m <model> -c model_reasoning_effort=<effort> "<prompt>"` steers a different tier of the same family. It is one route, not the only one. Since codex-cli 0.146.0, `spawn_agent` model and effort steering works on both the role path and the explicit-parameter path (fn-98, read from the child rollout's `turn_context`; the codex reach page carries the precedence rule and the two dispatch gotchas). Watch (2026-09-14): openai/codex#33267, a `codex exec` parent unable to decode the result of a child that fanned out subagents, is still open upstream and reported on codex-cli 0.144 to 0.145 with the model family the issue names. Its minimal repro ran clean 3 of 3 on codex-cli 0.153.4 with this harness's current model (the identifier is on the codex reach page, which names no model here by design), and 17 exec-originated spawning runs with 23 spawning child threads in September 2026 returned zero decode errors. A bridged child on a current build may fan out; on a build in the reported range, keep the child prompt flat.
+The codex bridge also works FROM a Codex host (same-family self-bridge): `codex exec -m <model> -c model_reasoning_effort=<effort> "<prompt>"` steers a different tier of the same family. It is one route, not the only one. Since codex-cli 0.146.0, `spawn_agent` model and effort steering works on both the role path and the explicit-parameter path (the codex reach page carries the precedence rule and the two dispatch gotchas). Known upstream issue: openai/codex#33267, a `codex exec` parent unable to decode the result of a child that fanned out subagents, is reported on codex-cli 0.144 to 0.145 and has not reproduced on 0.153. A bridged child on a current build may fan out; on a build in the reported range, keep the child prompt flat.
 
 **Which tier to bridge to:** on well-specified work a value-tier implementer matches a strong-tier one on correctness at roughly two-thirds the wall clock, so send clear, well-scoped tasks to the value tier and escalate to the strong tier only for the genuinely gnarly ones. Spec quality is what makes that trade safe — a vague brief burns the saving on rework.
 
 **Thin-wrapper recipe:** a quick interactive bridge call can stay raw. For a long-running, unattended, or parallel bridge, dispatch a thin fast-tier subagent that composes the self-contained prompt, runs the bridge **in the foreground**, verifies non-empty/parseable output, repairs environment or flag failures once, and returns only a digest. The wrapper never changes the task, model, or verdict and never delegates recursively; judgment stays with the host.
 
-**Long bridged tasks: the host's return handling and the brief.** Record the base commit before dispatch (`git rev-parse HEAD`). On return, review the child's commit range from that base (`<base>..HEAD`, the same range the in-host worker path gets), run the gates on that diff, and decide as the host whether the checkpoints squash or stay. The brief for a task that runs for hours states the branch and commit convention, the checkpoint unit, the five never clauses, and one return condition. Do **not** add a timebox or a "stop cleanly if you run out of room" line: it teaches the child to return partial, and every partial return costs a fresh context and a re-brief (one task took 19 dispatches this way, #431).
+**Long bridged tasks: the host's return handling and the brief.** Record the base commit before dispatch (`git rev-parse HEAD`). On return, review the child's commit range from that base (`<base>..HEAD`, the same range the in-host worker path gets), run the gates on that diff, and decide as the host whether the checkpoints squash or stay. The brief for a task that runs for hours states the branch and commit convention, the checkpoint unit, the five never clauses, and one return condition. Do **not** add a timebox or a "stop cleanly if you run out of room" line: it teaches the child to return partial, and every partial return costs a fresh context and a re-brief.
 
 ```text
 Branch: <branch>, already checked out. Commit each completed scope unit (one spec step or one
-commit-sized unit) as a checkpoint on this branch: git add -A && git commit -m "<type>(<scope>): <what>".
+commit-sized unit) as a checkpoint on this branch: git add -- <files you changed> .flow/ && git commit -m "<type>(<scope>): <what>".
 Never push. Never rebase, amend, or rewrite history. Never change the scope. Never issue a review
 verdict. Never spawn another bridge. You own delegation for this scope: parallel implementation of
 independent surfaces, background research, scouting - the shape is yours to choose at execution time,
@@ -100,7 +100,7 @@ number of subagents you dispatched, and anything blocked. If the sandbox denies 
 tree as it is and say so in your digest.
 ```
 
-The never-list bounds push, history, scope, verdict, and a nested bridge, never the owner's own delegation. The delegation sentences are the judicious-subagent license the in-host worker holds on the no-plan route, so whoever implements owns delegation wherever it runs (STRATEGY.md, "The owner holds the license"). "Never spawn another agent" was a widening that shipped in #436 and is retired; a brief that reinstates it has narrowed the owner without a requirement.
+The never-list bounds push, history, scope, verdict, and a nested bridge, never the owner's own delegation. The delegation sentences are the judicious-subagent license the in-host worker holds on the no-plan route, so whoever implements owns delegation wherever it runs. A brief that adds "never spawn another agent" narrows the owner without a requirement.
 
 Sandbox that denies commits (read-only, or `workspace-write` on codex): fall back to one run per scope unit with the host committing between runs; the child reports the denied commit in its digest rather than returning a silently dirty tree.
 
@@ -160,7 +160,7 @@ If a sandbox denies `git commit`, still complete `done` with the evidence you ha
 
 ## Verification scoping
 
-Per-task Quick commands list FOCUSED suites for the files you touch - that is what workers baseline and verify per task. The FULL suite runs once at the final gate; prefer the repo's parallel test entrypoint when one exists (see the project instruction file for the canonical command).
+Per-task Quick commands list FOCUSED suites for the files you touch - that is what workers baseline and verify per task. The FULL suite runs only when the repository's instructions or the person ask for it; prefer the repo's parallel test entrypoint when one exists (see the project instruction file for the canonical command).
 
 ## Evidence JSON Format
 

@@ -1,13 +1,13 @@
 # Rolling frontier scheduler (Phase 3, rolling route)
 
-> Read from phases.md Phase 3 when the route decision there selected
+> Read from multi-task.md Phase 3 when the route decision there selected
 > `Scheduling: rolling`. `$FLOWCTL` is already resolved by the SKILL.md
 > preamble. Phases 1, 2, 4, and 5 run unchanged around this file; every
-> pointer below into phases.md or a sibling reference means READ that file and
+> pointer below into multi-task.md, phases.md or a sibling reference means READ that file and
 > execute the named section verbatim - never restate or fork it. The route
 > decision already sent task-id runs, plan-sync-on runs, specs with fewer
 > than two open tasks, and fully sequential dependency chains to the wave
-> route (phases.md 3a-3g); this file runs only when none of those held.
+> route (multi-task.md 3a-3g); this file runs only when none of those held.
 
 Contents:
 
@@ -89,7 +89,7 @@ claim).** Rolling admission needs non-blocking subagent dispatch with
 completion notifications. Judge that by the host's ACTUAL behaviour - a live
 measurement (dispatch two short sleep agents and observe whether control
 returns before completion, with per-completion signals) or a prior
-in-session one - never by host name. Then print the line phases.md Phase 3
+in-session one - never by host name. Then print the line multi-task.md Phase 3
 deferred to this file, exactly once, before entering 3a:
 
 ```text
@@ -99,7 +99,7 @@ Scheduling: degraded to wave (host lacks non-blocking dispatch)  # dispatch meas
 
 A rolling run whose first `flowctl start` precedes this line has broken this.
 
-Before the first admission batch, run one baseline at the recorded spec base using the spec's Quick commands. Record the verified SHA and exact commands; a green result may be handed to every task in that first batch as `BASELINE_HANDOFF`, provided only `.flow/` paths changed between verification and dispatch. Any non-`.flow/` change invalidates that handoff; red baselines follow the worker's existing failure rule. For each green full gate in this baseline, write `$FLOWCTL gate receipt --gate <gate_id> --command "<exact command>"` so workers reuse the full gate through their existing receipt check. Lint/format still run per worker.
+Before the first admission batch, run one baseline at the recorded spec base using the spec's focused Quick commands. Record the verified SHA and exact commands; a green result may be handed to every task in that first batch as `BASELINE_HANDOFF`, provided only `.flow/` paths changed between verification and dispatch. Any non-`.flow/` change invalidates that handoff; red baselines follow the worker's existing failure rule. For each green full gate in this baseline, write `$FLOWCTL gate receipt --gate <gate_id> --command "<exact command>"` so workers reuse the full gate through their existing receipt check. Lint/format still run per worker.
 
 ## 3a Admission at Every Worker-Return Event
 
@@ -194,7 +194,7 @@ recomputed frontier is empty and the local in-flight set is empty, route to
 3a's typed contention outcome (`Rolling run ended: spec contended ...`)
 rather than waiting for an event that cannot arrive.
 
-**Tracker touchpoint:** run phases.md 3b.1 exactly as written there **once per RUN, at the run's
+**Tracker touchpoint:** run multi-task.md 3b.1 exactly as written there **once per RUN, at the run's
 first successful claim only** - the `work.firstClaim` event is a run-lifecycle
 event, not a per-task one (tracker-touchpoints.md scopes it to the spec's
 first claimed task). Track that it fired; later admission events never re-run
@@ -202,7 +202,7 @@ it. A run that dispatched 3b.1 per claimed task has broken this.
 
 ## 3c Spawn Workers
 
-Read phases.md 3c and execute it with these fixed values - everything else
+Read multi-task.md 3c and execute it with these fixed values - everything else
 (implementer-tier routing, the commit-spec-files-first rule, the prompt
 template, per-task `REVIEW_MODE` resolution, `BASELINE_HANDOFF` judgment) is
 as written there:
@@ -241,12 +241,10 @@ workers keep running.
 **Blocking-dispatch hosts degrade honestly (fail-closed - scheduling/join
 only).** On a host whose ordinary subagent dispatch BLOCKS until completion
 and offers no background dispatch with completion notifications, dispatching
-multiple workers silently recreates the wave barrier. **The 3.0 probe already
-measured this** - by the host's ACTUAL dispatch behaviour, never by host
-name: the original host list here was an assumption, and both named hosts
-fell to a five-minute probe (measured non-blocking and rolling end-to-end
-2026-08-27: Cursor on macOS, and Grok Build 1.0.5 via `spawn_subagent`
-background mode; Claude Code's background Task dispatch remains the canonical
+multiple workers silently recreates the wave barrier. **The 3.0 probe decides
+this** - by the host's ACTUAL dispatch behaviour, never by host name
+(Cursor on macOS and Grok Build's `spawn_subagent` background mode both
+roll end-to-end; Claude Code's background Task dispatch is the canonical
 example). On a genuinely blocking host the failure shape is: the
 conductor cannot observe the first return until all return, and the run is
 wave scheduling wearing a rolling label. Do not pretend otherwise - but
@@ -272,7 +270,7 @@ Two event kinds drive 3d, and **admission (3a) is recomputed immediately after
 handling EACH event** - never deferred to the end of a task's review tail:
 
 **Worker-return event** (that task only):
-Before accepting the return or integrating, apply [phases.md Phase 3d](../phases.md#3d-join-integrate-and-verify)'s task-status, lane-attributed live-command check (a handover with an attributable live command still waits). If its early-return wait applies, retain the task's slot, recompute admission at 3a and keep handling other events while the command runs; handle the return after it exits through the re-anchoring continuation worker in the same workspace, with Phase 3d's early-return strike exemption and dispatch `TIMEBOX` bound (then its existing TIMEBOX stand-down and 2-strike rules).
+Before accepting the return or integrating, apply [multi-task.md Phase 3d](multi-task.md#3d-join-integrate-and-verify)'s task-status, lane-attributed live-command check (a handover with an attributable live command still waits). If its early-return wait applies, retain the task's slot, recompute admission at 3a and keep handling other events while the command runs; handle the return after it exits through the re-anchoring continuation worker in the same workspace, with Phase 3d's early-return strike exemption and dispatch `TIMEBOX` bound (then its existing TIMEBOX stand-down and 2-strike rules).
 
 1. Read [wave-join.md](wave-join.md) and execute its handover +
    integration steps: confirm the handover; integrate that task's workspace
@@ -281,14 +279,16 @@ Before accepting the return or integrating, apply [phases.md Phase 3d](../phases
    head). Keep that base in the conductor's per-task record; if absent, recover
    `base_commit` from that task's normalized evidence. Never read the shared
    `.flow/tmp/base_commit`; a missing base is `BLOCKED`, never an empty review base.
-2. When the task's resolved `REVIEW_MODE` is not `none`, LAUNCH its review
+2. When the task's resolved `REVIEW_MODE` is not `none` and the working-rules.md risk rule selects the task's change, LAUNCH its review
    conductor-side
    (`flow-next:flow-next-impl-review <task-id> --base <task-normalized-integrated-base> --review=<backend>`
    from a safe review context per wave-join.md) **as a concurrent activity via
    the thin-wrapper-subagent pattern from the project's orchestration
    guidance - do not wait for the verdict here.** The task transitions to the
    `(review)` in-flight state, still holding its slot. When `REVIEW_MODE` is
-   `none`, skip to the SHIP branch of the review-completion event below.
+   `none`, or the risk rule does not select the change (record
+   `stage: impl-review - skipped(policy: risk - <reason>)`), skip to the SHIP
+   branch of the review-completion event below.
 3. Recompute admission at 3a NOW.
 
 **Degraded serial-review path:** a host with no concurrent-dispatch primitive
@@ -305,7 +305,7 @@ default shape.
   the task's evidence commits - a SHIP whose fix commits are not on the
   target is not a completable state, and running `done` over it has broken
   this. THEN run the focused integrated verify: the task's focused Quick commands on the integrated target. The wave-join full-gate step applies only at quiesce on this rolling route. Before `done`, the conductor
-  reads [the worker agent's Phase 4.5](../../../agents/worker.md#phase-45-auto-capture-on-successful-fix-after-needs_work-ship)
+  reads [worker-memory-capture.md](worker-memory-capture.md) (the worker's Phase 4.5)
   and executes its memory auto-capture using the review rounds and fix commits:
   check `memory.enabled`, capture only after NEEDS_WORK → SHIP under its
   existing non-trivial-fix/dedup rules, and warn on failure without blocking
@@ -314,6 +314,7 @@ default shape.
   `done` records its skip stage line); verify `done`; run the 3d.1 tracker
   touchpoint; THEN free the slot and recompute admission at 3a. done(N) fires only
   on SHIP(N).
+- **NEEDS_WORK** with an `OVERRIDDEN:` line → as SHIP above. A `NEEDS_WORK` that impl-review reports with an `OVERRIDDEN:` line (an unattended loop ended over declined findings, working-rules.md) completes the task like SHIP: record the declined findings in the evidence and the Decisions list.
 - **NEEDS_WORK** → TERMINAL. impl-review returns NEEDS_WORK only after its
   own internal fix loop and churn cap are exhausted; the worker
   contract is exactly one impl-review invocation per task, then typed
@@ -352,7 +353,7 @@ task, never a correctness loss.
 **Worker failure handling (per task).** A worker that returns without a valid
 handover (or whose result is lost) is diagnosed from ground truth INSIDE its
 assigned workspace per wave-join.md's partial-failures rules, then classified
-per phases.md 3d (work complete / continuation worker into the SAME
+per multi-task.md 3d (work complete / continuation worker into the SAME
 workspace / retry). **The retry is bounded by the per-task strike
 counter (2 consecutive failures → typed escalation; a third respawn has broken
 this).** A stall-guard terminal (blocked-with-green-code) or the second
@@ -368,7 +369,7 @@ siblings are live abandons their `in_progress` claims and lets late returns
 arrive after the conductor is gone - no task is ever left silently
 `in_progress`. The run never wedges on one task.
 
-**Tracker touchpoint:** when the task reached `done`, run phases.md 3d.1
+**Tracker touchpoint:** when the task reached `done`, run multi-task.md 3d.1
 exactly as written there.
 
 ## 3f Quiesce
@@ -380,10 +381,10 @@ foreign in-flight set (tasks `in_progress` under another run on this spec)
 are ALL empty - a non-empty foreign set routes to 3a's typed contention
 outcome instead, never here. At quiesce:
 
-1. Run the full-suite verification once on the final integrated target
-   (wave-join.md's integrated-target verification contract - the full gate
-   runs only here, never per task); fix and commit any failure, then rerun the affected gate. After each green full gate, write `$FLOWCTL gate receipt --gate <gate_id> --command "<exact command>"` at the verified HEAD, using the same gate id and command as Phase 4. Red gates write no receipt. Phase 4 can then honor this receipt at the same HEAD (or after `.flow/`-only commits).
-2. Run phases.md 3g (completion review gate) exactly as written there - only
+1. Run the full-suite verification once on the final integrated target when the
+   repository or the user asks for a full suite (wave-join.md's integrated-target
+   verification contract - the full gate runs only here, never per task); fix and commit any failure, then re-check the fix with focused tests. After each green full gate, write `$FLOWCTL gate receipt --gate <gate_id> --command "<exact command>"` at the verified HEAD, using the same gate id and command as Phase 4. Red gates write no receipt. Phase 4 can then honor this receipt at the same HEAD (or after `.flow/`-only commits).
+2. Run multi-task.md 3g (completion review gate) exactly as written there - only
    its timing shifts to quiesce, never its semantics.
 
 Then continue with Phase 4 (quality) and Phase 5 (ship). **The notes
@@ -405,7 +406,7 @@ A quality or ship failure is not a clean completion, and its diagnostic
 notes must still exist. On an interrupted or escalated run leave the directory
 in place (inert prose, removable by hand).
 
-**The run is not over at the last `done` (field receipt #1, 2026-08-22).** The
+**The run is not over at the last `done`.** The
 final integration is the moment this failure happens: the frontier is empty,
 every task reads `done`, and ending the turn feels complete - but quiesce has
 not run. **Detect quiesce and continue IN THE SAME TURN**: after ANY 3d

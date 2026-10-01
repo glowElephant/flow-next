@@ -1,6 +1,8 @@
 # /flow-next:qa workflow
 
-Execute these phases in order. Each gates on the prior. Stop on a user-blocking error — never plow through with bad state, and never fabricate evidence to keep going.
+Run the phases in order. Stop on a user-blocking error rather than continuing with bad state, and
+never invent evidence to keep going. Every path, including no target and no driver, ends with the
+receipt in §6.3.
 
 ## Preamble
 
@@ -10,55 +12,33 @@ FLOWCTL="${CODEX_HOME:-$HOME/.codex}/scripts/flowctl"
 [ -x "$FLOWCTL" ] || FLOWCTL="<plugin-root>/scripts/flowctl"   # <plugin-root> = the directory two levels above this skill's SKILL.md file (the harness gave you that file's absolute path when the skill loaded); substitute it literally
 [ -x "$FLOWCTL" ] || FLOWCTL=".flow/bin/flowctl"
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
-TODAY="$(date -u +%Y-%m-%d)"
 ```
 
-`jq`, `git` and the bundled flowctl launcher must be available. The launcher resolves Python. `SPEC_ID` comes from the SKILL.md mode-detection block (may be empty — Phase 1 resolves it).
+Needs `jq` and `git`. `SPEC_ID`, `NO_PROMPT` and the overrides come from SKILL.md. Without a
+`.flow/` directory, print `No .flow/ directory — /flow-next:qa runs inside a flow-next-managed repo.`
+and exit 1.
 
-If `.flow/` does not exist, print `No .flow/ directory — /flow-next:qa runs inside a flow-next-managed repo.` and exit 1.
+Questions below are info prompts for undocumented facts, never "shall I run / ship?" gates. With
+`NO_PROMPT=1` nothing is asked:
 
-**The hard rule applies through every phase:** PASS / SHIP is forbidden from source inspection. The verdict rests on live-app evidence captured in Phase 4, never on reading the diff. No live app reachable → BLOCKED, never PASS.
+| Fact | Interactive | Autonomous |
+|------|-------------|------------|
+| Spec id (1.1) | ask | branch match only; else error exit |
+| Base ref (1.2) | ask | BLOCKED |
+| Target URL (3.1) | ask | BLOCKED |
+| Test accounts (3.2) | ask | BLOCKED |
 
-## Autonomous-mode gate (before any prompt path)
-
-Compute the no-prompt flag **here, at the preamble, before Phase 1** — every interactive prompt in Phases 1.1 / 1.2 / 3.1 / 3.2 reads it, so it must be resolved before the first one is reached (not in a post-verdict preflight). It folds two signals:
-
-```bash
-# QA_AUTONOMOUS arrives from the SKILL.md mode-detection block (mode:autonomous
-# token | FLOW_AUTONOMOUS=1). Ralph (Phase A) also suppresses prompts, so a Ralph
-# run is implicitly autonomous. NO_PROMPT=1 ⇒ never call plain-text numbered prompt anywhere.
-RALPH=0
-if [ -n "${REVIEW_RECEIPT_PATH:-}" ] || [ "${FLOW_RALPH:-}" = "1" ]; then RALPH=1; fi
-NO_PROMPT=0
-if [ "${QA_AUTONOMOUS:-}" = "1" ] || [ "$RALPH" = "1" ] \
-  || [ "${FLOW_AUTONOMOUS:-}" = "1" ] || [ "${AUTONOMOUS:-}" = "1" ] \
-  || [[ " ${ARGUMENTS:-} " == *" mode:autonomous "* ]]; then NO_PROMPT=1; fi
-```
-
-**Ask the user via plain text.** Render the options below as a numbered list `1.` … `N.`, followed by a final option `N+1. Other — type your own answer`. Print the question, then the numbered list, then **stop and wait for the user's next message before continuing**. Parse the reply as: a bare number `1`–`N+1` → that option; the literal text of an option label → that option; free text after `Other` → custom answer.
-
-When `NO_PROMPT=1`, every `plain-text numbered prompt` info-prompt below routes deterministically instead of asking — resolve from spec / config / env, else surface the limitation as a **BLOCKED `qa_verdict`** (§6.3) + clean exit (the spec-id-undetermined case under Ralph is the one genuine hard error — Phase A §1). Each phase below restates its own branch; the full per-fact routing table is reached only on the autonomous path:
-
-```bash
-# Fail OPEN: an unset NO_PROMPT (gate above failed to compute) reads the reference.
-if [ "${NO_PROMPT:-1}" = "1" ]; then
-  echo "AUTONOMOUS GATE ACTIVE — STOP. Read references/autonomy.md#0-the-autonomous-routing-table-no_prompt1 before continuing."
-fi   # default branch: bare no-op — NO link, NO read path
-```
-
-When the sentinel prints, STOP and Read [references/autonomy.md](references/autonomy.md) (§0, the per-fact routing table) before any further step. When the gate is silent (`NO_PROMPT=0`, interactive), continue — every prompt path below asks the user as written.
-
-`QA_AUTONOMOUS` (autonomy ≠ Ralph) gates **question suppression only** — it activates no ralph-guard hook and no receipt-path gate. The `flow --auto` QA stage passes it so the build loop never hangs on a prompt; the BLOCKED-and-advance contract (R6) keeps an environment without a local app from wedging the pipeline.
+BLOCKED here means: set `QA_OUTCOME=BLOCKED` and a `BLOCKED_REASON`, go straight to §6.3, write
+the receipt and exit cleanly.
 
 ---
 
 ## Phase 1: discover
 
-**Goal:** resolve the spec id, then pull the structured cognitive-aid payload that Phase 2 derives scenarios from. The spec is the source of intent — read it before touching the app.
+### 1.1 Spec id
 
-### 1.1 — Resolve the spec id
-
-`SPEC_ID` may arrive from the argument list. When empty, resolve it from the current branch, then fall back to an info prompt. Match the branch against each spec's stored `branch_name` — **never against the branch literal**, since a flow branch name need not equal the spec id; a resolver comparing the branch string to spec ids has broken this. Reuse the make-pr pattern (`flow-next-make-pr/workflow.md` Phase 0). Scan `.flow/specs/*.json` (canonical) and `.flow/epics/*.json` (legacy alias dir):
+When `SPEC_ID` is empty, match the current branch against each spec's stored `branch_name` (never
+against the spec id itself):
 
 ```bash
 if [[ -z "$SPEC_ID" ]]; then
@@ -75,184 +55,103 @@ if [[ -z "$SPEC_ID" ]]; then
 fi
 ```
 
-If still empty: when `NO_PROMPT=0`, ask via `plain-text numbered prompt` (info prompt — *"Which spec should I QA?"*, options drawn from `$FLOWCTL specs`). When `NO_PROMPT=1` (autonomous / Ralph), the branch-match above is the only resolver — an unresolved spec id is a genuine "no user to ask" hard error (non-zero exit + stderr), per the Autonomous-mode gate table. Never silently default to a spec.
-
-Validate the resolved id is a spec (not a task):
+Still empty: ask which spec to QA (options from `$FLOWCTL specs`), or under `NO_PROMPT=1` exit
+non-zero with a message. Never default silently. Then confirm it is a spec, not a task:
 
 ```bash
 $FLOWCTL show "$SPEC_ID" --json | jq -e '.tasks != null' >/dev/null \
   || { echo "Not a spec: $SPEC_ID (QA runs against a spec, not a single task)." >&2; exit 1; }
 ```
 
-### 1.2 — Resolve the diff base + pull the cognitive-aid payload
+### 1.2 Base and the spec payload
 
-`spec export-cognitive-aid` requires a `--base` ref. QA needs the **spec** section (AC / R-IDs / boundaries / decision context) to derive scenarios **and** the top-level `tasks[]` (with each task's `satisfies` + `evidence`) for the §2.0 evidence-aware subtraction, so load the one full payload and reuse it:
+The base is `QA_BASE_REF` when given, else the first ref that resolves:
 
 ```bash
-# Base-branch detection cascade (reuses make-pr Phase 0): pick the first ref that
-# actually resolves. `git rev-parse --verify --quiet` is the gate — a bare `sed`
-# pipeline exits 0 even when origin/HEAD is unset, which would leave the base
-# empty and break the merge-base below.
-#
-# Honor a caller-supplied base override first: a `--base <ref>` flag (when the
-# Mode-Detection block parses one) or a `QA_BASE_REF` env var sets DEFAULT_BRANCH
-# before the cascade, so the detection only runs when nothing was passed.
 DEFAULT_BRANCH="${QA_BASE_REF:-}"
-if [[ -z "$DEFAULT_BRANCH" ]]; then
-  for candidate in origin/main main origin/master master; do
-    if git -C "$REPO_ROOT" rev-parse --verify --quiet "$candidate" >/dev/null 2>&1; then
-      DEFAULT_BRANCH="$candidate"; break
-    fi
-  done
-fi
-# Fall back to the repo's ACTUAL default branch when it isn't named main/master
-# (develop, trunk, …). `origin/HEAD` is the remote's recorded default; resolve it
-# to `origin/<branch>` and verify the ref actually exists. `git remote set-head
-# origin -a` repairs an unset symbolic-ref on clones that never recorded one.
-if [[ -z "$DEFAULT_BRANCH" ]]; then
-  ORIGIN_HEAD="$(git -C "$REPO_ROOT" symbolic-ref --quiet refs/remotes/origin/HEAD 2>/dev/null \
-    | sed 's#^refs/remotes/##')"
-  if [[ -z "$ORIGIN_HEAD" ]]; then
-    git -C "$REPO_ROOT" remote set-head origin -a >/dev/null 2>&1 || true
-    ORIGIN_HEAD="$(git -C "$REPO_ROOT" symbolic-ref --quiet refs/remotes/origin/HEAD 2>/dev/null \
-      | sed 's#^refs/remotes/##')"
-  fi
-  if [[ -n "$ORIGIN_HEAD" ]] && git -C "$REPO_ROOT" rev-parse --verify --quiet "$ORIGIN_HEAD" >/dev/null 2>&1; then
-    DEFAULT_BRANCH="$ORIGIN_HEAD"
-  fi
-fi
-# Still nothing — ask the user for the base (interactive), or hard-error under
-# Ralph. Mirrors make-pr Phase 0: never silently exit on an unusual default branch.
-QA_OUTCOME=""   # set non-empty here ONLY to short-circuit to the BLOCKED receipt (autonomous no-base path)
-if [[ -z "$DEFAULT_BRANCH" ]]; then
-  if [[ "${NO_PROMPT:-0}" == "1" ]]; then
-    # Autonomous / Ralph: no user to ask. An undetectable base ref means scenarios
-    # cannot be derived → surface a BLOCKED qa_verdict (the Autonomous-mode gate
-    # table), never a prompt, never a hang. Short-circuit straight to the §6.3
-    # writer (skip the rev-parse validation + payload pull below) with:
-    #   QA_OUTCOME=BLOCKED, BLOCKED_REASON="no base branch detected (…); pass --base".
-    echo "No base branch detected (origin/main, main, origin/master, master, origin/HEAD all missing). Emitting BLOCKED qa_verdict; pass an explicit --base to QA." >&2
-    QA_OUTCOME="BLOCKED"
-    BLOCKED_REASON="no base branch detected (origin/main, main, origin/master, master, origin/HEAD all missing) — pass an explicit --base"
-  else
-    # Interactive: ask for the base ref via plain-text numbered prompt (info prompt — no frozen
-    # options; accept a typed ref). Validate the answer with rev-parse below; on
-    # abort, exit 1. (sync-codex.sh rewrites plain-text numbered prompt to a numbered prompt.)
-    : "ask user for DEFAULT_BRANCH via plain-text numbered prompt; on abort exit 1"
-  fi
-fi
-# When the autonomous no-base path set QA_OUTCOME=BLOCKED, skip the rest of Phase 1.2
-# and Phase 2 entirely — jump to §6.3 to write the BLOCKED receipt and exit clean.
-# (The host treats a non-empty QA_OUTCOME here as the terminal short-circuit.)
-if [[ "$QA_OUTCOME" == "BLOCKED" ]]; then
-  : "→ skip to Phase 6.3: write BLOCKED qa_verdict, exit clean"
-else
-  # Validate the resolved/typed base actually exists before computing the merge-base.
-  if ! git -C "$REPO_ROOT" rev-parse --verify --quiet "$DEFAULT_BRANCH" >/dev/null 2>&1; then
-    echo "Base ref '$DEFAULT_BRANCH' is not a valid git ref. Check with: git rev-parse --verify $DEFAULT_BRANCH" >&2
-    exit 1
-  fi
-fi
-# Diff base = the merge-base, so a branch that's behind the default still gets a
-# stable base. Fall back to the default branch itself if no merge-base exists.
-# (Only runs when not short-circuited to BLOCKED above.)
-if [[ "$QA_OUTCOME" != "BLOCKED" ]]; then
-  BASE_REF="$(git -C "$REPO_ROOT" merge-base "$DEFAULT_BRANCH" HEAD 2>/dev/null || echo "$DEFAULT_BRANCH")"
-  PAYLOAD="$($FLOWCTL spec export-cognitive-aid "$SPEC_ID" --base "$BASE_REF" --json)"  # full payload — tasks[] is the evidence source for §2.0
+for candidate in origin/main main origin/master master; do
+  [[ -n "$DEFAULT_BRANCH" ]] && break
+  if git -C "$REPO_ROOT" rev-parse --verify --quiet "$candidate" >/dev/null 2>&1; then DEFAULT_BRANCH="$candidate"; fi
+done
+if [[ -z "$DEFAULT_BRANCH" ]]; then   # a default branch not named main/master
+  git -C "$REPO_ROOT" symbolic-ref --quiet refs/remotes/origin/HEAD >/dev/null 2>&1 \
+    || git -C "$REPO_ROOT" remote set-head origin -a >/dev/null 2>&1 || true
+  ORIGIN_HEAD="$(git -C "$REPO_ROOT" symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null || true)"
+  if git -C "$REPO_ROOT" rev-parse --verify --quiet "$ORIGIN_HEAD" >/dev/null 2>&1; then DEFAULT_BRANCH="$ORIGIN_HEAD"; fi
 fi
 ```
 
-The `spec.spec_sections` object carries the fields Phase 2 maps:
-
-| Field | Type | Phase 2 use |
-|-------|------|-------------|
-| `acceptance_criteria[]` | `[{id, text, tag}]` | **AC → scenarios** + the R-ID coverage spine |
-| `boundaries[]` | `[string]` | **what NOT to test** (suppress false bugs) |
-| `decision_context[]` | `[{question, answer}]` | **expected behavior** (the *Expected* column) |
-| `goal_and_context` | string | scenario framing / persona intent |
-| `architecture_overview` | string | which surfaces exist to drive |
-
-If `acceptance_criteria` is empty, there is nothing to derive scenarios from — emit a clean **N/A verdict** in Phase 6 (no driveable intent), never crash.
-
-### 1.3 - Feature map (existence-gated)
-
-The map supplies navigation only. This run's ACs/R-IDs still come from the spec payload; live captured evidence remains the SHIP basis (the hard rule above).
+If nothing resolved: ask for the base ref, or under `NO_PROMPT=1` go BLOCKED with
+`BLOCKED_REASON="no base branch detected — pass an explicit --base"`. Otherwise validate the ref
+and load the payload once:
 
 ```bash
-if [ -d "$REPO_ROOT/.flow/features" ]; then
-  : "Resolve the target per the contract's Live-app stages section"
-fi
+git -C "$REPO_ROOT" rev-parse --verify --quiet "$DEFAULT_BRANCH" >/dev/null \
+  || { echo "Base ref '$DEFAULT_BRANCH' is not a valid git ref." >&2; exit 1; }
+BASE_REF="$(git -C "$REPO_ROOT" merge-base "$DEFAULT_BRANCH" HEAD 2>/dev/null || echo "$DEFAULT_BRANCH")"
+PAYLOAD="$($FLOWCTL spec export-cognitive-aid "$SPEC_ID" --base "$BASE_REF" --json)"
 ```
 
-When the directory exists, follow "Live-app stages" in [feature-entry-contract.md](../flow-next-features/references/feature-entry-contract.md).
+`$PAYLOAD` is the only source for Phase 2; do not export again. `spec.spec_sections` holds
+`acceptance_criteria[]` (`{id, text, tag}`), `boundaries[]`, `decision_context[]`
+(`{question, answer}`), `goal_and_context` and `architecture_overview`. The top-level `tasks[]`
+holds each task's `satisfies` and `evidence` (`{commits, tests, files_touched}`). The task objects
+in `flowctl show <spec>` carry neither, so never decide subtraction from them.
 
-**A per-target miss is treated like an absent map.** Seed writes a handful of features on purpose, so a map that exists but does not cover this spec's target (no matching Surface, no matching feature, or an entry that fails the contract shape) is `unmapped` and falls back to the normal route derivation below for that target - never a reduced scenario set because the directory happened to exist.
+Empty `acceptance_criteria`: nothing to drive; the outcome is NA.
 
-When it is absent: skip. Behavior is byte-identical to today; the only added cost is the existence check.
+### 1.3 Feature map
 
-### Done when
+When `.flow/features/` exists, follow "Live-app stages" in
+[feature-entry-contract.md](../flow-next-features/references/feature-entry-contract.md) and load
+only the matching feature file. The map supplies navigation only; scenarios still come from the
+spec and SHIP still rests on live evidence. A map that does not cover this target (no matching
+surface or feature, or a malformed entry) counts as absent for that target: derive routes as usual.
 
-- `SPEC_ID` names a spec (`.tasks != null`), resolved from the argument, the `branch_name` match, or an info prompt. Under `NO_PROMPT=1` an unresolved id ended the run as the documented hard error rather than a default.
-- `BASE_REF` resolved through the cascade and validated, **or** the autonomous no-base path set `QA_OUTCOME=BLOCKED` with a `blocked_reason` and short-circuited to §6.3. A hang or a prompt on the autonomous path has broken this.
-- `$PAYLOAD` holds one `spec export-cognitive-aid` result carrying both `spec.spec_sections` and the top-level `tasks[]`. **Phase 2 reads that payload.** A second export call, or a `flowctl show` used as the evidence source, has broken this.
-- If `.flow/features/` existed, the reused or matched feature file was loaded for navigation, never the whole map; a per-target miss fell back to normal derivation; if absent, only the existence check ran.
+### Autonomous preflight
+
+Under `NO_PROMPT=1`, resolve the target (§3.1) and accounts (§3.2) now. A missing target, or
+missing accounts that scenarios need, goes BLOCKED immediately with empty coverage. A public-only
+target needs no account.
 
 ---
 
-### Autonomous target preflight
-
-Before scenario derivation, when `NO_PROMPT=1`, resolve the target and account
-requirements using §3.1–3.2. `NO_PROMPT` includes `FLOW_RALPH`,
-`REVIEW_RECEIPT_PATH`, `FLOW_AUTONOMOUS=1`, `AUTONOMOUS=1` and `mode:autonomous`.
-A missing target or required accounts ends BLOCKED immediately through §6.3;
-keep coverage empty because no scenarios were derived. Public-only targets
-need no account. Reuse the resolved target and accounts in Phase 3.
-
 ## Phase 2: derive
 
-**Goal:** turn the spec into a scenario set with a coverage spine. This is the spec-as-intent advantage — the host already encodes intent instead of reconstructing it (a spec-less QA tool burns a whole reference rediscovering what is in `.flow/specs/`).
+### 2.0 Subtract what work already proved
 
-### 2.0 — Evidence-aware subtraction (read work's evidence first)
+Skip the live run for an R-ID only when **all three** hold; otherwise keep it live:
 
-`work` already verifies a lot — it runs the spec's tests/lints and (for UI tasks) drives the app agentically while building. Don't re-run what `work` *deterministically* proved; do re-run everything whose satisfaction is runtime/UI/integration behavior, even if `work` narrated it done. **The subtraction keys on evidence *type*, not presence.** This runs **before** §2.1 so the AC → scenario mapping starts from the already-narrowed set.
+1. A `tasks[]` entry's `satisfies` lists this R-ID.
+2. That task's `evidence.tests` holds a specific, re-runnable command tied to this criterion
+   (`pnpm test src/foo.test.ts`, a named unittest). A broad command (`pnpm test`, `make`,
+   `npm run build`) proves no specific criterion.
+3. The criterion is statically verifiable (a pure function, a build gate, a CLI exit code with a
+   deterministic test). Anything observable in the running app (a UI flow, rendered state, a
+   request round-trip, an external integration) is always live, even if a task says it is done.
 
-**The evidence is read from the cognitive-aid payload, never from the spec-level task objects.** Those objects are `{id,title,status,priority,depends_on}` — a subtraction decided from them has broken this, because they carry no `evidence` and no `satisfies` to decide on. The Phase 1 `$PAYLOAD` (`spec export-cognitive-aid`) carries a top-level `tasks[]`, each with `satisfies` (the R-ID map) and `evidence` (`{commits, tests, files_touched}`):
+`files_touched`, `commits`, `prs` and any "I verified X" narration never subtract. With no task
+evidence, nothing subtracts. When in doubt, keep it live.
 
-```bash
-# CONSERVATIVE subtraction. Each tasks[] entry: {id, status, title, satisfies, done_summary, evidence}.
-# evidence = {commits[], tests[], files_touched[]}. (Per-task `flowctl show <task-id> --json`
-# carries the {commits,tests,prs} shape too — same conservative rule.)
-#
-# DO NOT use `flowctl show <spec-id> --json | jq '.tasks[].evidence'` — the spec-level
-# task objects are {id,title,status,priority,depends_on} ONLY; no evidence, no satisfies.
-TASKS_EVIDENCE="$(printf '%s' "$PAYLOAD" | jq -c '[.tasks[]? | {id, satisfies: (.satisfies // []), tests: (.evidence.tests // [])}]')"
-```
+### 2.1 Build the scenarios
 
-Then, per R-ID in the coverage spine, decide subtract-vs-live with **all three** conditions true to subtract — otherwise keep the live scenario:
+When 1.3 loaded a feature, scenario steps use its routes and commands.
 
-1. **`satisfies`-mapped** — a `tasks[]` entry's `satisfies` array contains this AC's R-ID. (A task that doesn't claim the R-ID can't vouch for it.)
-2. **Deterministic, specific, re-runnable** — that task's `evidence.tests` holds a command **directly tied to this R-ID / a non-live criterion** (a named test/lint/build target you could re-run and get the same answer: `python3 -m unittest …test_x`, `pnpm test src/foo.test.ts`, a specific Quick target). A **broad/ambiguous** command (bare `pnpm test`, `make`, `npm run build`) proves no *specific* AC ⇒ keep the live scenario. A row `subtracted` on the strength of a bare `pnpm test` has broken this.
-3. **Not a runtime/UI/integration AC** — the criterion is a non-live, statically-verifiable property (a unit-tested pure function, a build/typecheck gate, a CLI exit code with a deterministic test). **Any** AC whose satisfaction is observable-in-the-running-app behavior (a UI flow, a rendered state, a request round-trip, an integration with an external surface) is **always live-run**, never subtracted — even when the task narrated it done.
+1. **Criteria to scenarios.** Each user-observable criterion gets at least one scenario: persona,
+   goal, the steps a real user takes, and the expected result. Backend/CLI criteria get none;
+   mark them `backend/CLI — not live-QA-able`. Every write-path scenario also gets an error-path
+   variant (invalid input, empty, error or permission state).
+2. **Boundaries** are non-goals: never test them, and never file a "missing" feature a boundary
+   excludes.
+3. **Decision context** supplies the expected behaviour for the scenarios it governs.
+4. **Prior bugs.** Search `$FLOWCTL memory search "<surface or module>" --track bug` for the
+   touched surfaces and add a `regression` scenario (no R-ID; it does not count toward coverage)
+   for each prior bug that still plausibly applies, unless a boundary excludes it or the diff
+   removed the code.
 
-**Never subtract on:**
-- `files_touched` / `commits` / `prs` — these prove code *changed*, never that the criterion *holds*. They never subtract.
-- Any prose "I verified X" — a worker's or a bridged child's **self-report** is never the gate. Narration is never QA-grade captured evidence; the hard rule (§Preamble, R5) forbids honoring it.
+### 2.2 Coverage table
 
-Record, per R-ID, a `coverage_source ∈ {live, subtracted:<task-id>:<test-cmd>}` and **carry it into the §2.2 coverage table** (a `subtracted` row is a deliberate non-live row backed by a named re-runnable command, distinct from a `⚠️ no live scenario` gap). When in doubt, **keep the live scenario** — conservative subtraction never trades a live pass for a narrated claim. With zero recorded work-evidence (no `tasks[]`, empty `tests[]`), nothing subtracts — every UI-observable AC stays live (the safe default).
-
-### 2.1 — The five mappings
-
-Walk `spec.spec_sections` and build the scenario set. When Phase 1.3 loaded a matching feature for this target, scenario `steps` cite those map-sourced routes and commands; do not re-derive them. Targets the map does not cover derive routes exactly as without a map.
-
-1. **AC → scenarios.** Each `acceptance_criteria[]` entry with a *user-observable* surface becomes ≥1 scenario: a persona, a goal, and the steps a real user takes to exercise that criterion on the live app. Backend / CLI / non-UI criteria yield **no** scenario (they are covered by static review) — note them as "not live-QA-able" rather than inventing a fake UI path. **For every write-path / state-changing scenario, also derive an error-path variant** (invalid input, an empty/error/permission state) — ACs are written as positive assertions, so a happy-path-only set silently misses exactly the states real users hit.
-2. **R-IDs → coverage spine.** Every `acceptance_criteria[].id` is a row in the coverage table (see §2.2). Each scenario maps back to the R-ID(s) it exercises. R-IDs with no scenario are flagged `⚠️ no live scenario` (an honest gap, never a confident PASS).
-3. **Boundaries → exclusions.** Each `boundaries[]` entry is an **explicit non-goal**: a behavior QA must NOT test (e.g. "NOT a code review — drives the live app, not the source"). This suppresses false bugs — a "missing" feature that a boundary declares out of scope is not a finding.
-4. **Decision context → expected behavior.** Each `decision_context[]` `{question, answer}` pair seeds the **Expected** column for the scenario(s) it governs — the resolved-default behavior the live app should exhibit. A scenario's pass/fail is `observed vs this expected`, captured as evidence.
-5. **Prior bugs → regression scenarios.** QA *files* into the bug-memory track (Phase 5) but the derive step never *read* it — a half-closed loop: a bug filed by a previous pass on a touched surface is never re-exercised unless a new AC happens to cover it. Query `flowctl memory search --track bug` scoped to this spec's touched surfaces / modules and turn each still-plausible prior bug into a **regression scenario** (marked `regression`, **no R-ID** — it is coverage-independent, so it never counts toward or against the R-ID spine). Skip entries a `boundaries[]` item excludes or that the diff clearly removed.
-
-### 2.2 — Coverage spine (R-ID table)
-
-Render an R-ID coverage table — with this exact column order:
+One row per `acceptance_criteria[].id`, in spec order, never renumbered:
 
 ```markdown
 | R-ID | Acceptance criterion | Scenario(s) | Coverage |
@@ -263,183 +162,123 @@ Render an R-ID coverage table — with this exact column order:
 | R9 | <…> | — | subtracted (fn-1.2 · test_x) |
 ```
 
-- **R-ID column** — every entry from `acceptance_criteria[].id`, in spec order. Never renumber; preserve gaps verbatim.
-- **Acceptance criterion column** — `acceptance_criteria[].text` truncated to 120 chars (append a single `…` if truncated). Never edit content.
-- **Scenario(s) column** — the scenario ids (`S1`, `S2`, …) that exercise this R-ID; `—` when none.
-- **Coverage column** — `live` (a scenario will drive it), `subtracted (<task-id> · <test-cmd>)` (the §2.0 evidence-aware exclusion — a deterministic re-runnable check already proved it, so QA does not re-run; **distinct from a gap** — it is *covered*, just not live), `⚠️ no live scenario` (UI-observable but uncovered — a gap), or `backend/CLI — not live-QA-able` (no UI surface). A `subtracted` row is only legitimate when all three §2.0 conditions held; a runtime/UI/integration AC is **never** `subtracted`.
-
-This table is the traceability backbone: spec-AC ↔ scenario ↔ (later) finding ↔ R-ID. Phase 6 reuses it for the verdict; a `⚠️ no live scenario` row on a UI-observable R-ID is grounds for NEEDS_WORK, not SHIP. A `subtracted` row is **complete** coverage (a re-runnable check proved it) and does **not** block SHIP — but mis-classifying a runtime/UI AC as `subtracted` to dodge a live pass is exactly the failure §2.0 forbids.
-
-### 2.3 — Scenario record shape
-
-Each derived scenario is recorded as:
-
-```
-S<n>:
-  r_ids:    [R<i>, ...]        # which AC it exercises
-  persona:  <who — a fresh real user>
-  goal:     <what they're trying to do>
-  steps:    [<observable user action>, ...]
-  expected: <from decision_context / AC — what the live app should do>
-  excluded_by: [<boundary text>, ...]   # only if a boundary trims this scenario
-```
-
-Scenarios carry forward to Phase 3 (prepare) and Phase 4 (execute). At least one scenario (or an explicit "no UI-observable AC → N/A" determination) must exist before leaving Phase 2.
-
-### Done when
-
-- Every `acceptance_criteria[].id` is a row of the §2.2 table, in spec order with gaps preserved, and each row carries exactly one of `live`, `subtracted (<task-id> · <test-cmd>)`, `backend/CLI — not live-QA-able`, or `⚠️ no live scenario`. **A runtime or UI criterion marked `subtracted` has broken this.**
-- Every scenario record carries `r_ids`, persona, goal, steps, and expected — with each write-path scenario paired with an error-path variant. When the map was loaded, `steps` cite map-sourced routes/commands.
-- Each `boundaries[]` entry is recorded as an exclusion, so a "missing" feature a boundary declares out of scope is not filed in Phase 5.
+Coverage is exactly one of `live`, `subtracted (<task-id> · <test-cmd>)` (all three §2.0
+conditions held), `backend/CLI — not live-QA-able`, or `⚠️ no live scenario` (user-observable but
+not covered: a gap). A runtime or UI criterion is never `subtracted`.
 
 ---
 
 ## Phase 3: prepare
 
-**Goal:** make the live app driveable before Phase 4 touches it — resolve the **target URL / app**, **test accounts**, **session hygiene**, and the **device matrix** (one desktop + one mobile viewport). The QA discipline this phase applies (the five hygiene rules, persona suffixing, the write-path-first / one-tab-per-shard caution) is the lean BRB borrow in **[references/qa-discipline.md](references/qa-discipline.md)** — read it before preparing. When `NO_PROMPT=0`, ask the user (`plain-text numbered prompt`, info-only — never a confirm gate) when the URL or accounts are undocumented (R7). When `NO_PROMPT=1` (autonomous / Ralph — the Autonomous-mode gate), an undocumented URL / accounts is a hard limitation → BLOCKED (§6.3) + clean exit, never a prompt.
+Resolve what to drive and as whom. The driving commands (viewport, storage clearing, sessions,
+auth state) are flow-next-drive's: `../flow-next-drive/references/commands.md`,
+`session-management.md` and `auth.md`.
 
-**Driving stays flow-next-drive's job.** This phase resolves *what to drive and as whom*; the concrete commands (set viewport, clear storage, save/load auth state) live in flow-next-drive's references — point at them, never duplicate the prose:
+### 3.1 Target
 
-- Viewport + screenshot: `skills/flow-next-drive/references/commands.md` (`agent-browser set viewport W H`, `agent-browser screenshot …`)
-- Per-session isolation (`--session`): `skills/flow-next-drive/references/session-management.md`
-- Auth / state persistence (`state save` / `state load`, header auth): `skills/flow-next-drive/references/auth.md`
+First that resolves; never assume `localhost` silently:
 
-### 3.1 — Resolve the target URL / app
+1. `QA_TARGET_URL` (from `--target` or the environment).
+2. A deploy URL in the spec's `architecture_overview` or `goal_and_context`.
+3. A deploy URL in the README, `.env.example` or deploy config, or a documented dev-server URL and
+   start command.
+4. Ask which URL to test (a deploy or a local dev server); under `NO_PROMPT=1`, BLOCKED.
 
-Find the live target a real user would hit, in this priority order. Stop at the first that resolves; do **not** silently default to `localhost`:
+A target that turns out unreachable is not a failure here; it becomes BLOCKED in Phase 4.
 
-1. **Caller override** — a `--target <url>` flag or a `QA_TARGET_URL` env var, when present.
-2. **Spec signal** — a deploy URL named in `spec.spec_sections.architecture_overview` / `goal_and_context` (Phase 1's payload).
-3. **Repo signal** — a deploy URL in `README`, `.env.example`, or a deploy config (Vercel / Netlify / Cloudflare); or a documented dev-server URL + start command for a localhost run.
-4. **Ask the user** (`plain-text numbered prompt`, info prompt — *"What URL should I QA — a live deploy or a local dev server?"*) when `NO_PROMPT=0`. When `NO_PROMPT=1` (autonomous / Ralph) this is a hard limitation → BLOCKED + clean exit, never a prompt.
+### 3.2 Test accounts
 
-A target the driver cannot reach (no live deploy, no localhost app started) is **not** a Phase 3 failure — it carries forward to the Phase 6 **BLOCKED** outcome (R13 graceful surface), never a fabricated PASS.
+When a scenario needs to sign in, use the documented way (auth dev mode, seed script, fixtures,
+`.env.test.example`). If none is documented, ask; under `NO_PROMPT=1`, scenarios that cannot run
+without an account make the outcome BLOCKED. Never guess credentials and never commit a password.
+When a scenario needs an account or a fresh-user persona, read
+[references/prepare-surface.md](references/prepare-surface.md).
 
-### 3.2 — Resolve test accounts (ask when undocumented)
+### 3.3 Session hygiene
 
-Most scenarios beyond the public happy path need credentials. Resolve them before authoring auth-dependent steps. When a documented playbook exists (auth-provider dev mode, a seed script, fixtures, a `.env.test.example`), use it. If none is documented: when `NO_PROMPT=0`, **ask the user** (`plain-text numbered prompt`, info prompt) for the auth provider / dev-user docs, an admin account, and the per-run email-suffix convention. When `NO_PROMPT=1` (autonomous / Ralph), undocumented accounts are a hard limitation → BLOCKED + clean exit (the public happy-path scenarios may still run if a target URL resolved; auth-dependent scenarios that cannot proceed without credentials make the outcome BLOCKED). **Never guess credentials**, and never commit a password to the repo.
+Stale session state causes false failures and hides real ones. Before each scenario:
 
-The where-to-look list, the persona-suffix generator, and the secret-handling rule live in **[references/prepare-surface.md](references/prepare-surface.md)** §1 — read it when a scenario needs an account.
+- A fresh-user scenario starts with cleared cookies, `localStorage` and `sessionStorage`, signed out.
+- One isolated browser session per agent (`--session`); when isolation is not guaranteed, run
+  scenarios sequentially.
+- Leave about 30s between auth attempts. On a rate limit (429), stop that scenario and treat it as
+  blocked; do not retry.
+- Each scenario gets its own persona; switching role means sign out, clear storage, new session.
 
-### 3.3 — Session hygiene (the fresh-user contract)
+If behaviour still depends on hidden prior state with clean hygiene, that is a bug (usually P1):
+capture the storage contents before clearing them as its evidence.
 
-Apply the **five hygiene rules** and the **pre-scenario hygiene checklist** from [references/qa-discipline.md](references/qa-discipline.md) — fresh storage (not just cookies), one isolated session per agent, auth cool-down, a unique persona per scenario, and a full reset between role changes. They are the highest-dividend borrow; read them before driving a fresh-user scenario. The exact storage-clear / auth commands are flow-next-drive's (`auth.md`, `session-management.md`). If, with perfect hygiene, behavior still depends on unpredictable prior session state, **that is the bug** — file it (typically P1), capturing the storage snapshot before clearing as evidence.
+### 3.4 Viewports and order
 
-### 3.4 — Device matrix (v1 = viewport emulation only)
+On a web surface, run at one desktop (1280×800) and one mobile (375×812) viewport (emulation),
+leading with the spec's primary target. If the spec does not say, ask, or under `NO_PROMPT=1`
+infer it from the repo and note the assumption. Layout bugs hide at the size you skip, so run the
+relevant scenarios at both. The viewport never blocks the run.
 
-v1 covers **one desktop + one mobile viewport** via flow-next-drive's web ladder — viewport **emulation**, not real-device / cross-device testing. Record the chosen viewports against each scenario so Phase 4 drives at the right size and the evidence tuple's `viewport` field is accurate. The viewport choice is a soft default, not a blocking fact — it never gates the run (unlike an undocumented target URL / accounts, which BLOCK). The reference viewports, the primary-target selection rule (incl. the `NO_PROMPT=1` inference + assumption note), and the both-breakpoints caution are in **[references/prepare-surface.md](references/prepare-surface.md)** §2 — read it on a web-surface run before Phase 4.
-
-### 3.5 — Write-path-first ordering
-
-When a later scenario reads data an earlier scenario creates (a group, org, workspace, invite), order the **write path first** so the artifact exists before any scenario that reads it; record the created IDs / invite URLs in the run notes for reuse (the caution in [references/qa-discipline.md](references/qa-discipline.md); v1 runs scenarios sequentially with one host agent, so it is an ordering rule, not a parallel coordinator). For any write path, Phase 4 must verify the **server / DB row or API response** (the write-side-effect evidence in [references/bug-filing.md](references/bug-filing.md)) — never trust the optimistic UI render.
-
-After Phase 3, each scenario carries: its persona (+ suffix), its viewport(s), its fresh-vs-returning storage requirement, and the resolved target URL — everything Phase 4 needs to drive it via the flow-next-drive read-and-drive contract.
-
-### Done when
-
-- A target URL resolved from the four-step priority order, **never a silent `localhost` default**; an unreachable target carries forward to the Phase 6 BLOCKED outcome rather than ending the run here.
-- Auth-dependent scenarios have documented credentials, or are recorded as blocked. **Credentials are never guessed and never committed.** A password in the repo has broken this.
-- Under `NO_PROMPT=1` nothing was asked: an undocumented target URL or undocumented accounts became a BLOCKED receipt (§6.3) plus a clean exit.
-- Write-path scenarios are ordered ahead of the scenarios that read what they create, with the created ids recorded in the run notes.
+Run write paths first when later scenarios read what they create, and note the created ids.
 
 ---
 
 ## Phase 4: execute
 
-**Goal:** drive each scenario against the live app via the **flow-next-drive read-and-drive contract** (the host reads its workflow + references and executes `observe → snapshot → act → verify → capture` itself — QA never re-implements driving). Record the evidence tuple per scenario: `{driver_rung, target_url, viewport, screenshot_path, console_path}`; transient evidence (screenshots, console dumps) lands under `.flow/tmp/` (gitignored), referenced by path, never inlined.
+QA does not re-implement driving. Read [flow-next-drive](../flow-next-drive/SKILL.md) and the
+reference for the driver it resolves, and run its flow yourself for each scenario: observe,
+snapshot fresh refs, act, verify (including console and failed requests), capture. Do not copy
+driver command detail into QA notes or findings.
 
-### 4.1 — The flow-next-drive read-and-drive contract
+For each scenario, save a screenshot and the console output at the moment that matters under
+`.flow/tmp/qa-<spec-id>/`, and record `{driver_rung, target_url, viewport, screenshot_path,
+console_path}`. Evidence is referenced by path, never inlined wholesale into the receipt or a
+memory body. For a write path, confirm the persisted result (server or DB row, API response),
+not the optimistic UI.
 
-Execute the contract per scenario:
-
-1. **Read flow-next-drive's driving flow** — [`skills/flow-next-drive/SKILL.md`](../flow-next-drive/SKILL.md) (surface detection + universal flow + ladder) and the relevant rung reference under `skills/flow-next-drive/references/`. **That prose stays there.** A copy of CDP / agent-browser / Computer-Use actuation detail written into this file has broken this.
-2. **Resolve a target.** A live deploy URL or a localhost app. If none is reachable, jump to the BLOCKED routing (§4.2) — the R13 graceful-surface path.
-3. **Drive the scenario** via flow-next-drive's universal flow (`observe → snapshot fresh refs → act → verify → capture`), using whatever driver rung the environment resolves (agent-browser is the only assumed-present driver; everything else is probe-and-degrade).
-4. **Capture evidence.** Screenshot + console at the moment of interest to `.flow/tmp/qa-<spec-id>/`, and record the evidence tuple.
-
-### 4.2 — BLOCKED routing (R13 path — no live target)
-
-When no live deploy + driver is reachable, **set `QA_OUTCOME=BLOCKED` and fall through to §6.3 to write the committed `qa_verdict`** — do **not** stop here:
-
-```bash
-# Route to §6.3 - the committed qa_verdict is what the flow --auto QA stage advances on (R6
-# BLOCKED→advance). Writing no .flow/review-receipts/qa-<spec>.json leaves the
-# driver with no fresh receipt → it strikes/unreadies the spec instead of
-# moving on to make-pr. NEVER stop here.
-QA_OUTCOME="BLOCKED"
-BLOCKED_REASON="<no live deploy reachable | no driver available>"
-# → fall through to Phase 6.3: write the BLOCKED qa_verdict, then exit clean.
-```
-
-A missing live target is an expected, surfaced limitation — never a fabricated PASS.
-
-### Done when
-
-- Every scenario that ran has an evidence tuple `{driver_rung, target_url, viewport, screenshot_path, console_path}`, with the artifacts on disk under `.flow/tmp/qa-<spec-id>/` and referenced by path.
-- **No live target or no available driver set `QA_OUTCOME=BLOCKED` and fell through to §6.3.** A run that stopped in Phase 4 without writing a receipt has broken this - `flow --auto` then finds no fresh receipt and strikes the spec.
+No reachable target, or no driver beyond flow-next-drive's manual last rung: set
+`QA_OUTCOME=BLOCKED` with `BLOCKED_REASON` (`no live deploy reachable` or `no driver available`)
+and go to §6.3. Never stop without the receipt: `flow --auto` strikes a spec that has none.
 
 ---
 
 ## Phase 5: file
 
-**Goal:** file each failure as a structured P0/P1/P2 finding (persona, steps-to-reproduce, expected vs actual, evidence pointers), **filed immediately on FAIL** — not batched at the end. Findings feed the bug memory track via `memory add --track bug` (overlap scoring left ON — **never** `--no-overlap-check`; host decides update-vs-create from `matches`) and carry the R-ID(s) they trace back to.
+When a scenario fails, run the failing step once more (fresh snapshot, same persona and viewport).
+File only if it fails both times; a pass on retry is a flake for the run notes.
 
-The full filing discipline (taxonomy, evidence rules, reproduce-before-file, the `memory add` invocation, dedup surfacing, promote-to-spec) lives in **[references/bug-filing.md](references/bug-filing.md)** — read it before filing. The flow on the host:
+Severity comes from what the user experiences:
 
-### 5.1 — Reproduce before you file (twice)
+- **P0**: the user cannot finish the scenario's goal; data loss, security, crash.
+- **P1**: broken or wrong with a workaround, or a recoverable wrong result.
+- **P2**: cosmetic, edge polish, accessibility, console noise.
 
-Agentic driving is non-deterministic. A single failed observation is not yet a finding. **Re-run the scenario's failing step a second time** (fresh `observe → snapshot → act → verify`, same persona/viewport). File only if it fails both times. A pass-on-retry is a flake — record it in the run notes (not a finding), and move on. This defends the verdict against false P0s (the GitHub-Eng gap: self-reported failure ≈82% accurate; reproduce-twice closes it with structural evidence).
+Between two levels, take the higher when the core flow or data integrity is involved. Never
+lower a P0 to keep the verdict green.
 
-### 5.2 — Severity (P0/P1/P2)
+Each finding carries persona, steps to reproduce, expected (quoted from the spec) and actual, and
+its evidence: screenshot path, console path (last ~30 lines), full URL, and for a write path the
+persisted result. File it at once, before the next scenario. **Before filing the first finding,
+read [references/bug-filing.md](references/bug-filing.md)**; it has the body template and the
+filing commands. Filing keeps overlap scoring on; never pass `--no-overlap-check`. Add each filed
+entry's path to `QA_FILED_MEMORY`. With memory disabled, record the finding in the run notes; it
+still counts.
 
-Assign from the taxonomy in [references/bug-filing.md](references/bug-filing.md):
+Keep every finding, P2 included, for the receipt: `id`, `severity`, `confidence`
+(`0|25|50|75|100`), `classification` (`introduced|pre_existing`), `reason`, and `file` (the
+surface or file).
 
-- **P0** — blocks the core flow / data loss / security / crash: a real user cannot complete the scenario's goal.
-- **P1** — major degradation with a workaround, or a wrong-but-recoverable result.
-- **P2** — minor / cosmetic / edge polish.
+### 5.5 Stale mapped routes
 
-**Tie-break (never downgrade to avoid stopping):** when between two severities, take the **higher** if it touches the core flow or data integrity. A single open P0 is a NO in Phase 6 — do **not** relabel a P0 as P1 to keep the verdict green. Severity rests on observed user impact, never on convenience.
-
-### 5.3 — Capture the evidence pointers
-
-Every finding cites **real captured evidence** (from Phase 4, under `.flow/tmp/qa-<spec-id>/`), never narration:
-
-- **Console** — the last ~30 lines, verbatim (`.flow/tmp/qa-<spec-id>/<sid>-console.log`), referenced by path.
-- **Screenshot** — path under `.flow/tmp/qa-<spec-id>/` at the moment of failure.
-- **URL** — the full URL including query string at the point of failure.
-- **Write side-effects** — for any write path (create/update/delete), the server/DB row or API response confirming the actual persisted state.
-
-Evidence lives under `.flow/tmp/` (gitignored) and is **referenced by path**, never inlined into the receipt or memory body wholesale.
-
-### 5.4 — File the finding to bug memory (immediately; host owns update-vs-create)
-
-On a confirmed FAIL — and only then; a run with zero findings never reaches this step — file at once via `memory add --track bug` **with overlap scoring left on** — a filing carrying `--no-overlap-check` has broken this. STOP and Read [references/bug-filing.md](references/bug-filing.md) — its §"Filing to bug memory" carries the finding body template, and §"Host filing skeleton" carries the exact command sequence to execute (memory-disabled no-op, the read-only overlap probe followed by one create or update, and the `QA_FILED_MEMORY` path tracking §6.3b commits from).
-
-`memory add` emits `matches` as the retrieval signal (per `docs/memory-schema.md`); the host decides update-vs-create. A re-run of QA that already knows the prior entry id should pass `--update <id>` so the body folds in rather than creating a sibling. When memory is disabled the filing is a clean no-op — **still record the finding in the run notes** so Phase 6 counts it toward the verdict. Findings can be **promoted to a flow spec/task** for the fix (compose from `flowctl spec create` / `/flow-next:capture`) — that is the spec↔scenario↔finding↔R-ID loop closing; see the reference.
-
-Track every finding (including P2) in `QA_FINDINGS`, with id, severity, discrete confidence
-(`0|25|50|75|100`), classification (`introduced|pre_existing`), reason, and
-surface/file in a running list for Phase 6. **A PASS asserted from reading source has broken R1** — but reading source to *explain* an already-evidenced failure (root-cause hint for the fix) is fine; the PASS gate is what's evidence-locked, not the post-hoc explanation.
-
-### 5.5 - Stale mapped routes
-
-When Phase 1.3 loaded the map and a mapped route does not match the live app, file a knowledge-track memory entry tagged `feature-map-drift` (the reader contract every map consumer shares: [feature-entry-contract.md](../flow-next-features/references/feature-entry-contract.md), "Writers and drift notes"). Title is exactly `drift: <surface>/<feature-slug> <sub-feature-id>`, the contract's dedup key. Body is two lines: Expected, Observed. QA never edits `.flow/features/` mid-run. This is not a P0/P1/P2 product finding - **and it never strands the scenario**: after recording the memo, derive an alternate route for that scenario exactly as Phase 2 does without a map and continue verifying the AC (the map supplied navigation, not the verdict); only when no route at all reaches the surface does the scenario take the ordinary no-live-scenario / blocked handling.
+When a mapped route does not match the live app, record a drift note (not a P0/P1/P2 finding)
+under the contract's "Writers and drift notes" rules, never edit `.flow/features/`, then derive
+another route for the scenario and keep testing the criterion. Only when no route reaches the
+surface does the scenario become a gap.
 
 ```bash
-# Same memory.enabled no-op + QA_FILED_MEMORY path tracking as §5.4. Never --no-overlap-check.
 if [ "$($FLOWCTL config get memory.enabled --json | jq -r '.value')" = "true" ]; then
   mkdir -p .flow/tmp/qa-"$SPEC_ID"
   cat > .flow/tmp/qa-"$SPEC_ID"/drift-<sid>.md <<'EOF'
 Expected: <mapped route / command>
 Observed: <what the live app did>
 EOF
-  # Deterministic find-or-create: exact title-within-track match, so
-  # a prior entry for EXACTLY this feature+route is UPDATED, never siblinged
-  # (scored search tokenizes and can return a different route of the same
-  # feature - upsert never guesses; 2+ same-titled entries fail closed).
-  # Best-effort under set -e: upsert exits nonzero BY DESIGN when 2+ entries
-  # already share this exact title (fail-closed ambiguity). That must never
-  # abort the QA run - record the failure in the run notes and continue.
+  # upsert exits non-zero when 2+ entries share the title; never let that abort the run.
   if _out="$($FLOWCTL memory upsert \
     --track knowledge --category workflow \
     --title "drift: <surface>/<feature-slug> <sub-feature-id>" \
@@ -447,9 +286,7 @@ EOF
     --body-file .flow/tmp/qa-"$SPEC_ID"/drift-<sid>.md --json)"; then
     _p="$(printf '%s' "$_out" | jq -r '.path // empty')"
     [ -n "$_p" ] && QA_FILED_MEMORY="${QA_FILED_MEMORY:+$QA_FILED_MEMORY }$_p"
-    # A recurrence reopens a note a maintain pass or work update retired
-    # (upsert keeps a stale note stale). Only a stale note is reopened: a
-    # hardened or active one keeps its status. Best-effort, like the upsert.
+    # A recurrence reopens a stale note; hardened or active notes keep their status.
     if [ "$(printf '%s' "$_out" | jq -r '.action // empty')" = "updated" ]; then
       _id="$(printf '%s' "$_out" | jq -r '.entry_id')"
       if [ "$($FLOWCTL memory read "$_id" --json 2>/dev/null | jq -r '.frontmatter.status // empty')" = "stale" ]; then
@@ -457,111 +294,68 @@ EOF
       fi
     fi
   fi
-  # On the failure branch: record Expected/Observed plus the listed entry ids
-  # in the run notes (same posture as memory-disabled) - never guess an id.
 fi
 ```
 
-When memory is disabled — or the upsert fails closed on an ambiguous 2+ same-title match — record Expected/Observed (plus the listed ids, on the ambiguous case) in the run notes instead and continue the scenario.
-
-### Done when
-
-- Every filed finding was reproduced a second time before filing, and carries severity, persona, steps to reproduce, expected-vs-actual, and evidence pointers (screenshot path, console path, full URL, plus the persisted write side-effect on a write path).
-- **Severity rests on observed user impact.** A P0 relabelled P1 to keep the verdict green has broken this.
-- Filing ran with overlap scoring on, and a memory-disabled repo still recorded the finding in the run notes so Phase 6 counts it.
-- When a mapped route did not match the live app, it was filed as knowledge-track memory tagged `feature-map-drift` (deduped deterministically via `memory upsert` on the exact drift title; or recorded in the run notes if memory is disabled or the upsert failed closed — a failed drift upsert never aborts the run), the scenario fell back to ordinary route derivation, and the map itself was not edited.
+With memory disabled or a failed upsert, put Expected, Observed (and any listed entry ids) in the
+run notes and continue.
 
 ---
 
 ## Phase 6: verdict
 
-**Goal:** end with a YES/NO ship verdict + the open P0/P1 list, emitted as a `type: qa_verdict` proof-of-work receipt. The verdict rests on **captured evidence** (Phase 4) and **filed findings** (Phase 5) — never on agent narration, never on reading the diff.
+### 6.1 Outcome
 
-### 6.1 — Pick the `qa_outcome` (the four-outcome matrix)
+Pick the first that applies:
 
-QA has **four** distinct outcomes. Pick exactly one, in this precedence order:
+1. **BLOCKED**: no reachable target or no driver. Could not verify; not a failure of the app.
+   Set `blocked_reason`.
+2. **NA**: no criterion is user-observable. Set `na_reason`.
+3. **NEEDS_WORK** (NO): any open P0 or P1, or a `⚠️ no live scenario` row.
+4. **SHIP** (YES): every scenario passed on the live app, no open P0/P1, and every user-observable
+   R-ID is `live` or `subtracted`.
 
-1. **BLOCKED** — no live deploy reachable OR no driver available (incl. flow-next-drive degraded to the terminal manual rung). Could not verify. **BLOCKED ≠ FAIL** — it is "no ship *claim* on a QA basis," not "the app is broken." Set `blocked_reason`.
-2. **NA** — the spec has **no driveable user-visible AC** (all backend/CLI/non-UI — like most of flow-next's own specs). Live QA raises no objection because there is nothing to drive. Set `na_reason`.
-3. **NEEDS_WORK** — any open P0 or P1 finding, **OR** a `⚠️ no live scenario` gap on a UI-observable R-ID (an honest gap is a NO, never a confident PASS). A `subtracted` row (§2.0 — a deterministic re-runnable check already covers it) is **not** a gap. This is the NO outcome.
-4. **SHIP** — all derived scenarios pass on the live app, **zero** open P0/P1, and the R-ID coverage spine is complete for every UI-observable criterion (every such R-ID is `live`-covered; `subtracted` rows count as covered, `backend/CLI` rows are out of live scope). The YES outcome.
+### 6.2 Evidence check
 
-**Honesty rules (load-bearing):**
-- A **single open P0 = NEEDS_WORK.** Do not downgrade a P0 to P1 to avoid stopping (Phase 5.2 tie-break).
-- **Incomplete R-ID coverage = NEEDS_WORK**, not SHIP — a `⚠️ no live scenario` row on a UI-observable R-ID is an uncovered gap. A `subtracted` row is **not** a gap (it is covered by a re-runnable check); but never relabel a runtime/UI gap as `subtracted` to manufacture coverage (§2.0).
-- **SHIP is forbidden without captured live-app evidence (R1).** If you cannot point to a screenshot/console/observed-state artifact per passing scenario, the outcome is BLOCKED, never SHIP.
-
-### 6.1b — Evidence enforcement (the hard rule made deterministic)
-
-Rule 426 ("SHIP is forbidden without captured evidence") is load-bearing but was prose — an agent that drifts into narration could still set `SHIP`. Make it **structural**: a SHIP is a *claim about captured evidence*, so a SHIP with an empty evidence dir is impossible by construction. Force-downgrade before projecting the verdict:
+A SHIP with nothing captured is not a SHIP:
 
 ```bash
 if [[ "$QA_OUTCOME" == "SHIP" ]]; then
   EVIDENCE_COUNT="$(find ".flow/tmp/qa-${SPEC_ID}" -maxdepth 1 -type f \( -name '*.png' -o -name '*.log' \) 2>/dev/null | wc -l | tr -d ' ')"
   if [[ "${EVIDENCE_COUNT:-0}" -eq 0 ]]; then
     QA_OUTCOME="BLOCKED"
-    BLOCKED_REASON="SHIP claimed without captured live-app evidence — no screenshot/console artifact under .flow/tmp/qa-${SPEC_ID}/ (R1: PASS rests on evidence, never narration)"
+    BLOCKED_REASON="SHIP claimed without captured live-app evidence — no screenshot/console artifact under .flow/tmp/qa-${SPEC_ID}/ (PASS rests on evidence, never narration)"
   fi
 fi
 ```
 
-This gates only `SHIP` — `NA` (no driveable UI, legitimately no evidence) and `BLOCKED`/`NEEDS_WORK` are untouched. It turns "forbidden" into "impossible": the sole way to a SHIP receipt is to have captured live-app artifacts.
+### 6.3 — Write the receipt
 
-### 6.2 — Project `qa_outcome` → `verdict` (the Ralph-guard enum)
-
-`ralph-guard.py` validates **only** `verdict ∈ {SHIP, NEEDS_WORK, MAJOR_RETHINK}` (`validate_receipt_data`). The four QA outcomes live in `qa_outcome`; `verdict` is the enum-compatible **projection**:
-
-| `qa_outcome` | `verdict` | Rationale |
-|--------------|-----------|-----------|
-| `SHIP` | `SHIP` | all pass, zero open P0/P1, coverage complete |
-| `NEEDS_WORK` | `NEEDS_WORK` | open P0/P1 or incomplete coverage |
-| `BLOCKED` | `NEEDS_WORK` | could not verify → no ship claim on a QA basis |
-| `NA` | `SHIP` | no driveable UI → live QA raises no objection (`na_reason` records why) |
-
-QA never emits `MAJOR_RETHINK` — it is a valid enum member the guard accepts, but the QA matrix has no outcome that maps to it.
-
-### 6.3 — Write the `qa_verdict` receipt (direct write — the make-pr pattern)
-
-QA has **no review-backend subprocess**, so the receipt is written **directly** (the make-pr / impl-review-RP precedent — write the JSON yourself, **not** via a `flowctl <backend> validate --receipt` path). Resolve the path from the caller (`--receipt` flag or `REVIEW_RECEIPT_PATH`) else default to the committed `.flow/review-receipts/qa-<spec-id>.json`; `mkdir -p` the parent first.
-
-The receipt is the **only committed persisted output** (no new artifact, no new receipt file). Beyond the four base fields it carries the lean additive fields the **`flow --auto` QA stage + make-pr** read from the persisted receipt:
-
-| Field | Type | Why |
-|-------|------|-----|
-| `head_sha` | string (`git rev-parse HEAD`) | the **freshness key** the driver's idempotence gate (R1b / task .2) reads — a receipt is fresh iff `receipt.id == <spec-id>` AND `receipt.head_sha == HEAD`. |
-| `branch` | string (current branch) | which branch the pass ran against (orientation for make-pr / a human). |
-| `rid_coverage` | object `{covered, total, rids: [{id, coverage}]}` | the §2.2 coverage spine, persisted so make-pr surfaces coverage without re-deriving. `coverage ∈ {live, subtracted, no_live_scenario, backend_cli}`. `covered` counts the non-gap rows (`live` + `subtracted` + `backend_cli`); a `no_live_scenario` row on a UI R-ID is the only uncovered kind. |
-| `open_p0p1` | array of **objects** `{id, severity, confidence, classification, reason, file}` | Open P0/P1 findings with lossless v1 enums; severity is P0/P1, confidence is a discrete anchor, and classification is introduced/pre_existing. |
-
-Show `$FLOWCTL qa receipt --skeleton` once. Write a JSON payload with the Write
-tool to `$QA_RECEIPT_INPUT`: `id`, `qa_outcome`, all Phase 5 `findings`
-(`id`, `severity`, `confidence`, `classification`, `reason`, `file`),
-`rid_coverage.rids`, the outcome's `blocked_reason` or `na_reason` when
-applicable. The verb derives verdict, timestamp, HEAD, branch, coverage counts,
-open P0/P1 and prior-finding carry-over; judgment stays in the payload.
+Write the JSON payload with the Write tool to `$QA_RECEIPT_INPUT` (shape:
+`$FLOWCTL qa receipt --skeleton`): `id`, `qa_outcome`, every Phase 5 finding under `findings`,
+`rid_coverage.rids` (`[{id, coverage}]`, coverage one of `live`, `subtracted`,
+`no_live_scenario`, `backend_cli`), and `blocked_reason` or `na_reason` for those outcomes only.
+Set `mode` to `rp` when the caller passed `--receipt` or set `REVIEW_RECEIPT_PATH`, otherwise
+`interactive`; left out, it becomes `rp`, because the call below always passes `--receipt`.
 
 ```bash
 RECEIPT_PATH="${QA_RECEIPT_OVERRIDE:-${REVIEW_RECEIPT_PATH:-$REPO_ROOT/.flow/review-receipts/qa-$SPEC_ID.json}}"
 $FLOWCTL qa receipt --from-json "$QA_RECEIPT_INPUT" --receipt "$RECEIPT_PATH" --json
 ```
 
-Set payload `mode` to `ralph` when `REVIEW_RECEIPT_PATH` is set, `rp` for a caller
-`--receipt`, otherwise `interactive`. Validation reports all payload errors and
-leaves the prior receipt unchanged. Fix the payload and retry; never silently
-omit findings. BLOCKED/NA retain unresolved prior findings.
+The verb adds `type: qa_verdict`, the projected `verdict` (SHIP and NA become `SHIP`;
+NEEDS_WORK and BLOCKED become `NEEDS_WORK`), `head_sha`, `branch`, coverage counts, `open_p0p1`,
+the timestamp and prior-finding status. On a validation error it lists every problem and leaves
+the old receipt in place: fix the payload and rerun; never drop findings. A later pass overwrites
+the receipt.
 
-The additive fields are **additive only** — `type`, `id`, `mode`, `verdict`, `qa_outcome`, the scoped reasons, and `timestamp` are unchanged, so the receipt still passes `ralph-guard.validate_receipt_data` (it gates on `verdict` only; the extra fields are ignored). `open_p0p1` changing from bare ids to objects is a shape change the guard does not inspect (it never reads `open_p0p1`) and make-pr/.2 consume; no Ralph-guard change.
+### 6.3b Commit (autonomous only)
 
-The default path `.flow/review-receipts/qa-<spec-id>.json` is **committed** (the receipts dir is tracked); `.flow/tmp/` (evidence) is gitignored. A second QA pass **overwrites** the latest receipt (idempotent) — findings dedup against bug memory (Phase 5), the receipt reflects the latest run.
-
-### 6.3b — Commit QA's own handoff (autonomous mode only)
-
-When `QA_AUTONOMOUS=1` (the `flow --auto` QA stage dispatched this pass - autonomy ≠ Ralph), QA commits **its own outputs** so the dispatching stage hands off a clean tree and the branch the eventual make-pr pushes carries exactly what the briefing’s Verification and Open items report. QA knows exactly which files it produced (the receipt above, plus the memory entries tracked in `QA_FILED_MEMORY` at §5.4 / §5.5), so it commits those and the driver never has to guess or diff the tree. Never a `.flow/memory` glob (it would sweep pre-existing dirty memory) and never `git add -A`. User-invoked QA leaves commits to the user. The precondition (the loop operates on committed state; a dirty `.flow/memory` should be committed first) is in [references/autonomy.md](references/autonomy.md) §5.
+When `QA_AUTONOMOUS=1`, commit exactly QA's own files so `flow --auto` gets a clean tree. Never
+`git add -A` or a `.flow/memory` glob. An interactive run leaves commits to the user.
 
 ```bash
 if [ "$QA_AUTONOMOUS" = "1" ]; then
-  # Receipt always; the filed memory paths only when non-empty (SHIP/NA/BLOCKED or
-  # memory.enabled=false file none). Narrow pathspec — exactly QA's own files.
   RECEIPT_HISTORY_DIR="${RECEIPT_PATH}.history"
   QA_HISTORY_PATHS=()
   [ -d "$RECEIPT_HISTORY_DIR" ] && QA_HISTORY_PATHS=("$RECEIPT_HISTORY_DIR")
@@ -571,42 +365,17 @@ if [ "$QA_AUTONOMOUS" = "1" ]; then
 fi
 ```
 
-The `chore(flow): qa verdict` subject is what the `flow --auto` + make-pr freshness gates peel to find the code head; `head_sha` was recorded at QA time (the code head, before this commit), so they still resolve freshness correctly. A no-op when nothing changed.
+`flow --auto` recognises this subject when it looks past the commit for the code head that
+`head_sha` recorded, so keep it exactly. A user running `mode:autonomous` with uncommitted
+`.flow/memory` edits should commit them first, since an updated entry would ride this commit.
 
-**There is NO generic `flowctl receipt write` helper** — compose the JSON as above. `qa-*.json` is not a path the Ralph guard's `parse_receipt_path` recognizes, so it validates via the plain verdict-enum check only (the planning decision: QA is **not** a hard Ralph receipt-gate in v1 — no `ralph-guard.py` change).
+### 6.4 Report
 
-### 6.4 — Surface the verdict to the user
+Print the YES/NO call with `qa_outcome` (and its reason), the open P0/P1 findings with ids,
+severities and one-line symptoms, the coverage table marked pass/fail per scenario, and what to
+re-test after a fix. On NO or BLOCKED this should be enough for a fresh session to pick up.
 
-Print the YES/NO call, the `qa_outcome`, the open P0/P1 list (with finding ids + severities), and the R-ID coverage table (reused from Phase 2.2, now annotated with pass/fail per scenario). The verdict is shaped to feed `spec-completion-review` ("does the *live app* satisfy the AC, not just the code") — documented-only in v1; completion-review does not yet read the qa receipt.
-
-### Done when
-
-- Exactly one `qa_verdict` receipt exists at the resolved path (`--receipt` / `REVIEW_RECEIPT_PATH`, else `.flow/review-receipts/qa-<spec-id>.json`) carrying `qa_outcome`, the projected `verdict`, `head_sha`, `branch`, `rid_coverage`, and `open_p0p1`.
-- `blocked_reason` is set only on BLOCKED and `na_reason` only on NA; neither appears on the other two outcomes.
-- **A `SHIP` with an empty `.flow/tmp/qa-<spec-id>/` was force-downgraded to BLOCKED by §6.1b.** A SHIP receipt with no captured artifact has broken this.
-- Every run ends with the receipt written — including the no-target and no-driver paths. **A silent stop before the receipt, or a fabricated pass, has broken this.**
-
----
-
-## Phase A: autonomy
-
-**Goal:** detect Ralph **once** and route deterministically (R11) — autonomous when the target URL + test accounts are configured (emits the verdict receipt, no prompts); asks the user (info-only) when they are undocumented. The skill is **not a hard Ralph-block** — there is **no** top-of-skill `FLOW_RALPH` exit-2 guard (the make-pr Phase 0 precedent; see [SKILL.md](SKILL.md) Forbidden). Phase A also owns the opt-in tracker verdict post (`tracker.perEvent.qa`) and the graceful-degradation contract when no live deploy / driver is present. The full routing table, gating predicate, and degradation matrix live in **[references/autonomy.md](references/autonomy.md)** — read it before any Ralph or tracker step.
-
-### A.1 — Detect Ralph once, route deterministically (R11)
-
-`RALPH` was already computed **once** in the Autonomous-mode gate above (the make-pr Phase 0 pattern — detect at the top of the run, then route downstream; never re-probe per phase). Reuse that value here; do not recompute it.
-
-- **No top-of-skill exit guard.** `RALPH=1` does **not** abort the skill. QA runs in Ralph; it just routes differently (the make-pr precedent — autonomous loops emitting a QA verdict is the intended use). Do **not** add a `FLOW_RALPH`/`REVIEW_RECEIPT_PATH` exit-2 guard.
-- **`plain-text numbered prompt` is info-only, never a confirm gate.** It resolves *undocumented* facts (target URL, test accounts — Phases 1.1, 3.1, 3.2), never "shall I run QA? / ship?". Interactive asks; Ralph cannot ask, so an undocumented URL/accounts under Ralph is a **hard limitation → BLOCKED** (Phase 6, `blocked_reason`), not a prompt and not an exit.
-- **Autonomous path:** target URL + test accounts configured (spec / config / env) → derive → drive → file → emit the `qa_verdict` receipt to the caller-supplied `--receipt` / `REVIEW_RECEIPT_PATH` (Phase 6.3), zero prompts. The verdict path is identical to interactive; only the prompt-vs-BLOCKED branch on *undocumented* inputs differs.
-
-### A.2 — Graceful degradation (R13)
-
-No live deploy reachable, OR no driver available (incl. flow-next-drive degraded to its terminal manual rung per [flow-next-drive/SKILL.md](../flow-next-drive/SKILL.md) "Driver detection & graceful degradation") → surface the limitation as a **BLOCKED** verdict (Phase 6.1 / the §4.2 BLOCKED routing), add **nothing** to the base flow, exit clean. Inherit flow-next-drive's degradation table — do not re-derive it. BLOCKED ≠ FAIL: it is "no ship *claim* on a QA basis," never a fabricated PASS and never a hard error.
-
-### A.3 — Opt-in tracker verdict post (`tracker.perEvent.qa`, R9)
-
-After the Phase 6 verdict is written, optionally post it as a structured tracker comment — gated identically to every other lifecycle touchpoint (see [flow-next-work/SKILL.md](../flow-next-work/SKILL.md) "Shared gating predicate"). Runs ONLY when the leaf is opted in AND the bridge is active; **default `off`**, so on the default path this is a silent no-op. **Best-effort** — a tracker failure never blocks the verdict (which is already written at §6.3 and is never rolled back):
+### 6.5 Tracker post (opt-in)
 
 ```bash
 ACTIVE=0
@@ -618,8 +387,18 @@ if [ "$ACTIVE" = "0" ]; then
   [ "$QA_LEAF" != "off" ] && [ "$QA_LEAF" != "null" ] && ACTIVE=1
 fi
 if [ "$ACTIVE" = "1" ]; then
-  echo "TRACKER QA LEAF ACTIVE — STOP. Read references/autonomy.md#4-opt-in-tracker-verdict-post-trackerpereventqa-r9 and execute it before finishing."
-fi   # default branch: bare no-op — NO link, NO read path
+  echo "TRACKER QA LEAF ACTIVE — STOP. Read references/autonomy.md#tracker-verdict-post and execute it before finishing."
+fi
 ```
 
-When the sentinel prints, STOP and Read [references/autonomy.md](references/autonomy.md) (§4 — the bridge-active check, the body-file contract, and the single facade call) before any further step. The comment QA synthesizes always opens with the stable token `evidence=<tested-head-sha>` on its FIRST line, written to a mode 0600 temporary body file, never argv. When the gate is silent (leaf `off` — the default), continue: nothing is posted. The leaf accepts `off` | `comment` (default `off`); `comment` is the only verdict-meaningful verb, and any other non-`off` value coerces to `comment` (never `push`/`pull`/`reconcile`). The actual transport / comment dedup / receipt lives entirely in the **flow-next-tracker-sync** skill — Phase A only gates + delegates.
+When it prints, read [references/autonomy.md](references/autonomy.md) and post the verdict as a
+comment whose first line is `evidence=<tested-head-sha>`. Otherwise (the default `off`) nothing
+is posted. The post is best-effort and never changes the receipt.
+
+### Before you finish
+
+- One receipt exists at `RECEIPT_PATH` with `qa_outcome`, `verdict`, `head_sha`, `branch`,
+  `rid_coverage` and `open_p0p1`, whatever the outcome.
+- Every criterion is a coverage row; no runtime or UI criterion is `subtracted`.
+- Every filed finding was reproduced twice and cites real evidence.
+- Under `NO_PROMPT=1`, nothing was asked.

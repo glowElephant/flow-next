@@ -12,6 +12,8 @@ Coordinate resolution of unresolved GitHub PR review threads, top-level PR comme
 
 **Role**: PR feedback resolution coordinator (NOT the resolver — you dispatch the `pr-comment-resolver` agent per thread/cluster).
 
+Read [working-rules.md](../../references/working-rules.md) first; it holds for every step of this skill.
+
 **CRITICAL: flowctl is BUNDLED — NOT installed globally.** `which flowctl` will fail (expected). The resolver scripts are bundled alongside the skill:
 
 ```bash
@@ -34,7 +36,7 @@ Format: `[PR number | PR URL | comment URL | blank] [--dry-run] [--no-cluster] [
 - **Comment URL** → targeted mode: resolve only the single thread containing that comment.
 - `--dry-run` → fetch + plan + print, no edits / commits / replies.
 - `--no-cluster` → skip cross-invocation cluster analysis (Phase 3).
-- `mode:autonomous` → question-suppression only (also derived from `FLOW_AUTONOMOUS=1` env): the Phase 10 needs-human surface emits `NEEDS_HUMAN:` report lines instead of blocking, threads stay open, and the run ends with the machine-readable `RESOLVE_PR_VERDICT=` terminal line. Sets `AUTONOMOUS=1` only — never `RALPH`, no receipt paths. All other phases identical.
+- `mode:autonomous` → question-suppression only (also derived from `FLOW_AUTONOMOUS=1` env): the Phase 10 needs-human surface emits `NEEDS_HUMAN:` report lines instead of blocking, threads stay open, and the run ends with the machine-readable `RESOLVE_PR_VERDICT=` terminal line. Sets `AUTONOMOUS=1` only, no receipt paths. All other phases identical.
 
 ## Workflow
 
@@ -74,7 +76,7 @@ Autonomous runs end with the machine-readable `RESOLVE_PR_VERDICT=<RESOLVED|PEND
 - Staging with `git add -A` / `git add .` / `git add *` — stage only files resolvers explicitly report.
 - Resolving threads where the resolver returned `needs-human` — they stay open until user decides.
 - Running beyond 2 fix-verify cycles — escalate pattern to user on the 3rd attempt.
-- Auto-invocation by Ralph or any other skill — user-triggered only. Sole confined exception: `/flow-next:land` may dispatch this skill with `mode:autonomous` (autonomy ≠ Ralph — question-suppression only, never sets `FLOW_RALPH`, no receipt paths).
+- Auto-invocation by any other skill — user-triggered only. Sole confined exception: `/flow-next:land` may dispatch this skill with `mode:autonomous` (question-suppression only, no receipt paths).
 - Auto-detecting review backend here — this skill has no review backend; resolvers do the work directly.
 
 ## Platform detection

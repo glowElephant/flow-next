@@ -21,7 +21,7 @@ Flow-next does not support standalone tasks. Every unit of work belongs to a spe
 
 Flow-next always creates a spec container (even for one-offs) so every task has a durable home for context, re-anchoring, and automation. You never have to think about it.
 
-Rationale: keeps the system simple, improves re-anchoring, makes automation (Ralph) reliable.
+Rationale: keeps the system simple, improves re-anchoring, makes automation (`flow --auto`) reliable.
 
 "One-off request" → spec with one task.
 
@@ -47,18 +47,18 @@ Rationale: keeps the system simple, improves re-anchoring, makes automation (Ral
 │   ├── fn-1-add-oauth.1.json    # Task metadata (id, status, priority, deps, assignee, `spec` field)
 │   ├── fn-1-add-oauth.1.md      # Task spec (description, acceptance, done summary)
 │   └── ...
-├── charts/                # Optional pre-capture decision maps (fn-135)
-│   ├── fn-140.md                # Chart map body (Outcome, Notes, Decisions ledger, Open Questions, Boundaries)
-│   ├── fn-140.json              # Chart metadata (id, title, outcome, status, decisions[], briefings[], tracker, produced_specs[])
-│   ├── fn-140/                  # Decision records (one pair per D-ID)
+├── charts/                # Optional pre-capture decision maps
+│   ├── fn-3.md                # Chart map body (Outcome, Notes, Decisions ledger, Open Questions, Boundaries)
+│   ├── fn-3.json              # Chart metadata (id, title, outcome, status, decisions[], briefings[], tracker, produced_specs[])
+│   ├── fn-3/                  # Decision records (one pair per D-ID)
 │   │   ├── 1.md                 # ## Question body for D1
 │   │   ├── 1.json               # Decision sidecar (type, attendance, status, graph, claim, answer, assets)
 │   │   └── ...
-│   ├── fn-140-briefing-B1.md    # Immutable per-version briefing package for capture (B1, B2, ...)
-│   ├── fn-140-briefing.md       # Always-latest briefing index (convenience copy, rewritten each emission)
-│   ├── fn-140-briefing-1.md     # Per-cluster briefing when a multi-spec split is confirmed
+│   ├── fn-3-briefing-B1.md    # Immutable per-version briefing package for capture (B1, B2, ...)
+│   ├── fn-3-briefing.md       # Always-latest briefing index (convenience copy, rewritten each emission)
+│   ├── fn-3-briefing-1.md     # Per-cluster briefing when a multi-spec split is confirmed
 │   └── .transactions/           # (auto-gitignored) write-ahead journal for multi-file chart mutations
-├── features/              # Committed user-POV drive map (fn-211)
+├── features/              # Committed user-POV drive map
 │   ├── README.md                # Index + operating rules (baseline preconditions, driving conventions, proof standards)
 │   └── <feature>.md             # One file per user-facing feature (four H2s + Surface line)
 ├── memory/                # Persistent learnings (opt-in, categorized)
@@ -78,12 +78,12 @@ Rationale: keeps the system simple, improves re-anchoring, makes automation (Ral
 │   │   ├── workflow/
 │   │   └── best-practices/
 │   └── legacy/            # (optional) archived flat files after migrate
-├── artifacts/             # HTML lenses + immutable PR cognitive-aid generations
+├── artifacts/             # Immutable PR cognitive-aid generations
 │   └── <spec-id>/pr-cognitive-aid/<artifactId>.json
 ├── review-receipts/       # Review receipt copies kept under .flow/
 │   └── <receipt>.json.history/
 │       └── <digest>.json  # Immutable structured-finding generations
-├── receipts/              # (auto-gitignored) Ralph/runtime receipt scratch
+├── receipts/              # (auto-gitignored) runtime receipt scratch
 ├── sync-runs/             # (auto-gitignored) tracker-sync run receipts
 ├── pilot-runs/            # (auto-gitignored) backlog-mode decision-log rows of flow --auto
 ├── locks/                 # (auto-gitignored) setup-block serialization locks
@@ -93,7 +93,7 @@ Rationale: keeps the system simple, improves re-anchoring, makes automation (Ral
 
 `flowctl init` creates `specs/`, `tasks/`, `memory/`, `meta.json`, `config.json`, and the auto-managed `.gitignore`. `/flow-next:setup` additionally stamps `bin/`, `templates/`, and `usage.md`. Runtime dirs (`sync-runs/`, `pilot-runs/`, `locks/`, `tmp/`, `receipts/`, `.cache/`) appear on first use and stay gitignored. `charts/` and `charts/.transactions/` appear on first `/flow-next:chart` / `flowctl chart create` (the WAL is gitignored; chart maps and decision records are tracked like specs). `features/` appears on first `/flow-next:features` seed (tracked like specs; the skill validates the four-H2 shape itself, and the only flowctl surface is the read-only `flowctl features status`).
 
-### Charts layout (fn-135)
+### Charts layout
 
 Charts share the native `fn-N` allocation domain with specs: one cross-kind counter under a shared lock scans specs and charts across the working tree, linked worktrees, and visible refs, then reserves the next id with no-clobber creation. `flowctl spec create` and `flowctl chart create` therefore cannot race into the same id. Chart kind is distinct so `flowctl list` can render charts separately.
 
@@ -107,7 +107,7 @@ Charts share the native `fn-N` allocation domain with specs: one cross-kind coun
 
 Multi-file chart mutations (map + sidecars + ledger + dependent cascade) are one recoverable transaction: no-clobber creates, staged replacements, atomic rename, rollback to pre-call state on failure. Full CLI contract: [`flowctl.md`](flowctl.md#chart).
 
-### Feature-map layout (fn-211)
+### Feature-map layout
 
 The feature map is committed team knowledge, like specs and memory: a directory a cold agent can drive from. Consumers (QA, drive, and the live-app routes of flow) discover it by existence check only. Absent directory is today's behavior at zero added cost. There is no registration and no `flowctl` validation of the four-H2 shape - `/flow-next:features` validates that itself.
 
@@ -116,12 +116,12 @@ The feature map is committed team knowledge, like specs and memory: a directory 
 | `.flow/features/README.md` | Index and operating rules: baseline preconditions, driving conventions, proof standards, feature-entry contract, surfaces grouped by `**Surface:**`. |
 | `.flow/features/<feature>.md` | One file per user-facing feature. H1 + one paragraph of user-visible behavior, required `**Surface:**` line, optional `**Last proven:** <date> at <short commit>` line under it, then exactly four H2s in order: `Sub-features`, `How to get to it (user POV)`, `Driving it`, `Gotchas`. |
 
-**Keeping it current (fn-262).** Three mechanisms keep the map true without a remembered command:
+**Keeping it current.** Three mechanisms keep the map true without a remembered command:
 
 - **Work updates it with the code.** At work's quality phase, when `.flow/features/` exists, the conductor updates only the feature files whose user route this spec's change altered, proves each new route with one live drive, and refreshes their last-proven lines ([`feature-map-update.md`](../skills/flow-next-work/references/feature-map-update.md)). An app that cannot start, or a change it cannot tie to one file, becomes a drift note instead of an edit. Besides `/flow-next:features`, this is the only map writer.
 - **Every reader reports drift.** QA, drive, and every live-app route that drives from the map file a `feature-map-drift` knowledge note (deterministic title `drift: <surface>/<feature-slug> <sub-feature-id>`, `memory upsert`) when a mapped route no longer matches the live app, and never edit the map mid-run. A maintain pass or work update that proves the named route marks the note stale, so an open count means open drift.
-- **Bug intake reads it (fn-261).** When `/flow-next:flow` routes a reported defect that still needs a reproduction, the map exists, and the report does not say where the problem is (or a direct lookup of the place it names fails), it resolves the report (text and screenshot content) to one mapped feature by `**Surface:**` plus sub-feature ID and drives the reproduction along that file ([`defect-intake.md`](../skills/flow-next-flow/references/defect-intake.md)). No match reproduces by live discovery.
-- **Every live-app stage reads it (fn-263).** Flow's measured-slowness baseline, work's post-change measurement and the defect route's live proof on base and head, QA, and any live check a PR reports read the index and the one matched feature file before driving, even when the target names its page, and never the whole map. Each stage matches the feature itself. Stages without a running app never read the map ([`feature-entry-contract.md`](../skills/flow-next-features/references/feature-entry-contract.md), "Live-app stages").
+- **Bug intake reads it.** When `/flow-next:flow` routes a reported defect that still needs a reproduction, the map exists, and the report does not say where the problem is (or a direct lookup of the place it names fails), it resolves the report (text and screenshot content) to one mapped feature by `**Surface:**` plus sub-feature ID and drives the reproduction along that file ([`defect-intake.md`](../skills/flow-next-flow/references/defect-intake.md)). No match reproduces by live discovery.
+- **Every live-app stage reads it.** Flow's measured-slowness baseline, work's post-change measurement and the defect route's live proof on base and head, QA, and any live check a PR reports read the index and the one matched feature file before driving, even when the target names its page, and never the whole map. Each stage matches the feature itself. Stages without a running app never read the map ([`feature-entry-contract.md`](../skills/flow-next-features/references/feature-entry-contract.md), "Live-app stages").
 - **A due trigger.** `flowctl features status` reports the map due when an open drift note exists or a feature's last proof is at least `features.staleAfterCommits` (default 50) surface-touching default-branch commits old; in a home-base workspace, callers pass each sibling code repo with `--repo` so its commits count too. Flow's no-argument what-next reading recommends `/flow-next:features` then; setup and prime always print the seed or maintain recommendation. None of them dispatch it: the maintain pass stays user-invoked, or runs from a host loop the human starts.
 
 Maintain's `changed` PR ships `.flow/features/**` plus owned harness corrections. It names the branch and commit by the repo's own rules (asking at entry for a value such as a ticket key), opens the PR through make-pr's `FLOW_PR_CREATE_CMD` seam, and keeps the proven edits when the commit, push, or PR create fails. Run notes, scratch state, and live-pass evidence stay under the gitignored per-run tmp convention. Skill: [`../skills/flow-next-features/SKILL.md`](../skills/flow-next-features/SKILL.md).
@@ -140,7 +140,7 @@ Consumers enumerate that documented home and use labeled fallback states on
 stale, unsupported, or invalid input; see
 [`pr-cognitive-aid.md`](pr-cognitive-aid.md).
 
-Pre-1.0 repos that still have `.flow/epics/<id>.json` must port by hand: see `flowctl usage` "Pre-1.0 layout porting" (and `docs/troubleshooting.md`). The automated `migrate-rename` path was removed in fn-111.
+Pre-1.0 repos that still have `.flow/epics/<id>.json` must port by hand: see `flowctl usage` "Pre-1.0 layout porting" (and [`troubleshooting.md`](troubleshooting.md)). There is no automated migration.
 
 The auto-managed `.flow/.gitignore` (written by `flowctl init`) excludes per-run state (`.checkpoint-*.json`, `receipts/`, `tmp/`, `sync-runs/`, `pilot-runs/`, `locks/`, `.cache/`) and historical migration transients (`.backup-pre-1.0/`, `.banner-acknowledged`, `.migrating`, `.migration-manifest`) so users don't accidentally commit runtime artifacts on `git add -A`. User patterns added below the auto-managed footer are preserved on subsequent runs. `.flow/.flow_version` is intentionally tracked (schema sentinel; semantics like `Cargo.lock`).
 
@@ -157,7 +157,7 @@ Flowctl accepts schema v1 and v2; new fields are optional and defaulted.
 
 New fields:
 - Spec JSON: `plan_review_status`, `plan_reviewed_at`, `completion_review_status`, `completion_reviewed_at`, `depends_on_epics` (canonical JSON field name for cross-spec deps), `branch_name`
-- Spec JSON `ready` (1.12.0+, lazy): the human-owned readiness gate. **Written only after a toggle changes state** (`flowctl spec ready` / `spec unready`) - `spec create` never writes it, and an absent key reads `false` - so non-adopters' sidecars stay byte-identical. Every JSON read surface (`show`, `specs`, `list`) emits an explicit `"ready": <bool>` regardless. Orthogonal to `status`; `capture --rewrite` resets it to `false` (a full re-authoring re-opens the blessing - interview refinement never resets it). For tracker-connected repos, `tracker.readyState` projects the tracker state onto this flag on every pull-side sync (one-way; tracker authoritative) - see [`tracker-sync.md`](tracker-sync.md).
+- Spec JSON `ready` (lazy): the human-owned readiness gate. **Written only after a toggle changes state** (`flowctl spec ready` / `spec unready`) - `spec create` never writes it, and an absent key reads `false` - so non-adopters' sidecars stay byte-identical. Every JSON read surface (`show`, `specs`, `list`) emits an explicit `"ready": <bool>` regardless. Orthogonal to `status`; `capture --rewrite` resets it to `false` (a full re-authoring re-opens the blessing - `/flow-next:refine` never resets it). For tracker-connected repos, `tracker.readyState` projects the tracker state onto this flag on every pull-side sync (one-way; tracker authoritative) - see [`tracker-sync.md`](tracker-sync.md).
 - Spec JSON `tracker` block (tracker-sync, defaulted/optional): `tracker.id` (tracker UUID - durable dedupe key), `identifier` (display key `WOR-17`), `url`, `lastSyncedAt` (advances only on a real reconcile), `baseHashFlow` / `baseHashTracker` (echo-fence content hashes), `mergeBaseFlow` / `mergeBaseTracker` (paired body snapshots - the 3-way merge base, written atomically as a unit). Full schema: [`tracker-sync.md`](tracker-sync.md).
 - Task JSON: `priority`. The parent reference field is `spec`.
 
@@ -171,8 +171,7 @@ finalize-time HEAD is the fallback where no snapshot exists, e.g. rp). `plan_rev
 `*_reviewed_at` stamps) are a denormalized read model derived from that
 ledger; when the two ever diverge, the ledger wins. One member is deliberately ledger-less: the policy-skip `not_required` (work's 3g gate, written through the compare-and-set setter) records that policy excused the completion review - no attempt row exists because no review ran, and `ship` stays the only status that claims one. Gates consume the satisfying set `{ship, not_required}`; an unrecognized or absent value reads as `unknown` and satisfies nothing.
 
-Each row also answers "was this verdict measured, and against what?"
-(fn-183, #312):
+Each row also answers "was this verdict measured, and against what?":
 
 - `output_bytes` - how much output the verdict cost. A ~1 KB SHIP that claims
   fresh measurement is the fabrication signature the field exists to expose;
@@ -185,12 +184,12 @@ Each row also answers "was this verdict measured, and against what?"
 - `head_sha_observed` - `true` when a pre-dispatch snapshot supplied
   `head_sha`, `false` when the finalize-time `git rev-parse HEAD` fallback did
   (always the case on the `review-rounds record` CLI path). A marker, not an
-  omission, so a fallback row stays distinguishable from a pre-fn-183 row.
+  omission, so a fallback row stays distinguishable from a row written before the field existed.
 - `base_sha` - beside `head_sha` wherever the review snapshot ran, so the
   judged diff can be located and re-rendered; absent, never guessed,
   elsewhere.
 
-- `model` / `effort` (fn-193, #338) - the model that ACTUALLY ran and the
+- `model` / `effort` - the model that ACTUALLY ran and the
   effort that was actually SENT, taken from the same resolution the receipt
   records. A fallback-ladder downgrade lands on the row honestly; a ladder
   FLOOR records neither key (the receipt's `auto` / `default` is a selector
@@ -232,15 +231,15 @@ Write-ordering differs by path, on purpose:
 
 - **Spec**: `fn-N-slug` where `slug` is derived from the spec title (e.g., `fn-1-add-oauth`, `fn-2-fix-login-bug`)
 - **Task**: `fn-N-slug.M` (e.g., `fn-1-add-oauth.1`, `fn-2-fix-login-bug.2`)
-- **Chart**: same native `fn-N` (or `fn-N-slug`) domain as specs; kind is chart, never a task. Decision: `<chart-id>.D<n>` (e.g., `fn-140.D2`); local form `D<n>` is chart-scoped.
+- **Chart**: same native `fn-N` (or `fn-N-slug`) domain as specs; kind is chart, never a task. Decision: `<chart-id>.D<n>` (e.g., `fn-3.D2`); local form `D<n>` is chart-scoped.
 
 The slug is automatically generated from the spec title (lowercase, hyphens for spaces, max 40 chars). This makes IDs human-readable and self-documenting.
 
 **Backwards compatibility**: Legacy formats `fn-N` (no suffix) and `fn-N-xxx` (random 3-char suffix) are still fully supported. Existing specs don't need migration.
 
-**Native `fn-N` allocation (fn-134 + fn-135)** takes the max across the working tree, every registered git worktree's `.flow/specs/` **and** `.flow/charts/`, and every ref (monotonic; fail-open on git problems). Specs and charts share one allocator under one lock - a chart and a spec never share an id. That shrinks parallel-agent collisions; separate unfetched clones can still collide.
+**Native `fn-N` allocation** takes the max across the working tree, every registered git worktree's `.flow/specs/` **and** `.flow/charts/`, and every ref (monotonic; fail-open on git problems). Specs and charts share one allocator under one lock - a chart and a spec never share an id. That shrinks parallel-agent collisions; separate unfetched clones can still collide.
 
-**Hybrid id model (tracker-sync, R16 / fn-134)**: a tracker-linked spec may be keyed two ways, which coexist with `fn-NN`. A **tracker-first** spec is canonically `wor-17-slug` (Linear/Jira native `KEY-N`) or synthetic `gh-123-slug` / `gl-456-slug` (GitHub `#123` / GitLab project-scoped `iid`); bare `wor-17` / `gh-123` / `gl-456` resolve as aliases. A **flow-first** spec keeps `fn-NN-slug` and stores the tracker key in `tracker.identifier` as a resolvable display alias. `tracker.specIds=tracker` makes skills route to tracker-first by default when the bridge is active. flowctl widened the **id resolver / canonicalizer** so every command inherits **case-insensitive** resolution, and the **origin-branched id generator** (`spec create --tracker-first`) keys by the tracker identifier instead of allocating a fresh `fn-NN`. **`fn` is the only globally reserved prefix**; synthetic `gh`/`gl` are reserved only while `tracker.type` matches. Native `fn-N` allocation counts `fn-*` only. **One tracker team per repo**; **ids never rename** on link. Full model: [`tracker-sync.md`](tracker-sync.md).
+**Hybrid id model (tracker-sync)**: a tracker-linked spec may be keyed two ways, which coexist with `fn-NN`. A **tracker-first** spec is canonically `wor-17-slug` (Linear/Jira native `KEY-N`) or synthetic `gh-123-slug` / `gl-456-slug` (GitHub `#123` / GitLab project-scoped `iid`); bare `wor-17` / `gh-123` / `gl-456` resolve as aliases. A **flow-first** spec keeps `fn-NN-slug` and stores the tracker key in `tracker.identifier` as a resolvable display alias. `tracker.specIds=tracker` makes skills route to tracker-first by default when the bridge is active. flowctl widened the **id resolver / canonicalizer** so every command inherits **case-insensitive** resolution, and the **origin-branched id generator** (`spec create --tracker-first`) keys by the tracker identifier instead of allocating a fresh `fn-NN`. **`fn` is the only globally reserved prefix**; synthetic `gh`/`gl` are reserved only while `tracker.type` matches. Native `fn-N` allocation counts `fn-*` only. **One tracker team per repo**; **ids never rename** on link. Full model: [`tracker-sync.md`](tracker-sync.md).
 
 There are no task IDs outside a spec. If you want a single task, create a spec with one task.
 
@@ -259,13 +258,13 @@ A spec's `## Quick commands` block is the only place that says how this work get
 |---|---|---|
 | Worker, baseline | before its first edit | the spec's commands, to prove green *before* the change |
 | Worker, verify | before marking a task done | the same commands, now proving the change |
-| Work Phase 4, final gate | once per spec | the full gates, after `gate classify` and a `gate check` probe |
+| Work Phase 4, final gate | once per spec | lint/format; the full gates only when the repository's instructions or the user ask for a full suite, after `gate classify` and a `gate check` probe |
 
-The convention the bundled template states: **per-task commands list focused suites for the files that task touches; the full suite runs once at the final gate** (prefer the repo's parallel entrypoint when it has one). Two mechanisms keep that from turning into repeated whole-suite runs: `gate check` honors a green receipt for the same commit and the same exact command string, so an unchanged HEAD skips the re-run; and `gate classify` drops a docs-only diff to lint and format only.
+The convention: **per-task commands list focused suites for the files that task touches; the full suite runs once, at the final gate, only when the repository's instructions or the user ask for it** (prefer the repo's parallel entrypoint when it has one). Two mechanisms keep that from turning into repeated whole-suite runs: `gate check` honors a green receipt for the same commit and the same exact command string, so an unchanged HEAD skips the re-run; and `gate classify` drops a docs-only diff to lint and format only.
 
 That makes the tier a **project decision, not a framework one**. If you want per-task verification to stay narrow, author narrow commands and keep the full-suite entrypoint as the final-gate command; if your project would rather pay the full suite every task, list it and it will run. State the policy in your conductor instructions (`CLAUDE.md` / `AGENTS.md`) when it matters - the host agent reads those, and it is the same lever that names any CI-guarded paths the classifier cannot see (see "Known fail-open" in [`flowctl.md`](flowctl.md)).
 
-Selection here is **authored, never computed**: nothing infers that a change to one module should pull in a distant suite. That is the boundary of this design - it prevents needless full runs; it does not find the right tests for you. The full suite before the PR and your CI remain the backstop.
+Selection here is **authored, never computed**: nothing infers that a change to one module should pull in a distant suite. That is the boundary of this design - it prevents needless full runs; it does not find the right tests for you. Your CI (and a full suite run when you ask for one) remains the backstop.
 
 ## Task completion
 
@@ -298,13 +297,13 @@ This creates a complete audit trail: what was planned, what was done, how it was
 
 ## flow-next vs flow
 
-The legacy `flow` plugin was removed in flow-next 1.0.2 (commit `ffc7189`). The repo now ships flow-next only. The historical comparison table lives in CHANGELOG; the live shape is:
+The legacy `flow` plugin no longer exists; flow-next is the only plugin. Its shape:
 
 - Task tracking lives in `.flow/` (no external tracker). flowctl itself is never copied there - every host resolves it from the plugin install (see [platforms.md → What setup does](platforms.md#what-setup-does)).
 - Install: plugin only - no external services, no config-file edits.
 - Artifacts: `.flow/specs/` (markdown + JSON sidecar), `.flow/tasks/` (markdown + JSON sidecar), optionally `.flow/charts/` (decision maps + decision records + briefings), and optionally `.flow/features/` (committed user-POV drive map).
 - Multi-user safe: scan-based IDs + soft claims (task assignee; chart decision claims).
-- Uninstall: delete `.flow/` (and `scripts/ralph/` if enabled). `GLOSSARY.md` / `STRATEGY.md` at the repo root persist by design.
+- Uninstall: delete `.flow/`. `GLOSSARY.md` / `STRATEGY.md` at the repo root persist by design.
 
 ## See also
 
@@ -316,4 +315,4 @@ The legacy `flow` plugin was removed in flow-next 1.0.2 (commit `ffc7189`). The 
 - [`../skills/flow-next-chart/SKILL.md`](../skills/flow-next-chart/SKILL.md) - optional pre-capture decision-map skill.
 - [`../skills/flow-next-features/SKILL.md`](../skills/flow-next-features/SKILL.md) - seed/maintain the committed user-POV drive map.
 - [`../README.md`](../README.md) - plugin overview.
-- [`../../../GLOSSARY.md`](../../../GLOSSARY.md) - Spec, Chart, D-ID, Task, Handover object, Receipt.
+- [Glossary](https://flow-next.dev/reference/glossary/) - Spec, Chart, D-ID, Task, Handover object, Receipt.

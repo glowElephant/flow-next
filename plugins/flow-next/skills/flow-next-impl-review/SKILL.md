@@ -1,287 +1,135 @@
 ---
 name: flow-next-impl-review
-description: John Carmack-level implementation review via RepoPrompt or Codex. Use when reviewing code changes, PRs, or implementations. Triggers on /flow-next:impl-review.
+description: John Carmack-level implementation review via Codex, RepoPrompt, Copilot, Cursor, Claude or a host reviewer. Use when reviewing code changes, PRs, or implementations. Triggers on /flow-next:impl-review.
 user-invocable: false
 ---
 
-# Implementation Review Mode
+# Implementation review
 
-**Workflow is backend-split. Read [workflow-common.md](workflow-common.md) for Phase 0 (backend detection + philosophy + trivial-diff triage), then read ONLY the file matching your active backend. The opt-in `--deep`/`--validate`/`--interactive` phase detail (including the phase-ordering matrix) lives in [optional-phases.md](optional-phases.md), loaded only when a flag fires:**
+You coordinate; the configured backend reviews. Never author a verdict yourself, and use one
+backend for the whole review. Read [working-rules.md](../../references/working-rules.md) first:
+its Review section decides which findings you fix.
 
-- `BACKEND=codex` → [workflow-codex.md](workflow-codex.md)
-- `BACKEND=copilot` → [workflow-copilot.md](workflow-copilot.md)
-- `BACKEND=cursor` → [workflow-cursor.md](workflow-cursor.md)
-- `BACKEND=claude` → [workflow-claude.md](workflow-claude.md)
-- `BACKEND=host` → [workflow-host.md](workflow-host.md)
-- `BACKEND=rp` → [workflow-rp.md](workflow-rp.md)
+Arguments: `[task id] [--base <commit>] [--review=<backend>] [--deep[=passes]]
+[--validate] [--interactive] [--no-triage] [focus areas]`. Without `--base` the whole branch is
+reviewed against main. A spec or branch review passes no id.
 
-Do not load the others — only the active backend's file is needed. Each backend file carries its own Critical Rules and anti-patterns.
+## 1. Setup
 
-Conduct a John Carmack-level review of implementation changes on the current branch.
-
-**Role**: Code Review Coordinator (NOT the reviewer)
-**Backends** (branch on the Phase 0 `RP_ELIGIBLE` probe):
-- When `RP_ELIGIBLE=1`: RepoPrompt (rp), Codex CLI (codex), GitHub Copilot CLI (copilot), Cursor CLI (cursor), Claude Code CLI (claude), or host-native (`host`)
-- When `RP_ELIGIBLE=0`: Codex CLI (codex), GitHub Copilot CLI (copilot), Cursor CLI (cursor), Claude Code CLI (claude), or host-native (`host`) — rp is macOS-only; never list it in guidance you surface (`--review=rp` stays accepted)
-
-## Preamble — execute Phase 0 exactly once
-
-**The executable Phase 0 lives in [workflow-common.md](workflow-common.md) §"Phase 0: Backend Detection" — Read it and execute it ONCE, before any other bash in this skill.** It defines `$FLOWCTL` (bundled — NOT installed globally; `which flowctl` fails, expected), probes `RP_ELIGIBLE`, resolves `$BACKEND` via the single `flowctl review-backend` call, and handles the ASK / `none` cases. Every later bash block here (triage, deep-pass selection) uses the `$FLOWCTL` it defines. Never invoke `flowctl review-backend` a second time in the same run.
-
-Exception: a `--review=<backend>` argument (see Backend Selection below) wins — when present, set `BACKEND` from the flag and skip Phase 0's `review-backend` call + ASK handling (still run its `$FLOWCTL` / `RP_ELIGIBLE` setup lines).
-
-When `RP_ELIGIBLE=0` (not macOS, no supported RepoPrompt CLI), never *steer* the user toward rp: every backend summary, recommendation, or override hint you surface presents only the runnable configured backends `codex`, `copilot`, `cursor`, `claude`, `host` (plus `none`). `export` is not an impl-review mode at all — a manual export review lives in `/flow-next:plan-review --review=export`; never present it here. Suppression is not a ban: an explicit `--review=rp`, `FLOW_REVIEW_BACKEND=rp`, or `review.backend=rp` still resolves to rp and errors at runtime via `require_rp_cli()`.
-
-## Backend Selection
-
-**Priority** (first match wins):
-1. `--review=rp|codex|copilot|cursor|claude|host|none` argument
-2. `FLOW_REVIEW_BACKEND` env var — bare backend (`rp`, `codex`, `copilot`, `cursor`, `claude`, `host`, `none`) OR spec form (`codex:<model>:xhigh`, `copilot:<model>`, `cursor:<model>`, `claude:<model>:<effort>`); `host` is bare-only (`host:<model>` is rejected)
-3. `.flow/config.json` → `review.backend` (same bare / spec forms)
-4. **Error** - no auto-detection
-
-### Parse from arguments first
-
-Check $ARGUMENTS for:
-- `--review=rp` or `--review rp` → use rp
-- `--review=codex` or `--review codex` → use codex
-- `--review=copilot` or `--review copilot` → use copilot
-- `--review=cursor` or `--review cursor` → use cursor
-- `--review=claude` or `--review claude` → use claude
-- `--review=host` or `--review host` → use host
-- `--review=export` or `--review export` → fail closed: report that `export` is not an impl-review backend and stop before any dispatch; the manual path is `/flow-next:plan-review --review=export`
-- `--review=none` or `--review none` → skip review
-
-If found, use that backend and skip all other detection.
-
-### Otherwise: Phase 0 resolves it
-
-No `--review` flag → `$BACKEND` comes from [workflow-common.md](workflow-common.md) Phase 0 (executed once per the Preamble): the single `flowctl review-backend "$REVIEW_ID"` call with ASK handling included. Do not re-resolve here.
-
-### Backend detail (model / effort / spec grammar) — on demand
-
-The per-backend "at a glance" descriptions, the `backend[:model[:effort]]` spec grammar, and the `FLOW_REVIEW_BACKEND` spec-form examples live in [references/backend-specs.md](references/backend-specs.md). Read it only when you must surface backend guidance to the user or resolve a model/effort spec — a normal review already has `$BACKEND` and needs nothing from it. When `RP_ELIGIBLE=0`, omit the **rp** line from any guidance you surface (explicit `--review=rp` still honored).
-
-## Critical Rules
-
-**Per-backend rules** for `rp`, `codex`, `copilot`, `cursor`, and `claude` live at the top of each `workflow-<backend>.md` — read the active backend's file (routing table above) and follow its Critical Rules section.
-
-**For host backend:**
-`host` is bare-only. After selection, read [workflow-host.md](workflow-host.md).
-The review must use a fresh, tool-enforced read-only reviewer from a different
-model family and fail closed when no cross-family pin is available.
-
-**For all backends:**
-- If `REVIEW_RECEIPT_PATH` set: write receipt after review (any verdict)
-- Any failure → output `<promise>RETRY</promise>` and stop
-
-**Hard invariants:**
-- **The coordinator never authors a verdict.** A SHIP with no backend response behind it has broken this.
-- **One backend per review.** A transcript that dispatches a second backend after the first answered has broken this.
-- **Review is never skipped without consent.** A `none` backend that ends the run without the user's consent has broken this.
-
-## Input
-
-Arguments: $ARGUMENTS
-Format: `[task ID] [--base <commit>] [--validate] [--deep[=passes]] [--interactive] [focus areas]`
-
-- `--base <commit>` - Compare against this commit instead of main/master (for task-scoped reviews)
-- `--validate` - After NEEDS_WORK verdict, run a validator pass that drops false-positive findings (opt-in)
-- `--deep` / `--deep=<passes>` - Run additional specialized passes (adversarial / security / performance) after primary review (opt-in)
-- `--interactive` - On NEEDS_WORK, walk through each finding with the user (Apply/Defer/Skip/Acknowledge) (opt-in, Ralph-incompatible)
-- Task ID - Optional, for context and receipt tracking
-- Focus areas - Optional, specific areas to examine
-
-**Scope behavior:**
-- With `--base`: Reviews only changes since that commit (task-scoped)
-- Without `--base`: Reviews entire branch vs main/master (full branch review)
-
-**Opt-in flags:**
-- `--validate` — adds a validator pass on NEEDS_WORK that re-checks each finding
-  for false positives. All findings dropping upgrades verdict to SHIP.
-- `FLOW_VALIDATE_REVIEW=1` env var — enables `--validate` session-wide (works in Ralph).
-- `--deep` — adds adversarial pass always + security/performance auto-enabled
-  per diff paths. `--deep=adversarial,security` restricts to listed passes.
-- `FLOW_REVIEW_DEEP=1` env var — enables `--deep` session-wide (works in Ralph).
-- `--interactive` — per-finding walkthrough on NEEDS_WORK. **No env var form** —
-  per-invocation only, always hard-errors in Ralph mode (`REVIEW_RECEIPT_PATH` or
-  `FLOW_RALPH=1`) to prevent accidental autonomous engagement.
-- Default review behavior (no flags) is unchanged.
-
-## Workflow
+One Bash call; fill the three literals from the arguments.
 
 ```bash
-REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+set -e
+FLOWCTL="${DROID_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/flowctl"
+[ -x "$FLOWCTL" ] || FLOWCTL="<plugin-root>/scripts/flowctl"   # <plugin-root> = the directory two levels above this skill's SKILL.md file (the harness gave you that file's absolute path when the skill loaded); substitute it literally
+[ -x "$FLOWCTL" ] || FLOWCTL=".flow/bin/flowctl"
+REVIEW_ID="<task id, or empty for a spec or branch review>"
+BACKEND="<value of --review, or empty>"
+DIFF_BASE="<value of --base, or empty>"
+[ -n "$BACKEND" ] || BACKEND=$("$FLOWCTL" review-backend "$REVIEW_ID")
+[ -n "$DIFF_BASE" ] || { DIFF_BASE=main; git rev-parse -q --verify main >/dev/null || DIFF_BASE=master; }
+echo "FLOWCTL=$FLOWCTL BACKEND=$BACKEND DIFF_BASE=$DIFF_BASE"
+git diff --shortstat "$DIFF_BASE"...HEAD
 ```
 
-### Step 0: Parse Arguments
+- `ASK`: stop; no backend is configured (`/flow-next:setup`, or pass `--review=<backend>`).
+- `none`: no review; say so.
+- `export`: refuse; manual export review lives in `/flow-next:plan-review --review=export`.
+- Any other backend than `codex`, any of `--deep`, `--validate`, `--interactive`, `--no-triage`,
+  `FLOW_VALIDATE_REVIEW=1` or `FLOW_REVIEW_DEEP=1` in the environment, or an instruction about
+  the reviewers ("one reviewer", "three model families"): read [other-paths.md](other-paths.md)
+  and follow it and the backend's workflow file to the end. That file owns the verdict, fix and
+  re-review handling; of step 4, only the `OVERRIDDEN:` line ending an unattended loop applies,
+  never its fix pass or codex re-review.
 
-Parse $ARGUMENTS for:
-- `--base <commit>` → `BASE_COMMIT` (if provided, use for scoped diff)
-- `--no-triage` → set `TRIAGE_DISABLED=1` (skip trivial-diff pre-check)
-- `--validate` → set `VALIDATE=true` (validator pass on NEEDS_WORK)
-- `--deep` / `--deep=<passes>` → set `DEEP=true` + optional `DEEP_PASSES` CSV
-- `--interactive` → set `INTERACTIVE=true` (per-finding walkthrough on NEEDS_WORK; Ralph-blocked)
-- First positional arg matching `fn-*` → `TASK_ID`
-- Remaining args → focus areas
+Shell state does not survive between Bash calls: each block below resolves `FLOWCTL` again and
+takes `REVIEW_ID` and `DIFF_BASE` as literals.
 
-If `--base` not provided, `BASE_COMMIT` stays empty (will fall back to main/master).
+## 2. Codex review
 
-**Opt-in flags + env vars — ONE parse fence for `--validate` / `--deep` / `--interactive`:**
+Run each review command as one blocking foreground Bash call with a 600-second timeout. Never
+run it in the background: its completion would not resume you.
 
 ```bash
-VALIDATE=false
-DEEP=false
-DEEP_PASSES=""  # optional CSV: "adversarial,security"
-INTERACTIVE=false
-for arg in $(printf '%s\n' "$ARGUMENTS"); do   # command substitution word-splits under bash AND zsh; an unquoted $ARGUMENTS does not split under zsh (dogfood E1: --validate silently dropped)
-  case "$arg" in
-    --validate) VALIDATE=true ;;
-    --deep) DEEP=true ;;
-    --deep=*) DEEP=true; DEEP_PASSES="${arg#--deep=}" ;;
-    --interactive) INTERACTIVE=true ;;
-  esac
-done
-
-# Env opt-ins (Ralph-friendly). --interactive has NO env var form — per-invocation only.
-if [[ "${FLOW_VALIDATE_REVIEW:-}" == "1" ]]; then
-  VALIDATE=true
+FLOWCTL="${DROID_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/flowctl"
+[ -x "$FLOWCTL" ] || FLOWCTL="<plugin-root>/scripts/flowctl"   # <plugin-root> = the directory two levels above this skill's SKILL.md file (the harness gave you that file's absolute path when the skill loaded); substitute it literally
+[ -x "$FLOWCTL" ] || FLOWCTL=".flow/bin/flowctl"
+REVIEW_ID="<literal or empty>"; DIFF_BASE="<literal>"
+ROUTE="$("$FLOWCTL" review-route ${REVIEW_ID:+"$REVIEW_ID"} --rotate-stale --json)" || { printf '%s\n' "$ROUTE" >&2; exit 1; }
+ACTION="$(jq -r '.action' <<<"$ROUTE")"; TASK_ID="$(jq -r '.task_id // empty' <<<"$ROUTE")"
+RECEIPT_PATH="$(jq -r '.receipt_path' <<<"$ROUTE")"
+echo "TASK_ID=$TASK_ID RECEIPT_PATH=$RECEIPT_PATH"
+case "$ACTION" in
+  stop) jq -r '.message' <<<"$ROUTE" >&2; exit 1 ;;
+  fix-then-rereview) echo "RESUMED: the receipt holds findings still to fix; go to step 4"; exit 0 ;;
+esac
+TRIAGE=(--receipt "$RECEIPT_PATH" --base "$DIFF_BASE" --no-llm); [ -n "$TASK_ID" ] && TRIAGE+=(--task "$TASK_ID")
+if OUT=$("$FLOWCTL" triage-skip --json "${TRIAGE[@]}" 2>/dev/null); then
+  echo "Triage-skip: $(jq -r '.reason // "trivial diff"' <<<"$OUT")"; echo "VERDICT=SHIP"; exit 0
 fi
-if [[ "${FLOW_REVIEW_DEEP:-}" == "1" ]]; then
-  DEEP=true
-fi
-
-# Optional-phase COUNT (PR #392): sizes the scope-ownership lease the backend
-# workflows hold through the post-finalize phases (one exec allowance per
-# pass). --deep counts one per selected pass (3 when unrestricted: adversarial
-# + the auto-gated security/performance passes), --validate one,
-# --interactive one. Carry this number into the finalize / host record blocks
-# as a LITERAL - shell state does not survive across tool calls.
-OPTIONAL_PHASES_COUNT=0
-if [[ "$DEEP" == "true" ]]; then
-  if [[ -n "$DEEP_PASSES" ]]; then
-    OPTIONAL_PHASES_COUNT=$((OPTIONAL_PHASES_COUNT + $(printf '%s' "$DEEP_PASSES" | tr ',' '\n' | grep -c .)))
-  else
-    OPTIONAL_PHASES_COUNT=$((OPTIONAL_PHASES_COUNT + 3))
-  fi
-fi
-[[ "$VALIDATE" == "true" ]] && OPTIONAL_PHASES_COUNT=$((OPTIONAL_PHASES_COUNT + 1))
-[[ "$INTERACTIVE" == "true" ]] && OPTIONAL_PHASES_COUNT=$((OPTIONAL_PHASES_COUNT + 1))
-echo "OPTIONAL_PHASES_COUNT=$OPTIONAL_PHASES_COUNT"
-# 1 when a held phase resumes the primary reviewer session (--deep /
-# --validate); the interactive walkthrough alone never needs one.
-PHASES_RESUME_SESSION=0
-[[ "$DEEP" == "true" || "$VALIDATE" == "true" ]] && PHASES_RESUME_SESSION=1
-echo "PHASES_RESUME_SESSION=$PHASES_RESUME_SESSION"
-
-# Ralph-block: Ralph must never engage interactive.
-if [[ "$INTERACTIVE" == "true" ]]; then
-  if [[ -n "${REVIEW_RECEIPT_PATH:-}" || "${FLOW_RALPH:-}" == "1" ]]; then
-    echo "Error: --interactive requires a user at the terminal; not compatible with Ralph mode (REVIEW_RECEIPT_PATH or FLOW_RALPH detected)." >&2
-    exit 2
-  fi
-fi
-
-if [[ "$DEEP" == "true" || "$VALIDATE" == "true" || "$INTERACTIVE" == "true" ]]; then
-  echo "OPTIONAL PHASES ACTIVE — STOP. Read optional-phases.md (deep=$DEEP validate=$VALIDATE interactive=$INTERACTIVE) before continuing."
-fi
+args=(); [ -n "$TASK_ID" ] && args+=("$TASK_ID")
+args+=(--base "$DIFF_BASE" --receipt "$RECEIPT_PATH" --json)
+# The default is three reviewers. For a small diff in one area that touches no persisted or
+# shared state, concurrency, security or data layout, set ONE_REVIEWER=1 for a single reviewer.
+ONE_REVIEWER=0
+[ "$ONE_REVIEWER" = 1 ] && args+=(--draw correctness)
+"$FLOWCTL" codex impl-review-fanout "${args[@]}"
 ```
 
-When that sentinel prints, STOP and Read [optional-phases.md](optional-phases.md) before any further step — it owns the phase-ordering + flag-combination matrix, the deep-pass selection bash, the validator dispatch, and the walkthrough steps (per-finding loop detail in [walkthrough.md](walkthrough.md), pass prompt templates in [deep-passes.md](deep-passes.md)). All three phases are default-OFF: when no flag fires, run the primary review only and write no `validator` / `deep_passes` / `walkthrough` receipt keys.
+A branch review (no task) passes the caller's focus areas with `--focus "<areas>"`. Triage
+passing means lockfile, docs, release or generated files only: the review is done.
 
-### Step 0.5: Trivial-diff triage
+## 3. Merge and finalize
 
-Before invoking the configured backend, run a fast pre-check that short-circuits
-lockfile-only, docs-only, release-chore, and generated-file diffs. On SKIP, the
-receipt is written with `mode: "triage_skip"` / `verdict: "SHIP"` and the
-expensive backend call is skipped entirely.
-
-Opt-out: `--no-triage` argument or `FLOW_RALPH_NO_TRIAGE=1` env var.
+The fan-out JSON lists each draw's `<axis>.review.md`, its `rid`, and the finalize command. Read
+each review and write a merge plan to a file: `{"keep":["correctness:1"],"collapse":{"contracts:2":"correctness:1"}}`,
+where references are `<axis>:<finding number>`. Collapse findings that describe the same defect
+onto the one with the strongest evidence; leave out findings with no concrete failing scenario in
+the change. Then, in the foreground:
 
 ```bash
-if [[ -z "${TRIAGE_DISABLED:-}" && -z "${FLOW_RALPH_NO_TRIAGE:-}" ]]; then
-  # Only a first-round route may skip review; probe failure falls through.
-  if ROUTE="$($FLOWCTL review-route ${TASK_ID:+"$TASK_ID"} --json)" \
-      && [[ "$(jq -r '.action // empty' <<<"$ROUTE")" == "fanout" ]]; then
-    TASK_ID="$(jq -r '.task_id // empty' <<<"$ROUTE")"
-    RECEIPT_PATH="$(jq -r '.receipt_path' <<<"$ROUTE")"
-    # Subcommand + one literal flag stay on the command line (the Ralph guard
-    # blocks a variable in either of the two tokens after the launcher).
-    TRIAGE_ARGS=(--receipt "$RECEIPT_PATH")
-    [[ -n "$BASE_COMMIT" ]] && TRIAGE_ARGS+=(--base "$BASE_COMMIT")
-    [[ -n "$TASK_ID" ]] && TRIAGE_ARGS+=(--task "$TASK_ID")
-    # Deterministic-only by default; set FLOW_TRIAGE_LLM=1 to enable LLM judge
-    # for ambiguous diffs. Deterministic is conservative — ambiguous → REVIEW.
-    [[ -z "${FLOW_TRIAGE_LLM:-}" ]] && TRIAGE_ARGS+=(--no-llm)
-
-    if TRIAGE_OUT=$($FLOWCTL triage-skip --json "${TRIAGE_ARGS[@]}" 2>/dev/null); then
-      # Exit 0 = SKIP. Receipt already written by flowctl.
-      SKIP_REASON=$(echo "$TRIAGE_OUT" | jq -r '.reason // "trivial diff"' 2>/dev/null || echo "trivial diff")
-      echo "Triage-skip: $SKIP_REASON"
-      echo "VERDICT=SHIP"
-      exit 0
-    fi
-  fi
-  # Exit 1 = proceed to full review (normal path). Exit >=2 = error, also falls
-  # through so impl-review proceeds safely rather than failing on triage.
-fi
+FLOWCTL="${DROID_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/flowctl"
+[ -x "$FLOWCTL" ] || FLOWCTL="<plugin-root>/scripts/flowctl"   # <plugin-root> = the directory two levels above this skill's SKILL.md file (the harness gave you that file's absolute path when the skill loaded); substitute it literally
+[ -x "$FLOWCTL" ] || FLOWCTL=".flow/bin/flowctl"
+"$FLOWCTL" codex impl-review-fanout-finalize --rid "<rid>" --merge-plan "<plan path>" --json
 ```
 
-**Opt-out note:** Pass `--no-triage` to force the full backend review (useful
-when explicitly validating a suspicious chore diff, or when the deterministic
-whitelist misclassifies). `FLOW_RALPH_NO_TRIAGE=1` has the same effect for
-Ralph runs.
+flowctl computes the verdict (the worst draw wins; failed draws do not vote) and writes the
+receipt. Report `VERDICT=<verdict>` with the kept findings; your own reading never changes it.
+Finalize before you change or commit anything: a commit moves HEAD past the reviewed head,
+flowctl refuses the round, and the retry is a full fresh review instead of the scoped re-review.
 
-The deterministic rule table, the SKIP receipt shape, and the `FLOW_TRIAGE_LLM=1`
-judge live in [references/triage-rules.md](references/triage-rules.md) — read it
-only when a triage result needs justifying or auditing.
+## 4. Act on the verdict (codex path)
 
-### Step 1: Load Backend Workflow
+- `SHIP`: done. Report the verdict and any follow-ups.
+- `MAJOR_RETHINK`: the approach is wrong. Stop with `BLOCKED: DESIGN_CONFLICT` and the
+  reviewer's rationale; do not patch finding by finding.
+- `NEEDS_HUMAN`: stop and hand the reviewer's question to the person.
+- `NEEDS_WORK`: one fix pass, then one re-review. Fix only the findings working-rules says to
+  fix; list the rest as follow-ups. Never ask the person which to fix. Run focused tests for the
+  fixes and commit only the files you changed, with one `Declined #<n>: <reason>` line in the
+  commit message for each finding you listed as a follow-up (the re-review reads them). Then
+  re-review once, in the foreground:
 
-1. `$BACKEND` was already resolved by workflow-common.md Phase 0 (Preamble) — do NOT re-run it.
-2. Read **only** the file for that backend, per the routing table at the top of this file.
+```bash
+FLOWCTL="${DROID_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/flowctl"
+[ -x "$FLOWCTL" ] || FLOWCTL="<plugin-root>/scripts/flowctl"   # <plugin-root> = the directory two levels above this skill's SKILL.md file (the harness gave you that file's absolute path when the skill loaded); substitute it literally
+[ -x "$FLOWCTL" ] || FLOWCTL=".flow/bin/flowctl"
+REVIEW_ID="<literal or empty>"; DIFF_BASE="<literal>"
+ROUTE="$("$FLOWCTL" review-route ${REVIEW_ID:+"$REVIEW_ID"} --json)"
+TASK_ID="$(jq -r '.task_id // empty' <<<"$ROUTE")"; RECEIPT_PATH="$(jq -r '.receipt_path' <<<"$ROUTE")"
+"$FLOWCTL" codex impl-review ${TASK_ID:+"$TASK_ID"} --base "$DIFF_BASE" --receipt "$RECEIPT_PATH"
+```
 
-**Do not read the other backend files.** Each is self-contained for its backend; loading the others wastes context.
+  The re-review resumes the reviewer's session and its verdict is terminal: report surviving
+  findings, never start a second fix pass, unless working-rules.md's review loop applies (an
+  unattended run, or a request to review until SHIP). In that loop, fix and re-review the same
+  way until SHIP or an `ESCALATE:` (round cap or stall). When the reviewer keeps only findings
+  you declined under working-rules.md's rule, all below Major, end the loop and print
+  `OVERRIDDEN: <n> declined findings` with each finding and both sides' reasons after
+  `VERDICT=NEEDS_WORK`; the caller completes the task on it.
 
-### Step 2: Execute the backend workflow
-
-Follow the phases in the per-backend file end-to-end. Each file owns its own Identify → Execute → Verdict → Receipt steps (and, for RP, the full Phase 1-4 setup-review / chat-send / receipt build + Fix Loop). Cross-backend gated phases (Deep-Pass, Validator, Interactive Walkthrough) live in [optional-phases.md](optional-phases.md) — the backend files reference them.
-
-## Fix Loop (INTERNAL - do not exit to Ralph)
-
-**The fix loop never pauses for user confirmation.** Every valid finding is fixed and re-reviewed automatically — the goal is production-grade world-class software and architecture. A loop that stops to ask, or that exits with a valid finding unfixed, has broken this. Never use AskUserQuestion in this loop.
-
-**MAJOR_RETHINK is NOT a fix-loop input.** Every backend can emit `MAJOR_RETHINK` (a valid verdict tag), but it means the *design/approach* is wrong — not something to patch finding-by-finding. Do NOT enter the fix loop on it. Escalate immediately: surface the reviewer's rationale to the caller and stop with a typed **`BLOCKED: DESIGN_CONFLICT`** (Ralph mode: output `<promise>RETRY</promise>`). A re-approach is a human/worker decision, never an ad-hoc patch. Only `NEEDS_WORK` drives the loop below.
-
-**MAX ITERATIONS (backend-agnostic — rp, codex, copilot, cursor, claude, host):**
-flowctl reserves a per-task round before every task-scoped dispatch. A delivered
-SHIP / NEEDS_WORK / MAJOR_RETHINK / NEEDS_HUMAN consumes it; a no-verdict transport failure
-is durably recorded and refunded. A first-round three-draw fan-out (codex/host)
-sits behind exactly ONE reservation and counts as ONE round — the cap bounds
-rounds, not draws. At `${MAX_REVIEW_ITERATIONS:-8}` verdict
-rounds it refuses with `ESCALATE:` + exit 4. More than
-`${MAX_REVIEW_TRANSPORT_FAILURES:-2}` consecutive no-verdict failures stop
-separately with `TRANSPORT_UNHEALTHY` + exit 5: repair the backend, never reset
-the verdict counter. This loop is internal; callers invoke impl-review once.
-The counter resets only on SHIP or explicit re-plan, never on an edit, fresh
-invocation, or transport failure.**
-
-**Unchanged-artifact terminal:** `NOT_RETRYABLE: artifact unchanged since last verdict` exits `1` before a review is sent. It is a human-action terminal:
-autonomous loops must stop without refunding, resetting, adding `--force`, or
-redispatching. The human may edit the artifact, explicitly reset, or choose a
-deliberate `--force` dispatch.
-
-**ANTI-PATTERN (never do either):**
-1. **A delivered verdict is never a transport failure.** Once flowctl parses
-   `VERDICT=SHIP|NEEDS_WORK|MAJOR_RETHINK|NEEDS_HUMAN`, the round is consumed and the
-   attempt is recorded; transport classification is unreachable past that
-   point. Do not re-dispatch, re-frame a `NEEDS_WORK` as a backend/sandbox
-   problem, or claim a refund for it. `NEEDS_WORK` is fix-loop input, full
-   stop.
-2. **Never widen the reviewer sandbox.** Reviewers are read-only by contract
-   (Unix default `read-only`). A sandbox-blocked reviewer means something
-   asked it to mutate the workspace: fix that, do not pass
-   `--sandbox workspace-write` / `danger-full-access` or set `CODEX_SANDBOX`.
-   The one exception is Windows, where `auto` already resolves for you.
-
-**On `NEEDS_WORK` — STOP and Read [references/fix-loop.md](references/fix-loop.md)** before any further step: it owns the ordered loop (optional deep / validator / walkthrough hooks, parse issues, fix code, run tests and lints, commit fixes, per-backend re-review command, repeat until `<verdict>SHIP</verdict>` or the cap above). Do not improvise the loop from memory. On `SHIP` the review is complete and nothing further is read.
+If a review command ends without a verdict (a transport error), retry it once. `ESCALATE:`,
+`TRANSPORT_UNHEALTHY`, `NOT_RETRYABLE:` and other refusals end this review: report the message
+as printed and stop. Never widen the reviewer's sandbox, call `codex` directly, or reset review
+state to get past one.

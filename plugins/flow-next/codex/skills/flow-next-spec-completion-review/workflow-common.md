@@ -102,9 +102,11 @@ Only the file for the active backend should enter context. Do not read the other
 
 ---
 
-## Fix Loop (INTERNAL - do not exit to Ralph)
+## Fix Loop (INTERNAL)
 
-**The fix loop never pauses for user confirmation.** Every valid finding is fixed and re-reviewed automatically — the goal is complete spec compliance. A loop that stops to ask, or that exits with a valid finding unfixed, has broken this. Never use the plain-text numbered prompt in this loop.
+**Ask the user via plain text.** Render the options below as a numbered list `1.` … `N.`, followed by a final option `N+1. Other — type your own answer`. Print the question, then the numbered list, then **stop and wait for the user's next message before continuing**. Parse the reply as: a bare number `1`–`N+1` → that option; the literal text of an option label → that option; free text after `Other` → custom answer.
+
+**The fix loop never pauses for user confirmation**; never use plain-text numbered prompt in it. Which findings it fixes, and which it lists as follow-ups, follows the Review section of [working-rules.md](../../references/working-rules.md).
 
 **MAX ITERATIONS (backend-agnostic — rp, codex, copilot, cursor, claude, host):**
 The codex/copilot/cursor/claude handlers reserve a round before dispatch; the selected
@@ -133,11 +135,11 @@ read-only by contract; a sandbox-blocked reviewer means something asked it to
 mutate the workspace. Fix that, do not pass `--sandbox workspace-write` /
 `danger-full-access` or set `CODEX_SANDBOX` (Windows resolves via `auto`).
 
-If verdict is NEEDS_WORK, loop internally until SHIP or the iteration cap:
+If the verdict is NEEDS_WORK, fix and re-review (working-rules.md, Review):
 
 1. **Parse issues** from reviewer feedback (missing requirements, incomplete implementations)
-2. **Fix code** and run tests/lints
-3. **Commit fixes** (mandatory before re-review; RP backend uses the snapshot-scoped staging in workflow-rp.md — never blanket-stage with `git add --all`). Then, when step 2's green run included one of the repo's full-gate commands (the same `(gate_id, exact command string)` identity the worker's Phase 5 maps — e.g. the repo's parallel full-suite entrypoint), nothing changed between that run and this commit, and the tree is clean at the committed fix HEAD: write the receipt — `<FLOWCTL> gate receipt --gate <gate_id> --command "<cmd>"` — so later gates honor it instead of re-running the identical command. Focused/partial test commands NEVER mint a full-gate receipt (identity is the exact full command string). A dirty tree, edits after the run, or any doubt about identity → mint nothing (fail closed; the later gate simply re-runs).
+2. **Fix code** and run the focused tests for it
+3. **Commit fixes**, with one `Declined #<n>: <reason>` line in the message for each finding listed as a follow-up (mandatory before re-review; RP backend uses the snapshot-scoped staging in workflow-rp.md — never blanket-stage with `git add --all`). Then, when step 2's green run included one of the repo's full-gate commands (the same `(gate_id, exact command string)` identity the worker's Phase 5 maps — e.g. the repo's parallel full-suite entrypoint), nothing changed between that run and this commit, and the tree is clean at the committed fix HEAD: write the receipt — `<FLOWCTL> gate receipt --gate <gate_id> --command "<cmd>"` — so later gates honor it instead of re-running the identical command. Focused/partial test commands NEVER mint a full-gate receipt (identity is the exact full command string). A dirty tree, edits after the run, or any doubt about identity → mint nothing (fail closed; the later gate simply re-runs).
 4. **Re-review**:
    - **Codex**: Re-run `flowctl codex completion-review` (receipt enables context)
    - **Copilot**: Re-run `flowctl copilot completion-review` (receipt enables context; must be `mode == "copilot"` to resume)
@@ -145,10 +147,11 @@ If verdict is NEEDS_WORK, loop internally until SHIP or the iteration cap:
    - **Host**: Continue through [workflow-host.md](workflow-host.md)'s selected
      re-review path.
    - **RP**: `$FLOWCTL rp chat-send --window "$W" --tab "$T" --message-file <literal re-review path from workflow-rp.md's fix loop>` (NO `--new-chat`; stdout redirected to the same literal response file, Read once)
-5. **Repeat** until `<verdict>SHIP</verdict>` — or a delivered `NEEDS_WORK`
-   consumes the final round. On that final host/rp verdict, run the terminal
-   status step below before the cap terminal; never rely on a later step after
-   exit 4.
+5. **Stop.** Attended, the re-review's verdict is terminal: `SHIP` completes; `NEEDS_WORK`
+   hands the surviving findings to the caller, never a second fix pass. When working-rules.md's
+   review loop applies (an unattended run, or a request to review until SHIP), repeat steps 1-4
+   until SHIP or an `ESCALATE:`. On host/rp, run the terminal status step below on the final
+   verdict. The iteration cap stays as the backstop (`ESCALATE:`, exit 4).
 
 **RP re-reviews stay in the same chat.** `--new-chat` belongs to the first review only — a re-review carrying it drops the reviewer's context and has broken this.
 

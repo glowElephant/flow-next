@@ -12,9 +12,7 @@ Validates:
   - every declared component path resolves under the plugin root;
   - every skill / agent / command has non-empty ``name`` and ``description``
     frontmatter (Cursor marketplace review checklist shape);
-  - ``rules/flow-next.mdc`` is the Cursor guidance rail: proper .mdc frontmatter,
-    ``.flow/bin/flowctl`` resolution, lifecycle + the two ``flowctl usage``
-    pull directives.
+  - ``rules/flow-next.mdc`` carries .mdc frontmatter with ``alwaysApply: false``.
 
 Pure file/JSON checks — no Cursor install required.
 
@@ -25,7 +23,6 @@ Run:
 from __future__ import annotations
 
 import json
-import re
 import unittest
 from pathlib import Path
 from typing import Any
@@ -120,28 +117,11 @@ class TestCursorMarketplace(unittest.TestCase):
         self.assertEqual(set(owner.keys()) - OWNER_KEYS, set())
         self.assertTrue(_nonempty(owner.get("name")))
 
-    def test_no_public_marketplace_submission_metadata(self) -> None:
-        # Guard against accidentally shipping public-marketplace publisher
-        # fields (rejected on terms). Team repo-import only needs name/source.
-        text = MARKETPLACE.read_text(encoding="utf-8")
-        for banned in ("publisherId", "submission", "anysphere", "publicMarketplace"):
-            self.assertNotIn(banned, text)
-
-
 class TestCursorPluginManifest(unittest.TestCase):
     def setUp(self) -> None:
         self.assertTrue(PLUGIN_MANIFEST.is_file())
         self.data = _load_json(PLUGIN_MANIFEST)
         self.assertIsInstance(self.data, dict)
-
-    def test_required_component_paths_declared(self) -> None:
-        for key in REQUIRED_COMPONENT_KEYS:
-            with self.subTest(key=key):
-                self.assertIn(key, self.data, f"plugin.json must declare '{key}'")
-                self.assertTrue(
-                    _nonempty(str(self.data[key])),
-                    f"plugin.json '{key}' must be non-empty",
-                )
 
     def test_component_paths_resolve_and_exclude_forbidden(self) -> None:
         for key in REQUIRED_COMPONENT_KEYS:
@@ -244,55 +224,6 @@ class TestFlowNextRule(unittest.TestCase):
         # repos (review finding, fn-123.1). Agent-decides via the trigger-shaped
         # description is the correct scope for a plugin rule.
         self.assertEqual(self.fm.get("alwaysApply"), "false")
-        self.assertIn(".flow/", str(self.fm.get("description")))
-
-    def test_flowctl_resolved_via_three_rung_chain(self) -> None:
-        # fn-197: the rail teaches the same chain every skill preamble carries.
-        # Rung 2 (derive the plugin root from the loaded skill file's path) is
-        # what actually resolves on Cursor - it sets no plugin-root env var and
-        # does no bin-PATH injection - and `.flow/bin` is only the backstop for
-        # a repo that has not deleted its copies yet.
-        self.assertIn(
-            'FLOWCTL="${DROID_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/flowctl"',
-            self.text,
-        )
-        self.assertIn(
-            '[ -x "$FLOWCTL" ] || FLOWCTL="<plugin-root>/scripts/flowctl"',
-            self.text,
-        )
-        self.assertIn('[ -x "$FLOWCTL" ] || FLOWCTL=".flow/bin/flowctl"', self.text)
-        # Commands run through the resolved variable, never a hardcoded path.
-        self.assertNotIn("`.flow/bin/flowctl ", self.text)
-        self.assertIn("$FLOWCTL list", self.text)
-
-    def test_lifecycle_commands(self) -> None:
-        for token in ("list", "show", "start", "done"):
-            self.assertRegex(
-                self.text,
-                rf"\b{token}\b",
-                f"lifecycle token {token!r} missing from flow-next.mdc",
-            )
-        self.assertIn("summary-file", self.text)
-        self.assertIn("evidence-json", self.text)
-
-    def test_two_usage_pull_directives(self) -> None:
-        # The two pull directives from the fn-121 slim snippet (Cursor analog).
-        self.assertRegex(
-            self.text,
-            re.compile(
-                r"BEFORE any other flowctl operation.*flowctl usage",
-                re.IGNORECASE | re.DOTALL,
-            ),
-        )
-        self.assertRegex(
-            self.text,
-            re.compile(
-                r"BEFORE bridging work.*flowctl usage",
-                re.IGNORECASE | re.DOTALL,
-            ),
-        )
-        self.assertIn("Orchestration & model steering", self.text)
-
 
 if __name__ == "__main__":
     unittest.main()

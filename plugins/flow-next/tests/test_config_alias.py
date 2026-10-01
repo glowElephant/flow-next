@@ -1,15 +1,7 @@
-"""Post-removal config-key tests (fn-111.2).
+"""`config get --raw` distinguishes an unset key from an explicit false/true.
 
-The `planSync.crossEpic` → `planSync.crossSpec` alias was removed in 2.0.0;
-fn-111.2 removes the remaining empty alias machinery (identity resolvers +
-empty `_CONFIG_KEY_ALIASES` seam only). These tests pin still-live behavior:
-
-  * Defaults dict has `crossSpec`, not `crossEpic`.
-  * `_CONFIG_KEY_ALIASES` stays empty (seam for future renames).
-  * Reading the canonical `planSync.crossSpec` NEVER falls back to a leftover
-    `crossEpic` value — merged reads return the default, `--raw` returns null.
-  * `planSync.crossEpic` is an unknown key: reads/writes pass through literally.
-  * `--raw` distinguishes unset from explicit false/true (setup first-run).
+Setup's first-run probe relies on this: a merged read returns the default,
+`--raw` returns null for an unset key and the stored value otherwise.
 """
 
 from __future__ import annotations
@@ -23,7 +15,6 @@ import shutil
 import sys
 import tempfile
 import unittest
-from contextlib import redirect_stderr
 from pathlib import Path
 from typing import Any
 
@@ -46,7 +37,7 @@ def _load_flowctl() -> Any:
     return mod
 
 
-class ConfigAliasRemovalTestCase(unittest.TestCase):
+class ConfigRawReadTestCase(unittest.TestCase):
     def setUp(self) -> None:
         self.tmpdir = Path(tempfile.mkdtemp())
         self.prev_cwd = Path.cwd()
@@ -62,87 +53,6 @@ class ConfigAliasRemovalTestCase(unittest.TestCase):
     def _write_config(self, data: dict) -> None:
         config_path = self.tmpdir / ".flow" / "config.json"
         config_path.write_text(json.dumps(data), encoding="utf-8")
-
-    def test_defaults_use_canonical_key_only(self) -> None:
-        defaults = self.flowctl.get_default_config()
-        self.assertIn("crossSpec", defaults["planSync"])
-        self.assertNotIn("crossEpic", defaults["planSync"])
-
-    def test_alias_map_is_empty(self) -> None:
-        self.assertEqual(
-            self.flowctl._CONFIG_KEY_ALIASES,
-            {},
-            "No active config-key aliases; empty seam only.",
-        )
-
-    def test_canonical_read_ignores_leftover_legacy_key(self) -> None:
-        self._write_config({"planSync": {"crossEpic": True}})
-        eff, value, dep = self.flowctl.resolve_config_key_for_read(
-            "planSync.crossSpec"
-        )
-        self.assertEqual(eff, "planSync.crossSpec")
-        self.assertFalse(
-            value, "Leftover crossEpic must be inert — default wins."
-        )
-        self.assertEqual(dep, "")
-
-    def test_legacy_read_is_plain_unknown_key_no_warn(self) -> None:
-        self._write_config({"planSync": {"crossSpec": True}})
-        buf = io.StringIO()
-        with redirect_stderr(buf):
-            eff, value, dep = self.flowctl.resolve_config_key_for_read(
-                "planSync.crossEpic"
-            )
-        self.assertEqual(eff, "planSync.crossEpic")
-        self.assertIsNone(value, "No redirect to canonical post-removal.")
-        self.assertEqual(dep, "", "No deprecation form post-removal.")
-        self.assertEqual(buf.getvalue(), "", "No warning post-removal.")
-
-    def test_legacy_write_is_not_redirected(self) -> None:
-        canonical, dep = self.flowctl.resolve_config_key_for_write(
-            "planSync.crossEpic"
-        )
-        self.assertEqual(
-            canonical,
-            "planSync.crossEpic",
-            "Writes no longer redirect legacy to canonical.",
-        )
-        self.assertEqual(dep, "")
-
-    def test_canonical_read_write_unchanged(self) -> None:
-        self._write_config({"planSync": {"crossSpec": True}})
-        eff, value, dep = self.flowctl.resolve_config_key_for_read(
-            "planSync.crossSpec"
-        )
-        self.assertEqual(eff, "planSync.crossSpec")
-        self.assertTrue(value)
-        self.assertEqual(dep, "")
-        canonical, dep2 = self.flowctl.resolve_config_key_for_write(
-            "planSync.crossSpec"
-        )
-        self.assertEqual(canonical, "planSync.crossSpec")
-        self.assertEqual(dep2, "")
-
-    def test_default_when_neither_key_set(self) -> None:
-        self._write_config({"planSync": {"enabled": True}})
-        eff, value, dep = self.flowctl.resolve_config_key_for_read(
-            "planSync.crossSpec"
-        )
-        self.assertEqual(eff, "planSync.crossSpec")
-        self.assertFalse(value, "Default for crossSpec is False")
-        self.assertEqual(dep, "")
-
-    def test_unrelated_key_unchanged(self) -> None:
-        eff, _, dep = self.flowctl.resolve_config_key_for_read(
-            "memory.enabled"
-        )
-        self.assertEqual(eff, "memory.enabled")
-        self.assertEqual(dep, "")
-        canonical, dep2 = self.flowctl.resolve_config_key_for_write(
-            "memory.enabled"
-        )
-        self.assertEqual(canonical, "memory.enabled")
-        self.assertEqual(dep2, "")
 
     def test_raw_file_probe_distinguishes_unset_from_false(self) -> None:
         self._write_config({"planSync": {"enabled": True}})
@@ -190,26 +100,6 @@ class ConfigAliasRemovalTestCase(unittest.TestCase):
         out = self._run_config_get_cli("planSync.crossSpec")
         self.assertIs(out["value"], False)
         self.assertNotIn("raw", out)
-
-    def test_cli_raw_canonical_ignores_leftover_legacy(self) -> None:
-        self._write_config({"planSync": {"crossEpic": True}})
-        out = self._run_config_get_cli("planSync.crossSpec", "--raw")
-        self.assertIsNone(out["value"])
-
-    def test_cli_raw_neither_canonical_nor_legacy_returns_null(self) -> None:
-        self._write_config({"planSync": {"enabled": True}})
-        out = self._run_config_get_cli("planSync.crossSpec", "--raw")
-        self.assertIsNone(out["value"])
-
-    def test_cli_legacy_get_no_deprecation_on_stderr(self) -> None:
-        self._write_config({"planSync": {"crossEpic": True}})
-        err = io.StringIO()
-        with redirect_stderr(err):
-            out = self._run_config_get_cli("planSync.crossEpic", "--raw")
-        self.assertIs(out["value"], True)
-        self.assertEqual(out["key"], "planSync.crossEpic")
-        self.assertEqual(err.getvalue(), "")
-
 
 if __name__ == "__main__":
     unittest.main()

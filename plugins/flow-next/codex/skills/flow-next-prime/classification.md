@@ -4,7 +4,7 @@ Prime's first phase: classify what KIND of project this is before anything downs
 
 Classification is **deterministic and host-inline** (no judgment scout, no new mode): the raw signals come from the `flowctl prime classify --json` emitter (schema pinned below; the emitter itself lands in a later task); the skill layers the Axis-5 shape reasoning, the per-axis confidence, the bounded clarification (Phase 0.6), and playbook selection on top. Every probe is bounded and capped - `git ls-files` counts, `find -maxdepth`, config-presence globs, ONE sampled ambiguity grep, `scc`/`tokei` when present (never `cloc`, never exhaustive reads).
 
-**Classification is heuristic.** The block always prints its evidence and its confidence. A low-confidence or uninferable call is routed to the Phase 0.6 clarification (the R15 protocol) rather than guessed; autonomous / `--report-only` runs state the assumption inline and list it under "Unresolved questions" instead of blocking. Misclassification must degrade gracefully - a monorepo misread as a single repo still gets a correct base report; only the playbook block is off.
+**Classification is heuristic.** The block always prints its evidence and its confidence. A low-confidence or uninferable call is routed to the Phase 0.6 clarification rather than guessed; autonomous / `--report-only` runs state the assumption inline and list it under "Unresolved questions" instead of blocking. Misclassification must degrade gracefully - a monorepo misread as a single repo still gets a correct base report; only the playbook block is off.
 
 Thresholds throughout are **research-anchored starting opinions**, collected in the tunable table near the end. Tune them with portfolio data here, never in flowctl code.
 
@@ -55,7 +55,7 @@ The same exclusion list feeds the largest-files pathology inventory (FH2 / LEG4)
 
 **Legibility sub-signals:** top-level dir count; entrypoint-glob hits (`main.*`, `index.*`, `cmd/*/main.go`, `*.dpr`, framework markers); packages-vs-instruction-files ratio; tracked generated / vendored code (`vendor/`, `dist/`, `*_pb2.py`, `.dcu`); a root instruction file >~300 lines with zero nested files; ONE bounded grep-ambiguity probe (2-3 core domain identifiers - hundreds of hits predicts wrong-file / wrong-symbol thrash).
 
-**Empirical anchors that make the band actionable:** agent pass rates collapse above ~100K LOC (RepoMod-Bench); code-intelligence tooling is net NEGATIVE below ~400K LOC and strongly positive from 400K-2M (Sourcegraph CodeScaleBench, 1,281 runs). Recommendations MUST tier accordingly - recommending heavy LSP / index tooling on a small repo is itself a prime failure (see the size-tiering rule in Edge Cases and R12).
+**Empirical anchors that make the band actionable:** agent pass rates collapse above ~100K LOC (RepoMod-Bench); code-intelligence tooling is net NEGATIVE below ~400K LOC and strongly positive from 400K-2M (Sourcegraph CodeScaleBench, 1,281 runs). Recommendations MUST tier accordingly - recommending heavy LSP / index tooling on a small repo is itself a prime failure (see the size-tiering rule in Edge Cases).
 
 ### Axis 4 - stack(s): MANIFEST-GATED, LOC-histogram corroborated
 
@@ -69,7 +69,7 @@ Gradle manifests (`build.gradle`, `build.gradle.kts`, `settings.gradle`, `settin
 
 `web service/app | CLI | library/SDK | plugin/prose-product | desktop | docs site | data/ML | IaC`. One repo can carry several (a real eval repo is CLI + daemon + web UI + desktop shell). This axis is the single root cause of most misfires, so it is multi-valued and skill-judged.
 
-**Ordering rule (resolution 9):** shape detection runs from markers / manifests FIRST, THEN denominators are recomputed ONCE under the winning shape(s) - no iteration.
+**Ordering rule:** shape detection runs from markers / manifests FIRST, THEN denominators are recomputed ONCE under the winning shape(s) - no iteration.
 
 Detection markers (heuristic, confidence-marked, Phase-0.6-askable): manifest `bin` / `exports` fields; framework markers; serve / health code; `.desktop` / electron / tauri / electrobun markers; skills / prose ratios. The emitter emits these markers RAW; the skill derives the shape values.
 
@@ -84,7 +84,7 @@ Shape gates (what the shape controls):
 
 ## Per-axis confidence
 
-Confidence is a **separate field on every axis** (`high | medium | low`), NEVER punctuation in the verdict enum. It combines signal agreement (do the probes point the same way?) with the emitter's completeness diagnostics for that collector (partial / sampled / capped data can never yield high confidence - resolution 21b). A `low` on any axis that changes a playbook or a verdict routes to Phase 0.6; a `low` that changes nothing is printed but not asked.
+Confidence is a **separate field on every axis** (`high | medium | low`), NEVER punctuation in the verdict enum. It combines signal agreement (do the probes point the same way?) with the emitter's completeness diagnostics for that collector (partial / sampled / capped data can never yield high confidence). A `low` on any axis that changes a playbook or a verdict routes to Phase 0.6; a `low` that changes nothing is printed but not asked.
 
 ---
 
@@ -94,7 +94,7 @@ Confidence is a **separate field on every axis** (`high | medium | low`), NEVER 
 
 - **repository** - a normal standalone checkout.
 - **workspace-member** - cwd is below the git toplevel (a package inside a monorepo); classified against the ROOT topology - the emitter re-roots the tracked-file inventory and every topology/substance collector at the git toplevel (root workspace config, CI, and sibling manifests stay visible) and records the member subpath in `assessment_scope.member_path` - reported as "assessing workspace member `<pkg>` of `<root>`", never silently standalone.
-- **constellation-home-base** - prime is running in a parent dir that is not itself a project repo; selects the constellation-layer assessment (R10) instead of erroring on "no manifest found".
+- **constellation-home-base** - prime is running in a parent dir that is not itself a project repo; selects the constellation-layer assessment instead of erroring on "no manifest found".
 
 ---
 
@@ -108,7 +108,7 @@ Research-anchored starting opinions. Tune here with portfolio data, never in flo
 | Greenfield tracked-file count | < ~30 | Axis 1 |
 | Size band boundaries | 100K / 400K / 2M LOC | Axis 3 |
 | Huge file-count boundary | > 20K files | Axis 3 |
-| Code-intelligence net-negative floor | < 400K LOC | Axis 3 / R12 |
+| Code-intelligence net-negative floor | < 400K LOC | Axis 3 |
 | Workspace-parent git-dir count (dampener) | > ~20 git dirs | Axis 2 bit 2 (a) |
 | Prefix-family cluster | >= 2 named siblings | Axis 2 bit 2 (a) |
 | Instruction-file review-trigger band | ~200 lines (nested), ~300 (review) | legibility / DC2 |
@@ -118,11 +118,11 @@ Research-anchored starting opinions. Tune here with portfolio data, never in flo
 
 ---
 
-## Edge-case ladder (resolution 8)
+## Edge-case ladder
 
 - **Unborn HEAD** (no commits) - lifecycle = greenfield, evidence "no commits"; never error on the empty `git rev-list`.
 - **Non-git dir** - run constellation-home-base detection FIRST (manifest + sibling checkouts); if it is not a home base, exit cleanly with a clear message, never a stack trace.
-- **Git-worktree siblings** - a sibling whose `.git` gitdir resolves to the SAME repo is a worktree, not a constellation sibling; exclude it from constellation signals (a worktree-sibling fixture guards this in R19).
+- **Git-worktree siblings** - a sibling whose `.git` gitdir resolves to the SAME repo is a worktree, not a constellation sibling; exclude it from constellation signals.
 - **cwd below the git toplevel** - detect the workspace-member scope, report "assessing workspace member `<pkg>` of `<root>`", classify against the root topology (collectors run from the toplevel; the member subpath lands in `assessment_scope.member_path`), never silently treat the package as standalone.
 - **Timeouts** - use the harness timeout parameter or a portable background + kill pattern; NEVER bare `timeout(1)` (absent on stock macOS).
 - **POSIX character classes** everywhere in the probe patterns (portability across BSD / GNU tooling).
@@ -131,7 +131,7 @@ Research-anchored starting opinions. Tune here with portfolio data, never in flo
 
 ## Emitter contract: `flowctl prime classify --json`
 
-The deterministic layer of Phase 0.5 ships as a pure-stdlib flowctl emitter (bounded, no LLM, no judgment). This file PINS the contract; the implementation lands in the flowctl task (`plugins/flow-next/scripts/flowctl.py`, the single shipped source). The skill invokes the emitter and layers judgment (Axis-5 shape values, final per-axis confidence, the Phase 0.6 asks, playbook selection) on the result.
+The deterministic layer of Phase 0.5 ships as a pure-stdlib flowctl emitter (bounded, no LLM, no judgment). This file PINS the contract; flowctl implements it. The skill invokes the emitter and layers judgment (Axis-5 shape values, final per-axis confidence, the Phase 0.6 asks, playbook selection) on the result.
 
 **Transport:** JSON on **stdout**; progress + diagnostics on **stderr**. **Redaction (hard contract):** emitted evidence NEVER contains secret values or complete sensitive config lines - **key names only** (a fixture asserts this).
 
@@ -231,7 +231,7 @@ The deterministic layer of Phase 0.5 ships as a pure-stdlib flowctl emitter (bou
 
 Notes on the split:
 - The emitter emits axes 1-4 with deterministic values + a mechanical confidence, plus RAW `shape_markers` (Axis 5 is NOT resolved by the emitter - the skill reasons over the markers).
-- `collectors[]` carries the per-collector completeness diagnostics (resolution 21b). The judgment layer MUST downgrade confidence and use NOT ASSESSED when `complete` is false / `sampled` / `truncated` / `cap_hit` - partial data never yields high confidence.
+- `collectors[]` carries the per-collector completeness diagnostics. The judgment layer MUST downgrade confidence and use NOT ASSESSED when `complete` is false / `sampled` / `truncated` / `cap_hit` - partial data never yields high confidence.
 - The emitter ALSO carries the deterministic substance-grep outputs consumed by Phase 2/3 (its `emitter`-owned rows in the criterion-to-score map in [pillars.md](pillars.md)); this file pins only the classification portion of that payload. Two substance-payload contracts worth pinning here because the judgment layer depends on them:
   - `substance.secrets_gate` splits ENFORCED invocations from config-only presence: `tools_found` + `locations` carry only scanner invocations found in enforcement surfaces (pre-commit config, package.json `"scripts"` values, executable CI lines); scanner config/baseline files (`.gitleaks.toml`, `.secrets.baseline`) land in `configs_found` (`{tool, path}` entries) as EVIDENCE-ONLY - FH4 must never grade config presence alone as an enforced gate. A scanner named only in package.json dependencies is metadata, never an invocation (unparseable package.json is skipped, not wholesale-grepped).
   - `substance.ci_gate` trigger detection routes by CI system: GitHub workflows are parsed for `on:` push/pull_request forms; `.gitlab-ci.yml` counts as push-gated by default, `bitbucket-pipelines.yml` counts when a `default:`/`branches:` section is a DIRECT child of the top-level `pipelines:` key (a `branches:` nested under `custom:` never gates), and `azure-pipelines.yml` counts unless `trigger: none` (these systems run on push by default - the GitHub `on:` grammar is never forced on them).
@@ -242,7 +242,7 @@ Notes on the split:
 
 ## `--classify-only` block
 
-`--classify-only` wraps the emitter plus the judgment layer, prints the classification block, and EXITS in seconds (the portfolio-triage entry point for 100+ repos - the R2 cheapness contract). It **never asks** (it is the cheap sweep); instead of the Phase 0.6 clarification it prints confidence plus a "would ask" list.
+`--classify-only` wraps the emitter plus the judgment layer, prints the classification block, and EXITS in seconds (the portfolio-triage entry point for 100+ repos). It **never asks** (it is the cheap sweep); instead of the Phase 0.6 clarification it prints confidence plus a "would ask" list.
 
 Fixed field order, one line per axis, each carrying `value + confidence + evidence-count`:
 
@@ -256,4 +256,4 @@ shape:            web-service, CLI (medium, 2 evidence)
 would-ask:        [constellation] sibling repos elsewhere? (tier-c prose ref: README ~/work/other)
 ```
 
-The interactive block is the same lines PLUS the printed evidence items under each axis and, when a low-confidence or uninferable fact changes a playbook or verdict, the Phase 0.6 clarification (R15) rather than the "would ask" list.
+The interactive block is the same lines PLUS the printed evidence items under each axis and, when a low-confidence or uninferable fact changes a playbook or verdict, the Phase 0.6 clarification rather than the "would ask" list.

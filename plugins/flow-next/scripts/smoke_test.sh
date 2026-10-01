@@ -1116,17 +1116,14 @@ import sys
 sys.path.insert(0, sys.argv[1])
 from flowctl import build_review_prompt
 
-# Test impl prompt has all 7 criteria
+# Test impl prompt carries the scoped review sections
 impl_prompt = build_review_prompt(
     "impl", context_hints="Test hints", review_scope="1\t0\tsrc/x.py",
     diff_range="aaa..bbb", spec_path=".flow/tasks/fn-1.1.md")
 assert "<review_instructions>" in impl_prompt
-assert "Correctness" in impl_prompt
-assert "Simplicity" in impl_prompt
+assert "## What to review" in impl_prompt
+assert "## Introduced vs pre-existing" in impl_prompt
 assert "DRY" in impl_prompt
-assert "Architecture" in impl_prompt
-assert "Edge Cases" in impl_prompt
-assert "Tests" in impl_prompt
 assert "Security" in impl_prompt
 assert "<verdict>SHIP</verdict>" in impl_prompt
 assert "File:Line" in impl_prompt  # Structured output format
@@ -1436,88 +1433,6 @@ mkdir -p "$CHORE_TEST_DIR"
   [ "$EXITC" = "0" ] || { echo "FAIL: CHANGELOG-only should SKIP (exit 0), got $EXITC"; cat "$CHORE_TEST_DIR/outC.json"; exit 1; }
 )
 echo -e "${GREEN}✓${NC} triage-skip chore verify: version→SKIP, deps→REVIEW, CHANGELOG→SKIP"
-PASS=$((PASS + 1))
-
-echo -e "${YELLOW}--- parse_receipt_path ---${NC}"
-# Test receipt path parsing for Ralph gating (both legacy and new fn-N-xxx formats)
-"${FLOW_PY[@]}" - "$SCRIPT_DIR/hooks" <<'PY'
-import sys
-hooks_dir = sys.argv[1]
-sys.path.insert(0, hooks_dir)
-from importlib.util import spec_from_file_location, module_from_spec
-spec = spec_from_file_location("ralph_guard", f"{hooks_dir}/ralph-guard.py")
-guard = module_from_spec(spec)
-spec.loader.exec_module(guard)
-
-# Test plan receipt parsing (legacy format)
-rtype, rid = guard.parse_receipt_path("/tmp/receipts/plan-fn-1.json")
-assert rtype == "plan_review", f"Expected plan_review, got {rtype}"
-assert rid == "fn-1", f"Expected fn-1, got {rid}"
-
-# Test impl receipt parsing (legacy format)
-rtype, rid = guard.parse_receipt_path("/tmp/receipts/impl-fn-1.3.json")
-assert rtype == "impl_review", f"Expected impl_review, got {rtype}"
-assert rid == "fn-1.3", f"Expected fn-1.3, got {rid}"
-
-# Test plan receipt parsing (new fn-N-xxx format)
-rtype, rid = guard.parse_receipt_path("/tmp/receipts/plan-fn-5-x7k.json")
-assert rtype == "plan_review", f"Expected plan_review, got {rtype}"
-assert rid == "fn-5-x7k", f"Expected fn-5-x7k, got {rid}"
-
-# Test impl receipt parsing (new fn-N-xxx format)
-rtype, rid = guard.parse_receipt_path("/tmp/receipts/impl-fn-5-x7k.3.json")
-assert rtype == "impl_review", f"Expected impl_review, got {rtype}"
-assert rid == "fn-5-x7k.3", f"Expected fn-5-x7k.3, got {rid}"
-
-# Test completion receipt parsing (legacy format)
-rtype, rid = guard.parse_receipt_path("/tmp/receipts/completion-fn-2.json")
-assert rtype == "completion_review", f"Expected completion_review, got {rtype}"
-assert rid == "fn-2", f"Expected fn-2, got {rid}"
-
-# Test completion receipt parsing (new fn-N-xxx format)
-rtype, rid = guard.parse_receipt_path("/tmp/receipts/completion-fn-7-abc.json")
-assert rtype == "completion_review", f"Expected completion_review, got {rtype}"
-assert rid == "fn-7-abc", f"Expected fn-7-abc, got {rid}"
-
-# Test fallback
-rtype, rid = guard.parse_receipt_path("/tmp/unknown.json")
-assert rtype == "impl_review"
-assert rid == "UNKNOWN"
-
-# Receipt write detection must catch variable-based redirects like:
-#   printf ... > "$RECEIPT_PATH"
-# This was the bypass observed in a real Ralph run.
-receipt_path = "/tmp/run/receipts/completion-fn-7-ci.json"
-command = (
-    "RECEIPT_DIR='/tmp/run/receipts'\n"
-    'RECEIPT_PATH="$RECEIPT_DIR/completion-fn-7-ci.json"\n'
-    "printf '{\"type\":\"completion_review\",\"id\":\"fn-7-ci\",\"mode\":\"rp\"}\\n' > \"$RECEIPT_PATH\""
-)
-assert guard.is_receipt_write_command(command, receipt_path), "variable receipt redirect not detected"
-assert guard.command_has_json_field(command, "type")
-assert guard.command_has_json_field(command, "id")
-assert not guard.command_has_json_field(command, "verdict")
-
-# All review receipts require a valid verdict and must match the filename.
-assert guard.validate_receipt_data({
-    "type": "completion_review",
-    "id": "fn-7-ci",
-    "mode": "rp",
-}, receipt_path=receipt_path) == "missing or invalid verdict"
-assert guard.validate_receipt_data({
-    "type": "completion_review",
-    "id": "fn-7-ci",
-    "mode": "rp",
-    "verdict": "SHIP",
-}, receipt_path=receipt_path) == ""
-assert guard.validate_receipt_data({
-    "type": "completion_review",
-    "id": "fn-7-other",
-    "mode": "rp",
-    "verdict": "SHIP",
-}, receipt_path=receipt_path).startswith("id mismatch")
-PY
-echo -e "${GREEN}✓${NC} receipt path parsing and validation works"
 PASS=$((PASS + 1))
 
 echo -e "${YELLOW}--- codex e2e (requires codex CLI) ---${NC}"
@@ -2703,65 +2618,6 @@ PASS=$((PASS + 1))
   done
 )
 echo -e "${GREEN}✓${NC} review-walkthrough-record: --lfg-rest parses truthy forms (true/TRUE/yes/1) vs everything else"
-PASS=$((PASS + 1))
-
-# Test: Ralph-block enforced by SKILL.md bash snippet (simulate invocation).
-(
-  cd "$WALK_TEST_DIR"
-  # Case A: REVIEW_RECEIPT_PATH set + --interactive → exit 2
-  rc=0
-  REVIEW_RECEIPT_PATH=/tmp/r.json bash -c '
-ARGUMENTS="--interactive"
-INTERACTIVE=false
-for arg in $ARGUMENTS; do
-  case "$arg" in --interactive) INTERACTIVE=true ;; esac
-done
-if [[ "$INTERACTIVE" == "true" ]]; then
-  if [[ -n "${REVIEW_RECEIPT_PATH:-}" || "${FLOW_RALPH:-}" == "1" ]]; then
-    echo "Error: --interactive blocked" >&2
-    exit 2
-  fi
-fi
-exit 0
-' 2>/tmp/walkstderr || rc=$?
-  [ "$rc" -eq 2 ] || { echo "FAIL: expected exit 2 under REVIEW_RECEIPT_PATH, got $rc"; cat /tmp/walkstderr; exit 1; }
-  grep -qi "blocked" /tmp/walkstderr || { echo "FAIL: missing block message"; cat /tmp/walkstderr; exit 1; }
-
-  # Case B: FLOW_RALPH=1 + --interactive → exit 2
-  rc=0
-  FLOW_RALPH=1 bash -c '
-ARGUMENTS="fn-32.3 --validate --interactive"
-INTERACTIVE=false
-for arg in $ARGUMENTS; do
-  case "$arg" in --interactive) INTERACTIVE=true ;; esac
-done
-if [[ "$INTERACTIVE" == "true" ]]; then
-  if [[ -n "${REVIEW_RECEIPT_PATH:-}" || "${FLOW_RALPH:-}" == "1" ]]; then
-    exit 2
-  fi
-fi
-exit 0
-' || rc=$?
-  [ "$rc" -eq 2 ] || { echo "FAIL: expected exit 2 under FLOW_RALPH=1, got $rc"; exit 1; }
-
-  # Case C: No --interactive in Ralph env → exit 0 (no block)
-  rc=0
-  REVIEW_RECEIPT_PATH=/tmp/r.json bash -c '
-ARGUMENTS="fn-32.3 --validate"
-INTERACTIVE=false
-for arg in $ARGUMENTS; do
-  case "$arg" in --interactive) INTERACTIVE=true ;; esac
-done
-if [[ "$INTERACTIVE" == "true" ]]; then
-  if [[ -n "${REVIEW_RECEIPT_PATH:-}" || "${FLOW_RALPH:-}" == "1" ]]; then
-    exit 2
-  fi
-fi
-exit 0
-' || rc=$?
-  [ "$rc" -eq 0 ] || { echo "FAIL: Ralph env without --interactive should pass, got $rc"; exit 1; }
-)
-echo -e "${GREEN}✓${NC} SKILL.md Ralph-block: blocks --interactive under REVIEW_RECEIPT_PATH / FLOW_RALPH, passes without"
 PASS=$((PASS + 1))
 
 # Cleanup walkthrough test dir

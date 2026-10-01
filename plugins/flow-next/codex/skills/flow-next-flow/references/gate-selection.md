@@ -1,16 +1,8 @@
-# Review, QA, and completion-review selection (routing reference 4 of 6)
-
-**Decision record**
-
-- Source: the review-backend grammar (`docs/flowctl.md`), the `pipeline.qa` gate, work's completion-review policy, the QA freshness probe the unattended driver reads (`qa-stage.md`).
-- Trigger: a route reaches a gate - after implementation (review), at all-tasks-done (QA, completion review), before a PR (make-pr's coverage).
-- Purpose: one place naming which gate applies and from which config key or flag it is read, so flow and the stage skills agree.
-- Evidence: gate policy scattered across skills is the enumeration-site drift class; every routed or skipped stage must leave a `ran` / `skipped(reason)` line.
-- Disposition: keep. flowctl stores the values and never interprets them; whether a gate applies is judgment and stays here.
+# Review, QA, and completion-review selection
 
 ## Implementation review
 
-Runs per `review.backend` or the invocation's `--review=<backend>` flag; `/flow-next:impl-review` resolves the backend itself. `none` skips with `skipped(config: review=none)`. A qualifying `flowctl triage-skip --base <ref>` receipt (docs-only, lockfile-only, release-chore, generated-only) records `mode: triage_skip` and satisfies the gate. Flow never lowers the gate and never fabricates a verdict.
+Runs per `review.backend` or the invocation's `--review=<backend>` flag on every route, including direct and defect routes, for the changes [working-rules.md](../../../references/working-rules.md) names by risk; `/flow-next:impl-review` resolves the backend itself. It is never deferred to a pull request; timing and the risk rule follow working-rules.md. `none` skips with `skipped(config: review=none)`. A qualifying `flowctl triage-skip --base <ref>` receipt (docs-only, lockfile-only, release-chore, generated-only) records `mode: triage_skip` and satisfies the gate. Flow never lowers the gate and never fabricates a verdict.
 
 ## Design review
 
@@ -22,33 +14,16 @@ Runs per `review.backend` or the invocation's `--review=<backend>` flag; `/flow-
 
 - `off`: QA runs only when the user invokes `$flow-next-qa`.
 - `on`: QA runs at all-tasks-done, before make-pr, on every spec.
-- `auto`: QA runs at all-tasks-done when the spec's acceptance describes UI behaviour on a drivable surface **and** a target can be started (a documented dev server, a deploy URL, or a running instance the QA skill can reach). Otherwise the stage records `skipped(config: pipeline.qa=auto: <no UI-observable criteria | no drivable surface | no startable target>)` and the route advances.
+- `auto`: QA runs at all-tasks-done when the spec's acceptance describes UI behaviour on a drivable surface **and** a target can be started (a documented start command, a deploy URL, or `.flow/features/`). Otherwise the stage records `skipped(config: pipeline.qa=auto: <no UI-observable criteria | no drivable surface | no startable target>)` and the route advances.
 
-For `auto` only, use this hop's `ui_observable_criteria` answer from route; if there was no route answer, call `$FLOWCTL judge --preset qa-gate --spec <spec-id> --json`, which reads acceptance and resolves `startable_target_fact` in code from a documented start command, deploy URL or `.flow/features/` before judging; no target may be invented by the model. The preset runs QA only at UI probability >= 0.5 AND a target exists. Record `stage: qa - ran (jev ui <p>, target: <cmd>)` or `stage: qa - skipped(config: pipeline.qa=auto: no UI-observable criteria (jev <p>))`; for the other failing half use `no startable target (jev ui <p>)`. `off` and `on` never ask this preset. Unavailable retains the judgment below and appends `jev-unavailable(<reason>)` to its stage line.
+For `auto` only, decide the two halves; the QA gate never asks Jev, so a run with a key and one without decide the same way:
 
-On that fallback, whether a spec is drivable is judgment, read from the acceptance criteria and the repo (`.flow/features/`, the prime QA-readiness line, a documented start command). QA never hard-blocks the loop; `NEEDS_WORK` and `BLOCKED` advance to the draft PR with their findings. The evidence-aware subtraction inside QA is unchanged: runtime, UI, and integration criteria are always re-driven; deterministic re-runnable tests subtract.
+- **UI-observable criteria** is your judgment, read from the acceptance criteria and the repo (`.flow/features/`, the prime QA-readiness line): does the acceptance describe behaviour a user could observe on a screen, page, window or rendered widget, rather than CLI output, file contents or library behaviour? A UI with no surface the QA skill can drive records `no drivable surface`.
+- **Startable target** comes from code: this hop's route result carries `decision.startable_target_fact`, resolved from a documented start command, deploy URL or `.flow/features/`. `null` records `no startable target`; never invent one.
 
-Apply the standalone `result.decision`, or the available route result's `decision.qa`, with this selector. `host_qa_runs` is today's judgment and is consulted only on unavailable; `target` is the resolved startable fact. Only an `auto` gate executes it:
+QA runs when both halves hold. Record `stage: qa - ran [target: <cmd>]` or `stage: qa - skipped(config: pipeline.qa=auto: <no UI-observable criteria | no drivable surface | no startable target>)`. `off` and `on` never ask.
 
-```python
-# fence:judge-qa-consumer
-if not result["available"]:
-    qa_runs = host_qa_runs
-    qa_line = "stage: qa - %s (jev-unavailable(%s))" % (
-        "ran" if qa_runs else "skipped(config: pipeline.qa=auto: " + host_skip_reason + ")",
-        result["reason"],
-    )
-else:
-    decision = result["decision"].get("qa", result["decision"])
-    qa_runs = decision["value"] == "qa_runs"
-    probability = result["answers"]["ui_observable_criteria"]["noul"]
-    if qa_runs:
-        qa_line = "stage: qa - ran (jev ui %.2f, target: %s)" % (probability, target)
-    else:
-        qa_line = "stage: qa - skipped(config: pipeline.qa=auto: %s (jev %.2f))" % (decision["reason"], probability)
-```
-
-Dispatch QA only when `qa_runs`; retain `qa_line` in this hop's report.
+QA never hard-blocks the loop; `NEEDS_WORK` and `BLOCKED` advance to make-pr, and their findings become open items on a draft PR. The evidence-aware subtraction inside QA is unchanged: runtime, UI, and integration criteria are always re-driven; deterministic re-runnable tests subtract.
 
 ## Completion review
 

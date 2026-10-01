@@ -48,7 +48,7 @@ fi
 # leave the bash positional `${1}`: a Bash-tool call does not populate `$1`, so it would be
 # empty and the per-task `review:` override would silently fall back to the project
 # default. Empty ONLY for a genuine standalone no-spec diff review.
-REVIEW_ID="<fn-N.M task or fn-N spec id from \$ARGUMENTS, or empty for a standalone diff>"
+REVIEW_ID="<fn-N.M task id from \$ARGUMENTS, or empty for a spec or branch review>"
 # Text output is bare backend name for back-compat grep. The same command in --json mode returns
 # {backend, spec, model, effort, source} — use that if you need the model / effort resolved.
 BACKEND=$($FLOWCTL review-backend "$REVIEW_ID")
@@ -94,7 +94,7 @@ Per-task `review` (set via `flowctl task set-backend`) overrides env. Per-backen
 
 **If backend is "none"**: Skip review, inform user, and exit cleanly (no error).
 
-**Then branch to the backend-specific workflow file** named in SKILL.md's routing table for `$BACKEND`. Only the file for the active backend should enter context. Do not read the other backend files.
+**Then branch to the backend-specific workflow file** named in other-paths.md's routing table for `$BACKEND`. Only the file for the active backend should enter context. Do not read the other backend files.
 
 **Foreground rule — review CLI calls are blocking.** Run every `flowctl <backend> …` review command (`impl-review` / `plan-review` / `completion-review` / `validate` / `deep-pass`) as a single **foreground** Bash call with a generous timeout (10 minutes; verdicts typically land in 1–7). **Never** launch one with `run_in_background` + a monitor/poll — a background completion does not reliably resume a subagent context (observed in dogfood: a worker idled on an already-finished cursor review until manually poked), and the call is bounded, so blocking is safe and simpler. (An ad-hoc bridge call that writes its output to a file and is polled in foreground calls is a different pattern; this rule binds review commands.)
 
@@ -107,7 +107,7 @@ and generated-file diffs. Runs before the configured backend — when it returns
 SKIP, the receipt is written with `mode: "triage_skip"` / `verdict: "SHIP"`
 and no expensive backend review is invoked.
 
-The executable block is [SKILL.md](SKILL.md) Step 0.5 (run it there, once).
+The executable block is [other-paths.md](other-paths.md) Step 0.5 (run it there, once).
 
 **Exit codes:**
 - `0` → SKIP (verdict=SHIP, receipt written, skill exits early)
@@ -122,7 +122,7 @@ triage result needs justifying or auditing).
 
 ## Optional phases (--deep / --validate / --interactive) — loaded on demand
 
-These three phases are default-OFF. Load their detail **only when the flag resolves true** (SKILL.md Step 0 sets and announces them) — do NOT read it on a default review:
+These three phases are default-OFF. Load their detail **only when the flag resolves true** (other-paths.md Step 0 sets and announces them) — do NOT read it on a default review:
 - `DEEP=true` → read [`optional-phases.md`](optional-phases.md) **§ Deep-Pass Phase**.
 - `VALIDATE=true` → read [`optional-phases.md`](optional-phases.md) **§ Validator Pass**.
 - `INTERACTIVE=true` → read [`optional-phases.md`](optional-phases.md) **§ Interactive Walkthrough Phase** (and [`walkthrough.md`](walkthrough.md) for the per-finding loop).

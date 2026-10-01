@@ -70,7 +70,7 @@ class LandConfigDefaultsTestCase(unittest.TestCase):
         return json.loads(buf.getvalue())
 
     def test_r9_only_retained_defaults_and_schema_keys(self):
-        expected = {"patienceMinutes": 30, "mergeVerdictCommand": ""}
+        expected = {"patienceMinutes": 10, "mergeVerdictCommand": ""}
         self.assertEqual(self.flowctl.get_default_config()["land"], expected)
         schema = json.loads((HERE.parents[1] / "schema/flow-config.schema.json").read_text())
         self.assertEqual(set(schema["properties"]["land"]["properties"]), set(expected))
@@ -102,7 +102,7 @@ class LandConfigDefaultsTestCase(unittest.TestCase):
         path = self.tmpdir / ".flow/config.json"
         path.write_text(json.dumps({"land": retired}))
         before = path.read_bytes()
-        self.assertEqual(self.flowctl.load_flow_config()["land"]["patienceMinutes"], 30)
+        self.assertEqual(self.flowctl.load_flow_config()["land"]["patienceMinutes"], 10)
         self.assertEqual(self._run_config_get_cli("land.mergeVerdictCommand")["value"], "")
         self.assertEqual(self.flowctl.load_flow_config()["land"]["cleanReviewCommentPattern"],
                          retired["cleanReviewCommentPattern"])

@@ -6,7 +6,7 @@ is `ASK` (not configured) and the run is not autonomous. Configured backends and
 
 **Ask the user via plain text.** Render the options below as a numbered list `1.` … `N.`, followed by a final option `N+1. Other — type your own answer`. Print the question, then the numbered list, then **stop and wait for the user's next message before continuing**. Parse the reply as: a bare number `1`–`N+1` → that option; the literal text of an option label → that option; free text after `Other` → custom answer.
 
-Ask the setup questions below as plain text — never via the `plain-text numbered prompt` tool.
+Ask the setup questions below as plain text — never via the `plain-text numbered prompt` tool. Drop a question whose option the arguments already set.
 
 **RepoPrompt eligibility** (compute once, before any question below):
 
@@ -64,6 +64,6 @@ Quick setup before planning:
 Wait for response. Parse naturally — user may reply terse ("1a 2b") or ramble via voice.
 
 **Defaults when empty/ambiguous:**
-- Depth = the SKILL.md **Plan depth** default
+- Depth = the SKILL.md **Depth** default
 - Research = `repo-scout`
 - Review = configured backend if set, else `none`

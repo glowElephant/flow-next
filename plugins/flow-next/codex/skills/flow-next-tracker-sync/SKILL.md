@@ -11,6 +11,8 @@ The flow spec is the source of truth and quality layer. The tracker is a
 co-editable projection. Tracker activity never starts agents or changes Flow
 task state.
 
+Read [working-rules.md](../../references/working-rules.md) first; it holds for every step of this skill.
+
 ## Load the reached path
 
 Read [steps.md](steps.md) for the operation sequence and
@@ -120,7 +122,7 @@ the deterministic GraphQL route. If an MCP create returns only a display key,
 - `rate_limited` is retried only when the envelope says `retryable: true`.
 - `auth`, `unresolved`, `stale_id`, `conflict`, `capability`, and
   `external_action_required` follow the recovery table in `steps.md`.
-- In any unattended run (Ralph, a stage `flow --auto` dispatched, any
+- In any unattended run (a stage `flow --auto` dispatched, any
   `mode:autonomous` caller) or a forked lifecycle call, queue a decision that
   needs a person with `flowctl sync defer`. Never attempt an interactive prompt
   there.

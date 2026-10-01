@@ -1,14 +1,12 @@
-# NEEDS_WORK fix-loop procedure (INTERNAL — do not exit to Ralph)
+# NEEDS_WORK fix-loop procedure (INTERNAL)
 
 Read this only when the delivered verdict is `NEEDS_WORK`. A SHIP run never
 needs it; `MAJOR_RETHINK` escalates as `BLOCKED: DESIGN_CONFLICT` and never
-enters this loop (see [../SKILL.md](../SKILL.md) § Fix Loop for the verdict
+enters this loop (see [../other-paths.md](../other-paths.md) § Fix Loop for the verdict
 contract, the iteration cap, and the two anti-patterns — those stay in force
 here).
 
-**The fix loop never pauses for user confirmation.** Every valid finding is fixed and re-reviewed automatically — the goal is production-grade world-class software and architecture. A loop that stops to ask, or that exits with a valid finding unfixed, has broken this. Never use the plain-text numbered prompt in this loop.
-
-Loop internally until SHIP or the iteration cap:
+One fix pass, then one re-review:
 
 0. **Deep-pass phase (only if `DEEP=true`)** — see [../optional-phases.md](../optional-phases.md) § Deep-Pass Phase.
    - After primary review completes (any verdict) and before validator,
@@ -24,16 +22,14 @@ Loop internally until SHIP or the iteration cap:
      autonomy markers only - interactive returns host_judges JSON and you judge survivors)
    - Else → only surviving (kept) findings enter the fix loop in step 2
 2. **Interactive walkthrough (only if `INTERACTIVE=true` AND verdict still NEEDS_WORK)** — see [../walkthrough.md](../walkthrough.md).
-**Ask the user via plain text.** Render the options below as a numbered list `1.` … `N.`, followed by a final option `N+1. Other — type your own answer`. Print the question, then the numbered list, then **stop and wait for the user's next message before continuing**. Parse the reply as: a bare number `1`–`N+1` → that option; the literal text of an option label → that option; free text after `Other` → custom answer.
-
    - For each surviving finding, ask user via plain-text numbered prompt: Apply / Defer / Skip / Acknowledge / LFG-rest.
    - Deferred findings appended to `.flow/review-deferred/<branch-slug>.md`.
    - Skip / Acknowledge are no-ops beyond receipt logging.
    - Apply list restricts the fix loop below to just those findings.
    - Receipt gains `walkthrough: {applied, deferred, skipped, acknowledged}`.
-3. **Parse issues** from reviewer feedback (Critical → Major → Minor)
+3. **Parse issues** from reviewer feedback (Critical → Major → Minor); fix those the Review section of [working-rules.md](../../../references/working-rules.md) says to fix and list the rest as follow-ups
 4. **Fix code** and run tests/lints
-5. **Commit fixes** (mandatory before re-review; RP backend uses the snapshot-scoped staging in [../workflow-rp.md](../workflow-rp.md) § Fix Loop (RP) — never blanket-stage with `git add --all`). Then, when step 4's green run included one of the repo's full-gate commands (the same `(gate_id, exact command string)` identity the worker's Phase 5 maps — e.g. the repo's parallel full-suite entrypoint), nothing changed between that run and this commit, and the tree is clean at the committed fix HEAD: write the receipt — `<FLOWCTL> gate receipt --gate <gate_id> --command "<cmd>"` — so the later Verify honors it instead of re-running the identical command. Focused/partial test commands NEVER mint a full-gate receipt (identity is the exact full command string). A dirty tree, edits after the run, or any doubt about identity → mint nothing (fail closed; the later gate simply re-runs).
+5. **Commit fixes**, with one `Declined #<n>: <reason>` line in the message for each finding listed as a follow-up (mandatory before re-review; RP backend uses the snapshot-scoped staging in [../workflow-rp.md](../workflow-rp.md) § Fix Loop (RP) — never blanket-stage with `git add --all`). Then, when step 4's green run included one of the repo's full-gate commands (the same `(gate_id, exact command string)` identity the worker's Phase 5 maps — e.g. the repo's parallel full-suite entrypoint), nothing changed between that run and this commit, and the tree is clean at the committed fix HEAD: write the receipt — `<FLOWCTL> gate receipt --gate <gate_id> --command "<cmd>"` — so the later Verify honors it instead of re-running the identical command. Focused/partial test commands NEVER mint a full-gate receipt (identity is the exact full command string). A dirty tree, edits after the run, or any doubt about identity → mint nothing (fail closed; the later gate simply re-runs).
 6. **Re-review** (always a SINGLE dispatch — the first-round fan-out never re-runs):
    - **Codex**: Re-run `flowctl codex impl-review` (receipt enables context). When the receipt carries `draws[]` (a fan-out round preceded this), flowctl resumes the primary session with lean resume disabled for that one round: the FULL merged prior-finding container is injected with every merged ordinal — automatic, no flag.
    - **Copilot**: Re-run `flowctl copilot impl-review` (receipt enables context; must be `mode == "copilot"` to resume)
@@ -44,6 +40,6 @@ Loop internally until SHIP or the iteration cap:
      prompt.
    - **RP Classic**: `$FLOWCTL rp chat-send --window "$W" --tab "$T" --message-file <literal re-review path from workflow-rp.md's fix loop>` (NO `--new-chat`; stdout redirected to the same literal response file, Read once)
    - **RepoPrompt CE**: `$FLOWCTL rp chat-send --window "$W" --context-id "$T" --chat-id "$CHAT_ID" --mode review --message-file <literal re-review path>` (`T` is the canonical context binding, not visible-tab projection; NO `--tab`; same response-file rule)
-7. **Repeat** until `<verdict>SHIP</verdict>` — or the MAX ITERATIONS cap breaks the loop (escalate with surviving findings)
+7. **Stop.** The re-review's verdict is terminal unless working-rules.md's review loop applies (an unattended run, or a request to review until SHIP): `SHIP` completes; `NEEDS_WORK` surfaces its surviving findings to the caller, never a second fix pass
 
 **RP re-reviews stay in the same chat.** `--new-chat` belongs to the first review only — a re-review carrying it drops the reviewer's context and has broken this.

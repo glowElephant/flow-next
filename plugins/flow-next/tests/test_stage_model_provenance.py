@@ -47,7 +47,7 @@ class _RepoCase(unittest.TestCase):
         self.spec_id = json.loads(create.stdout)["id"]
 
 
-class StageLineModelTest(_RepoCase):
+class _StageLineModelBase(_RepoCase):
     def setUp(self) -> None:
         super().setUp()
         task = run_flowctl(
@@ -70,6 +70,8 @@ class StageLineModelTest(_RepoCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         return json.loads(result.stdout)
 
+
+class StageLineModelTest(_StageLineModelBase):
     def test_annotation_is_recorded_and_absence_is_unknown(self) -> None:
         self.append_summary(
             "stage: work - ran [2026-08-14T10:00:00Z..2026-08-14T10:20:00Z] "
@@ -146,7 +148,7 @@ class StageLineModelTest(_RepoCase):
 
 
 
-class CombinedSourceTallyTest(StageLineModelTest):
+class CombinedSourceTallyTest(_StageLineModelBase):
     """A prose stage line AND a receipt for the same review never merge tallies.
 
     The pilot's real shape: `stage: plan-review - ran` (no model annotation)

@@ -15,13 +15,13 @@ and historical receipts grant no authority. Re-check current restrictions
 before mutations, including after delegated work. Ambiguity stops
 `NEEDS_HUMAN`; land does not ask questions or invoke another driver.
 
+Read [working-rules.md](../../references/working-rules.md) first; it holds for every step of this skill.
 Read [workflow.md](workflow.md) and follow it for this invocation.
 `--dry-run` reads and reports only: no repair, catch-up, stack creation,
 verdict command, merge, branch deletion, or tracker mutation.
 Land owns no persistent files. It never rebases, force-pushes, or retargets.
 It never checks out a branch in the invoking checkout. Repairs use an isolated
 checkout and ordinary file-scoped commits and pushes to this PR's branch.
-Never run under Ralph (`FLOW_RALPH` or `REVIEW_RECEIPT_PATH`).
 
 Resolve the bundled CLI when reading configuration or tracker support:
 

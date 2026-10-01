@@ -1,4 +1,4 @@
-# capture - split proposal machinery (R11) (loaded on demand)
+# capture - split proposal machinery (loaded on demand)
 
 > Loaded ONLY when the §2.5 tripwire trips. The rule itself (tripwire, counting rule,
 > independence partition, what a proposal contains) lives in the shared routing reference
@@ -7,7 +7,7 @@
 
 Contents:
 
-- [2.5 - Spec count](#25--spec-count)
+- [2.5 - Spec count](#25---spec-count)
 - [Phase 4 — split option at read-back](#phase-4--split-option-at-read-back)
 - [5.2b — Split branch](#52b--split-branch-interactive-split-as-proposed-only)
 - [Phase 6 — split footer](#phase-6--split-footer)
@@ -33,11 +33,11 @@ After the split choice, compose each complete body at its own literal draft path
 Body composition rules:
 
 - **Each spec gets its own complete body**: its allocated criteria renumbered from R1, the Phase 2 sections that serve those criteria, a per-spec slice of the Phase 1 evidence (written as `## Conversation Evidence` only when the resolved template names that section, workflow.md §2.2), and a short `## Decision Context` note naming the sibling specs and the shared origin. Specs are handover objects — never write "see the other spec" in place of content a worker needs.
-- **Per-slice `[user]` findability (before each write):** re-run the §4.1 findability check against each composed body's OWN evidence slice — the combined-draft check does not cover the slicing. A `[user]` line whose supporting quote landed in a sibling's slice gets that quote copied into this spec's slice (evidence lines, like cross-cutting requirements, may appear in every slice they support); only a quote that exists in no slice retags the line. A split body written with a `[user]` line its own slice cannot support has broken this.
+- **Per-slice findability (before each write):** re-run the §4.1 check against each body's OWN evidence slice. When an untagged line's quote landed in a sibling's slice, copy the quote into this slice too (evidence lines may appear in every slice they support); only a quote found in no slice retags the line.
 - **Cross-cutting requirements** (one constraint governing several specs, e.g. shared middleware) are duplicated into every spec they constrain — never allocated to a single spec, which would create an implicit dependency.
 - **User-stated process requirements** (tests green, docs updated) are honored per spec — carried in each spec's body prose or Quick commands, not as counted R-IDs (they were excluded from the §2.5 count for the same reason). When the repo has `.flow/criteria.md`, note that a recurring process statement is standing-criterion material.
 - **After all creates, record the edges**: `"$FLOWCTL" spec add-dep <dependent-id> <dependency-id> --json` per proposed edge.
-- §5.4–§5.10 follow after all creates and edges: one editor offer for the set, then the remaining follow-ups per spec. The readiness question may cover the set explicitly; one answer applies to all named specs or none, never to an unnamed sibling.
+- §5.4–§5.9b follow after all creates and edges: one editor offer for the set, then the remaining follow-ups per spec. The readiness question may cover the set explicitly; one answer applies to all named specs or none, never to an unnamed sibling.
 - Phase 6 lists every created id plus the dependency edges.
 
 Autofix never reaches this branch (it records the proposal instead).
@@ -46,11 +46,7 @@ Autofix never reaches this branch (it records the proposal instead).
 
 ## Phase 6 — split footer
 
-On the `split-as-proposed` path, emit the footer block once PER created spec (each with its own `Spec captured at…`, its own mandatory `Tracker sync:` line — the sync check ran per spec — and its own next-step hint), followed by one shared line listing the dependency edges.
-
-Each per-spec footer block also carries its own mandatory `Recommended next:` line, judged per spec under the base-footer rule (workflow.md §Phase 6) from [`plan-vs-no-plan.md`](../../flow-next-flow/references/plan-vs-no-plan.md) - each created spec is its own route, and under `from:flow` §5.9b applies per spec. Recommendations are per-spec only; the shared dependency-edge line owns execution order.
-
-**Host command form:** print every copy-pasteable flow-next command here in the spelling this host invokes — the flat `/flow-next-<name>` form when the resolved plugin root carries `.flow-next-opencode-manifest` (an OpenCode install — the same signal setup's host detection uses); on any other or indeterminate host, exactly as spelled here.
+On the `split-as-proposed` path, print the Phase 6 close once per created spec (its own `Spec captured at…`, `Tracker sync:` from its own check, and its own `Recommended next:` judged per spec from [`plan-vs-no-plan.md`](../../flow-next-flow/references/plan-vs-no-plan.md); under `from:flow` §5.9b applies per spec), then one shared line listing the dependency edges, which own execution order.
 
 If §2.5 proposed N>1 AND the user picked `keep-one-spec` (declining the split), append:
 
@@ -58,9 +54,3 @@ If §2.5 proposed N>1 AND the user picked `keep-one-spec` (declining the split),
 Note: a <N>-spec split was proposed and declined — the allocation is preserved
 in this conversation; $flow-next-refine <id> can still split later.
 ```
-
-## Forbidden behavior (split row)
-
-| Forbidden | Why |
-|-----------|-----|
-| Auto-splitting an 8+ acceptance spec | Phase 4 surfaces the option; the user decides. Capture never auto-actions a split. |

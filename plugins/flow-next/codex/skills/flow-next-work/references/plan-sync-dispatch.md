@@ -1,9 +1,9 @@
 # Plan-sync dispatch (gated reference)
 
-> **Loaded only when phases.md 3e read `planSync.enabled == true`.** A run with
+> **Loaded only when multi-task.md 3e read `planSync.enabled == true`.** A run with
 > plan-sync disabled (null/false/missing — the default) never reads this file;
 > `flowctl done` records its skip line. The mandatory per-task
-> stage-outcome lines themselves stay inline in phases.md 3e and are recorded
+> stage-outcome lines themselves stay inline in multi-task.md 3e and are recorded
 > whatever happens here.
 
 Run this once per resolved wave. Pass the full completed-task set as
@@ -17,7 +17,7 @@ Get remaining `todo` task IDs (the JSON is an envelope - the list lives under `.
 DOWNSTREAM=$($FLOWCTL tasks --spec <spec-id> --status todo --json | jq -r '[.tasks[].id] | join(",")') || DOWNSTREAM=EXTRACT_FAILED
 ```
 
-Skip if empty (no downstream tasks to update) — recording `stage: plan-sync - skipped(empty: no downstream todo tasks)` on each completed task per the stage-outcome block in phases.md 3e before advancing. `EXTRACT_FAILED` means the extraction itself broke (shape mismatch) - report it, record `stage: plan-sync - failed(EXTRACT_FAILED: <detail>)` on each completed task, and re-derive the IDs from the raw JSON; never treat it as "nothing to do".
+Skip if empty (no downstream tasks to update) — recording `stage: plan-sync - skipped(empty: no downstream todo tasks)` on each completed task per the stage-outcome block in multi-task.md 3e before advancing. `EXTRACT_FAILED` means the extraction itself broke (shape mismatch) - report it, record `stage: plan-sync - failed(EXTRACT_FAILED: <detail>)` on each completed task, and re-derive the IDs from the raw JSON; never treat it as "nothing to do".
 
 Note: Only sync to `todo` tasks. `in_progress` tasks are already being worked on - updating them mid-flight could cause confusion.
 

@@ -37,7 +37,7 @@ Draft: <path>
 
 ## Capture: saved-spec review
 
-Interactive capture resolves material questions and any explicit split choice, writes the spec through flowctl, then prints the summary above with `Spec:` and the saved path in place of `Draft:`. Inferred content remains labeled for review. A rewrite also shows its diff. The full body prints only on request.
+Interactive capture resolves material questions and any explicit split choice, writes the spec through flowctl, then prints the summary above with `Spec:` and the saved path in place of `Draft:`. Inferred content remains labeled for review. Capture leaves the user's verbatim words untagged and counts them under `[user]` in the `Source:` line. A rewrite also shows its diff. The full body prints only on request.
 
 Offer `open in editor` or `continue` through a short `AskUserQuestion`, with free text for corrections. The question concerns editing the saved spec, not permission to write it. Skip an already-answered editor offer. An editor round opens the saved file and re-reads it before any further operation; corrections preserve user edits and print only their diff. There is no approve-and-write or re-approval loop, and stopping review never deletes the saved spec.
 

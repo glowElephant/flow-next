@@ -1,6 +1,6 @@
 # Flow Work Phases
 
-(Branch question already asked in SKILL.md before reading this file)
+(Branch chosen in SKILL.md before reading this file)
 
 **CRITICAL**: If you are about to create:
 - a markdown TODO list,
@@ -31,13 +31,12 @@ Detect input type in this order (first match wins):
 4. **Spec file** `.md` path that exists on disk → **SPEC_MODE**
 5. **Idea text** everything else → **SPEC_MODE**
 
-**Handle-recognition rule (R16):** **every single-token arg goes through `$FLOWCTL show <arg> --json` before it can be treated as idea text.** If it resolves (rc 0) it is an existing spec/task — use the canonical id from the JSON. Only a non-resolving token that isn't an `.md` path falls through to idea text. A run that gated on a "starts with `fn-`" check, or that re-created `wor-17` / `wor-17.1` as a new spec, has broken this.
+**Handle-recognition rule:** **every single-token arg goes through `$FLOWCTL show <arg> --json` before it can be treated as idea text.** If it resolves (rc 0) it is an existing spec/task — use the canonical id from the JSON. Only a non-resolving token that isn't an `.md` path falls through to idea text. A run that gated on a "starts with `fn-`" check, or that re-created `wor-17` / `wor-17.1` as a new spec, has broken this.
 
 **Track the mode** — it controls looping in Phase 3.
 
 **Direct-route review gate (both modes):** after reading the parent spec metadata,
-apply this gate before proceeding in either `SINGLE_TASK_MODE` (including Ralph's
-task-ID dispatch) or `SPEC_MODE`. It applies only to zero-task specs or
+apply this gate before proceeding in either `SINGLE_TASK_MODE` or `SPEC_MODE`. It applies only to zero-task specs or
 `no_plan: true` with exactly one task in total marked `implicit_owner: true`.
 Stop if `plan_review_status` is `needs_work` or `needs_human`, or the current user
 message or carried invocation host context explicitly requests spec/design review
@@ -122,7 +121,7 @@ Before any scout dispatch apply [references/judge-tier.md](references/judge-tier
 
 ## Phase 2: Apply Branch Choice
 
-**Chain check first (fn-152 R4).** Before any branch is created or any task starts, ask flowctl whether the spec is chain-eligible; the predicate lives in one place and this skill never re-derives it. A dependent spec whose parent is open with every task done and its branch on origin is **chained**: the spec branch is created from the parent's fetched remote-tracking ref, and that ref is the base for the spec base, gate classification, and the quality auditor's diff range. Work never creates a local branch named after the parent and never deletes or resets an existing parent branch. An `eligible: false` answer (an unfinished parent, two open parents, an unpushed parent, a sibling already chained, a failed remote query) stops the run with `BLOCKED: <reason from the command>` before any task starts; the same reason parked the spec at selection under `flow --auto`.
+**Chain check first.** Before any branch is created or any task starts, ask flowctl whether the spec is chain-eligible; the predicate lives in one place and this skill never re-derives it. A dependent spec whose parent is open with every task done and its branch on origin is **chained**: the spec branch is created from the parent's fetched remote-tracking ref, and that ref is the base for the spec base, gate classification, and the quality auditor's diff range. Work never creates a local branch named after the parent and never deletes or resets an existing parent branch. An `eligible: false` answer (an unfinished parent, two open parents, an unpushed parent, a sibling already chained, a failed remote query) stops the run with `BLOCKED: <reason from the command>` before any task starts; the same reason parked the spec at selection under `flow --auto`.
 
 ```bash
 # fence:work-branch — inputs: FLOWCTL, SPEC_ID, BRANCH_NAME, BRANCH_MODE (new|current), DEFAULT_BASE (optional; defaults to origin/HEAD); origin reachable
@@ -196,544 +195,70 @@ Based on user's answer from setup questions (`BRANCH_MODE`):
 
 - **Worktree**: use `skill: flow-next-worktree-kit`, with the same `BASE_BRANCH` the fence resolved (the parent's remote-tracking ref on a chained spec, the default branch otherwise).
 - **New branch**: the fence's `new` arm - from `origin/<parent_branch>` on a chained spec (carrying the spec's own tracked `.flow/specs/<id>.*` and `.flow/tasks/<id>.*` files from the pre-checkout commit when the start point lacks them or holds an older version, as one bookkeeping commit), else the resolved default base (refreshed from origin when remote). Existing task branches are checked out unchanged.
-- **Current branch**: proceed (user already confirmed); on a chained spec the fence's `current` arm requires the parent tip in the branch's ancestry and blocks naming the missing ancestry otherwise.
+- **Current branch**: proceed; on a chained spec the fence's `current` arm requires the parent tip in the branch's ancestry and blocks naming the missing ancestry otherwise.
 
 The fence persists the SPEC-RUN BASE once (`git merge-base HEAD "$BASE_BRANCH" > .flow/tmp/spec_base`); the base is the run's `BASE_BRANCH`, never a hard-coded `origin/main`. Like the worker `BASE_COMMIT`, bash variables do not survive across tool calls, so later phases re-read this persisted base via `$(cat .flow/tmp/spec_base)`. Capture it once at branch setup; Phase 4 uses it for classify calls and the auditor dispatch. When the spec changes code in git repos beside this one (a home-base workspace; the project instructions or the spec name them), record each repo's merge-base with its own base branch the same way, one `<repo path> <sha>` line per repo in `.flow/tmp/spec_base_repos` (the fence clears it, so a previous run's repos never carry over; a resumed run records its repos again); a repo first touched later gets its line before its first edit. Publication is unchanged: the spec branch is pushed as today, and no PR exists until make-pr, which detects the chain from history (`flow-next-make-pr/workflow.md` Phase 0).
 
 Done when: `spec chain` reported `eligible: true`, the run is on the branch the choice named (under autonomy, exactly the spec's `branch_name`; on a chained spec created from `origin/<parent_branch>`), and `.flow/tmp/spec_base` holds the merge-base with the run's base.
 
-## Phase 3: Task Scheduling
-
-**Route decision (once, at Phase 3 entry).** Two schedulers exist; the rolling
-frontier is the default and the wave loop below is its structural fallback.
-Decide from spec state plus the plan-sync setting - never from a config knob,
-a host name, or a Touches comparison (Touches are judged per admission inside
-whichever scheduler runs):
-
-```bash
-$FLOWCTL config get planSync.enabled --json
-$FLOWCTL tasks --spec <spec-id> --json   # SPEC_MODE: open tasks + depends_on
-```
-
-Take the **wave route** (3a-3g below) when ANY of these hold:
-
-1. SINGLE_TASK_MODE - the run was given a task id, so the wave route runs
-   exactly the requested task alone; the spec's other open tasks are never
-   admitted (rolling admits from the whole ready frontier, which is the wrong
-   scope for a task-id run);
-2. `planSync.enabled` is not explicitly `false` (plan-sync's per-wave barrier
-   is the existing fail-closed rule; `false` is the shipped default since
-   4.5.1, so this fires only on repos that opted in);
-3. SPEC_MODE with fewer than two open tasks - a no-plan implicit task, or one
-   task left (a single lane has nothing to admit);
-4. SPEC_MODE where no two open tasks are dependency-independent under the
-   transitive `depends_on` closure (a fully sequential chain admits one lane
-   at a time, and the single-worker path runs one lane with less machinery
-   than a worktree plus a conductor integration per task).
-
-Otherwise take the **rolling route**: read
-[references/rolling-scheduler.md](references/rolling-scheduler.md) and execute
-it as this run's Phase 3 (it re-enters 3b.1, 3c, 3d.1, 3e's stage-line
-contract, and 3g by pointer). Do not execute 3a-3g directly on that route.
-
-Echo the decision exactly once in the run report, before the first claim:
-
-```text
-Scheduling: rolling
-Scheduling: degraded to wave (host lacks non-blocking dispatch)
-Scheduling: wave (<task-id run | planSync.enabled=true | single task | sequential dependency chain>)
-```
-
-The wave route prints its line here, at Phase 3 entry. The rolling route
-prints its line from inside the scheduler at run setup, after its
-dispatch-behaviour probe (rolling-scheduler.md 3.0) and before the first
-admission or claim - so a host measured to block prints the `degraded` form
-instead of `rolling`, never both. A run that
-printed no `Scheduling:` line, printed two, or took the rolling route with
-plan-sync on, has broken this.
-
-**Wave route.** In SPEC_MODE, inspect the whole ready frontier and prefer a
-concurrent safe subset. In SINGLE_TASK_MODE, the selected wave is always the
-requested task alone. Every task still gets a fresh-context worker.
-
-### 3a. Inspect Ready Frontier and Select a Wave
-
-```bash
-$FLOWCTL ready --spec <spec-id> --json
-```
-
-For a direct owner admitted for resume in Phase 1, re-read its task status and
-claim. While it remains `in_progress` under this actor, select that owner alone
-instead of the ready list; re-anchor and continue through the usual claim and
-worker gates, where 3b's claim carries `--reclaim` for this owner only. Stop on a
-changed owner. Once the task is `done`, discard the resume
-selection. Retain the original mode: `SINGLE_TASK_MODE` executes no other task and
-proceeds to Phase 4; `SPEC_MODE` uses the normal frontier, including the 3f loop
-and 3g completion-review policy when the frontier is empty.
-For every non-resume selection, an empty ready frontier proceeds to 3g as usual.
-
-In SPEC_MODE, consider every returned task and apply the **wave dispatch rule
-(fail-closed)**. **Concurrent dispatch requires all five conditions
-together; any one unmet sends the wave serial.** A wave dispatched with a missing
-or overlapping `**Touches:**` declaration has broken this.
-
-1. same spec;
-2. wave size ≤ 3;
-3. no dependency path between any pair, in either direction, **transitively**
-   (walk the `depends_on` closure from `$FLOWCTL show <task-id> --json` /
-   `$FLOWCTL tasks --spec <spec-id> --json` — `flowctl dep` only writes edges,
-   it has no read verb; a direct-only check is wrong);
-4. every dispatched task carries a `**Touches:**` declaration, and the declared
-   sets are pairwise **disjoint** (`touches(A) ∩ touches(B) = ∅`, glob-aware);
-5. no task touches the always-serial set: `.flow/`, lockfiles, migration
-   dirs, codegen/generated outputs (in this repo: `plugins/flow-next/codex/**`),
-   or spec/task files.
-
-The error paths are the rule: a task with no `**Touches:**` declaration →
-serial; any intersection → serial; any doubt about a glob, a hidden coupling
-(shared fixtures, services), or host capacity → serial. The failure mode is
-today's behavior — sequential dispatch — never a risky wave. This replaces
-judgment with declared intent: the same trust model as `deps` (its
-decision record untouched; no semantic prediction anywhere). Safety is
-structural, not the check — workers run in isolated worktrees, so a wrong
-dispatch surfaces at the join as a merge conflict (3d), costing one serial
-retry, never correctness. Never run concurrent writers in one checkout. An
-explicit request to parallelize strengthens the preference but never
-overrides the rule.
-
-Report the decision before claiming:
-
-```text
-Ready frontier: [fn-X.1, fn-X.2]
-Selected wave: [fn-X.1, fn-X.2]
-Selection rule: <why THIS subset of the frontier — the dispatch-rule condition or preference that picked it>
-Isolation: <native worktrees | linked worktrees | other safe mechanism>
-Dispatch count: 2
-Sequential fallback: <reason> # only when multiple tasks were ready but one selected
-```
-
-The `Selection rule:` line is printed before claiming — an unstated selection
-is unreviewable, and a wrong wave discovered at the join can no longer say why
-it was picked.
-
-Done when: the five report lines are printed (plus `Sequential fallback:` when one applies) and the selected wave satisfies all five conditions above.
-
-### 3b. Claim the Selected Wave
-
-Claim every selected task before dispatch:
-
-```bash
-$FLOWCTL start <task-id> --json
-```
-
-For the direct owner admitted for resume in Phase 1 (and only for it), the
-claim is `$FLOWCTL start <owner-id> --reclaim --json`: a plain start refuses an
-`in_progress` task held by this same actor, and the Phase 1 evidence check is
-what licenses the flag. Every other claim runs without `--reclaim`; a same-actor
-contention refusal there means another run of this actor is live on the task -
-fail closed exactly as for a foreign claim, never add the flag to get past it.
-
-If any claim fails, do not dispatch that task. Retain every successfully
-claimed task in the selected wave and recompute only the failed/unclaimed
-membership from ground truth; never abandon a task that this conductor already
-moved to `in_progress`. A successful atomic claim prevents duplicate ownership;
-it does not make shared-checkout Git or filesystem mutations safe.
-
-Done when: every task in the selected wave reads `in_progress` under this actor, and any task whose claim failed has been dropped from the wave rather than dispatched.
-
-Before the run's first tracker gate, snapshot once to a run-unique file under `.flow/tmp/` with `$FLOWCTL sync active --json > <run-sync-active.json>`. Retain the path for every touchpoint below; its `ops` map already resolves per-event operations. If the probe fails, leave no usable snapshot and retain the existing fail-open read/dispatch behavior. Do not re-probe configuration at each task return.
-
-#### 3b.1 Tracker sync (opt-in) — first claim → In-Progress
-
-**Optional. Runs only when the tracker bridge is active AND `work.firstClaim` is opted in. With no tracker configured this is a no-op — the work flow is unchanged.**
-
-```bash
-ACTIVE=0
-# NO pipelines in the probe — a failed producer masked by a healthy consumer
-# fails CLOSED. Capture raw first, rc-checked; parse separately.
-RAW="$(cat <run-sync-active.json> 2>/dev/null)" || ACTIVE=1     # probe ERROR ⇒ ACTIVE (fail open)
-if [ "$ACTIVE" = "0" ]; then
-  VAL="$(printf '%s' "$RAW" | jq -r '.active' 2>/dev/null)" || ACTIVE=1   # parse ERROR ⇒ ACTIVE
-  [ "$VAL" = "true" ] && ACTIVE=1
-fi
-if [ "$ACTIVE" = "1" ]; then
-  echo "GATE ACTIVE — read and execute references/tracker-touchpoints.md#first-claim, then continue with Phase 3c."
-fi   # default branch: bare no-op — NO link, NO read path
-```
-
-When the sentinel prints, read [references/tracker-touchpoints.md](references/tracker-touchpoints.md), execute its `First claim` section (`work.firstClaim` leaf check + best-effort dispatch), then continue with Phase 3c. When the gate is silent (bridge inactive), continue — nothing fires here.
-
-### 3c. Spawn Worker
-
-Implementation is the **implementer** tier: absent any preference, the worker runs on the session model. **Routing precedence, highest first: an explicit argument in the invocation, then the project routing block in the instruction file, then the agent definition's own default, then the session model.** How this harness reaches a non-session model — and what the degradation is when it cannot — lives in its reach page (`plugins/flow-next/docs/reach/`), never here.
-
-Before spawning, apply [references/judge-tier.md](references/judge-tier.md) once for this task. Use its selected model in the host spawn-model parameter as well as the `IMPLEMENTER:` line; an explicit invocation always wins.
-
-**When the implementer tier resolves to a model this harness reaches only over a CLI bridge, the worker bridges and the conductor never does.** The dispatch below is unchanged: the worker resolves the tier itself (worker Phase 1b), hands the task to the bridged child with the usage guide's brief, and reviews the child's commit range before its own review dispatch. The bridged child owns the task and its own delegation; a conductor that composed a brief, ran a bridge call, or fanned out on the implementer's behalf has broken this.
-
-Use the Task tool to spawn a `worker` subagent. For a multi-task wave, create
-one isolated mutable workspace and task-unique summary/evidence paths per
-worker, then dispatch the selected workers concurrently. For a one-task wave,
-use the existing single-worker path. On every route, choose and pass absolute, task-unique `HANDOVER_SUMMARY` and `HANDOVER_EVIDENCE` paths before dispatch; create their parent directory.
-
-**Commit the spec and task files BEFORE creating the workspaces.** A wave
-workspace is branched from a commit, so anything still uncommitted in the
-conductor's checkout does not exist inside it — and a freshly planned spec is
-uncommitted by default. A worker dispatched into such a workspace cannot
-re-anchor at all: `$FLOWCTL show <task-id>` finds no task there, and the failure
-looks like a broken worker rather than a missing commit. Commit `.flow/` first
-(`git add -A`), then create the workspaces from that commit. Verified 2026-08-14
-on the first live wave dispatch. Single-worker runs are unaffected — they share
-the conductor's checkout.
-
-The worker gets fresh context and handles:
-- Re-anchoring (reading spec, git status, task-relevant glossary terms when populated)
-- Implementation
-- Committing
-- Review cycles (if enabled)
-- Completing the task (flowctl done)
-
-The last two responsibilities apply only to the existing single-worker path. A
-parallel-wave worker defers review and all shared lifecycle work to the
-conductor after integration.
-
-**Prompt template for worker:**
-
-**The prompt carries config values only** — the worker reads worker.md for its phases. A prompt that paraphrases or restates the worker's steps has broken this.
-
-**`REVIEW_MODE` is per-task, not a fixed run-wide value.** Resolve it for THIS task: if the user
-passed an explicit `--review=<backend>` to `/flow-next:work`, use that (a deliberate run-wide override
-wins for every task); OTHERWISE resolve task-aware — `REVIEW_MODE=$($FLOWCTL review-backend "$TASK_ID")`
-— so a task's own `review:` override (e.g. `review: cursor:...` under a `codex` project default) selects
-its backend rather than the project default. `none` still skips review. (This is why the worker passes
-`--review=$REVIEW_MODE` below — the value already carries the correct explicit-or-per-task precedence.)
-
-**Host review routes OUTSIDE the worker — and gates BEFORE `done`.** Verdict independence: the agent that wrote the code never dispatches or issues its own review verdict, so the fresh reviewer subagent the `host` backend requires is dispatched by the conductor, never the worker. On the wave route's single-worker path only, when the resolved review mode is `host`, pass `REVIEW_MODE: host-deferred` to the worker — the worker then defers `flowctl done` and the conductor runs `flow-next:flow-next-impl-review <task-id> --review=host` itself as the mandatory gate before `done`; `rg host-deferred` in this file must always find it. Read [references/host-deferred-review.md](references/host-deferred-review.md) for the full contract (worker deferral, SHIP/NEEDS_WORK handling, evidence update, Codex-mirror parity) and execute it — including its 3d.0 gate — before completing this task.
-
-All other backends keep the worker-owned review dispatch + worker-owned `flowctl done` unchanged.
-
-```
-Implement flow-next task.
-
-TASK_ID: fn-X.Y
-SPEC_ID: fn-X
-FLOWCTL: /path/to/flowctl
-REVIEW_MODE: none|rp|codex|copilot|cursor|claude|host|host-deferred
-RALPH_MODE: true|false
-PARALLEL_WAVE: true|false
-WORKSPACE: <isolated mutable workspace>
-HANDOVER_SUMMARY: <task-unique summary path>
-HANDOVER_EVIDENCE: <task-unique evidence path>
-BASELINE_HANDOFF: green (verified at <sha8> by <task-id>)
-IMPLEMENTER: <model> at <effort>
-TIER_LINE: <dispatch Tier: line>
-FORBIDDEN: implementation edits outside this task's declared Touches (worker lifecycle writes are exempt: .flow/tmp/, the handover paths above, the receipt flowctl done writes); no force-push; no rebase of the target
-TIMEBOX: <cap> - on expiry write the handover with partial findings and return, never run on
-
-Follow your phases in worker.md exactly.
-```
-
-`FORBIDDEN` echoes the task's declared write surface into the dispatch — an
-out-of-scope edit is the collision class the Touches-disjointness rule exists
-to prevent, and force-pushes/rebases of the target rewrite history peers have
-already built on. The ban covers implementation edits only: the lifecycle
-artifacts worker.md itself requires (the persisted base file, the handover
-summary/evidence, the `flowctl done` receipt) stay writable. `TIMEBOX` is the return-partial contract: expiry means the
-worker writes its handover with whatever it has and returns — a partial
-handover is diagnosable; a lane that runs on past its cap is not. The
-conductor sets `<cap>` at dispatch — its own judgment from the task's declared
-scope and Quick commands; no config key stores it. The contract is
-cooperative, not host-enforced: on a host where the dispatch blocks, the
-conductor cannot act mid-flight, so the cap is applied at its next control
-point — the worker's return, the host's own tool timeout or error, or a lost
-result — where 3d's side-effects rule classifies whatever the lane left
-behind.
-
-`IMPLEMENTER` carries an explicit invocation model first; otherwise it may carry the confident mechanical tier's reachable fast-scout model from `references/judge-tier.md`. Omit it when neither applies. Pass the native model through the spawn-model parameter too. The conductor never bridges or composes the worker's brief.
-
-`BASELINE_HANDOFF` is optional. The conductor MAY pass it only when ALL hold: the prior task in this run reached done with its Phase 5 Verify green over the SAME Quick commands, HEAD has not moved since except by commits changing only `.flow/` paths, and the new task's declared Touches do not intersect files changed since that verification. Conductor judgment on stated facts; when in doubt, omit the line. On the wave route the first task receives no handoff. The rolling route instead runs a green spec-base baseline before its first admission and may hand that baseline to the first batch under the same `.flow/`-only rule. Check every intervening commit with `git log --format= --name-only <verified-sha>..HEAD`; any non-`.flow/` path invalidates the handoff, including changes later reverted.
-
-Set `PARALLEL_WAVE: true` for a concurrently dispatched multi-task wave AND
-for a reviewer-overlap dispatch (the one-task wave — the overlapped
-worker must return the parallel handover, never self-complete).
-Those workers implement, test, commit, and return their workspace, commits, and
-the exact handover paths. They do **not** call `flowctl done`, project tracker
-state, invoke plan-sync, run impl-review, or integrate their own commit. This
-host-deferred shape is independent of `REVIEW_MODE`; the conductor preserves
-the resolved backend and applies it after integration. The prompt fields are an
-internal handoff, not a public CLI or stored schema.
-
-**Worker returns** (both paths): task id, terminal status, commit range, `actual_model` when evidenced, and the
-summary/evidence paths (plus the review receipt path when the single-worker path
-ran review). Content lives in those files — read them, never a restatement.
-
-### 3d. Join, Integrate, and Verify
-
-**Before accepting any worker return**, use the existing `$FLOWCTL show <task-id> --json` read below (or the handover path's status read) and check the host's background-task list or process table only for commands attributable to that task's lane by its workspace (on the single-worker path the sole lane is the conductor's checkout, so a command started there during the dispatch is that worker's); unattributable commands are not that worker's, and `in_progress` alone triggers nothing: a confirmed parallel-wave or host-deferred handover with no attributable live command proceeds through its existing gates (3d.0 first where applicable). For any `in_progress` return with an attributable live command, a confirmed handover included, wait within the dispatch `TIMEBOX`, then dispatch a re-anchoring continuation worker into the same workspace after the command exits, without counting the early return as a failed attempt; past `TIMEBOX`, the existing stand-down and 2-strike rules below govern, and with no live command the existing not-done diagnosis applies.
-
-**Parallel wave or reviewer-overlap dispatch** (3a `Dispatch count` > 1, or an
-overlapped one-task wave): read
-[references/wave-join.md](references/wave-join.md) and execute it — it owns the
-join report, integration, collision handling (never auto-resolve), the
-reviewer-overlap schedule point and its plan-sync barrier, the per-task review
-passes, the mandatory integrated-target verification before `done`, completion,
-and workspace-first partial-failure diagnosis. Do not select more work or run
-plan-sync until every dispatched worker has returned and the wave is resolved.
-
-On the single-worker path, verify completion as before:
-
-```bash
-$FLOWCTL show <task-id> --json
-```
-
-#### 3d.0 host-deferred gate (runs FIRST on the single-worker path when this task's REVIEW_MODE was `host-deferred`)
-
-A host-deferred worker returns with the task still `in_progress` BY DESIGN — that is the contract, not a failure. Before any failure classification, read [references/host-deferred-review.md](references/host-deferred-review.md) and execute its `3d.0 gate` section (re-read the persisted base, confirm the handover, run the mandatory `flow-next:flow-next-impl-review --review=host`, update evidence, then `done` only on SHIP). Only after this gate does the standard rule below apply to host-deferred tasks.
-
-**Progress is side effects only** — commits in the lane's workspace, a moved
-task status, handover files on disk. A lane past its `TIMEBOX` with none of
-these is stuck, whatever its narration said: diagnose in its workspace, stand
-it down, and count the stand-down against the existing 2-strike cap below —
-never a third budget. (Known risk, accepted: a slow-but-healthy lane can be
-stood down; the strike cap bounds that cost to one bounded retry, never
-correctness.)
-
-If status is not `done` (and the 3d.0 gate did not apply or already ran, subject to the early-return exemption above), the worker failed. Diagnose from ground truth (below) then retry — **but the retry is bounded**: keep a per-task failure strike counter. **After 2 consecutive non-`done` returns for the *same task*** (a worker that keeps aborting early or a persistently red Quick command), retrying stops and the failure escalates. A third respawn of the same task has broken this. Under `SPEC_MODE` / `mode:autonomous`, emit the worker's typed `BLOCKED: <reason>` as a `NEEDS_HUMAN` line and move on to the next ready task (autonomy's "never hang" promise has no loop-guard otherwise — a bad Quick command or broken baseline would respawn workers forever); interactively, surface the failure and stop.
-
-**Lost / errored worker result (`[Tool result missing due to internal error]`).** On long runs the host (Agent-tool) can drop the worker's completion report — you get an error placeholder instead of the report, even though the worker's *work* may be complete. Don't block waiting for a result that will never arrive. Treat a missing/errored result the same as "status not `done`" and **diagnose from ground truth** before retrying:
-
-```bash
-$FLOWCTL show <task-id> --json          # status + evidence the worker recorded
-git log --oneline -5                     # did the worker leave commits?
-git status --short                       # uncommitted-but-complete changes?
-```
-
-Classify and act:
-- **Already `done`** (status `done`, clean worktree at HEAD) — the report was lost but the task finished. Proceed to plan-sync (3e) as normal.
-- **Code present but not finalized** (commits and/or uncommitted changes exist, but status is still `in_progress` and build/review/`flowctl done` never ran) — spawn a **re-anchoring continuation worker** that re-reads the spec + current task status + `git status`/`git diff` and resumes from the late phase (verify build → review → `flowctl done`), rather than restarting the task from scratch. For that continuation worker, the inherited trail is **authoritative for what was decided and written** — never redo it — but its **pass/fail claims are unproven**: re-verify on the real artifact (run the gate, read the receipt) before `done`. Trusting an inherited "tests green" narration is how a dead lane's unverified claim becomes a completed task.
-- **Nothing landed** (no commits, clean worktree, still `in_progress`) — the worker aborted early; retry the task normally.
-
-Done when: every dispatched task in the wave reads `done`, or has been escalated with a typed reason after its second consecutive failure — and no task is left silently `in_progress`.
-
-#### 3d.1 Tracker sync (opt-in) — task done → status comment + evidence
-
-**Optional. Runs only when the tracker bridge is active AND `work.done` is opted in, and only when the task reached `done` (from 3d). With no tracker configured this is a no-op.**
-
-```bash
-ACTIVE=0
-# NO pipelines in the probe — a failed producer masked by a healthy consumer
-# fails CLOSED. Capture raw first, rc-checked; parse separately.
-RAW="$(cat <run-sync-active.json> 2>/dev/null)" || ACTIVE=1     # probe ERROR ⇒ ACTIVE (fail open)
-if [ "$ACTIVE" = "0" ]; then
-  VAL="$(printf '%s' "$RAW" | jq -r '.active' 2>/dev/null)" || ACTIVE=1   # parse ERROR ⇒ ACTIVE
-  [ "$VAL" = "true" ] && ACTIVE=1
-fi
-if [ "$ACTIVE" = "1" ]; then
-  echo "GATE ACTIVE — read and execute references/tracker-touchpoints.md#task-done, then continue with Phase 3e."
-fi   # default branch: bare no-op — NO link, NO read path
-```
-
-When the sentinel prints, read [references/tracker-touchpoints.md](references/tracker-touchpoints.md), execute its `Task done` section (`work.done` leaf check + best-effort dispatch), then continue with Phase 3e. When the gate is silent (bridge inactive), continue — nothing fires here.
-
-### 3e. Plan Sync After the Resolved Wave (if enabled) — both modes
-
-**Runs in SINGLE_TASK_MODE and SPEC_MODE.** Only the loop-back in 3f differs by mode.
-
-Do not run plan-sync while any peer worker is active or the wave is unresolved.
-After the join, integration, review, and completion steps finish, collect every
-task that reached `done` in the resolved wave and run this section **once for
-that set** — one `plan-sync` dispatch carrying the full completed-task list.
-If a task is not `done`, omit it from the set and investigate/retry. An empty
-set (nothing reached `done`) or no remaining `todo` downstream tasks means no
-dispatch.
-
-Check if plan-sync should run:
-
-```bash
-$FLOWCTL config get planSync.enabled --json
-```
-
-Skip unless planSync.enabled is explicitly `true` (null/false/missing = skip) and advance to 3f: `flowctl done` already recorded that skip's stage line on each completed task.
-
-Downstream target extraction, the `planSync.crossSpec` read, and the `plan-sync`
-subagent dispatch live in [references/plan-sync-dispatch.md](references/plan-sync-dispatch.md)
-— read it and execute it now, then record the per-task stage-outcome lines below.
-Its skip and failure branches (`skipped(empty: ...)`, `failed(EXTRACT_FAILED: ...)`)
-feed those same lines. The conductor derives one line per completed task from
-the batched report's per-task sections.
-
-**Stage-outcome line (mandatory).** Whatever happened above, record ONE
-outcome line for the plan-sync stage in **each** completed task's done evidence
-(the task .md `## Done summary` the run already writes, via a small append or
-the next `flowctl done` summary when the wave is still resolving). A single
-batched dispatch still yields one line per completed task:
-
-```
-stage: plan-sync - ran [<start>..<end>] | skipped(empty: no downstream todo tasks) | failed(EXTRACT_FAILED: <detail>) | failed(error: <detail>)
-```
-
-**A skipped stage is an event with a reason, never an absence.** `DOWNSTREAM=EXTRACT_FAILED`
-yields a `failed(EXTRACT_FAILED...)` line (the #293 class becomes visible on
-first occurrence) and "no downstream tasks" yields `skipped(empty...)`, which is
-distinguishable from a broken extraction; a run that recorded a broken extraction as
-"nothing to do", or omitted the line entirely, has broken this. Include start..end
-timestamps when this orchestrator knows them.
-
-Done when: each `done` task in the resolved wave carries exactly one `stage: plan-sync - …` line in its evidence.
-
-### 3f. Loop or Finish
-
-**Steps 3d and 3e run after the whole selected wave returns, in both modes.** A run
-that skipped either because it was in `SINGLE_TASK_MODE` has broken this. Only the
-loop-back behavior differs:
-
-**SINGLE_TASK_MODE**: After 3d→3e, go to Phase 4 (Quality). No loop.
-
-**SPEC_MODE**: After 3d→3e, recompute the next ready frontier at 3a. Never
-select it before the current wave is joined and resolved.
-
-### 3f.1 Pause path (wave boundary only, explicit signal only)
-
-A run may pause ONLY at a wave boundary (the current wave joined and resolved,
-before the next 3a selection), and ONLY on an explicit pause request or an
-imminent-compaction signal from the host. An autonomous "keep going"
-instruction never triggers it — a self-granted pause is an availability
-failure dressed as prudence. To pause: commit this run's WIP (with a
-broken-tree note in the commit message if the tree is not coherent). Commit
-scope is the paths this run produced — `.flow/` state, files its workers
-touched per their handovers — never the whole tree (the resume map is written
-AFTER this commit, to `/tmp`, outside the repository — it is the explicit
-handoff, never a staged path): on a
-current-branch run the tree may carry uncommitted work that predates the run
-(the run-start `git status` shows it), and the spec base alone cannot tell it
-from the run's own (the same rule as the worker's BLOCKED revert scope) —
-leave it uncommitted and name it in the resume map instead of sweeping it into
-the pause commit. Then write the workspace/handover map — task ids, statuses,
-workspace paths, handover paths, next frontier, any pre-existing uncommitted
-paths left in place — to `/tmp/<spec-id>-resume.md`. In-context state does not
-survive summarization; the resume file is the only map the next session gets.
-
-### 3g. Completion Review Gate (SPEC_MODE only)
-
-When 3a finds no ready tasks, this gate is default-on — its unique value is
-cross-task integration + R-ID coverage.
-
-**Policy skip — ahead of dispatch.** Judge these facts yourself (no classifier,
-no config key). Skip the review when ALL of the following hold:
-
-- (a) the spec has exactly one task
-- (b) that task's per-task impl-review reached SHIP (its receipt/evidence records it; `REVIEW_MODE` was not `none`)
-- (c) every spec R-ID is covered by that task's declared `satisfies`
-
-On skip, persist the excused decision FIRST — atomically, only from `unknown`:
-
-```bash
-$FLOWCTL spec set-completion-review-status <spec-id> --status not_required --if-current unknown --json
-```
-
-Branch on the reported outcome, recording the run-scoped stage-outcome line for
-the Phase 5 final summary ONLY on the two skip branches (a stage line for a
-skip that did not happen is a false receipt):
-
-```
-stage: completion-review - skipped(policy: single-task, per-task SHIP covers spec surface)
-```
-
-- `.written == true` — the skip landed: record the stage line, go to Phase 4.
-- `.written == false` and the reported `completion_review_status` is
-  `not_required` — a prior run already excused this spec (idempotent
-  re-entry): record the stage line, go to Phase 4.
-- `.written == false` with a verdict status (`ship` / `needs_work` /
-  `needs_human`) — a real review landed meanwhile: a normal no-skip outcome,
-  not an error. Do NOT record the skip line; fall through to the status check
-  below. A `refused` surface report (the spec no longer has exactly one task)
-  falls through the same way: no skip line, the status check decides.
-
-Never write `ship` here; the skip is a policy outcome, not a SHIP —
-`not_required` claims the requirement is satisfied without a review having run.
-
-Otherwise check whether review is still required.
-
-**Check spec's completion review status directly:**
-
-```bash
-$FLOWCTL show <spec-id> --json | jq -r '.completion_review_status'
-```
-
-- If `ship` → review already passed, go to Phase 4
-- If `not_required` → review excused by policy, go to Phase 4
-- If `unknown` or `needs_work` → needs review
-
-**If review needed** (policy skip did not fire):
-
-1. Invoke `flow-next:flow-next-spec-completion-review <spec-id>` skill
-   - Pass `--review=<backend>` matching the work review backend
-   - Skill handles rp/codex/copilot/cursor/claude/host backend dispatch
-   - Skill runs its fix loop internally until SHIP and writes terminal
-     `completion_review_status` through its backend-aware shared owner
-
-2. After skill returns with SHIP:
-   - **Tracker sync (opt-in) — SHIP posts a verdict comment, never a terminal `Done`:** runs only when the tracker bridge is active and `completionReview` is opted in. With no tracker configured this is a no-op:
-
-     ```bash
-     ACTIVE=0
-     # NO pipelines in the probe — a failed producer masked by a healthy consumer
-     # fails CLOSED. Capture raw first, rc-checked; parse separately.
-     RAW="$(cat <run-sync-active.json> 2>/dev/null)" || ACTIVE=1     # probe ERROR ⇒ ACTIVE (fail open)
-     if [ "$ACTIVE" = "0" ]; then
-       VAL="$(printf '%s' "$RAW" | jq -r '.active' 2>/dev/null)" || ACTIVE=1   # parse ERROR ⇒ ACTIVE
-       [ "$VAL" = "true" ] && ACTIVE=1
-     fi
-     if [ "$ACTIVE" = "1" ]; then
-       echo "GATE ACTIVE — read and execute references/tracker-touchpoints.md#completion-review, then continue with Phase 4."
-     fi   # default branch: bare no-op — NO link, NO read path
-     ```
-
-     When the sentinel prints, read [references/tracker-touchpoints.md](references/tracker-touchpoints.md), execute its `Completion review` section (`completionReview` leaf check + comment-shaped verdict/R-ID-coverage dispatch), then continue with Phase 4. **`land.merged` is the only driver that writes terminal `Done`/`verified`** — a dispatch from here that flipped the issue terminal has broken this. When the gate is silent (bridge inactive), continue — nothing fires here.
-   - Go to Phase 4 (Quality)
-
-**Note:** The spec-completion-review skill owns every terminal
-verdict write to `completion_review_status` (`ship`/`needs_work`/`needs_human`).
-Work's single sanctioned write is the 3g policy-skip CAS
-(`--status not_required --if-current unknown`); work never writes a verdict status. After
-the skill returns SHIP, Work only posts the opt-in verdict / R-ID-coverage
-comment to the linked tracker issue here. **That comment never flips the
-issue to `Done`/`verified`** (that is gated on a `MERGED` PR and driven
-solely by `land.merged`).
-
-**Fix loop behavior**: Same as impl-review. If reviewer returns NEEDS_WORK:
-1. Skill parses issues
-2. Skill fixes code inline
-3. Skill commits
-4. Skill re-reviews (same chat for rp, same session for codex)
-5. Repeat until SHIP
-
-Only after SHIP does control return here. If skill outputs `<promise>RETRY</promise>`, there was a backend error - retry the skill invocation.
-
-Done when: the policy skip recorded its stage line and `completion_review_status` reads `not_required` (written by this run's CAS or already excused by a prior run), or a verdict-status CAS miss fell through to the status check without a skip line, or `completion_review_status` reads `ship` (or the gate did not apply), and the opt-in tracker comment either fired or was a documented no-op.
-
----
-
-**Why spawn a worker?**
-
-Context optimization. Each task gets fresh context:
-- No bleed from previous task implementations
-- Re-anchor info stays with implementation (not lost to compaction)
-- Review cycles stay isolated
-- Main conversation stays lean (just summaries)
-
-**Ralph mode**: Worker inherits `bypassPermissions` from parent. FLOW_RALPH=1 and REVIEW_RECEIPT_PATH are passed through.
-
-**Autonomous mode** (`mode:autonomous` token or `FLOW_AUTONOMOUS=1`): forward `FLOW_AUTONOMOUS=1` to the worker when set. It suppresses questions only — no receipt obligations, no ralph-guard activation; never set `FLOW_RALPH` from it.
-
-**Interactive mode**: Permission prompts pass through to user. Worker runs in foreground (blocking).
+## Phase 3: Implement
+
+**Several tasks, or a worker wanted:** read [references/multi-task.md](references/multi-task.md)
+and follow it as this phase. That covers a spec with more than one open task, and a single task
+when the user or config names an implementer model or tier, when the task's review mode resolves
+to `host` (the writer never dispatches its own host review), or when your context is too full to
+implement well (say which in one line). Only on that route does
+[references/judge-tier.md](references/judge-tier.md) apply.
+
+**One task (a one-task plan, a task-id run, or the direct route's implicit owner): implement it
+here, inline.** Print `Scheduling: inline (single task)`.
+
+1. **Claim and re-anchor.** `$FLOWCTL start <task-id> --json` (add `--reclaim` only for a direct
+   owner Phase 1 admitted for resume), then `$FLOWCTL anchor <task-id> --md`: the task, its spec,
+   git state, matching glossary terms and the memory index. Search memory
+   (`$FLOWCTL memory search "<keyword>" --json`) when an entry looks relevant. Record the base:
+   `mkdir -p .flow/tmp && git rev-parse HEAD > .flow/tmp/base_commit`.
+2. **Tracker.** Run `$FLOWCTL sync active --json > <run-sync-active.json>` once (a run-unique file
+   under `.flow/tmp/`). Only when it reports `active: true` (or fails) read
+   [references/tracker-touchpoints.md](references/tracker-touchpoints.md), passing it that file, and fire its
+   `First claim` section now, its `Task done` section after step 6, and its `Completion review`
+   section when step 7 ran a completion review that returned SHIP; otherwise nothing fires.
+3. **Implement** to the acceptance criteria, following working-rules.md: a failing test first
+   where cheap (on the defect route, [references/defect-route.md](references/defect-route.md); on
+   the hill-climb route, [references/hill-climb.md](references/hill-climb.md) replaces this step),
+   one focused test per criterion and per enumerated error case, the focused tests for the code
+   you changed. Never weaken a test, gate or assertion to make the change pass; a gate you believe
+   is wrong is `BLOCKED: TOOLING_FAILURE`. Do not edit `.flow/features/`.
+4. **Commit** with `git add -- <files you changed> .flow/` and a conventional message ending
+   `Task: <task-id>`. On a defect, a commit with the failing test before the fix is preferred.
+5. **Review, by the risk rule in working-rules.md.** Selected, and the review mode is not `none`:
+   attended, hand the result back first, then run
+   `flow-next:flow-next-impl-review <task-id> --base <base_commit> --review=<mode>` in the
+   background and report its verdict when it lands; unattended, run it and wait. `done` waits for
+   SHIP, or for an `OVERRIDDEN:` line from an unattended loop (its declined findings go in the
+   summary and the Decisions list) or from the person accepting an attended `NEEDS_WORK`. Not selected: record `stage: impl-review - skipped(policy: risk - <reason>)`. When a
+   review went NEEDS_WORK then SHIP on a non-trivial fix and memory is enabled, capture the lesson
+   per [references/worker-memory-capture.md](references/worker-memory-capture.md).
+6. **Done.** Write a short summary to `.flow/tmp/<task-id>-summary.md` (what changed, and one
+   `stage: impl-review - ...` line), then run `$FLOWCTL done <task-id> --range
+   "<base_commit>..HEAD" --test "<command you ran>" --summary-file .flow/tmp/<task-id>-summary.md
+   --json` with the base read from `.flow/tmp/base_commit`.
+7. **Completion review**, only once every task in the spec is done. A task-id run whose spec
+   still has unfinished tasks runs none: it commits the task receipt (the command below) and
+   finishes. Skip it when the spec has this one task, its review reached SHIP (or a recorded
+   override), and every spec R-ID is in the task's `satisfies`: run `$FLOWCTL spec
+   set-completion-review-status <spec-id> --status not_required --if-current unknown --json` and
+   note `stage: completion-review - skipped(policy: single-task, per-task SHIP covers spec
+   surface)`. Otherwise invoke `flow-next:flow-next-spec-completion-review <spec-id>` with the same
+   `--review`. Commit the task receipt and this status together:
+   `git add -- .flow/ && git commit -m "chore(flow): task receipt <task-id>"`.
 
 ## Phase 4: Quality
 
-After all tasks complete (or periodically for large specs):
+After all tasks complete:
 
 - When `.flow/features/` exists, once all tasks are done, run [references/feature-map-update.md](references/feature-map-update.md) first: it updates the feature files whose user route this change altered.
-- Run `$FLOWCTL gate classify --base "$(cat .flow/tmp/spec_base)"`; exit 0 means docs-only tier-B: run lint/format only and note `Gates: docs-only tier-B` for the Phase 5 final summary. On nonzero, run the full gates. With `.flow/tmp/spec_base_repos`, also run classify inside each listed repo against its recorded sha: tier-B needs exit 0 in every repo, and a repo that exits nonzero (including a missing path or unresolvable base) runs its full gates. Name each listed repo and its sha in the auditor dispatches below.
+- Run `$FLOWCTL gate classify --base "$(cat .flow/tmp/spec_base)"`; exit 0 means docs-only tier-B: run lint/format only and note `Gates: docs-only tier-B` for the Phase 5 final summary. On nonzero, run the full gates only when the repository's instructions or the user ask for a full suite: once, here, and not again after later fixes (re-check those with focused tests). A full gate that already ran this run (rolling quiesce, the wave join) is not run again here. With `.flow/tmp/spec_base_repos`, also run classify inside each listed repo against its recorded sha: tier-B needs exit 0 in every repo, and a repo that exits nonzero (including a missing path or unresolvable base) runs its full gates. Name each listed repo and its sha in the auditor dispatches below.
 - For each full gate (test) command that would run, first probe `$FLOWCTL gate check --gate <gate_id> --command "<cmd>"`; exit 0 means skip that re-run and note `Gates: baseline reused (green receipt <sha8>)` for the Phase 5 final summary. On nonzero, run it. After any passing full gate run here, write its receipt with `$FLOWCTL gate receipt --gate <gate_id> --command "<cmd>"`.
 - Run lint/format per repo
 - If change is large/risky, run the quality auditor subagent as **two axis-scoped dispatches of the same agent**, both named in ONE message:
@@ -765,9 +290,9 @@ After all tasks complete (or periodically for large specs):
   the value, add the missing assertion, guard the baseline) so the same edit
   cannot pass silently again.
 
-Host skips cannot land in task evidence because tasks are already done by Phase 4. **Every skip/honor outcome is accumulated as it happens** (gate_id, plus the receipt `<sha8>` where one was honored) **and surfaces as its own `Gates:` line in the Phase 5 final summary.** A silent skip, or several mixed outcomes collapsed into one line, has broken this (a periodic Phase 4 pass can produce several: some gates receipt-reused, some run full, a later pass docs-only).
+Host skips cannot land in task evidence because tasks are already done by Phase 4. **Every skip/honor outcome is accumulated as it happens** (gate_id, plus the receipt `<sha8>` where one was honored) **and surfaces as its own `Gates:` line in the Phase 5 final summary.** A silent skip, or several mixed outcomes collapsed into one line, has broken this (one pass can produce several: some gates receipt-reused, some run full).
 
-Done when: lint/format ran, every full gate either ran green or was receipt-honored, and one `Gates:` line is queued per outcome.
+Done when: lint/format ran, every required full gate either ran green or was receipt-honored, and one `Gates:` line is queued per outcome.
 
 ## Phase 5: Ship
 
@@ -779,15 +304,14 @@ $FLOWCTL validate --spec <spec-id> --json
 
 **Final commit** (if any uncommitted changes):
 ```bash
-git add -A
+git add -- <files you changed> .flow/
 git status
 git diff --staged
 git commit -m "<final summary>"
 ```
 
-**The spec is left open unless the user explicitly asked for it to be closed** —
-Ralph closes done specs at the end of the loop. A run that closed the spec on its
-own initiative has broken this.
+**The spec is left open unless the user explicitly asked for it to be closed.**
+A run that closed the spec on its own initiative has broken this.
 
 Then push + open PR if user wants.
 
@@ -816,8 +340,6 @@ EVENTS="work.firstClaim,work.done"   # ← substitute the actual triggered set
 "$FLOWCTL" sync check "$SPEC_ID" --events "$EVENTS" --since "$SINCE" --json
 # Empty output → bridge inactive → slot = `n/a (bridge inactive)`. Otherwise
 # `.missing` empty → slot = `OK`; non-empty → retro-fire (below).
-# Under Ralph (FLOW_RALPH=1 / REVIEW_RECEIPT_PATH set): route any echo of check
-# output to stderr (>&2) — work's stdout stays clean for harness parsing.
 ```
 
 (Nothing triggered at all — no claims, no dones, no 3g, e.g. a resumed no-op run — skip the check; the slot is vacuously `OK`.)
@@ -829,7 +351,7 @@ the missed events only → record the final state in the summary slot). Still MI
 after the one cycle is a recorded, visible outcome — never a second retro-fire, never
 a block.
 
-**Final summary (mandatory template).** End the run with this block. **`Tracker sync:` is a required field carrying exactly one of its four states** — an explicit `n/a` proves the check ran, and an absent field reads as a skipped check. A summary printed without the slot has broken this. Under Ralph, the summary goes to the summary block / stderr, never stdout. The `Gates:` slot is where host-layer gate skips surface — one `Gates:` line per accumulated Phase 4 outcome (repeat the line for each skip/honor so none is overwritten); worker-layer skips live in each task's evidence `tests[]`.
+**Final summary (mandatory template).** End the run with this block. **`Tracker sync:` is a required field carrying exactly one of its four states** — an explicit `n/a` proves the check ran, and an absent field reads as a skipped check. A summary printed without the slot has broken this. The `Gates:` slot is where host-layer gate skips surface — one `Gates:` line per accumulated Phase 4 outcome (repeat the line for each skip/honor so none is overwritten); worker-layer skips live in each task's evidence `tests[]`.
 
 ```
 Spec: <spec-id> — <title>
@@ -875,7 +397,7 @@ Recording the configured preference as if it were an observation has broken this
 
 **A skipped stage is an event with a reason, never an absence** — review treats a
 stage with no line as failed (that inversion is the point: "no record" can never
-again masquerade as "nothing to do", the #293 class). A stage this run reached
+again masquerade as "nothing to do"). A stage this run reached
 that left no line has broken this. Timestamps ride the line only where this
 orchestrator knows them; there is no separate timing store. Token/cost telemetry
 is out of scope — it is host-side data flowctl cannot observe (a future host
@@ -892,23 +414,16 @@ Confirm before ship:
 - `$FLOWCTL validate --spec <id>` passes
 - Tests pass
 - Lint/format pass
-- Docs updated if needed
+- Docs updated only where the change alters behaviour they document and the request covers it, or the repository requires it
 - Working tree is clean
 - Final summary printed with the mandatory `Tracker sync:` slot (one of the four states — explicit `n/a (bridge inactive)` when no tracker is configured)
 
 ## Example flow
 
 ```
-Phase 1 (resolve) → Phase 2 (branch) → Phase 3 (route: rolling by default; wave when plan-sync on, <2 open tasks, or a sequential chain):
-  ├─ rolling: references/rolling-scheduler.md (admit at every worker return → per-task integrate/review/done → quiesce → 3g)
-  ├─ wave:
-  ├─ 3a-c: inspect frontier → select/claim wave → dispatch isolated worker(s)
-  ├─ 3d: join → integrate → review/complete each task
-  ├─ 3e: plan-sync after the wave resolves (if enabled + downstream tasks exist)
-  ├─ 3f: SPEC_MODE? → loop to 3a | SINGLE_TASK_MODE? → Phase 4
-  ├─ no more tasks → 3g
-  │   ├─ policy skip (single-task + per-task SHIP covers spec surface) → CAS-persist not_required, record stage line → Phase 4
-  │   ├─ status != ship → invoke flow-next:flow-next-spec-completion-review → skill fixes, writes SHIP once, returns
-  │   └─ status = ship → Phase 4
-  └─ Phase 4 (quality) → Phase 5 (ship: verify → commit → sync check → retro-fire MISSING once → summary w/ Tracker sync slot)
+Phase 1 (resolve) -> Phase 2 (branch) -> Phase 3:
+  one task: inline (claim, anchor, implement, commit, review by risk, done, completion-review skip)
+  several tasks, or a worker asked for: references/multi-task.md (rolling by default; wave when
+    plan-sync is on or the tasks form a sequential chain; completion review at 3g)
+-> Phase 4 (quality) -> Phase 5 (ship: verify, commit, tracker check, summary)
 ```

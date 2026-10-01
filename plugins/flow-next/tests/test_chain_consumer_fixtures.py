@@ -38,7 +38,7 @@ _POSIX = unittest.skipIf(
 )
 
 DETECT_OUT = ["BASE_REF", "CHAIN_PARENT", "CHAIN_PARENT_BRANCH", "CHAIN_BOUNDARY", "PARENT_PR", "PARENT_PR_STATE", "CHAIN_REWRITE", "REWRITE_ONTO", "COMMITS_AHEAD"]
-REWRITE_ENV = {"SPEC_ID": "x", "OPEN_COUNT": "0", "RALPH": "0", "AUTONOMOUS": "0", "WRITE_MEMORY": "0", "DRAFT_FORCE": "", "HEAD_SHA": "unset", "COMMITS_AHEAD": "0"}
+REWRITE_ENV = {"SPEC_ID": "x", "OPEN_COUNT": "0", "AUTONOMOUS": "0", "WRITE_MEMORY": "0", "DRAFT_FORCE": "", "HEAD_SHA": "unset", "COMMITS_AHEAD": "0"}
 
 
 class ConsumerWorld(ChainWorld):
@@ -185,7 +185,7 @@ class ChainDetectTestCase(unittest.TestCase):
         self.fence = fence(MAKE_PR / "workflow.md", "chain-detect")
 
     def detect(self, spec: str, *, base: str = "", dry_run: str = "0") -> tuple[int, dict[str, str]]:
-        env = {"REPO_ROOT": str(self.w.work), "FLOWCTL": str(self.w.bin / "flowctl"), "SPEC_ID": spec, "BASE_REF": base, "DRY_RUN": dry_run, "RALPH": "0", "AUTONOMOUS": "0"}
+        env = {"REPO_ROOT": str(self.w.work), "FLOWCTL": str(self.w.bin / "flowctl"), "SPEC_ID": spec, "BASE_REF": base, "DRY_RUN": dry_run, "AUTONOMOUS": "0"}
         return self.w.run_rc(self.fence, env, DETECT_OUT, cwd=self.w.work)
 
     def test_explicit_base_uses_remote_tracking_when_local_branch_is_stale(self) -> None:
@@ -421,7 +421,7 @@ class DraftMatrixTestCase(unittest.TestCase):
         self.fence = fence(MAKE_PR / "create-and-finalize.md", "draft-matrix")
 
     def flag(self, *, autonomous: str, open_items: str, force: str, chain: str) -> str:
-        rc, got = self.w.run_rc(self.fence, {"RALPH": "0", "AUTONOMOUS": autonomous, "OPEN_ITEMS_COUNT": open_items, "DRAFT_FORCE": force, "CHAIN_PARENT": chain}, ["DRAFT_FLAG"], cwd=self.w.work)
+        rc, got = self.w.run_rc(self.fence, {"AUTONOMOUS": autonomous, "OPEN_ITEMS_COUNT": open_items, "DRAFT_FORCE": force, "CHAIN_PARENT": chain}, ["DRAFT_FLAG"], cwd=self.w.work)
         self.assertEqual(rc, 0, got["_stderr"])
         return got["DRAFT_FLAG"]
 
@@ -430,8 +430,8 @@ class DraftMatrixTestCase(unittest.TestCase):
             # (autonomous, open_items, force, chain) -> flag
             (("0", "0", "", ""), ""),
             (("0", "2", "", ""), "--draft"),
-            (("1", "0", "", ""), "--draft"),
-            (("1", "0", "ready", ""), "--draft"),
+            (("1", "0", "", ""), ""),
+            (("1", "0", "ready", ""), ""),
             (("1", "0", "", "fn-1-parent"), ""),
             (("1", "1", "", "fn-1-parent"), "--draft"),
             (("1", "0", "draft", "fn-1-parent"), "--draft"),

@@ -35,7 +35,7 @@ This is OpenCode's native pin surface - the equivalent of writing a routing-bloc
 
 ## What is unavailable
 
-A dispatch-time model override (prose requests in a Task dispatch are ignored - the subagent inherits the session model), a native blocking-ask primitive (numbered-prompt fallback applies), and generated-agent `model:` frontmatter (dropped at generation; the user-defined pin above is the mechanism). Ralph is not supported.
+A dispatch-time model override (prose requests in a Task dispatch are ignored - the subagent inherits the session model), a native blocking-ask primitive (numbered-prompt fallback applies), and generated-agent `model:` frontmatter (dropped at generation; the user-defined pin above is the mechanism).
 
 ## Degradation
 
@@ -47,4 +47,4 @@ The `claude` review backend (`review.backend claude`, observed 2026-09-05) is th
 
 ## Driving unattended
 
-Run `/flow-next-flow --auto` by default. One invocation drives one ready item hop after hop to its draft PR, and the next invocation takes the next item. There is no host loop primitive. An external scheduler that cuts sessions short runs `/flow-next-flow --auto --tick` per invocation so each hop lands its receipts and ledger entry before the cut.
+Run `/flow-next-flow --auto` by default. One invocation drives one ready item hop after hop to its PR, and the next invocation takes the next item. There is no host loop primitive. An external scheduler that cuts sessions short runs `/flow-next-flow --auto --tick` per invocation so each hop lands its receipts and ledger entry before the cut.

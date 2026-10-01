@@ -11,6 +11,8 @@ Comprehensive codebase assessment inspired by [Factory.ai's Agent Readiness fram
 **Role**: readiness assessor, improvement proposer
 **Goal**: full visibility into codebase health, targeted fixes for agent readiness
 
+Read [working-rules.md](../../references/working-rules.md) first; it holds for every step of this skill.
+
 ## Two-Tier Assessment
 
 | Category | Pillars | What Happens |
@@ -135,12 +137,12 @@ for branches that will not execute.
 - Respect .gitignore patterns
 
 ### User Consent
-- **MUST use `AskUserQuestion` tool** for consent (call `ToolSearch` with `select:AskUserQuestion` first if its schema isn't loaded). Never just print questions as text. (sync-codex.sh rewrites this to a plain-text numbered prompt in the Codex mirror.)
+- **MUST use `AskUserQuestion` tool** for consent (call `ToolSearch` with `select:AskUserQuestion` first if its schema isn't loaded). Never just print questions as text.
 - Always ask before modifying existing files — **except** under `--fix-all`, which waives the prompt for **append/merge** edits (adding a `.gitignore` line, augmenting an agent file, appending a hook) INCLUDING their required devDependencies for the Critical/High/Medium tiers. `--fix-all` still does NOT: overwrite/replace existing file content unseen, touch the Bonus tier (devcontainer, CI workflow — those stay explicit-request-only), or bypass the glossary read-back gate. A destructive overwrite always needs consent even under `--fix-all`.
 - Don't add dependencies without consent (a Critical/High/Medium fix's own devDeps are covered by that fix's consent, incl. `--fix-all`; never add unrelated deps)
 - **Glossary terms are never written unseen** — the Phase 5.5 bootstrap shows the full proposal (term + definition + file-ref evidence) at read-back before any `flowctl glossary add`; `--fix-all` does not bypass this gate, and a populated glossary (`total_terms > 0`) is never rewritten
 
-### `--fix-all` boundaries (resolutions 5/6)
+### `--fix-all` boundaries
 
 `--fix-all` auto-applies ONLY **in-`ROOT`, non-structural, non-harness** fixes at the Critical/High/Medium tier - the in-root Pillars 1-5 fixes PLUS scored-group agent-file content whose catalog row is marked `--fix-all`-eligible in its consent column (the ranked catalog carries the tier AND consent columns and **is authoritative** on which scored-group items qualify - see [playbooks.md](playbooks.md)). It NEVER waives consent for:
 - **Anything outside the repo `ROOT`** - the home-base / constellation kit (parent instruction file, `repos.yaml`, run-everything scripts) is always explicit-consent-only.
@@ -148,7 +150,7 @@ for branches that will not execute.
 - **All structural / playbook artifacts** - a generated map, nested per-package instruction files, the home base, the greenfield bootstrap plan. Structural = restructures the repo → explicit consent regardless of tier.
 - **On greenfield**, `--fix-all` applies ONLY to exercised hygiene files (`.gitignore`, lockfile, `.env.example`, `.editorconfig`) - never structural or generated artifacts, and never a bulk-generated instruction file (measured harm).
 
-**Re-run reuse (resolution 6):** a Phase 7 re-assessment reuses the session's Phase 0.5 classification and R15 answers; only the affected criteria/gates re-verify. The ranked catalog is re-ranked from the updated scores, not re-derived from scratch, and prime does not re-ask a question the user already answered this session.
+**Re-run reuse:** a Phase 7 re-assessment reuses the session's Phase 0.5 classification and Phase 0.6 answers; only the affected criteria/gates re-verify. The ranked catalog is re-ranked from the updated scores, not re-derived from scratch, and prime does not re-ask a question the user already answered this session.
 
 ### Scope Control
 - **Never create LICENSE files** — license choice requires explicit user decision

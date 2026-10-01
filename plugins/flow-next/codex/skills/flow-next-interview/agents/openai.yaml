@@ -1,6 +1,0 @@
-interface:
-  display_name: "Flow Interview (deprecated alias)"
-  short_description: "Deprecated alias for flow-next-refine; invoke the refine skill instead"
-  brand_color: "#3B82F6"
-policy:
-  allow_implicit_invocation: false

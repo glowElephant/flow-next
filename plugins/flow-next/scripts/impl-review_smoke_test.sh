@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
 # fn-32-opt-in-review-flags-validate-deep.5
-# Smoke tests for impl-review opt-in flags (--validate, --deep, --interactive)
-# plus Ralph regression verification under env-var opt-ins.
+# Smoke tests for impl-review opt-in flags (--validate, --deep, --interactive).
 #
-# Covers the 7 cases enumerated in the task spec plus a 4-config Ralph sweep.
-# Lighter duty than smoke_test.sh: only the flag layer + receipt shape +
-# Ralph regression. Backend-LLM paths are mocked (no codex/copilot/rp invoked).
+# Covers the 7 cases enumerated in the task spec.
+# Lighter duty than smoke_test.sh: only the flag layer + receipt shape.
+# Backend-LLM paths are mocked (no codex/copilot/rp invoked).
 #
 # Run from any directory other than the plugin repo root.
 
@@ -126,7 +125,7 @@ cat > "$RECEIPT" <<'EOF'
 }
 EOF
 
-# Ralph gate keys present
+# Gate keys present
 for k in verdict mode session_id; do
   assert_has_key "$RECEIPT" "$k" "Case 1: receipt"
 done
@@ -142,8 +141,7 @@ done
 # (no LLM call) plus a direct merge for the "all dropped → SHIP upgrade" branch.
 # =============================================================================
 # fn-113.4 split-by-mode: receipt mutation is the AUTONOMOUS path. Cases 2-4
-# exercise exactly that path, so opt in explicitly; unset before Case 5 (which
-# tests the Ralph-block with its own env expectations).
+# exercise exactly that path, so opt in explicitly; unset before Case 5.
 export FLOW_AUTONOMOUS=1
 
 echo -e "${YELLOW}--- Case 2: --validate (validator block + upgrade path) ---${NC}"
@@ -337,69 +335,11 @@ assert_eq_jq "$RECEIPT_4" "d['deep_findings_count']['performance']" "2" "Case 4 
 assert_eq_jq "$RECEIPT_4" "'adversarial' in d['deep_findings_count']" "False" "Case 4 adversarial absent (explicit override)"
 
 # =============================================================================
-# CASE 5: --interactive Ralph-block (env var triggers + clean error)
+# CASE 5: --interactive walkthrough record
 # =============================================================================
 unset FLOW_AUTONOMOUS
 
-echo -e "${YELLOW}--- Case 5: --interactive Ralph-block (FLOW_RALPH and REVIEW_RECEIPT_PATH) ---${NC}"
-
-# Reproduce the bash snippet from SKILL.md verbatim. Each call must:
-#   - exit 2 when --interactive present + Ralph env detected
-#   - exit 0 when --interactive absent OR no Ralph env
-#   - emit a message mentioning Ralph incompatibility
-RALPH_BLOCK_SNIPPET="$TEST_DIR/ralph_block.sh"
-cat > "$RALPH_BLOCK_SNIPPET" <<'BASH'
-INTERACTIVE=false
-for arg in $ARGUMENTS; do
-  case "$arg" in
-    --interactive) INTERACTIVE=true ;;
-  esac
-done
-
-if [[ "$INTERACTIVE" == "true" ]]; then
-  if [[ -n "${REVIEW_RECEIPT_PATH:-}" || "${FLOW_RALPH:-}" == "1" ]]; then
-    echo "Error: --interactive requires a user at the terminal; not compatible with Ralph mode (REVIEW_RECEIPT_PATH or FLOW_RALPH detected)." >&2
-    exit 2
-  fi
-fi
-exit 0
-BASH
-
-# 5a: FLOW_RALPH=1 + --interactive → exit 2 with message
-rc=0
-err_out="$(FLOW_RALPH=1 ARGUMENTS="fn-32.5 --interactive" bash "$RALPH_BLOCK_SNIPPET" 2>&1)" || rc=$?
-if [[ "$rc" -eq 2 ]] && echo "$err_out" | grep -qi "Ralph"; then
-  ok "Case 5a: FLOW_RALPH=1 + --interactive → exit 2 with Ralph error"
-else
-  fail "Case 5a: expected exit 2 + Ralph message, got rc=$rc out='$err_out'"
-fi
-
-# 5b: REVIEW_RECEIPT_PATH set + --interactive → exit 2
-rc=0
-err_out="$(REVIEW_RECEIPT_PATH=/tmp/x.json ARGUMENTS="fn-32.5 --interactive" bash "$RALPH_BLOCK_SNIPPET" 2>&1)" || rc=$?
-if [[ "$rc" -eq 2 ]] && echo "$err_out" | grep -qi "Ralph"; then
-  ok "Case 5b: REVIEW_RECEIPT_PATH + --interactive → exit 2 with Ralph error"
-else
-  fail "Case 5b: expected exit 2 + Ralph message, got rc=$rc out='$err_out'"
-fi
-
-# 5c: --interactive without any Ralph env → exit 0 (user at terminal OK)
-rc=0
-ARGUMENTS="fn-32.5 --interactive" bash "$RALPH_BLOCK_SNIPPET" >/dev/null 2>&1 || rc=$?
-if [[ "$rc" -eq 0 ]]; then
-  ok "Case 5c: --interactive without Ralph env → exit 0 (terminal OK)"
-else
-  fail "Case 5c: expected exit 0 without Ralph env, got rc=$rc"
-fi
-
-# 5d: Ralph env present but no --interactive → exit 0 (default review proceeds)
-rc=0
-FLOW_RALPH=1 ARGUMENTS="fn-32.5 --validate" bash "$RALPH_BLOCK_SNIPPET" >/dev/null 2>&1 || rc=$?
-if [[ "$rc" -eq 0 ]]; then
-  ok "Case 5d: Ralph env + no --interactive → exit 0 (other flags pass through)"
-else
-  fail "Case 5d: expected exit 0 without --interactive, got rc=$rc"
-fi
+echo -e "${YELLOW}--- Case 5: --interactive walkthrough record ---${NC}"
 
 # Walkthrough record path: verify the helper writes the block + never flips verdict
 CASE5_DIR="$TEST_DIR/case5"
@@ -533,30 +473,6 @@ if echo "$out" | grep -q '^DEEP=true$' && echo "$out" | grep -q '^DEEP_PASSES=ad
   ok "Case 7d: --deep=adversarial,security → DEEP=true + DEEP_PASSES set"
 else
   fail "Case 7d: expected explicit pass list, got '$out'"
-fi
-
-# =============================================================================
-# Ralph regression: ralph_smoke_test.sh runs once. Nothing it exercises reads
-# FLOW_VALIDATE_REVIEW or FLOW_REVIEW_DEEP (only the impl-review skill does, and
-# Case 7 covers that parsing), so an env-var matrix would rerun the same sweep.
-# =============================================================================
-echo -e "${YELLOW}--- Ralph regression sweep ---${NC}"
-
-# Skip on Windows runners — ralph_smoke_test.sh embeds POSIX subprocess
-# patterns that don't translate to native-Windows Python; the regression
-# check's purpose is "impl-review changes don't break ralph",
-# unrelated to Windows portability of ralph itself.
-if [[ "${RUNNER_OS:-}" == "Windows" ]]; then
-  echo "Ralph regression sweep: skipped on Windows (ralph_smoke_test.sh isn't a primary Windows target)"
-else
-  rc=0
-  "$PLUGIN_ROOT/scripts/ralph_smoke_test.sh" >"$TEST_DIR/ralph.log" 2>&1 || rc=$?
-  if [[ "$rc" -eq 0 ]]; then
-    ok "Ralph regression: ralph_smoke_test.sh exit 0 (log: $TEST_DIR/ralph.log)"
-  else
-    fail "Ralph regression: ralph_smoke_test.sh exit $rc"
-    tail -40 "$TEST_DIR/ralph.log" >&2 2>/dev/null || true
-  fi
 fi
 
 echo ""

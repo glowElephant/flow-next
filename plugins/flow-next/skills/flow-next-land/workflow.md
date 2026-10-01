@@ -4,7 +4,7 @@
 
 Read configuration once with `"$FLOWCTL" config get land --json`.
 Only `land.mergeVerdictCommand` and `land.patienceMinutes` are used (defaults:
-unset and 30). Existing configs may contain other `land.*` keys: print one
+unset and 10). Existing configs may contain other `land.*` keys: print one
 notice naming all ignored keys and continue; do not rewrite the config.
 
 With no pull request, stop `NEEDS_HUMAN`, reason `no pull request`.
@@ -70,7 +70,7 @@ stops safely. Honor any stricter repository instruction or branch protection.
 Without this PR's current session merge authorization, stop
 `AWAITING_REVIEW`, reason `merge-ready; authorization required` when ready.
 When calling flow authorizes the merge without a human's in-session merge
-authorization, require `land.patienceMinutes` since the last push. Use push
+authorization, require `land.patienceMinutes` since the last push, so review bots can post. Use push
 evidence; for a null push date use the head commit's earliest check-suite creation time, else its committer date. Before the
 window expires, report `AWAITING_REVIEW` with `remaining_patience_seconds=<n>` (rounded up) and return;
 the caller owns cadence. A human's current merge authorization waives the wait.

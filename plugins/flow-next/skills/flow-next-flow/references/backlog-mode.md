@@ -114,7 +114,7 @@ facts only** - `{id, ready, noPlan, readySignal, blockedBy, hasSpec}`:
   fine - after the 1a pull the flag is simply `local`.
 - `blockedBy` - the unsatisfied `depends_on_epics` (the flow dep edges, 1d). A
   **chain parent** (an open dependency with every task done and its branch on
-  origin, fn-152) is already excluded here: flowctl's admission gate treats it as
+  origin) is already excluded here: flowctl's admission gate treats it as
   satisfied, so a chained spec sorts as ready-now in 1e.
 - `hasSpec` - whether a spec file exists.
 
@@ -124,7 +124,7 @@ is the agent's read in Phase 2, never a flowctl field.
 ### 1c - Union the tracker side (`list-open`)
 
 Union in the **tracker-only** promoted issues that have no flow spec - tickets a
-human promoted on the board but never `capture`/`interview`'d into a spec, invisible
+human promoted on the board but never `capture`/`refine`'d into a spec, invisible
 to `flowctl specs`. Read this half directly through
 flowctl's deterministic tracker transport:
 
@@ -305,7 +305,7 @@ For a **signalled** item, route it to exactly one class. **First match wins - an
 
 | Class | The agent's read | Route |
 |---|---|---|
-| **needs-spec** | a **tracker-only** promoted item - no flow spec exists at all | **`ask` via the tracker comment ALONE** (Phase 3) - surface "run capture/interview"; **never a spec stub** |
+| **needs-spec** | a **tracker-only** promoted item - no flow spec exists at all | **`ask` via the tracker comment ALONE** (Phase 3) - surface "run capture/refine"; **never a spec stub** |
 | **dep-unsatisfied** | signal present, but a blocker (flow or tracker) is not yet done - for a spec-backed item, `spec chain` reported `eligible: false` (1f) | **`BLOCKED <id> by <dep>`** - a state-changing terminal that **surfaces the dep wait** (never `NO_WORK` - the item was selectable in 1f); `<dep>` is the command's `reason` string for a flow dep; the topo-sort offers the blocker first on a later run. A circular/unsatisfiable dep routes to `ASKED` instead (1e) |
 | **workable** | signal present, **deps satisfied**, AND the spec is complete enough to act on (clear AC / R-IDs, an actionable next stage) | **advance**: hand to `auto.md` Phase 2, which drives it from there |
 | **ready-but-thin / ambiguous** | signal present, deps satisfied, but the spec is missing, a stub, or too thin/ambiguous to act on safely | **`ask`** (Phase 3) - kick back the gap; **never build, never auto-author** |
@@ -351,7 +351,7 @@ interactively** - `AskUserQuestion` is forbidden on the run path; the human answ
 later, on their own time, via the spec or the tracker.
 
 Backlog mode **does not author specs.** Spec authoring (`capture`,
-conversation→spec; `interview`, interactive Q&A) is human-gated and upstream. A
+conversation→spec; `refine`, interactive Q&A) is human-gated and upstream. A
 ticket without a workable spec is **surfaced as a gap** - "run `/flow-next:capture`
 or `/flow-next:refine`" - **never auto-written**. An agent inventing scope from a
 one-line ticket is exactly the slop the valve exists to prevent.
@@ -390,7 +390,7 @@ Where the question parks depends on whether a spec exists:
   spec stub** (that is the forbidden authoring). Its parked/answered state lives in
   the tracker (the `status=open` anchor + a matching `<!-- flow-next:answer id=… -->`,
   detected by scanning the issue comments) - **no spec import/flip happens until
-  capture/interview later creates a spec.**
+  capture/refine later creates a spec.**
 
 **Idempotent.** Re-triaging the same blocked subject computes the **same**
 anchor `id` (the hash covers stable fields only - `subjectId` + blocked-stage +
@@ -418,7 +418,7 @@ durable-park semantics are owned by `auto.md`).
 selected-and-advanced with **no pre-gate** - the agent never sets the ready flag
 itself and never asks before acting on a clean item. This is the point of backlog
 mode: the human's promotion (ready flag / board move) is the consent; everything
-downstream of a workable spec runs unattended to the draft PR.
+downstream of a workable spec runs unattended to the pull request.
 
 **Optional force-gate.** The sibling config key **`pilot.gateClasses: [<class>…]`**
 (an array - NOT `pilot.autonomy.gate`; a scalar and an object cannot share the
@@ -472,13 +472,13 @@ Backlog reads use `$FLOWCTL tracker wire list-open --json`, `comment-list --loca
 - **No daemon / polling loop / trigger / webhook / cron / parallel-worktree.** One
   item per run - the next invocation (a human, a host `/loop` · `/goal`) owns repetition. The standing
   control-plane role (scheduler, cloud environments, triggers, multi-agent at
-  scale) is mergefoundry / flow-swarm's, not flow-next's. If this file
+  scale) belongs to an orchestrator above flow-next, not to flow-next. If this file
   ever starts describing a standing process, that is drift - remove it.
-- **Never authors a spec.** `capture`/`interview` are human-gated; a needs-spec gap
+- **Never authors a spec.** `capture`/`refine` are human-gated; a needs-spec gap
   is surfaced, never auto-written (may augment an obvious blank in an *existing*
-  spec only - never create one). The span is *workable spec → draft PR*, not
-  *ticket → draft PR*.
-- **Backlog mode grants no merge authority.** The default terminus is `make-pr` (draft). A current scoped merge destination may invoke land through `tail.md`; land owns convergence and merge gates.
+  spec only - never create one). The span is *workable spec → pull request*, not
+  *ticket → pull request*.
+- **Backlog mode grants no merge authority.** The default terminus is `make-pr`. A current scoped merge destination may invoke land through `tail.md`; land owns convergence and merge gates.
 - **Never sets the ready flag / never promotes.** Readiness is the human's explicit
   signal; the agent's completeness read can only *withhold*, never *force* or
   *promote*.

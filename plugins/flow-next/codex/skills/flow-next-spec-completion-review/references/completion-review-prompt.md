@@ -19,8 +19,8 @@ paths given; use `<changed_files>` as the authoritative scope map — a path abs
 of scope — then run `git diff` over the range to read the hunks and judge each requirement
 against what actually landed. Verification budget: verify via the spec's Quick commands /
 the focused suites the tasks' evidence names, plus any command a specific gap needs — running
-the exact test a finding disputes is always licensed. The FULL suite belongs to the run's
-final gate (work Phase 4/5, rolling quiesce), never to a review round.
+the exact test a finding disputes is always licensed. Never run the FULL suite in a review round; CI
+and the project's own gate own it.
 
 Nothing is pre-truncated for you. Fetch what you need.
 
@@ -94,7 +94,7 @@ Report untraced changes but do NOT auto-reject. `UNDOCUMENTED_ADDITION` is a fla
 
 **Settled decisions:** A finding that re-litigates a recorded Decision Context
 decision or matching `knowledge/decisions` entry is FYI, never blocking. Process-compliance
-observations (checklist ceremony, dogfood records, handoff paperwork) are likewise
+observations (checklist ceremony, run logs, handoff paperwork) are likewise
 FYI, never blocking — the maintainer decides when a change lands.
 
 {r_id_coverage_block}

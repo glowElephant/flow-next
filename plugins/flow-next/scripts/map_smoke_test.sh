@@ -1,13 +1,10 @@
 #!/usr/bin/env bash
 # fn-50-codebase-feature-map-flow-nextmap-skill.1
-# Smoke tests for /flow-next:map skill scaffold + clawpatch detection + Ralph-block.
+# Smoke tests for /flow-next:map skill scaffold + clawpatch detection.
 #
 # Cases (mirror task spec acceptance):
 #   1. Skeleton — SKILL.md / workflow.md / slash-command shim exist; frontmatter
 #      shape correct; AskUserQuestion intentionally absent (non-interactive).
-#   2. Ralph-block (R13) — FLOW_RALPH=1 and REVIEW_RECEIPT_PATH both produce
-#      exit 2 with stderr diagnostic naming the trigger var. NO write to
-#      $REVIEW_RECEIPT_PATH (decline-to-run only).
 #   3. SUPPORTED_CLAWPATCH (R10) — version-pin constant appears verbatim in
 #      SKILL.md prose; replayed bash version-comparison warns + continues
 #      outside-range and passes silently inside range.
@@ -167,68 +164,7 @@ assert_grep 'FLOWCTL="${DROID_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/flowct
   "$(cat "$SKILL_FILE")" \
   "Case 1: SKILL.md carries canonical FLOWCTL prelude (Droid+Claude fallback)"
 
-# =============================================================================
-# CASE 2: Ralph-block (R13) — FLOW_RALPH=1 / REVIEW_RECEIPT_PATH must exit 2
-#         with diagnostic naming trigger var; MUST NOT write to receipt path.
-# =============================================================================
-echo -e "${YELLOW}--- Case 2: Ralph-block (R13) ---${NC}"
-
-# Sanity: bytes from the SKILL.md must appear in the source so Ralph can
-# never silently invoke install/init prompts.
 SKILL_TEXT="$(cat "$SKILL_FILE")"
-if grep -q 'REVIEW_RECEIPT_PATH' "$SKILL_FILE" && grep -q 'FLOW_RALPH' "$SKILL_FILE" && grep -q 'exit 2' "$SKILL_FILE"; then
-  ok "Case 2: SKILL.md ships Ralph-block with exit 2 + both env-var checks"
-else
-  fail "Case 2: SKILL.md missing FLOW_RALPH/REVIEW_RECEIPT_PATH/exit 2 guard"
-fi
-
-# R13 explicit: skill MUST NOT write to $REVIEW_RECEIPT_PATH.
-assert_grep "decline-to-run" "$SKILL_TEXT" "Case 2: SKILL.md documents decline-to-run (no receipt write)"
-
-# Reproduce the SKILL.md Ralph guard for behavioral verification.
-RALPH_GUARD="$TEST_DIR/ralph_guard.sh"
-cat > "$RALPH_GUARD" <<'BASH'
-#!/usr/bin/env bash
-set -e
-if [[ -n "${REVIEW_RECEIPT_PATH:-}" || "${FLOW_RALPH:-}" == "1" ]]; then
-  if [[ -n "${REVIEW_RECEIPT_PATH:-}" ]]; then
-    TRIGGER="REVIEW_RECEIPT_PATH"
-  else
-    TRIGGER="FLOW_RALPH"
-  fi
-  echo "Error: /flow-next:map declines under Ralph ($TRIGGER set); rerun interactively." >&2
-  exit 2
-fi
-exit 0
-BASH
-chmod +x "$RALPH_GUARD"
-
-# 2a: FLOW_RALPH=1 → exit 2; trigger var named.
-rc=0
-err="$(FLOW_RALPH=1 bash "$RALPH_GUARD" 2>&1)" || rc=$?
-assert_rc 2 "$rc" "Case 2a: FLOW_RALPH=1 → exit 2"
-assert_grep "FLOW_RALPH" "$err" "Case 2a: stderr names FLOW_RALPH"
-assert_grep "Ralph" "$err" "Case 2a: stderr mentions Ralph"
-
-# 2b: REVIEW_RECEIPT_PATH set → exit 2; trigger var named; receipt NOT touched.
-RECEIPT_PATH="$TEST_DIR/sentinel-receipt.json"
-echo '{"sentinel":"do-not-touch"}' > "$RECEIPT_PATH"
-RECEIPT_BEFORE="$(cat "$RECEIPT_PATH")"
-rc=0
-err="$(REVIEW_RECEIPT_PATH="$RECEIPT_PATH" bash "$RALPH_GUARD" 2>&1)" || rc=$?
-assert_rc 2 "$rc" "Case 2b: REVIEW_RECEIPT_PATH set → exit 2"
-assert_grep "REVIEW_RECEIPT_PATH" "$err" "Case 2b: stderr names REVIEW_RECEIPT_PATH"
-RECEIPT_AFTER="$(cat "$RECEIPT_PATH")"
-if [[ "$RECEIPT_BEFORE" == "$RECEIPT_AFTER" ]]; then
-  ok "Case 2b: receipt at \$REVIEW_RECEIPT_PATH UNCHANGED (decline-to-run is read-only)"
-else
-  fail "Case 2b: receipt at \$REVIEW_RECEIPT_PATH was MODIFIED (R13 violation)"
-fi
-
-# 2c: neither set → exit 0.
-rc=0
-bash "$RALPH_GUARD" >/dev/null 2>&1 || rc=$?
-assert_rc 0 "$rc" "Case 2c: no Ralph env → exit 0 (terminal OK)"
 
 # =============================================================================
 # CASE 3: SUPPORTED_CLAWPATCH (R10) — version-pin + outside-range warn behavior

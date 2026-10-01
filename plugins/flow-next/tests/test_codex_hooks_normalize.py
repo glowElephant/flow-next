@@ -3,8 +3,9 @@
 Guards the historical bug where a Codex config.toml carrying BOTH
 `codex_hooks = true` (older install-codex.sh) AND `hooks = true` (Codex/setup)
 ended up with a DUPLICATE `hooks` key after a naive sed migration — invalid TOML
-that breaks Codex hook loading. The normalizer must always converge to exactly
-one `hooks = true` under [features] and no `codex_hooks`, idempotently.
+that breaks Codex hook loading. The normalizer must converge to at most one
+`hooks` key under [features] and no `codex_hooks`, idempotently, and never add
+a `hooks` key or a `[features]` table (Flow-Next ships no Codex hooks).
 """
 import importlib.util
 import subprocess
@@ -109,18 +110,25 @@ class TestCodexHooksNormalize(unittest.TestCase):
         _assert_normal(out)
 
 
-    def test_features_without_hooks_gets_one(self):
+    def test_features_without_hooks_is_left_alone(self):
         src = "[features]\nshell_tool = true\n"
-        out = normalize(src)
-        _assert_normal(out)
+        self.assertEqual(normalize(src), src)
 
 
-    def test_no_features_section_appended(self):
+    def test_no_features_section_is_not_added(self):
         src = 'model = "gpt-5"\n[agents]\nmax_threads = 4\n'
-        out = normalize(src)
-        _assert_normal(out)
-        assert 'model = "gpt-5"' in out
-        assert "[agents]" in out
+        self.assertEqual(normalize(src), src)
+
+
+    def test_deprecated_key_keeps_its_value(self):
+        out = normalize("[features]\ncodex_hooks = false\n")
+        self.assertEqual(tomllib.loads(out)["features"], {"hooks": False})
+        self.assertEqual(normalize(out), out)
+
+
+    def test_deprecated_key_before_modern_key_is_dropped(self):
+        out = normalize("[features]\ncodex_hooks = false\nhooks = true\n")
+        self.assertEqual(tomllib.loads(out)["features"], {"hooks": True})
 
 
     def test_multiple_duplicate_hooks_collapse(self):
@@ -137,9 +145,8 @@ class TestCodexHooksNormalize(unittest.TestCase):
         _assert_normal(twice)
 
 
-    def test_empty_file_gets_features(self):
-        out = normalize("")
-        _assert_normal(out)
+    def test_empty_file_stays_empty(self):
+        self.assertEqual(normalize(""), "")
 
 
     def test_cli_writes_in_place(self):

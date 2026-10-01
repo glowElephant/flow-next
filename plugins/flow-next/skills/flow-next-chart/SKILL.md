@@ -13,6 +13,8 @@ Takes **one unshaped idea that is too big for a single capture session and wrapp
 
 **Role**: discovery coordinator (inline skill - keep blocking questions reachable). Host agent owns grounding, interpretation, frontier judgment, evidence-route dispatch, prototype presentation, attended consent, re-charting, and the terminal verdict. flowctl owns atomic create/claim/resolve/scope/briefing/store mutations.
 
+Read [working-rules.md](../../references/working-rules.md) first; it holds for every step of this skill.
+
 ## Preamble
 
 **CRITICAL: flowctl is BUNDLED - NOT installed globally.** `which flowctl` will fail (expected). Define once; subsequent blocks (here and in `workflow.md`) use `$FLOWCTL`:
@@ -23,7 +25,7 @@ FLOWCTL="${DROID_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/flowctl"
 [ -x "$FLOWCTL" ] || FLOWCTL=".flow/bin/flowctl"
 ```
 
-**Inline skill (no `context: fork`)** - keeps `AskUserQuestion` available for read-back consent and attended routes. Subagents cannot call blocking question tools. For read-only scouts use `Task` with `subagent_type: Explore` (or the host's generic read-only dispatch with Edit/Write disallowed when Explore is unavailable). On portable hosts without `AskUserQuestion`, fall back to a plain-text numbered prompt with a final `Other - type your own answer` option. (sync-codex.sh rewrites AskUserQuestion to a plain-text numbered prompt in the Codex mirror.)
+**Inline skill (no `context: fork`)** - keeps `AskUserQuestion` available for read-back consent and attended routes. Subagents cannot call blocking question tools. For read-only scouts use `Task` with `subagent_type: Explore` (or the host's generic read-only dispatch with Edit/Write disallowed when Explore is unavailable). On portable hosts without `AskUserQuestion`, fall back to a plain-text numbered prompt with a final `Other - type your own answer` option.
 
 ## Prompt-first contract
 
@@ -46,7 +48,7 @@ On every invocation:
 | `<chart-id> --status` / "what's left to decide" | **status** | Render map + frontier + remaining attended cost; **resolve nothing** |
 | stored tracker URL / locator | **re-enter** | Probe `chart locate` (local ledger only); degrade if unavailable - see workflow |
 
-Plain-language equivalents reach the same modes (R17).
+Plain-language equivalents reach the same modes.
 
 ## Verdict grammar (exact)
 
@@ -66,7 +68,7 @@ CHART_VERDICT=<RESOLVED|BLOCKED|NEEDS_HUMAN|COMPLETE|NO_WORK> chart=<id> decisio
 
 Chart mode and status mode also print one terminal line so host `/loop`/`/goal` drivers can parse uniformly (`decision=-` when no D-ID was claimed).
 
-**Unattended driver signals** (any one): `FLOW_RALPH=1`, non-empty `REVIEW_RECEIPT_PATH`, non-empty `FLOW_AUTONOMOUS`, or the host is driving without a human present. Interactive terminal sessions are attended.
+**Unattended driver signals** (any one): non-empty `FLOW_AUTONOMOUS`, or the host is driving without a human present. Interactive terminal sessions are attended.
 
 ## Decision types = evidence routes
 
@@ -76,7 +78,7 @@ Chart mode and status mode also print one terminal line so host `/loop`/`/goal` 
 | `probe` | unattended | Measure or reproduce against the real system |
 | `eval` | unattended | Bake-off / benchmark on real fixtures; winner + why |
 | `prototype` | **attended** | Throwaway artefact + human reaction (hard gate) |
-| `interview` | **attended** | Conversation, one question at a time (default for product judgment) |
+| `interview` | **attended** | Conversation (default for product judgment) |
 | `task` | **explicit** at create | Manual work that only unblocks a decision (not implementation smuggling) |
 
 Attendance is stored and validated by flowctl for five types; `task` requires `--attendance attended|unattended`. Cost estimates and unattended gates read the stored field, never prose.

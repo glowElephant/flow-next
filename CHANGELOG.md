@@ -4,6 +4,77 @@ All notable changes to the flow-next.
 
 Flow-Next changed shape with 5.0.0. One command, `/flow-next:flow`, reads whatever you have and picks the route, and `flow --auto` runs the same route unattended. If you are arriving from 4.x, start with [the 5.0.0 entry](#flow-next-500---2026-09-12) and [the flow skill](plugins/flow-next/skills/flow-next-flow/SKILL.md) before reading the items below.
 
+## [flow-next 7.0.0] - 2026-10-01
+
+**7.0.0, codename Roadrunner. Flow-Next is now blazing fast.**
+
+A large feature now lands in about half the time your coding agent takes on its own, with a spec, tests, a cross-model review and a pull request that shows its reasoning. On the actual work Flow-Next is as fast as plain Claude Code, or your harness, or faster, and I measured that over and over: the change comes back to you in about the time your agent alone takes, often less. The result is better than the plain agent's even before any review. The optional stages, a cross-model review and live QA where there's a UI, widen the gap to up to 25% better outcomes, especially on large and long-horizon work, and `/flow-next:flow` adds a stage only where the risk calls for it. Run it unattended and it finishes on its own: it never stops to ask, keeps fixing until a reviewer from another model family signs off, and writes every decision it made on your behalf into the pull request.
+
+**What changes when you upgrade.** Ralph is gone: `/flow-next:flow --auto` is the one unattended mode. If you still run Ralph, pin flow-next 6.7.x. Otherwise delete `scripts/ralph/` and any `ralph-guard` hook entries from your project settings, and use `/flow-next:flow --auto` for unattended runs. The HTML render lenses are gone too (run `/flow-next:visual`, or ask for an HTML page). `pipeline.chainStages` is retired and ignored. Unattended merges wait 10 minutes after the last push instead of 30. You don't need to re-run setup.
+
+### How it got here
+
+Flow-Next started on December 26, 2025, as a plugin called flow: a plan command, a few scouts and a quality auditor. Claude Opus 4.5 was the model of the day, and models have come a long way since. It began as a simple way to plan a change and keep the tasks straight. It was the first to run autonomous cross-model review loops, where a model from another family argues with your agent's work until it holds up, and one of the first to interview you before building. It grew from there into the most complete workflow plugin for coding agents that I know of.
+
+The goal was always bigger than a to-do list. I wanted R&D teams to be able to work together on big, messy codebases and get better work out of their agents. Over this year that meant hundreds of features for attended and unattended runs, the building blocks for code factories, and support for six hosts: Claude Code, Codex, Factory Droid, Cursor, Grok Build and OpenCode.
+
+None of that ever hurt the quality of the output. It was consistently better than a plain agent's, with bigger gains over the life of a project. But all those features made Flow-Next slower, heavier and hungrier for tokens than I liked. Models and harnesses have also moved on a lot since December. So for 7.0 I went back through the whole plugin and rebuilt it for speed, measuring every change against plain Claude Code before keeping it.
+
+### Benchmarks
+
+I tested 7.0 against plain Claude Code on the same model across a wide spread of work: a simple bug, a hard bug, a small feature and a large feature, attended and unattended, plus a held-out large feature from a repository and stack the tuning never touched. That came to more than 170 full end-to-end runs, each case drawn several times, never a single lucky run. Hidden tests the agent never sees check each result, and a blind judge scores the handoff.
+
+| Task | Speed on the work | Quality | What the quality stages did |
+|---|---|---|---|
+| Large feature | **up to 1.9x** faster than the default harness | **+25%** | Three cross-model reviewers. Plain Claude Code shipped a data-integrity bug in every run. Flow-Next's reviewers caught it every time, before the pull request. |
+| Held-out large feature (Rust) | **1.2x** faster | **+48%** | Three reviewers, then the repo's full test suite. Four real bugs fixed, including a race condition. Flow-Next passed every hidden test; plain Claude Code failed one run in three. |
+| Hard bug | **about 2x** faster | **+9%** | Three cross-model reviewers. Found the real cause and fixed it there, instead of loosening the flaky test. |
+| Simple bug | **1.2x** faster | **+10%** | No review: a small, local fix. Better even without review: a failing test first, a fix at the cause, then a check that it works for the user. |
+| Small feature | **1.1-1.3x** faster | **+8%** | One cross-model reviewer. The reviewer caught a setup check the new option broke. Fixed before handoff. |
+
+Speed is time to the working change against the default harness (plain Claude Code, or yours) on the same model, before any review or QA. Quality is the blind-judged result.
+
+Run unattended with `--until=merge`, a large feature and a hard bug both went from spec to a merged pull request with nobody watching and no stops, **the large feature in about half the time plain Claude Code took**.
+
+I'm going to keep improving Flow-Next, both what it does and how fast it does it.
+
+### Removed
+
+- **Ralph.** `/flow-next:ralph-init`, the `scripts/ralph/` harness and `ralphctl`, the `ralph-guard` hooks, setup's Ralph question, the `FLOW_RALPH`, `RALPH_ITERATION` and `FLOW_RALPH_NO_TRIAGE` variables, the Ralph-run probe in `flowctl status`, and the `flow-next-tui` run monitor.
+- **The HTML render lenses.** I removed the opt-in HTML pages that capture, plan and make-pr wrote under `.flow/artifacts/<spec-id>/`, along with the `artifacts.html.enabled` key, setup's HTML question and `flowctl pr-cognitive-aid html-input`. People turned them on and then every capture, plan and make-pr run got much slower, and I saw little benefit in return. For a visual view of a spec, a plan or a diff, run `/flow-next:visual`, or ask the agent for an HTML page when you want one. A config that still sets `artifacts.html.enabled` keeps working. flowctl ignores the key and prints a one-line note. Your old `spec.html` and `pr.html` files stay where they are and you can delete them, along with the `HTML render lens:` link line a lens added near the top of each spec.
+- **The pilot and interview skill stubs.** The hidden `flow-next-pilot` and `flow-next-interview` skills that kept the old names working are gone. Use `/flow-next:flow --auto` and `/flow-next:refine`.
+- **`pipeline.chainStages`.** I removed the key along with the pilot alias, as the deprecation note said I would. It only made `flow --auto --tick` open the PR in the same tick as a fresh QA verdict, and a long-horizon `flow --auto` already runs QA and then make-pr as consecutive hops. Under `--tick`, make-pr now runs on the next tick. You don't need to do anything else. Remove the key from `.flow/config.json`. Until you do, flowctl ignores it and prints a one-line note.
+- **The Codex hooks switch.** `install-codex.sh` no longer adds `hooks = true` to `~/.codex/config.toml`: it was there only for Ralph's guard hook. A `hooks` line already in your config stays, so your own hooks keep working, and an old `codex_hooks` line is renamed to `hooks` with its value kept.
+
+### Changed
+
+- **Faster routing, fewer questions.** `/flow-next:flow` picks the route itself in seconds, from your words and the repository, and no longer asks about a branch or a readiness flag before building: it takes the sensible default and says so in one line. `/flow-next:work` run on its own no longer asks the branch question either. A small, local change goes straight to the change with no spec.
+- **A spec with one task is built right in the conversation.** Workers and the multi-task scheduler run only when a spec has several tasks, or when you route a task to a chosen model.
+- **Review by risk.** A change that touches persisted or shared state, concurrency, security, data layout or migrations, or spans several files, gets three reviewers from another model family. A small local fix gets one, and a change to output, wording or display gets none, with the reason recorded.
+- **One review, one look at the fixes, when you're there.** You get the result first; the review runs in the background, and after the fixes the same reviewer looks only at what changed. Findings the author declines are listed with a reason in the fix commit, and the reviewer can withdraw them. If the re-review still finds a problem, you get the findings with the reviewer's reasons and decide: fix more, or accept the change as is. Plan review and completion review work the same way when you're there: one fix pass and one re-review, where they used to loop to the round cap.
+- **Reviewers block only on what shows the change wrong.** A blocking finding needs a concrete failing scenario, minor findings never block, and overengineering is flagged only inside the change under review.
+- **Unattended runs keep going until the reviewer signs off.** `flow --auto` loops fix and re-review until SHIP. The author may decline hardening, scope creep and problems that predate the change; if that's all the reviewer has left, all below Major, the loop ends and each disagreement goes into the pull request, both sides with their reasons. A finding that shows a stated requirement broken is always fixed. Plan review and completion review loop the same way when unattended.
+- **Unattended runs finish with something you can review.** They never ask. Every default they pick, finding they decline and review they skip goes into a Decisions list in the pull request. A call only you can make, and that blocks nothing else, goes in as an open item on a draft pull request instead of stopping the run.
+- **Pull requests open ready** unless there are open items (a spec question, unfinished work, an open QA finding, or a call left for you), which open it as a draft. A route without a spec can open one directly, drafted the same way.
+- **Working rules shared by every stage.** One reference sets the scope (the smallest change the evidence justifies, including a sibling case the same cause breaks in the same code), the tests (focused tests for what changed, the full suite only when your repository or you ask, a check you name always run and waited for, a slow run's full output kept in a file), a user-level check before handing back (the change run the way a user meets it, including each error case and boundary the request names, or its tests when it has no user-facing entry), the handoff (each claim marked measured, inferred or a guess) and follow-ups as plain facts.
+- **Lighter refine (interview), plan and QA.** Refine (the former interview) asks only what would change the build, in one question pass. Plan and QA read far less before they start: each loads only the steps its run needs. Capture and refine tag only what they paraphrased or inferred; your own words stay untagged.
+- **Unattended merges wait 10 minutes, not 30.** When `--until=merge` lands a pull request without you authorizing the merge in the session, land waits `land.patienceMinutes` after the last push so review bots can post. That window is for bots, not people: if you expect a human review you would not run `--until=merge`. Bots post within a few minutes and the wait overlaps CI, so I cut the default to 10. Set `land.patienceMinutes` if your bots are slower.
+- **The optional Jev judge no longer picks the route.** With a key, Jev's route answers sent small features down heavier routes than the same request took without one, and routing was no faster for it: the agent picks a route in seconds on its own. Routing is now the agent's and the code's, with or without a key.
+- **The optional Jev judge no longer decides whether QA runs.** Under `pipeline.qa=auto`, the agent judges whether the acceptance is UI-observable, as keyless runs always did, and code still finds the startable target. The Jev call added a few seconds and never changed the outcome, so I removed it. The stage lines are `stage: qa - ran [target: <cmd>]` and `stage: qa - skipped(config: pipeline.qa=auto: <reason>)`.
+- **Memory reads the same way with or without a key.** Plan and workers run one `memory search "<task sentence>" --limit 15 --rerank --json` and pick the entries that apply from their titles and snippets. With a key, Jev reorders those hits and drops none; before, its relevance floor could return nothing for a real query. Plan no longer spawns the memory scout to refine a keyless search.
+- **Keyless runs skip calls that cannot answer.** `/flow-next:flow` checks once per run, prints `judge: off`, and makes no fork-gate call. A spec's route call runs either way, because its lifecycle and QA target are decided in code. Jev now only hints at fork kind, reorders memory hits and picks a task tier.
+- **A fork you find is never cancelled by the judge.** The fork gate no longer reuses route answers computed on the spec text; you classify your own fork, and an optional hint on your fork sentence never removes it.
+- **Under the hood.** `flowctl judge --preset route` is lifecycle-only and sends no request, key or no key; the intake `intent`/`brief` views, the kind Choice and every route Noul are gone, and so is `judge --explain`. The `qa-gate` preset and its UI Noul are gone; the QA gate reads the target from the route result's `startable_target_fact`. The memory rerank no longer sends entry paths or BM25 scores, and its score levels describe situations. The `fork-gate` preset asks only the fork-kind Choice. The memory stage line reads `memory: reranked (jev, <n> entries)`.
+
+### Fixed
+
+- **A spec flow just captured goes straight to the build.** Flow's route check looked at readiness before the route capture recorded, so every freshly captured spec came back "not ready" and the agent had to reason its way to the build. The recorded route now wins; `--auto` still builds only ready specs.
+- **A pull request opened without a spec carries the change.** When you ask for a PR on a direct change that isn't committed yet, make-pr commits it (only the files you changed) before pushing. `--dry-run` prints the body and touches nothing.
+- **Tracker updates fire from a one-task build.** The single-task path checked whether a tracker is connected but never kept the answer its tracker steps read, so lifecycle updates could misfire on a connected repo.
+- **Deep review passes run under zsh.** The loop over selected passes sent them as one value in zsh, the default shell on macOS.
+- **The Copilot reviewer is read-only now.** It ran with `--allow-all-tools`, which Copilot needs for a non-interactive run, and that also let it edit files and run any shell command in your checkout. The reviewer and the Copilot triage judge now run with `--deny-tool write --deny-tool shell`, the same read-only tools the Claude reviewer gets.
+- **The optional Jev judge works behind a proxy.** Keyed judge calls ignored `HTTPS_PROXY`, so behind a corporate proxy, or in a sandbox whose only way out is one, every call failed and the run quietly fell back to no Jev. They now go through `HTTPS_PROXY` and respect `NO_PROXY`, including entries with a port.
+
 ## [flow-next 6.7.0] - 2026-09-29
 
 Codex reviews and the Codex agents now run on GPT-6.1 Sol, the model Codex lists first as of 2026-09-29, and the Claude review backend can fall back to Opus 5.5 and Sonnet 5.5 before reaching the older models.
@@ -296,7 +367,7 @@ replacement for each.
   authorization without human in-session authorization; human authorization
   waives the wait.
 - Recover a conflicted chain child with the [manual single-layer
-  rebase](plugins/flow-next/docs/troubleshooting.md#land-on-a-chain-chain-broken-a-retarget-conflict-or-a-pending-merge-async-fn-149).
+  rebase](plugins/flow-next/docs/troubleshooting.md#land-on-a-chain-chain-broken-a-retarget-conflict-or-a-pending-merge-async).
   Land uses native stacks when available, merges only the lowest open layer,
   and never deletes a branch an open PR still targets.
 - Create or start a follow-up task to reopen a closed spec. Finishing that task
@@ -439,7 +510,7 @@ The reviewer's journey changes in one place. Instead of one large PR after a ser
 
 - One read-only predicate, `flowctl spec chain <id>`, owns chain eligibility (parent open, all tasks done, branch on origin, linear, one `git ls-remote` at most, a failed remote read never reported as an absent branch); flowctl's spec-level task-admission gate (`ready --spec`, `next`, `ready --all`) treats the chain parent as satisfied, and every skill consumer calls the predicate instead of duplicating it. `pilot-log append` gains an optional `--reason` so the backlog decision-log row carries the `chained on <parent>; ` prefix.
 - Make-pr detects a chain from history, the merge-base of HEAD with the parent's branch tip or merged-PR head, never from a scratch file; a merged parent is rewritten onto the chain base from that boundary on a create run only (`--dry-run` and `--update` never rewrite); stack linking uses the [stacks REST API](https://docs.github.com/en/rest/pulls/stacks) with integer-typed payloads (the [gh-stack extension](https://github.com/github/gh-stack) is never required) and degrades to a plain chain layer with one stderr line on 404, 409, 422, or a transport error.
-- Land's ledger gains one evidence binding per PR (verdict head, base, patch-id, window anchor), a pending merge-async uuid, a top-level `pending_branch_deletes` map swept at the start of every tick, and a `cascade` record that survives a lost lease or a lost write; an unread children count keeps the branch. The Codex mirror and the glossary (`chain`, `stack`, `layer`, `frontier`) are updated; the 2026-08-27 recovery memory now points at the chain rules. Details: [current chain recovery](plugins/flow-next/docs/troubleshooting.md#land-on-a-chain-chain-broken-a-retarget-conflict-or-a-pending-merge-async-fn-149).
+- Land's ledger gains one evidence binding per PR (verdict head, base, patch-id, window anchor), a pending merge-async uuid, a top-level `pending_branch_deletes` map swept at the start of every tick, and a `cascade` record that survives a lost lease or a lost write; an unread children count keeps the branch. The Codex mirror and the glossary (`chain`, `stack`, `layer`, `frontier`) are updated; the 2026-08-27 recovery memory now points at the chain rules. Details: [current chain recovery](plugins/flow-next/docs/troubleshooting.md#land-on-a-chain-chain-broken-a-retarget-conflict-or-a-pending-merge-async).
 - Tests: flowctl chain states and admission gates over a bare origin; fence fixtures for every consumer under `set -e` with a stubbed `gh`; land fixtures for every shape, a three-layer chain with multi-commit squash parents, lease and lost-write resumption, the stale pin, and the janitor across four ticks; the merge-fence shell test now states its children count.
 
 ## [flow-next 5.2.2] - 2026-09-13

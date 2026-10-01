@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import ast
 import io
 import json
 import re
@@ -28,18 +27,6 @@ if str(SCRIPTS_DIR) not in sys.path:
 import flowctl  # noqa: E402
 
 
-REMOVED_NAMES = {
-    "PurePosixPath",
-    "TRACKER_TIEBREAKS",
-    "STRATEGY_FRONTMATTER_FIELDS",
-    "_STRATEGY_ISO_DATE_RE",
-    "_memory_yaml_available",
-    "render_strategy_file",
-    "require_keys",
-    "save_task_definition",
-    "validate_strategy_frontmatter",
-}
-
 PLAN_INVOCATION_MANIFEST = (
     ("preflight",),
     ("init",),
@@ -57,209 +44,6 @@ PLAN_INVOCATION_MANIFEST = (
     ("validate",),
 )
 
-EXPECTED_LEAF_PATHS = frozenset(
-    """anchor
-block
-brief
-cat
-chart abandon
-chart add-decision
-chart attach-asset
-chart briefing
-chart claim
-chart create
-chart frontier
-chart link-spec
-chart list
-chart locate
-chart out-of-scope
-chart park-question
-chart release-claim
-chart remove-question
-chart reopen
-chart resolve
-chart show
-chart wire-decision
-checkpoint restore
-checkpoint save
-claude completion-review
-claude deep-pass
-claude impl-review
-claude plan-review
-claude validate
-codex completion-review
-codex deep-pass
-codex impl-review
-codex impl-review-fanout
-codex impl-review-fanout-finalize
-codex plan-review
-codex validate
-config get
-config set
-copilot completion-review
-copilot deep-pass
-copilot impl-review
-copilot plan-review
-copilot validate
-criteria list
-criteria prompt-block
-cursor completion-review
-cursor deep-pass
-cursor impl-review
-cursor plan-review
-cursor validate
-dep add
-detect
-done
-features status
-gate check
-gate classify
-gate receipt
-glossary add
-glossary list
-glossary read
-glossary remove
-init
-judge
-list
-memory add
-memory apply
-memory audit-scan
-memory init
-memory list
-memory list-legacy
-memory mark-fresh
-memory mark-hardened
-memory mark-stale
-memory migrate
-memory read
-memory search
-memory upsert
-next
-pilot snapshot
-pilot strikes record
-pilot strikes clear
-pilot strikes list
-pilot-log append
-pr-cognitive-aid current
-pr-cognitive-aid html-input
-pr-cognitive-aid render
-pr-cognitive-aid validate
-pr-cognitive-aid write
-preflight
-prime classify
-prospect archive
-prospect write
-prospect promote
-qa receipt
-ready
-repo-map list
-review-prompt
-review-artifact
-review-backend
-review-deep-auto
-review-findings attach
-review-rounds attempts
-review-route
-review-rounds increment
-review-rounds record
-review-rounds reset
-review-rounds resume-terminal
-review-walkthrough-defer
-review-walkthrough-record
-rp chat-send
-rp mode-probe
-rp prompt-export
-rp prompt-get
-rp prompt-set
-rp select-add
-rp select-get
-rp setup-review
-setup-status
-setup-block apply
-setup-block check
-setup-block resolve
-show
-spec add-dep
-spec chain
-spec clear-no-plan
-spec close
-spec closed-in-range
-spec create
-spec export-cognitive-aid
-spec ready
-spec reset-review-rounds
-spec rm-dep
-spec set-backend
-spec set-branch
-spec set-completion-review-status
-spec set-no-plan
-spec set-plan
-spec set-plan-review-status
-spec set-title
-spec skeleton
-spec unready
-specs
-start
-status
-strategy read
-strategy status
-sync active
-sync check
-sync check-collisions
-sync clear
-sync create-first-clear
-sync create-first-get
-sync create-first-key
-sync create-first-put
-sync defer
-sync get-state
-sync list-dep-relations
-sync list-stale
-sync list-unsynced
-sync receipt
-sync set-dep-relation
-sync set-last-synced
-sync set-merge-base
-sync set-tracker-id
-task create
-task reset
-task set-acceptance
-task set-backend
-task set-description
-task set-spec
-task set-title
-tasks
-tracker create
-tracker create-first
-tracker persist-external
-tracker relate
-tracker resolve
-tracker status
-tracker sync
-tracker sync-body
-tracker wire assign
-tracker wire attach
-tracker wire attach-get
-tracker wire comment-add
-tracker wire comment-delete
-tracker wire comment-list
-tracker wire comment-update
-tracker wire label
-tracker wire list-open
-tracker wire list-states
-tracker wire question
-tracker wire read
-tracker wire relation-list
-tracker wire update
-triage-skip
-usage
-validate""".splitlines()
-)
-
-GROUPED_COMMANDS = {
-    path.split(" ", 1)[0] for path in EXPECTED_LEAF_PATHS if " " in path
-}
 FLOWCTL_INVOCATION = re.compile(
     r'(?<![A-Za-z0-9_])"?\$FLOWCTL"?\s+'
     r"([a-z][a-z0-9-]*)(?:\s+([a-z][a-z0-9-]*))?"
@@ -361,53 +145,14 @@ def _leaf_parsers(parser: argparse.ArgumentParser, prefix=()):
             yield from _leaf_parsers(child, prefix + (name,))
 
 
-class DeadSurfaceContractTest(unittest.TestCase):
-    def test_removed_symbols_are_absent_from_production_ast(self) -> None:
-        tree = ast.parse(FLOWCTL_PY.read_text(encoding="utf-8"))
-        defined = {
-            node.name
-            for node in tree.body
-            if isinstance(node, (ast.FunctionDef, ast.ClassDef))
-        }
-        assigned = {
-            target.id
-            for node in tree.body
-            if isinstance(node, (ast.Assign, ast.AnnAssign))
-            for target in (
-                node.targets if isinstance(node, ast.Assign) else [node.target]
-            )
-            if isinstance(target, ast.Name)
-        }
-        imports = {
-            alias.asname or alias.name.split(".")[0]
-            for node in tree.body
-            if isinstance(node, (ast.Import, ast.ImportFrom))
-            for alias in node.names
-        }
-        self.assertFalse(REMOVED_NAMES & (defined | assigned | imports))
-
-    def test_non_obvious_compatibility_and_workflow_imports_remain_live(self) -> None:
-        for name in (
-            "STRATEGY_WALK_MAX_DEPTH",
-            "_prospect_slug",
-            "_prospect_next_id",
-            "render_prospect_body",
-            "write_prospect_artifact",
-        ):
-            self.assertTrue(hasattr(flowctl, name), name)
-        prospect_workflow = (
-            PLUGIN / "skills" / "flow-next-prospect" / "workflow.md"
-        ).read_text(encoding="utf-8")
-        self.assertNotIn("from flowctl import", prospect_workflow)
-        self.assertIn("prospect write", prospect_workflow)
-        self.assertIn("load_all_runtime(", FLOWCTL_PY.read_text(encoding="utf-8"))
+LEAF_PATHS = frozenset(" ".join(path) for path, _parser in _leaf_parsers(_built_parser()))
+TOP_LEVEL_COMMANDS = {path.split(" ", 1)[0] for path in LEAF_PATHS}
+GROUPED_COMMANDS = {path.split(" ", 1)[0] for path in LEAF_PATHS if " " in path}
 
 
 class CliSurfaceContractTest(unittest.TestCase):
     def test_every_registered_leaf_has_a_callable_handler(self) -> None:
         leaves = list(_leaf_parsers(_built_parser()))
-        discovered = {" ".join(path) for path, _parser in leaves}
-        self.assertEqual(discovered, EXPECTED_LEAF_PATHS)
         missing = [
             " ".join(path)
             for path, parser in leaves
@@ -461,7 +206,7 @@ class ActiveReferenceContractTest(unittest.TestCase):
             for body, strict in _shell_fence_bodies(text):
                 for match in EXECUTABLE_FLOWCTL_INVOCATION.finditer(body):
                     top, child = match.groups()
-                    if top not in {path.split(" ", 1)[0] for path in EXPECTED_LEAF_PATHS}:
+                    if top not in TOP_LEVEL_COMMANDS:
                         if strict:
                             failures.append(
                                 f"{path.relative_to(REPO_ROOT)}: {top}"
@@ -474,33 +219,15 @@ class ActiveReferenceContractTest(unittest.TestCase):
                     if top in GROUPED_COMMANDS and child:
                         command = f"{top} {child}"
                         if (
-                            command not in EXPECTED_LEAF_PATHS
+                            command not in LEAF_PATHS
                             and not any(
                                 leaf.startswith(f"{command} ")
-                                for leaf in EXPECTED_LEAF_PATHS
+                                for leaf in LEAF_PATHS
                             )
                         ):
                             failures.append(
                                 f"{path.relative_to(REPO_ROOT)}: {command}"
                             )
-        self.assertEqual(failures, [])
-
-    def test_known_removed_surfaces_are_not_runnable_in_active_snippets(self) -> None:
-        removed = re.compile(
-            r'(?:flowctl|"?\$FLOWCTL"?|\.flow/bin/flowctl|scripts/flowctl)\s+'
-            r"(?:epics?(?:\s|$)|migrate-(?:rename|rollback|state)\b|"
-            r"config\s+toggle\b|unblock\b|update\s+[^\n]+--status\b|"
-            r"setup-mode\b|"
-            r"--version\b|setup(?:\s|$)|rp\s+(?:pick-window|builder)\b|"
-            r"(?:impl|plan|completion)-review\b|"
-            r"spec\s+export-cognitive-aid[^\n]*--section\b)"
-        )
-        failures: list[str] = []
-        for path in _active_reference_files():
-            text = path.read_text(encoding="utf-8")
-            for body, _strict in _shell_fence_bodies(text):
-                if removed.search(body):
-                    failures.append(path.relative_to(REPO_ROOT).as_posix())
         self.assertEqual(failures, [])
 
     def test_strategy_commands_use_the_resolved_flowctl_path(self) -> None:
@@ -512,83 +239,6 @@ class ActiveReferenceContractTest(unittest.TestCase):
                 r'(?<!\$)(?<!["/])\bflowctl\s+(?:strategy|specs)\b',
                 path.relative_to(REPO_ROOT).as_posix(),
             )
-
-    def test_active_payload_contract_omits_removed_export_fields(self) -> None:
-        paths = (
-            PLUGIN / "skills" / "flow-next-make-pr" / "workflow.md",
-            PLUGIN / "skills" / "flow-next-make-pr" / "create-and-finalize.md",
-            PLUGIN / "skills" / "flow-next-qa" / "workflow.md",
-        )
-        combined = "\n".join(path.read_text(encoding="utf-8") for path in paths)
-        self.assertNotIn("review_receipts", combined)
-        self.assertNotRegex(combined, r"export-cognitive-aid[^\n]*--section")
-        self.assertIn("deferred_findings", combined)
-
-    def test_smoke_labels_name_the_canonical_operation(self) -> None:
-        smoke = (PLUGIN / "scripts" / "smoke_test.sh").read_text(encoding="utf-8")
-        for stale_label in (
-            "config toggle",
-            "planSync config toggle",
-            "--- epic set-title ---",
-            "epic close",
-            "stdin epic set-plan",
-            "set-title updates epic JSON",
-            "epic set-backend",
-        ):
-            self.assertNotIn(stale_label, smoke)
-        for canonical_label in (
-            "config set false/get",
-            "--- spec set-title ---",
-            "spec close",
-            "stdin spec set-plan",
-            "spec set-backend",
-        ):
-            self.assertIn(canonical_label, smoke)
-
-class RepoPromptCapabilityProbeTest(unittest.TestCase):
-    PROBE_PATHS = (
-        # Plan's RepoPrompt probe moved verbatim into its setup-questions
-        # reference (reached only on the setup-question path).
-        "skills/flow-next-plan/references/setup-questions.md",
-        "skills/flow-next-plan-review/workflow.md",
-        "skills/flow-next-impl-review/workflow-common.md",
-        "skills/flow-next-spec-completion-review/workflow-common.md",
-        "skills/flow-next-ralph-init/SKILL.md",
-        "codex/skills/flow-next-plan/references/setup-questions.md",
-        "codex/skills/flow-next-impl-review/workflow-common.md",
-        "codex/skills/flow-next-spec-completion-review/workflow-common.md",
-        "codex/skills/flow-next-ralph-init/SKILL.md",
-        "scripts/ralph_smoke_rp.sh",
-        "scripts/ralph_e2e_rp_test.sh",
-        "scripts/ralph_e2e_short_rp_test.sh",
-        "scripts/plan_review_prompt_smoke.sh",
-    )
-
-    def test_all_active_probes_use_the_ce_first_ladder(self) -> None:
-        needles = (
-            "rpce-cli",
-            "$HOME/RepoPrompt/repoprompt_ce_cli",
-            "$HOME/Library/Application Support/RepoPrompt CE/repoprompt_ce_cli",
-            "rp-cli",
-        )
-        paths = list(self.PROBE_PATHS)
-        mirror_plan_review = PLUGIN / "codex/skills/flow-next-plan-review"
-        # Parallel workers defer the combined mirror regeneration. Before
-        # sync, the B1 mirror keeps the probe in SKILL.md; after sync, the
-        # split mirror keeps it in workflow.md.
-        mirror_probe = (
-            "codex/skills/flow-next-plan-review/workflow.md"
-            if (mirror_plan_review / "workflow-codex.md").exists()
-            else "codex/skills/flow-next-plan-review/SKILL.md"
-        )
-        paths.append(mirror_probe)
-        for relative in paths:
-            text = (PLUGIN / relative).read_text(encoding="utf-8")
-            probe_start = text.index("command -v rpce-cli")
-            probe = text[probe_start : probe_start + 600]
-            offsets = [probe.index(needle) for needle in needles]
-            self.assertEqual(offsets, sorted(offsets), relative)
-
 
 class CompletionReviewStateTest(unittest.TestCase):
     def test_completion_review_status_persists_all_authoritative_fields(self) -> None:

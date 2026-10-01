@@ -16,15 +16,27 @@ phase outputs in the same shell; do not print or reassemble its source.
 source "$(dirname "$FLOWCTL")/make-pr-preflight.sh"
 ```
 
-Exit 1 is failure; exit 2 needs human intervention; exit 3 carries `NEED_INPUT:`.
-Under `FLOW_RALPH`, `REVIEW_RECEIPT_PATH`, `FLOW_AUTONOMOUS=1`, `AUTONOMOUS=1`,
-or `mode:autonomous`, never prompt: preserve the exit outcome. Attended, resolve
+Exit 1 is failure; exit 2 needs human intervention; exit 3 carries `NEED_INPUT:`; exit 4 (`NO_SPEC`)
+means the branch carries no spec: take the no-spec path below and skip every later phase. A repo
+without `.flow/` takes that path without running the script.
+Under `FLOW_AUTONOMOUS=1`, `AUTONOMOUS=1`, or `mode:autonomous`, never prompt: preserve the exit outcome. Attended, resolve
 only the named missing input and rerun.
 
 Already-closed specs stay untouched. Otherwise completed specs close on the head branch before Phase 1. Incomplete or
 task-less specs have no close commit and still compose interactively. For `OPEN_COUNT > 0`,
-Ralph/autonomous hard-errors (exit 2). Dry-run and body-only updates never close. Under `--update` an
+autonomous hard-errors (exit 2). Dry-run and body-only updates never close. Under `--update` an
 existing OPEN PR is REQUIRED; closed/merged PRs do not prevent a create. Preserve `PHASE0_CONTEXT.head`.
+### No-spec path
+
+Never create a spec to open a pull request. Under `--dry-run`, write the body below, print it and
+stop, with no branch, commit or push. Otherwise, on the default branch, first create a branch
+named for the change, and commit the change if it is not committed yet (`git add -- <files you
+changed>`). Write the session's handoff (what changed, how it was verified, open items and
+follow-ups) to a temporary body file, push, and run `gh pr create` with a one-line title and that
+body file; add `--draft` for `--draft` or when the handoff lists an open item (a call left for
+the person, an open QA finding; follow-ups alone never draft), and `--base` when given. Under `--update`, run
+`gh pr edit` with the body file instead. Print the PR URL.
+
 ## Phase 1: Gather inputs
 
 Capture `EXPORT_PAYLOAD` from `$FLOWCTL spec export-cognitive-aid "$SPEC_ID"
@@ -35,23 +47,12 @@ empty task summaries. Only the host aborts for nonempty criteria ALL in `tasks_s
 ## Phase 1.5: Structured PR cognitive-aid
 
 Read [pr-cognitive-aid.md](pr-cognitive-aid.md) and execute it on every entry path, including dry-run and
-update, before optional HTML or body delivery.
-## Phase 1.5b: HTML render lens (opt-in)
-
-```bash
-HTML_LENS=$("$FLOWCTL" config get artifacts.html.enabled --json | jq -r 'if .value == true then "true" else "false" end')
-[[ "$DRY_RUN" == "1" ]] && HTML_LENS=false
-```
-
-When true, read [html-lens.md](html-lens.md) in full and execute it end-to-end. When false,
-do not read `html-lens.md` or the shared disclosure reference; emit no artifact, commit, body line or output. The lens is
-unchanged; retain its optional Render lens line when it succeeds.
+update, before body delivery.
 ## Phase 2: Deliver the briefing
 
-Use rendered `BODY_FILE` unchanged; append the enabled lens line before `Ref` / Stack lines.
-The renderer's numbered groups and linked file lists supply the structural sketch; the lens's old summary-block references mean this position.
+Use rendered `BODY_FILE` unchanged, before `Ref` / Stack lines.
+The renderer's numbered groups and linked file lists supply the structural sketch.
 
 For dry-run, print `BODY_FILE` and stop. Otherwise read [create-and-finalize.md](create-and-finalize.md) and
 complete it.
 
-[Manual smoke](references/manual-smoke.md) is a maintainer checklist, never loaded at runtime.

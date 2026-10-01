@@ -33,11 +33,12 @@ class SetupStatusTest(unittest.TestCase):
             meta = root / '.flow/meta.json'
             config = root / '.flow/config.json'
             meta.write_text(json.dumps({'setup_version': '1', 'setup': {'optional_answers': {'criteria': 'Skip', 'star': 'No thanks'}}}))
-            config.write_text(json.dumps({'artifacts': {'html': {'enabled': False}}}))
+            config.write_text(json.dumps({'pipeline': {'qa': 'off'}}))
             before = [(p.read_bytes(), p.stat().st_mtime_ns) for p in (meta, config)]
             result = self.snapshot(root)
             self.assertFalse(result['first_run'])
-            self.assertIs(result['config']['artifacts.html.enabled'], False)
+            self.assertEqual(result['config']['pipeline.qa'], 'off')
+            self.assertNotIn('artifacts.html.enabled', result['config'])
             self.assertIsNone(result['config']['review.backend'])
             self.assertEqual(result['optional_answers']['criteria'], 'Skip')
             self.assertEqual(before, [(p.read_bytes(), p.stat().st_mtime_ns) for p in (meta, config)])

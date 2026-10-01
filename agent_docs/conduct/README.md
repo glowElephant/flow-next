@@ -15,7 +15,7 @@ These pages are maintainer documentation. They are never loaded at runtime by an
 - [`chart.md`](chart.md) — `/flow-next:chart`, decision map and briefing package
 - [`capture.md`](capture.md) — `/flow-next:capture`, conversation to source-tagged spec
 - [`refine.md`](refine.md) — `/flow-next:refine`, question rounds, scoped write-back, and the research pass
-- [`flow.md`](flow.md) - `/flow-next:flow`, attended conductor
+- [`flow.md`](flow.md) - `/flow-next:flow`, attended conductor and `--auto`
 
 **Plan and review**
 
@@ -30,17 +30,16 @@ These pages are maintainer documentation. They are never loaded at runtime by an
 
 **Build**
 
-- [`work.md`](work.md) — `/flow-next:work`, spec execution with fresh-context workers
+- [`work.md`](work.md) — `/flow-next:work`, spec execution: one task inline, several through workers
 - [`sync.md`](sync.md) — `/flow-next:sync`, manual plan-sync after drift
 - [`qa.md`](qa.md) — `/flow-next:qa`, live-app QA and ship verdict
 - [`drive.md`](drive.md) — `flow-next-drive`, surface-aware UI automation
 
 **Ship**
 
-- [`make-pr.md`](make-pr.md) — `/flow-next:make-pr`, cognitive-aid PR body
+- [`make-pr.md`](make-pr.md) — `/flow-next:make-pr`, cognitive-aid PR body, or the handoff as body on a branch without a spec
 - [`resolve-pr.md`](resolve-pr.md) — `/flow-next:resolve-pr`, PR feedback resolution
 - [`land.md`](land.md) — `/flow-next:land`, one named pull request
-- [`pilot.md`](pilot.md) — `/flow-next:pilot`, deprecated alias for `/flow-next:flow --auto --tick` (retired with the alias next release; the auto rows live in [`flow.md`](flow.md))
 
 **Repo and state**
 
@@ -53,7 +52,6 @@ These pages are maintainer documentation. They are never loaded at runtime by an
 - [`memory-migrate.md`](memory-migrate.md) — `/flow-next:memory-migrate`, flat-to-categorized memory lift
 - [`tracker-sync.md`](tracker-sync.md) — `/flow-next:tracker-sync`, spec-to-tracker projection
 - [`setup.md`](setup.md) — `/flow-next:setup`, platform detection and install
-- [`ralph-init.md`](ralph-init.md) — `/flow-next:ralph-init`, repo-local Ralph harness scaffold
 - [`export-context.md`](export-context.md) — `flow-next-export-context`, review context export
 
 ## Skills without a checklist

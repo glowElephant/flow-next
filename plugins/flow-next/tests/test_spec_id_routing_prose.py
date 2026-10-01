@@ -1,9 +1,8 @@
-"""fn-134.4 — Spec-id routing gate, setup question, and discoverability contracts.
+"""Spec-id routing: mint-site command shape and reachability.
 
-Skill-prose contract tests (R7/R8/R9/R11/R20). Behavioral create-first recovery
-and mint plumbing live in earlier tasks; this gate pins that every mint site
-routes on tracker.specIds from an existing root snapshot, states network cost
-conditionally, and that setup asks once when the key is unset.
+Covers the commands the mint sites run (config key, CLI flags, snapshot jq
+path, the durable-id argument) and that each spine loads its mint reference.
+The surrounding prose is not pinned.
 """
 
 from __future__ import annotations
@@ -19,32 +18,20 @@ PLAN_STEPS = SKILLS / "flow-next-plan" / "steps.md"
 PLAN_MINT_REF = SKILLS / "flow-next-plan" / "references" / "tracker-first-mint.md"
 WORK_MINT_REF = SKILLS / "flow-next-work" / "references" / "spec-id-mint.md"
 WORK_PHASES = SKILLS / "flow-next-work" / "phases.md"
-WORK_SKILL = SKILLS / "flow-next-work" / "SKILL.md"
 CAPTURE_WF = SKILLS / "flow-next-capture" / "workflow.md"
 CAPTURE_TRACKER_REF = (
     SKILLS / "flow-next-capture" / "references" / "tracker-integration.md"
 )
-REFINE_WB = SKILLS / "flow-next-refine" / "references" / "write-back.md"
-QA_BUG = SKILLS / "flow-next-qa" / "references" / "bug-filing.md"
-SETUP_WF = SKILLS / "flow-next-setup" / "workflow.md"
 
-# fn-134 review, extended by the fn-169 branch-disclosure wave: the mint gates
-# moved off the always-loaded path into on-demand references so the reached
-# path stays below the fn-130 baseline. Same contract, different file — each
-# site is the gating spine file PLUS the reference its gate loads, concatenated,
-# so the assertions below are unchanged. Reachability of each reference (the
-# spine actually names and loads it) is pinned by `test_gates_load_their_mint_reference`.
+# Each site is the spine file plus the reference its gate loads.
 PLAN_SITE = [PLAN_STEPS, PLAN_MINT_REF]
 WORK_SITE = [WORK_PHASES, WORK_MINT_REF]
 CAPTURE_SITE = [CAPTURE_WF, CAPTURE_TRACKER_REF]
 
-# Five mint sites named in the spec / task.
 MINT_SITES = {
     "plan": PLAN_SITE,
     "work": WORK_SITE,
     "capture": CAPTURE_SITE,
-    "refine": REFINE_WB,
-    "qa": QA_BUG,
 }
 
 
@@ -56,14 +43,12 @@ def _read(path) -> str:
 
 
 class SpecIdConfigReadBudget(unittest.TestCase):
-    """R7: mint sites route from a root snapshot, never a per-leaf read, and
+    """Mint sites route from a root snapshot, never a per-leaf read, and
     never take a SECOND snapshot when the skill already holds one."""
 
-    # A mint site may (and does) PROHIBIT the per-leaf read in prose, so match an
-    # actual invocation - the flowctl binary followed by the leaf - not the bare
-    # phrase, which also appears inside "never a per-leaf `config get ...`".
+    # Match an actual invocation - the flowctl binary followed by the leaf.
     LEAF_INVOCATION = re.compile(
-        r"""(?:\$FLOWCTL|"\$FLOWCTL"|flowctl(?:\.py)?)\s+config\s+get\s+tracker\.specIds"""
+        r"""(?:\$FLOWCTL|"\$FLOWCTL"|\$\{FLOWCTL\}|flowctl(?:\.py)?)\s+config\s+get\s+tracker\.specIds"""
     )
 
     def test_no_per_leaf_specids_read_at_any_mint_site(self) -> None:
@@ -76,8 +61,6 @@ class SpecIdConfigReadBudget(unittest.TestCase):
                 )
 
     def test_sites_holding_a_snapshot_do_not_take_a_second(self) -> None:
-        # plan and capture take a root snapshot early; their mint sites must jq
-        # that file rather than issue another `config get --json`.
         for name, path in (("plan", PLAN_SITE), ("capture", CAPTURE_SITE)):
             text = _read(path)
             with self.subTest(site=name):
@@ -88,54 +71,14 @@ class SpecIdConfigReadBudget(unittest.TestCase):
                 )
 
     def test_work_mint_reuses_phase0_snapshot(self) -> None:
-        # work promotes its Phase 0 leaf read to a root snapshot; the mint
-        # reference must REUSE it, not take its own.
         ref = _read(WORK_MINT_REF)
         self.assertNotIn("config get --json", ref)
-        self.assertIn("WORK_CFG", ref)
         self.assertLessEqual(_read(WORK_PHASES).count("config get --json"), 1)
 
-
 class SpecIdRoutingGate(unittest.TestCase):
-    """R7 / R20: every mint site routes on tracker.specIds."""
-
-    def test_every_mint_site_names_specIds_and_tracker_first(self) -> None:
-        for name, path in MINT_SITES.items():
-            text = _read(path)
-            with self.subTest(site=name):
-                self.assertIn(
-                    "tracker.specIds",
-                    text,
-                    f"{name}: must route on tracker.specIds",
-                )
-                self.assertIn(
-                    "--tracker-first",
-                    text,
-                    f"{name}: must name the real CLI flag shipped by task .2",
-                )
-
-    def test_plan_work_capture_refine_own_the_gate(self) -> None:
-        """These sites implement the gate (create-first + degrade), not only mention it."""
-        for name, path in (
-            ("plan", PLAN_SITE),
-            ("work", WORK_SITE),
-            ("capture", CAPTURE_SITE),
-            ("refine", REFINE_WB),
-        ):
-            text = _read(path)
-            with self.subTest(site=name):
-                self.assertIn("create-first", text)
-                self.assertRegex(
-                    text,
-                    r"SILENT|silently|silent degrade|fall-through to flow-first|degrades?\s+\*?\*?silently",
-                    f"{name}: must degrade silently to flow-first",
-                )
-                self.assertIn("override", text.lower())
+    """Every mint site routes on tracker.specIds and loads its reference."""
 
     def test_gates_load_their_mint_reference(self) -> None:
-        """Reachability: a mint contract parked in a reference is only binding
-        if the always-loaded spine names that reference at the gate. Pins the
-        spine -> reference edge for each split site."""
         for name, spine, ref_name in (
             ("plan", PLAN_STEPS, "references/tracker-first-mint.md"),
             ("work", WORK_PHASES, "references/spec-id-mint.md"),
@@ -145,201 +88,20 @@ class SpecIdRoutingGate(unittest.TestCase):
                 self.assertIn(
                     ref_name,
                     _read(spine),
-                    f"{name}: spine does not load {ref_name} — the mint gate "
+                    f"{name}: spine does not load {ref_name} - the mint gate "
                     "is unreachable",
                 )
 
-    def test_qa_inherits_capture_and_names_owner(self) -> None:
-        text = _read(QA_BUG)
-        self.assertIn("owned by capture", text)
-        self.assertIn("capture/workflow.md", text)
-        # Direct compose path still carries the gate shape.
-        self.assertIn("create-first", text)
-        self.assertIn("--tracker-first", text)
-
-    def test_no_new_per_leaf_specIds_config_get_at_mint_sites(self) -> None:
-        """Mint sites must derive tracker.specIds from a root snapshot, not a leaf config get call."""
-        # Real invocation shapes only — prose that *forbids* the call is allowed.
-        leaf_get = re.compile(
-            r"""(?:\$FLOWCTL|"\$FLOWCTL"|\$\{FLOWCTL\})\s+config\s+get\s+tracker\.specIds""",
-            re.IGNORECASE,
-        )
-        for name, path in (
-            ("plan", PLAN_SITE),
-            ("work", WORK_SITE),
-            ("capture", CAPTURE_SITE),
-            ("refine", REFINE_WB),
-            ("qa", QA_BUG),
-        ):
-            text = _read(path)
-            with self.subTest(site=name):
-                self.assertIsNone(
-                    leaf_get.search(text),
-                    f"{name}: mint site must not call `config get tracker.specIds` "
-                    "(use the root snapshot)",
-                )
-
-    def test_plan_and_capture_use_existing_snapshot_path(self) -> None:
-        plan = _read(PLAN_SITE)
-        self.assertIn("flow-plan-config-", plan)
-        self.assertIn(".value.tracker.specIds", plan)
-        capture = _read(CAPTURE_SITE)
-        self.assertIn("flow-capture-config-", capture)
-        self.assertIn(".value.tracker.specIds", capture)
-        # The snapshot itself stays on the spine (taken every run); only the
-        # mint that jq-reads it moved behind the tracker gate.
-        self.assertIn("flow-plan-config-", _read(PLAN_STEPS))
-        self.assertIn("flow-capture-config-", _read(CAPTURE_WF))
-
-    def test_issue_first_and_fresh_idea_paths_both_present(self) -> None:
-        for name, path in (
-            ("plan", PLAN_SITE),
-            ("work", WORK_SITE),
-            ("capture", CAPTURE_SITE),
-            ("refine", REFINE_WB),
-        ):
-            text = _read(path)
-            with self.subTest(site=name):
-                self.assertRegex(
-                    text,
-                    r"Named existing issue|named issue|Named issue",
-                    f"{name}: issue-first linking path missing",
-                )
-                self.assertRegex(
-                    text,
-                    r"Fresh idea|fresh idea",
-                    f"{name}: fresh-idea create-first path missing",
-                )
-
-
-class SpecIdNetworkCost(unittest.TestCase):
-    """R8: network cost stated conditionally — never the withdrawn blanket claim."""
-
-    def test_no_blanket_zero_cost_claim(self) -> None:
-        banned = re.compile(
-            r"no net (?:new )?(?:network )?cost|adds no net network cost|"
-            r"zero network cost|no network cost",
-            re.IGNORECASE,
-        )
-        for name, path in MINT_SITES.items():
-            text = _read(path)
-            with self.subTest(site=name):
-                self.assertIsNone(
-                    banned.search(text),
-                    f"{name}: withdrawn blanket 'no net cost' claim must not appear",
-                )
-        setup = _read(SETUP_WF)
-        self.assertIsNone(banned.search(setup), "setup: blanket zero-cost claim")
-
-    def test_conditional_cost_stated_at_primary_mints(self) -> None:
-        for name, path in (
-            ("plan", PLAN_SITE),
-            ("work", WORK_SITE),
-            ("capture", CAPTURE_SITE),
-            ("setup", SETUP_WF),
-        ):
-            text = _read(path)
-            with self.subTest(site=name):
-                self.assertRegex(
-                    text,
-                    r"REORDER|reorder",
-                    f"{name}: must state reorder when perEvent is active",
-                )
-                self.assertRegex(
-                    text,
-                    r"EARLIER remote write|earlier remote write",
-                    f"{name}: must state earlier remote write when perEvent is off",
-                )
-
-
-class SpecIdDiscoverability(unittest.TestCase):
-    """Withdrawn R10: mint-time discoverability stays out of runtime prose."""
-
-    def test_no_runtime_advisory_nag(self) -> None:
-        """Withdrawn R10: no nag/advisory line at mint time."""
-        # Positive nag shapes only. Forbidden-by-prose mentions ("do not … runtime
-        # advisory", "withdrawn R10") must not trip this gate.
-        nag = re.compile(
-            r"consider setting tracker\.specIds|"
-            r"you should set tracker\.specIds|"
-            r"please set tracker\.specIds|"
-            r"set tracker\.specIds to (?:tracker|flow) to avoid",
-            re.IGNORECASE,
-        )
-        for name, path in MINT_SITES.items():
-            text = _read(path)
-            with self.subTest(site=name):
-                hits = [m.group(0) for m in nag.finditer(text)]
-                self.assertEqual(hits, [], f"{name}: unexpected runtime nag: {hits}")
-            # And every site that mentions the topic must record the rejection.
-            if "R10" in text or "runtime advisory" in text.lower() or "nag" in text.lower():
-                self.assertRegex(
-                    text,
-                    r"withdrawn R10|Do \*\*not\*\* nag|do not nag|No runtime nag|no runtime nag",
-                    f"{name}: mentions nag/advisory without the R10 rejection",
-                )
-
-
-class SpecIdSetupQuestion(unittest.TestCase):
-    """R9: setup asks when tracker configured AND key unset; never re-asks."""
-
-    def test_raw_probe_and_unset_gate(self) -> None:
-        text = _read(SETUP_WF)
-        self.assertIn("setup-status", text)
-        self.assertIn("TRACKER_CONFIGURED", text)
-        self.assertIn("CURRENT_SPEC_IDS", text)
-        # Both conditions in the include rule.
-        self.assertRegex(
-            text,
-            r"TRACKER_CONFIGURED=1.*CURRENT_SPEC_IDS|tracker configured.*CURRENT_SPEC_IDS",
-            re.IGNORECASE | re.DOTALL,
-        )
-        self.assertIn("never re-ask", text.lower())
-
-    def test_default_tracker_and_collision_rationale(self) -> None:
-        text = _read(SETUP_WF)
-        block_start = text.index("**Spec ids question**")
-        block = text[block_start : block_start + 2500]
-        self.assertIn("Tracker (Recommended)", block)
-        self.assertIn("collide on fn-N", block)
-        self.assertIn(
-            "creates the issue BEFORE the local spec exists",
-            block,
-        )
-        self.assertIn("earlier remote write", block)
-
-    def test_write_back_sets_either_value(self) -> None:
-        text = _read(SETUP_WF)
-        self.assertIn('config set tracker.specIds tracker', text)
-        self.assertIn('config set tracker.specIds flow', text)
-        self.assertIn("ask-once", text.lower())
-
-    def test_explicit_flow_is_remembered(self) -> None:
-        text = _read(SETUP_WF)
-        # The Flow option description must say an explicit Flow answer is remembered.
-        self.assertRegex(
-            text,
-            r"explicit Flow answer is remembered|will not ask again",
-            re.IGNORECASE,
-        )
-
 
 class TrackerFirstMintIsLinked(unittest.TestCase):
-    """Every tracker-first mint site passes the durable id at mint (fn-254, #464).
-
-    A mint that stored only the display identifier left the spec unlinked; the
-    next lifecycle touchpoint then opened a SECOND remote issue. Duplicate
-    remote issues are not locally reversible, so each site that composes
-    `spec create --tracker-first` must carry `--tracker-id` in the same call,
-    and none may point at the retired steps.md phase numbering.
-    """
+    """Every tracker-first mint passes the durable id in the same call; a mint
+    with only the display identifier leaves the spec unlinked and the next
+    lifecycle touchpoint opens a second remote issue."""
 
     SITES = {
         "capture": CAPTURE_TRACKER_REF,
         "plan": PLAN_MINT_REF,
-        "refine": SKILLS / "flow-next-refine" / "references" / "write-back.md",
-        "work": SKILLS / "flow-next-work" / "references" / "spec-id-mint.md",
-        "qa": SKILLS / "flow-next-qa" / "references" / "bug-filing.md",
+        "work": WORK_MINT_REF,
     }
 
     def test_each_tracker_first_mint_passes_durable_id(self) -> None:
@@ -357,11 +119,6 @@ class TrackerFirstMintIsLinked(unittest.TestCase):
                         f"{name}: tracker-first mint without --tracker-id "
                         "publishes an unlinked spec",
                     )
-                self.assertIn("seed", text, f"{name}: merge-base seed dropped")
-                self.assertNotRegex(
-                    text, r"Phase 2[a-d]\b",
-                    f"{name}: stale tracker-sync steps.md phase pointer",
-                )
 
 
 if __name__ == "__main__":

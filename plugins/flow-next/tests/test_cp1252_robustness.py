@@ -133,46 +133,5 @@ class CanonicalSourceCarriesTheFixes(unittest.TestCase):
         )
 
 
-class WorkerResultRecoveryProse(unittest.TestCase):
-    """Issue #167 item 1 — the work loop's Verify-Completion step must carry a
-    recovery heuristic for a lost/error worker result (the harness-level
-    ``[Tool result missing due to internal error]`` case), not just the
-    status-not-done case."""
-
-    PHASES = (
-        REPO_ROOT
-        / "plugins"
-        / "flow-next"
-        / "skills"
-        / "flow-next-work"
-        / "phases.md"
-    )
-    CODEX_PHASES = (
-        REPO_ROOT
-        / "plugins"
-        / "flow-next"
-        / "codex"
-        / "skills"
-        / "flow-next-work"
-        / "phases.md"
-    )
-
-    def test_3d_documents_missing_result_recovery(self):
-        text = self.PHASES.read_text(encoding="utf-8")
-        lower = text.lower()
-        self.assertIn("result missing", lower)
-        # Distinguish already-done vs code-present-but-unfinalized via git.
-        self.assertIn("git log", text)
-        self.assertIn("git status", text)
-        # Spawn a re-anchoring continuation worker rather than blocking.
-        self.assertIn("continuation", lower)
-        self.assertIn("re-anchor", lower)
-
-    def test_codex_mirror_carries_recovery_prose(self):
-        text = self.CODEX_PHASES.read_text(encoding="utf-8").lower()
-        self.assertIn("result missing", text)
-        self.assertIn("continuation", text)
-
-
 if __name__ == "__main__":
     unittest.main()

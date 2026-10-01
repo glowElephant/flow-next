@@ -27,8 +27,6 @@ esac
 ''')
         stub.chmod(0o755)
         self.env = dict(os.environ, PATH=str(self.bin) + os.pathsep + os.environ["PATH"], FLOWCTL="/nonexistent")
-        for key in ("FLOW_RALPH", "REVIEW_RECEIPT_PATH"):
-            self.env.pop(key, None)
 
     def run_map(self, arguments="", **env):
         return subprocess.run(["bash", str(SCRIPT), arguments], cwd=self.root,
@@ -53,14 +51,6 @@ esac
         self.assertEqual(result.returncode, 7)
         self.assertIn("outside supported range", result.stderr)
         self.assertIn("live-output", result.stdout)
-
-    def test_block_never_touches_review_receipt(self):
-        receipt = self.root / "receipt.json"
-        receipt.write_text("owned by reviewer")
-        result = self.run_map(REVIEW_RECEIPT_PATH=str(receipt))
-        self.assertEqual(result.returncode, 2)
-        self.assertEqual(receipt.read_text(), "owned by reviewer")
-        self.assertFalse((self.root / "calls").exists())
 
     def test_missing_install_reports_instruction_without_writes(self):
         # Keep shell utilities, exclude our executable stub and user tool paths.

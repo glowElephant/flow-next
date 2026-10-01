@@ -19,7 +19,7 @@ Three thin, judgment-free additions to flowctl — pure enumeration + storage:
 
   3. ``pilot-log append`` — a FROZEN decision-log CLI writing
      ``{tick, id, action, stage, costTokens}`` rows under ``.flow/pilot-runs/``
-     (sync-runs-style; NEVER a ``receipts/`` path the ralph-guard validates).
+     (sync-runs-style; NEVER a ``receipts/`` path).
      ``--id`` accepts an OPAQUE id (spec id OR bare tracker key), safe-filename
      normalized, never forced through ``resolve_spec_id_arg``.
 
@@ -143,8 +143,8 @@ class PilotAutonomyConfigTestCase(_FlowctlTmpRepo):
         self.assertFalse(value == "backlog")
 
     def test_fresh_init_materializes_pilot_block(self) -> None:
-        # Like work.*/land.*/pipeline.* (NOT in _INIT_UNMATERIALIZED_BLOCKS),
-        # init persists the pilot block into config.json.
+        # Like land.*/pipeline.*, init persists the pilot block into
+        # config.json.
         self.assertEqual(
             self._read_config().get("pilot"),
             {"autonomy": "ready", "gateClasses": []},
@@ -167,7 +167,7 @@ class PilotAutonomyConfigTestCase(_FlowctlTmpRepo):
     def test_pilot_block_does_not_clash_with_siblings(self) -> None:
         self._config_set("pilot.autonomy", "backlog")
         # Setting pilot.* leaves the other top-level blocks intact.
-        self.assertEqual(self._config_get("land.patienceMinutes")["value"], 30)
+        self.assertEqual(self._config_get("land.patienceMinutes")["value"], 10)
         self.assertEqual(self._config_get("pipeline.qa")["value"], "off")
         self.assertEqual(self._config_get("pilot.gateClasses")["value"], [])
 

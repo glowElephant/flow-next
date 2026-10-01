@@ -10,7 +10,7 @@ positional arguments:
     setup-status        Read setup probes in one call
     setup-block         Apply or resolve the tracked Flow-Next docs block
     detect              Check if .flow/ exists
-    status              Show .flow state and active runs
+    status              Show .flow state
     config              Config commands
     tracker             Deterministic tracker transport verbs (fn-139)
     sync                Tracker sync plumbing (config / state / enumerate /

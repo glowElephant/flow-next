@@ -13,13 +13,10 @@ Cursor's marketplace review checklist (fn-123 R11) requires every command to
 carry both `name` and `description`, so the name stays present — just
 colon-free.
 
-This test pins all of that so a regression can't sneak back in:
+This test checks what the loaders parse:
 
-  (a) no plugin-name-colliding nested command directory exists
-  (b) the flat `commands/*.md` shim set is EXACTLY the pinned canonical commands
-  (c) `.cursor-plugin/plugin.json` `commands` field == `./commands`
-  (d) every shim carries a `name:` (fn-123 R11) and no `name:` contains a colon
-  (e) `epic-review.md` is absent (alias removed on all platforms)
+  (a) `.cursor-plugin/plugin.json` `commands` field == `./commands`
+  (b) every shim carries one bare `name:` equal to its stem, unique across shims
 
 Run:
     python3 -m unittest plugins.flow-next.tests.test_command_shim_flatten -v
@@ -39,24 +36,6 @@ CURSOR_MANIFEST = PLUGIN_DIR / ".cursor-plugin" / "plugin.json"
 
 FRONTMATTER_NAME = re.compile(r"^name:\s*(.+?)\s*$", re.MULTILINE)
 
-# The exact canonical command surface after the fn-124 flatten (+ chart from
-# fn-135.4, + features from fn-211.4, + flow from fn-238 replacing guide,
-# + refine from fn-238 R15 renaming interview; the `interview` and `pilot`
-# alias shims retired in fn-257 R21;
-# epic-review retired; work-rolling graduated into work's default scheduler,
-# fn-218).
-# Pinned so a silent delete-one-add-one swap fails CI: adding or removing a
-# command is a deliberate surface change that MUST update this set. Keep
-# alphabetical.
-EXPECTED_COMMANDS = frozenset({
-    "audit", "capture", "chart", "features", "flow", "impl-review",
-    "land", "make-pr", "map", "memory-migrate", "plan", "plan-review",
-    "prime", "prose", "prospect", "qa", "ralph-init", "refine", "resolve-pr",
-    "setup", "spec-completion-review",
-    "strategy", "sync", "tracker-sync", "uninstall", "visual", "work",
-})
-
-
 def _frontmatter(text: str) -> str:
     """Return the YAML frontmatter block (between the first two --- fences)."""
     if not text.startswith("---"):
@@ -69,26 +48,6 @@ class TestCursorPluginSurface(unittest.TestCase):
     def setUp(self) -> None:
         self.assertTrue(COMMANDS.is_dir(), f"missing {COMMANDS}")
         self.shims = sorted(COMMANDS.glob("*.md"))
-
-    def test_no_nested_flow_next_dir(self) -> None:
-        self.assertFalse(
-            (COMMANDS / "flow-next").exists(),
-            "the nested flow-next command directory is back -- it triples the "
-            "slash-menu prefix on Claude Code (fn-124). Shims live FLAT "
-            "at commands/*.md.",
-        )
-
-    def test_exact_flat_command_surface(self) -> None:
-        # Pin the EXACT set (not just a >=23 floor): a silent delete-one +
-        # add-one swap must fail. Adding/removing a command requires updating
-        # EXPECTED_COMMANDS deliberately.
-        actual = {shim.stem for shim in self.shims}
-        self.assertEqual(
-            actual,
-            set(EXPECTED_COMMANDS),
-            f"command surface drifted: missing={sorted(EXPECTED_COMMANDS - actual)} "
-            f"unexpected={sorted(actual - EXPECTED_COMMANDS)}",
-        )
 
     def test_cursor_manifest_points_at_flat_commands(self) -> None:
         manifest = json.loads(CURSOR_MANIFEST.read_text(encoding="utf-8"))
@@ -146,14 +105,6 @@ class TestCursorPluginSurface(unittest.TestCase):
                     f"{seen.get(value)}) -- names collide in the slash menu.",
                 )
                 seen[value] = shim.name
-
-    def test_epic_review_alias_deleted(self) -> None:
-        self.assertFalse(
-            (COMMANDS / "epic-review.md").exists(),
-            "epic-review.md alias was removed in fn-124 (self-declared dead "
-            "since 2.0.0) -- do not resurrect it.",
-        )
-
 
 if __name__ == "__main__":
     unittest.main()

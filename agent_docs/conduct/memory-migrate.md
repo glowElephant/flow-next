@@ -1,6 +1,6 @@
 # Conduct checklist — /flow-next:memory-migrate
 
-A correct run lifts pre-fn-30 flat memory files into the categorized schema, one entry at a time, writing every result through `flowctl memory add` and printing a full migration report.
+A correct run lifts legacy flat memory files (`pitfalls.md`, `conventions.md`, `decisions.md`) into the categorized schema, one entry at a time, writing every result through `flowctl memory add` and printing a full migration report.
 
 - [ ] Only `pitfalls.md`, `conventions.md`, and `decisions.md` at the `.flow/memory/` root are read. Any other memory-root markdown, and anything already under `.flow/memory/{bug,knowledge}/`, is left untouched.
 - [ ] Classification happens one entry per tool call. A single call that classifies several entries together, or a run whose migrated count is short of the enumerated count, has broken this.

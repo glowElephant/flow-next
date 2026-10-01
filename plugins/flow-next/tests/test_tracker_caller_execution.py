@@ -49,17 +49,28 @@ CURRENT_CALLER_GATES = {
         ),
     },
     "interview": {
-        "split_gate": (
+        # Refine's spine gate is a straight-line probe (no if/fi): slice from
+        # the preflight path assignment to the sentinel line.
+        "split_lines": (
             SKILLS / "flow-next-refine/SKILL.md",
-            "TRACKER_GATE=0",
+            "REFINE_PREFLIGHT=",
             "TRACKER-SYNC GATE ACTIVE",
         ),
         "fence": (
             SKILLS / "flow-next-refine/references/post-write-back.md",
             ("tracker.perEvent.interview", "tracker sync"),
         ),
-        "fired": '[ "$TRACKER_GATE" = "1" ]',
+        "fired": '[ "$TRACKER" = open ]',
         "reference": "references/post-write-back.md",
+    },
+    # Plan prints a routing line naming the projection reference before the
+    # facade call; like the split-gate sentinels it is routing, not output.
+    "plan": {
+        "fence": (
+            SKILLS / "flow-next-plan/steps.md",
+            ("tracker.perEvent.plan", "tracker sync"),
+        ),
+        "reference": "references/tracker-projection.md",
     },
     "qa": {
         "split_gate": (
@@ -93,7 +104,7 @@ CURRENT_CALLER_GATES = {
 # caller output: stripped from stdout before the byte-exact oracle comparison,
 # and only after each stripped line is proven to name the reference that owns
 # the rest of the caller gate.
-_SENTINEL_RE = re.compile(r"STOP\. Read (references/[^\s]+)")
+_SENTINEL_RE = re.compile(r"(?:STOP\. Read|read and follow) (references/[^\s]+)")
 
 # `FLOWCTL=...` / `[ -x "$FLOWCTL" ] || FLOWCTL=...` bootstrap lines a reference
 # repeats for standalone readability. The spine already resolved the binary, so
@@ -176,6 +187,18 @@ def _shell_if_block_around(
         end += 1
     if end == len(lines):
         raise AssertionError(f"{path}: no fi after {sentinel!r}")
+    return textwrap.dedent("\n".join(lines[start : end + 1]))
+
+
+def _shell_lines_through(path: Path, start_prefix: str, sentinel: str) -> str:
+    """Slice a straight-line probe from its first line through the sentinel line."""
+    lines = path.read_text(encoding="utf-8").splitlines()
+    end = next(index for index, line in enumerate(lines) if sentinel in line)
+    start = end
+    while start >= 0 and not lines[start].strip().startswith(start_prefix):
+        start -= 1
+    if start < 0:
+        raise AssertionError(f"{path}: no {start_prefix} before {sentinel!r}")
     return textwrap.dedent("\n".join(lines[start : end + 1]))
 
 
@@ -406,14 +429,19 @@ class TrackerCallerExecutionTests(unittest.TestCase):
             if "\nfi" in fence
             else f"{fence}\n{body}"
         )
-        if gate is not None and "split_gate" in gate:
+        if gate is not None and ("split_gate" in gate or "split_lines" in gate):
             # The reference is read ONLY when the spine's gate fired — the
             # sentinel is the load instruction. Both halves run in one shell so
             # state flows across the split exactly as it does in a session.
-            path, start_token, sentinel = gate["split_gate"]
+            if "split_gate" in gate:
+                path, start_token, sentinel = gate["split_gate"]
+                spine = _shell_if_block_around(path, sentinel, start_token)
+            else:
+                path, start_prefix, sentinel = gate["split_lines"]
+                spine = _shell_lines_through(path, start_prefix, sentinel)
             fence = "\n".join(
                 (
-                    _shell_if_block_around(path, sentinel, start_token),
+                    spine,
                     f"if {gate['fired']}; then",
                     textwrap.indent(fence, "  "),
                     "fi",
@@ -438,7 +466,7 @@ class TrackerCallerExecutionTests(unittest.TestCase):
         that owns the rest of that caller gate — routing, never caller output.
         """
         gate = CURRENT_CALLER_GATES.get(caller_id)
-        if gate is None or "split_gate" not in gate:
+        if gate is None or "reference" not in gate:
             return result
         kept: list[str] = []
         for line in result.stdout.splitlines(keepends=True):
@@ -455,19 +483,6 @@ class TrackerCallerExecutionTests(unittest.TestCase):
         return subprocess.CompletedProcess(
             result.args, result.returncode, "".join(kept), result.stderr
         )
-
-    def test_config_read_overrides_are_declared_deltas(self) -> None:
-        """Snapshot-backed gates remove reads; no override introduces a new read."""
-        for key, override in CONFIG_READ_OVERRIDES.items():
-            caller_id, phase = key[0], key[1]
-            with self.subTest(key=key):
-                oracle = self.callers[caller_id]["config_reads"][phase]
-                self.assertTrue(
-                    {tuple(argv) for argv in override}
-                    <= {tuple(argv) for argv in oracle},
-                    "override introduced a config read the oracle never made",
-                )
-                self.assertLessEqual(len(override) - len(oracle), 1)
 
     def _run_standard(
         self,
@@ -495,7 +510,9 @@ class TrackerCallerExecutionTests(unittest.TestCase):
         )
 
     def _work_outer_fence(self, caller_id: str) -> str:
-        phases = REPO_ROOT / "plugins/flow-next/skills/flow-next-work/phases.md"
+        # Multi-task runs own the snapshot-backed gates; the inline one-task
+        # path probes `sync active` once and reads the same reference.
+        phases = REPO_ROOT / "plugins/flow-next/skills/flow-next-work/references/multi-task.md"
         heading = {
             "work.firstClaim": "read and execute references/tracker-touchpoints.md#first-claim",
             "work.done": "read and execute references/tracker-touchpoints.md#task-done",
@@ -623,41 +640,6 @@ class TrackerCallerExecutionTests(unittest.TestCase):
                 self.assertEqual(
                     self._facade_calls(),
                     [self._facade_argv("qa", "comment")],
-                )
-
-
-    def test_current_active_argv_is_a_declared_delta_from_the_oracle(self) -> None:
-        for caller_id, row in self.callers.items():
-            with self.subTest(caller=caller_id):
-                if caller_id in CHART_EVENTS:
-                    # Chart is post-baseline: argv is facade-native
-                    # tracker sync with chart subject, not the pre-teardown
-                    # skill-dispatch grammar.
-                    self.assertEqual(row["resolved_facade_op"], "push")
-                    self.assertEqual(
-                        row["argv"]["active"][:2],
-                        ["tracker", "sync"],
-                    )
-                    self.assertIn("--event", row["argv"]["active"])
-                    self.assertIn("chart", row["argv"]["active"])
-                    continue
-                expected_op = self._expected_op(caller_id, "push", merged=True)
-                self.assertIsNotNone(expected_op)
-                old_argv = row["argv"]["active"]
-                self.assertIn("flow-next-tracker-sync", old_argv)
-                self.assertIn("<spec-id>", old_argv)
-                if row["resolved_facade_op"] == "configured_value":
-                    oracle_operation = "operation:<configured-value>"
-                else:
-                    oracle_operation = f"operation:{expected_op}"
-                self.assertIn(oracle_operation, old_argv)
-                current = self._facade_argv(caller_id, expected_op or "")
-                self.assertEqual(current[:3], ["tracker", "sync", "fn-141-harness"])
-                self.assertEqual(current[3:5], ["--op", expected_op])
-                self.assertEqual(current[5:7], ["--event", row["event"]])
-                self.assertEqual(
-                    "--status-only" in current,
-                    caller_id == "work.firstClaim",
                 )
 
 

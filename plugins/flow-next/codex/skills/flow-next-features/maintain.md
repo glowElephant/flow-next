@@ -4,7 +4,7 @@ Execute these phases in order. Each gates on the prior. Stop on a user-blocking 
 
 Autonomy refusal and `MODE=maintain` are already resolved in [SKILL.md](SKILL.md). Feature file shape: [references/feature-entry-contract.md](references/feature-entry-contract.md). Doctor + proof: [references/doctor-and-proof.md](references/doctor-and-proof.md).
 
-**Live driving consumes the drive skill by pointer.** Read [`plugins/flow-next/skills/flow-next-drive/SKILL.md`](../flow-next-drive/SKILL.md) (surface detection + universal flow + ladder) and the relevant rung reference under `plugins/flow-next/skills/flow-next-drive/references/`. **That prose stays there.** A copy of CDP / agent-browser / Computer-Use actuation detail written into this file has broken this. Execute the universal flow (`observe → snapshot fresh refs → act → verify → capture`) yourself. A transcript that "calls" flow-next-drive as if it were an API has broken this too.
+**Live driving consumes the drive skill by pointer.** Read [`flow-next-drive/SKILL.md`](../flow-next-drive/SKILL.md) (surface detection + universal flow + ladder) and the relevant rung reference under `plugins/flow-next/skills/flow-next-drive/references/`. **That prose stays there.** A copy of CDP / agent-browser / Computer-Use actuation detail written into this file has broken this. Execute the universal flow (`observe → snapshot fresh refs → act → verify → capture`) yourself. A transcript that "calls" flow-next-drive as if it were an API has broken this too.
 
 Maintain is not a second QA pass and never replaces QA. Edit scope is `.flow/features/` plus harness scripts the map already names as launch, seed, or drive helpers, plus the status of the drift notes it retires. Never product code.
 

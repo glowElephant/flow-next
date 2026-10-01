@@ -172,5 +172,5 @@ CHART_VERDICT=NO_WORK chart=<id> decision=- reason="chart created; frontier offe
 
 ### 1.6 - Notes seeding
 
-Known facts with citations go into the chart's `## Notes` through the initial-map file's optional `notes` string - `chart create --initial-map-file` seeds the `## Notes` section from it (R52). Keep each line a cited fact with its safe reference/revision. Do **not** fabricate resolved ledger lines for background: a fact under Notes is never a D-ID.
+Known facts with citations go into the chart's `## Notes` through the initial-map file's optional `notes` string - `chart create --initial-map-file` seeds the `## Notes` section from it. Keep each line a cited fact with its safe reference/revision. Do **not** fabricate resolved ledger lines for background: a fact under Notes is never a D-ID.
 

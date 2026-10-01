@@ -99,18 +99,12 @@ class SparseInputTests(unittest.TestCase):
                     self.assertIn(described, output.getvalue())
                     self.assertIn(omitted, output.getvalue())
                     self.assertIn("Rest of diff: not described:", output.getvalue())
-                output = StringIO()
-                with redirect_stdout(output):
-                    flowctl.cmd_pr_cognitive_aid_html_input(args)
-                payload = output.getvalue().split(">", 1)[1].split("</script>", 1)[0]
-                self.assertEqual(json.loads(payload), expected)
 
     def test_file_commands_report_parse_errors_as_human_text(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "invalid.json"
             path.write_text("{", encoding="utf-8")
-            for command in (flowctl.cmd_pr_cognitive_aid_render,
-                            flowctl.cmd_pr_cognitive_aid_html_input):
+            for command in (flowctl.cmd_pr_cognitive_aid_render,):
                 with self.subTest(command=command.__name__):
                     out, err = StringIO(), StringIO()
                     with redirect_stdout(out), redirect_stderr(err), \

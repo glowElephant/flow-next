@@ -20,9 +20,8 @@ A run that asked under a clean `NO_PLAN=1` has broken this.
 
 ## Autonomous refusal
 
-Under ANY autonomy marker (`FLOW_RALPH`, `FLOW_AUTONOMOUS`, `AUTONOMOUS=1` /
-`mode:autonomous`, `REVIEW_RECEIPT_PATH` — scan the marker family/namespace, never a
-fixed two-var list) WITHOUT an explicit no-plan instruction, stop with the typed
+Under ANY autonomy marker (`FLOW_AUTONOMOUS`, `AUTONOMOUS=1` /
+`mode:autonomous` — scan the marker family/namespace, never a fixed two-var list) WITHOUT an explicit no-plan instruction, stop with the typed
 report: `NEEDS_HUMAN: spec has no tasks - choose /flow-next:work <spec-id> --no-plan or /flow-next:plan <spec-id>`.
 Never ask, never fall through. An explicit no-plan instruction — the flag or stated
 intent in the dispatching invocation, or the spec's own `no_plan: true` field (an explicit human write, or the route `flow --auto` records before dispatch, which is how its classification routes here) — is the
@@ -103,7 +102,8 @@ minted a second task, or copied a plan into the body, has broken this.
 
 ## Dispatch shape for the minted task
 
-The standard 3c dispatch applies with these renderings. The 3a report still prints all
+The minted task is normally implemented inline (phases.md Phase 3). When it goes to a
+worker instead, the standard multi-task.md 3c dispatch applies with these renderings. The 3a report still prints all
 five report lines including `Selection rule:` — state: single minted implicit task;
 the frontier is exactly one. The dispatch template's `FORBIDDEN:` field echoes declared
 Touches and the minted task declares NONE, so the path ban is omitted — the field still
@@ -115,7 +115,8 @@ path-ban `FORBIDDEN:` for this task has broken this.
 
 Append the license below to the minted task's 3c dispatch prompt as extra prose.
 worker.md itself gains no subagent prose, and plan-full workers get no such
-license — judgment governs there (spec Decision Context).
+license — judgment governs there (spec Decision Context). When the conductor implements the minted task inline
+(phases.md Phase 3), the conductor is the owner and holds this license itself.
 
 The worker prompt for the minted task carries a broad license: parallel implementation
 of independent surfaces, background research, scouting — the SHAPE is chosen by the
@@ -127,9 +128,9 @@ to the child verbatim. Wrappers, scouts, and conductors never fan out on the own
 behalf (STRATEGY.md, "The owner holds the license"). A host without nested dispatch
 degrades to serial, never errors; no capability probing. Commit ownership unchanged:
 the owner is the only committer — hand subagents disjoint surfaces or serialize — and the
-commit convention is the owner's path's (`git add -A` and the single-commit convention
+commit convention is the owner's path's (staging its changed files plus `.flow/`, and the single-commit convention
 in-host; the long-task brief's checkpoint convention when the owner is a bridged child).
 Join barrier: every dispatched subagent
 is awaited and reconciled BEFORE staging, verification, and commit — no live writer
-exists at `git add -A` time (same discipline as the wave-level workspace cleanup gate
+exists at staging time (same discipline as the wave-level workspace cleanup gate
 in [wave-join.md](wave-join.md)).

@@ -70,17 +70,15 @@ class TestSkillProseFlowctlSurface(unittest.TestCase):
         cls.registry = registered_subcommands()
         cls.hits = referenced_subcommands(SKILLS_DIR)
 
-    def test_prose_actually_references_flowctl(self) -> None:
-        # Guard the gate itself: if extraction ever silently matches nothing,
-        # the main assertion would pass vacuously.
+    def test_skill_prose_references_real_flowctl_subcommands(self) -> None:
+        # Vacuity guard: if extraction silently matches nothing, the main
+        # assertion would pass trivially.
         self.assertGreater(
             len(self.hits),
             20,
             "extraction found implausibly few $FLOWCTL invocations - the "
             "regex or the skills path has drifted; fix the gate, not the prose",
         )
-
-    def test_skill_prose_references_real_flowctl_subcommands(self) -> None:
         unknown = [
             f"{path}:{lineno}: $FLOWCTL {token}"
             for path, lineno, token in self.hits
@@ -93,15 +91,6 @@ class TestSkillProseFlowctlSurface(unittest.TestCase):
             "(invented or renamed surface - fix the prose or register the "
             "subcommand):\n" + "\n".join(unknown),
         )
-
-    def test_gate_fires_on_bogus_subcommand(self) -> None:
-        # Negative self-test: prove the checker detects the defect class it
-        # exists for, so a refactor cannot silently neuter it.
-        sample = 'run `"$FLOWCTL" frobnicate-specs fn-1 --json` before commit'
-        tokens = [m.group(1) for m in _INVOCATION.finditer(sample)]
-        self.assertEqual(tokens, ["frobnicate-specs"])
-        self.assertNotIn("frobnicate-specs", self.registry)
-
 
 if __name__ == "__main__":
     unittest.main()

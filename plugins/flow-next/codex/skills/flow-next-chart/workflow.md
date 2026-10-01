@@ -18,7 +18,7 @@ Bash vars do not survive across prompt turns - re-declare the FLOWCTL block at t
 
 **Read-only scouts:** use `spawn_agent` with `agent_type: explorer`. On hosts without an Explore builtin (e.g. Cursor), use the host's generic read-only dispatch with Edit/Write disallowed. Facts with safe path/revision references only - never judgments that settle attended decisions.
 
-**Unattended driver** (any one signal): `FLOW_RALPH=1`, non-empty `REVIEW_RECEIPT_PATH`, non-empty `FLOW_AUTONOMOUS`, or host loop with no human present. Interactive terminal = attended.
+**Unattended driver** (any one signal): non-empty `FLOW_AUTONOMOUS`, or host loop with no human present. Interactive terminal = attended.
 
 ---
 
@@ -82,7 +82,7 @@ When the sentinel prints, STOP and Read [references/tracker-projection.md](refer
 
 ### 0.3 - Human pairings
 
-Every human-facing list of decisions pairs **title + D-ID + record link**. Never dump bare identifiers alone (R36).
+Every human-facing list of decisions pairs **title + D-ID + record link**. Never dump bare identifiers alone.
 
 ---
 

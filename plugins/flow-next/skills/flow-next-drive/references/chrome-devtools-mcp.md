@@ -22,7 +22,11 @@ Canonical, version-matched docs (read these over this file when they disagree):
 claude mcp add chrome-devtools --scope user npx chrome-devtools-mcp@latest
 # Codex
 codex mcp add chrome-devtools -- npx chrome-devtools-mcp@latest
-# Generic MCP config
+```
+
+Generic MCP config:
+
+```json
 { "command": "npx", "args": ["-y", "chrome-devtools-mcp@latest"] }
 ```
 

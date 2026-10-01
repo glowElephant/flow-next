@@ -13,6 +13,7 @@ controlled cwd per case:
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import sys
@@ -24,17 +25,20 @@ ROOT = Path(__file__).resolve().parents[1]
 FLOWCTL_PY = ROOT / "scripts" / "flowctl.py"
 BUNDLED_USAGE = ROOT / "templates" / "usage.md"
 
-USAGE_GUIDE_HEADER = "# Flow-Next Usage Guide"
 NO_GUIDE_MSG = "No usage guide found"
 LOCAL_SENTINEL = "LOCAL COPY SENTINEL"
 
 
 def _run_usage(flowctl_py: Path, cwd: Path) -> subprocess.CompletedProcess:
+    # UTF-8 both ways: usage.md carries non-ASCII, and a Windows console
+    # encoding would otherwise mangle it in transit.
     return subprocess.run(
         [sys.executable, str(flowctl_py), "usage"],
         cwd=str(cwd),
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        env={**os.environ, "PYTHONIOENCODING": "utf-8"},
     )
 
 
@@ -53,9 +57,8 @@ class TestCmdUsage(unittest.TestCase):
             result = _run_usage(FLOWCTL_PY, cwd)
 
         self.assertEqual(result.returncode, 0, msg=result.stderr)
-        self.assertTrue(
-            result.stdout.startswith(USAGE_GUIDE_HEADER),
-            f"stdout should start with bundled guide header, got: {result.stdout[:80]!r}",
+        self.assertEqual(
+            result.stdout, BUNDLED_USAGE.read_text(encoding="utf-8")
         )
 
     def test_flow_fallback_when_bundled_missing(self) -> None:

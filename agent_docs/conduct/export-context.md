@@ -7,4 +7,4 @@ A correct run builds RepoPrompt context for a plan or implementation review and 
 - [ ] The builder handoff reaches the prompt file by redirection from `flowctl rp prompt-get`; the run never re-types or pastes that content. A run that reconstructs the handoff inside a heredoc has broken this.
 - [ ] Only the static review criteria — the same criteria block as plan-review or impl-review, per export type — are typed, once, in the quoted heredoc appended to the prompt file.
 - [ ] The run ends with `flowctl rp prompt-export` to a timestamped output file and tells the user that exact path plus what the file contains.
-- [ ] The run stays manual-only: it declines an autonomous Ralph invocation rather than pretending to produce receipts or status updates.
+- [ ] The run stays manual-only: it declines an autonomous invocation rather than pretending to produce receipts or status updates.

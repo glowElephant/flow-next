@@ -9,7 +9,7 @@ flow-next is an orchestration layer, not a single-agent workflow. The host agent
 | **A. Pipeline routing** | Which stages does this item run - refine, plan, plan review, work directly, rolling or wave, QA, how many review rounds? | Flow (attended, or unattended under `--auto`), capture's `Recommended next:` line, work's Phase 3 route and zero-task fork, the review triage gate, `flowctl review-route` | The `Recommended next:` / `Scheduling:` / `PILOT_VERDICT` lines, the triage receipt, the review ledger |
 | **B. Model routing** | Which model runs this job - the implementer, the reviewer, a scout - and from which family? | The routing block in your instruction file, `review.backend`, per-task `review:` pins, the bridge recipes, a sentence in the moment | The review receipt's `model` field, the worker dispatch prompt, the PR body's verification block |
 
-Axis A is documented below under [Pipeline routing](#pipeline-routing-who-decides-the-shape); the rest of this page is axis B. A [field case](#field-case-one-paragraph-twenty-specs) shows both axes running unattended through 38 merged pull requests, and the [setup ladder](#setup-ladder-from-nothing-to-a-standing-policy) takes a repo from zero configuration to a standing policy in five copy-paste rungs.
+Axis A is documented below under [Pipeline routing](#pipeline-routing-who-decides-the-shape); the rest of this page is axis B. The [setup ladder](#setup-ladder-from-nothing-to-a-standing-policy) takes a repo from zero configuration to a standing policy in five copy-paste rungs.
 
 The pattern this page serves: use your smartest model to orchestrate and judge, route mechanical or token-hungry work to faster/cheaper models, and pick reviewers from a different family than the writer. flow-next was built in this shape - this page maps the dials.
 
@@ -23,7 +23,6 @@ The pattern this page serves: use your smartest model to orchestrate and judge, 
 - [Deterministic routing: the parameter surfaces](#deterministic-routing-the-parameter-surfaces)
 - [Prompted orchestration: routing with judgment](#prompted-orchestration-routing-with-judgment)
 - [Pipeline routing: who decides the shape](#pipeline-routing-who-decides-the-shape)
-- [Field case: one paragraph, 38 PRs landed](#field-case-one-paragraph-38-prs-landed)
 - [Field patterns, mapped to flow-next](#field-patterns-mapped-to-flow-next)
 - [A default pipeline, expressed as tiers](#a-default-pipeline-expressed-as-tiers)
 - [Setup ladder: from nothing to a standing policy](#setup-ladder-from-nothing-to-a-standing-policy)
@@ -101,7 +100,7 @@ An undetectable harness resolves to the generic page and says so. **Discovery be
 | What it is | Config keys, flags, env vars, per-spec/per-task fields. Machine-resolved, same answer every time | Policy described in natural language. The host *judges* per item - conditionally, mid-run, against context no parameter can see |
 | Example | `flowctl config set review.backend codex` | "Work the three ready specs - decide per spec, by complexity, whether implementation goes out to a codex bridge or stays on the session model" |
 | Reach | Exactly the surfaces that ship (below) | Anything the host can do - including capabilities that don't exist as parameters |
-| When it wins | Headless/Ralph runs, stable team defaults, reproducibility | Per-item complexity calls, conditional escalation, one-off arrangements, inventing a routing the registry doesn't have |
+| When it wins | Headless runs, stable team defaults, reproducibility | Per-item complexity calls, conditional escalation, one-off arrangements, inventing a routing the registry doesn't have |
 
 The two compose: parameters set the floor, prompting steers above it. And either can be made durable by writing it into `CLAUDE.md` / `AGENTS.md` - the host reads your instruction files every session, and flow-next skills inherit them automatically because the host is the one executing them.
 
@@ -110,7 +109,7 @@ The two compose: parameters set the floor, prompting steers above it. And either
 The table above is really two layers with a clean seam, and knowing which layer you are talking to answers most "will this override that?" questions:
 
 - **Session steering** - your prompts and per-task pins. Top of the precedence chain, ephemeral, done the moment the task is done. Naming a model for a tier in the moment - *"implement via that CLI and review with the other family"* - just works: the agent runs the bridge for the draft and pins the named reviewer, and **nothing persists afterward** - pins and defaults resume untouched. Your `CLAUDE.md` routing prose lives in this layer too: deterministic plumbing never reads prose, but the *agent* reads it every turn and feeds explicit values downward, so a `CLAUDE.md` pipeline dominates everything the agent orchestrates by occupying the higher-precedence rung - not by editing config.
-- **Machinery steering** - config resolved by deterministic plumbing that never reads prose: `review.backend` and the per-spec/per-task backend fields. This is what unattended runs (`flow --auto`, Ralph, land ticks) and unattended gates use when nobody is prompting. Standing changes for autonomous runs belong here, not in prose.
+- **Machinery steering** - config resolved by deterministic plumbing that never reads prose: `review.backend` and the per-spec/per-task backend fields. This is what unattended runs (`flow --auto`, land ticks) and unattended gates use when nobody is prompting. Standing changes for autonomous runs belong here, not in prose.
 
 For the models that execute stages, the chain is the one stated above: **routing precedence, highest first: an explicit argument in the invocation, then the project routing block in the instruction file, then the agent definition's own default, then the session model.** The review backend resolves separately, through its own configuration grammar - see [Review backends](#review-backends--cross-model-review) for that chain; the tiers above never touch it. One consequence worth spelling out: a prompt can steer only the session it is typed in - if you want a 3am `flow --auto` run to use a different reviewer, that is a config change (`flowctl config set review.backend ...`), because at 3am there is no prompt.
 
@@ -132,7 +131,7 @@ Bundled agents carry a model field grouped by task shape - the family alias in e
 
 Scouts pin `sonnet` rather than `inherit` so a session on a pricier model (planning on Fable, say) does not run every scout fan-out on that model too. The `sonnet` alias follows the current Sonnet release: Sonnet 5.5 scores close to Opus 5.5 on coding and knowledge-work benchmarks at lower cost and latency, so it replaced the interim Opus pin. The alias resolves to Sonnet 5.5 from Claude Code 2.1.284; an older Claude Code resolves it to Sonnet 5. A routing block's `fast scout` / `thinking scout` lines still move scouts to another model.
 
-The Codex mirror maps these groups to that host's own tiers at sync time (`scripts/sync-codex.sh` `map_model`); the sync-time environment overrides them. The worker keeps `inherit` on both platforms (your session model rules); an OPT-IN sync-time pin lets Codex-host work threads ride a cheaper tier. Details: [`platforms.md`](platforms.md).
+The Codex install maps these groups to that host's own tiers when its agent files are generated; the generation-time environment overrides them. The worker keeps `inherit` on both platforms (your session model rules); an OPT-IN sync-time pin lets Codex-host work threads ride a cheaper tier. Details: [`platforms.md`](platforms.md).
 
 **Cursor host:** canonical `agents/*.md` family aliases resolve to **inherit** (the session model) when running on a Cursor host. Caller-side model pins in the dispatch itself are the escape hatch for picking a specific model. There is no alias-to-slug rewrite mechanism and none is planned.
 
@@ -140,9 +139,9 @@ The Codex mirror maps these groups to that host's own tiers at sync time (`scrip
 
 ### Review backends: cross-model review
 
-> **Optional.** flow-next runs fully without this; `review.backend` is unset by default and reviews run in-host. It costs an out-of-host review pass per review round, a second CLI installed and authenticated, and a fix-and-re-review loop that can run up to `review.maxIterations` rounds; turn it on when agent-written diffs get merged without a human reading them line by line, or invoke it manually with `/flow-next:impl-review` on the changes that warrant it. Two cheaper standing settings exist: `none` switches the review gates off entirely (each review skill exits cleanly, and `flow --auto` skips its plan-review and completion-review gates), while `host` keeps every gate and runs the reviewer as a host-native fresh-context subagent with a cross-family `reviewer:` pin from [the routing block](#the-routing-block) - no second CLI. The trade is priced in [`running-lean.md`](running-lean.md#turning-the-dial-none-and-host).
+> **Optional.** flow-next runs fully without this; `review.backend` is unset by default and reviews run in-host. It costs an out-of-host review pass per review round, a second CLI installed and authenticated, and a fix pass plus one re-review per review (`review.maxIterations` caps the rounds as a safety net); turn it on when agent-written diffs get merged without a human reading them line by line, or invoke it manually with `/flow-next:impl-review` on the changes that warrant it. Two cheaper standing settings exist: `none` switches the review gates off entirely (each review skill exits cleanly, and `flow --auto` skips its plan-review and completion-review gates), while `host` keeps every gate and runs the reviewer as a host-native fresh-context subagent with a cross-family `reviewer:` pin from [the routing block](#the-routing-block) - no second CLI. The trade is priced in [`running-lean.md`](running-lean.md#turning-the-dial-none-and-host).
 
-The review subsystem is the most routable surface. Spec grammar `backend[:model[:effort]]`, registry `rp | codex | copilot | cursor | claude | host | none` (`host` is bare-only - no model/effort rungs). The four CLI review backends (`codex` / `copilot` / `cursor` / `claude`) are `BACKEND_REGISTRY` entries driving one shared `cmd_backend_review` pipeline (fn-112); genuine variance is hooks, not cloned commands.
+The review subsystem is the most routable surface. Spec grammar `backend[:model[:effort]]`, registry `rp | codex | copilot | cursor | claude | host | none` (`host` is bare-only - no model/effort rungs). The four CLI review backends (`codex` / `copilot` / `cursor` / `claude`) are `BACKEND_REGISTRY` entries driving one shared `cmd_backend_review` pipeline; genuine variance is hooks, not cloned commands.
 
 Managed hosts can supply a local execution provider for those four packaged
 backends. Set `FLOW_REVIEW_EXECUTION_URL` to a literal loopback HTTP endpoint and
@@ -202,28 +201,28 @@ flowctl config set review.backend codex                    # project default
 flowctl config set review.backend cursor:<model>          # cursor folds effort into the model name
 flowctl config set review.backend codex:<model>:xhigh     # explicit model + effort
 flowctl config set review.backend claude:<model>:high     # Claude Code CLI, headless and read-only (efforts low|medium|high|xhigh|max)
-flowctl config set review.maxIterations 6                 # review-round cap (env MAX_REVIEW_ITERATIONS wins; >= 1, human-only under Ralph)
+flowctl config set review.maxIterations 6                 # review-round cap (env MAX_REVIEW_ITERATIONS wins; >= 1)
 ```
 
 Precedence (highest wins): per-task `review:` / per-spec `default_review` → `FLOW_REVIEW_BACKEND` → `.flow/config.json` `review.backend` → backend-specific env → registry default. A single task can pin a different reviewer than the project default and the override routes end-to-end. The `cursor` backend reaches reviewer models from several families in one place, on your existing Cursor subscription - ask its CLI for the current list rather than copying identifiers from a document. Full grammar + registry: [`flowctl.md`](flowctl.md#review-backend).
 
 **When `claude` is the cross-family pick.** `review.backend claude` is the packaged Claude-family verdict from any host - Codex, Cursor, Grok Build, Droid, OpenCode, Claude Code itself - with the same ladder, receipt, round counter and fix loop as `codex` / `copilot` / `cursor`. Whether that verdict is independent depends on the **writer's model family, never on the host name**: cross-family when the session model that wrote the diff is another family (the common case on Codex and Grok Build), **same-family** when a Claude model wrote it (always on Claude Code; also on Cursor, Droid or OpenCode when the session model is a Claude model). A same-family review still runs (a fresh-process second opinion is a legitimate, receipted choice), the receipt records `mode: "claude"` plus the model, and the review skills say so once - but for an independent verdict prefer `codex`, or `host` with a cross-family `reviewer:` pin. The reviewer child has no shell and no write tool (`--tools Read Grep Glob`, `--strict-mcp-config`); the diff reaches it by path. Details: [`flowctl.md`](flowctl.md#claude).
 
-**The review prompt carries identities, not payloads (fn-169).** A reviewer runs
+**The review prompt carries identities, not payloads.** A reviewer runs
 in your checkout with a shell, so it is an executor like any other agent: flow-next
 hands it the rubric, a `<base-sha>..<head-sha>` range, `git diff --numstat --no-renames`
 as the exact scope map, and repo-relative spec/task paths - then the reviewer fetches
 what it needs at whatever depth each hunk warrants. It does **not** ship the diff
 body, the spec text, or the task specs. That is not a size optimisation with a
-quality cost; the payload was the quality cost. The diff body used to be capped at
-50 KB, so on a 495 KB change the reviewer received ~10% of the evidence its verdict
-rested on and fetched the rest anyway. `--numstat --no-renames` matters more than it
+quality cost; a payload is the quality cost. A capped diff body leaves the reviewer
+with a fraction of the evidence its verdict rests on on a large change, and it
+fetches the rest anyway. `--numstat --no-renames` matters more than it
 looks: plain `--stat` abbreviates paths (`.../pr-cognitive-aid/.write.lock`) and
 plain `--numstat` collapses renames into `{old => new}`, and a scope map you cannot
 resolve to paths is not a scope map.
 
 Two consequences are load-bearing rather than incidental. First, **a prompt-payload
-fitter or truncator is evidence the payload is wrong** - flow-next kept exactly one
+fitter or truncator is evidence the payload is wrong** - flow-next has exactly one
 size guard, `CURSOR_ARGV_TRANSPORT_MAX`, and it is named as *transport* because
 `cursor-agent` takes its prompt as a positional argv argument and Windows
 `CreateProcessW` has a hard limit. It refuses loudly; it never trims (`claude`
@@ -231,7 +230,7 @@ takes its prompt on stdin and needs no guard at all). Second, an
 evidence read that FAILS aborts before a review round is reserved, because with
 nothing embedded an empty scope map is not a degraded review, it is no review.
 
-**Prior findings ride the session, not the prompt (fn-169).** Re-reviews resume the
+**Prior findings ride the session, not the prompt.** Re-reviews resume the
 reviewer's own session, so it already holds the findings it made - the round sends
 the shrink-only contract and the reply grammar, and re-renders nothing. Injection is
 the fallback: if the resume fails, flow-next rebuilds the prompt *with* the findings
@@ -245,8 +244,10 @@ session by design, every re-review being a fresh subagent. Injecting when it was
 unnecessary costs bytes; not injecting after a silent resume failure costs a blind
 review, so injection is the default everywhere it is not provably unnecessary.
 
-**The first review round fans out three axis draws (fn-215).** On the `codex` and
-`host` backends, the first round of a review scope is three draws of the
+**The first review round fans out three axis draws when the diff warrants it.** On
+the `codex` and `host` backends, a large or cross-cutting diff, or one touching
+persisted or shared state, concurrency, security or data layout, gets three draws in
+its first round; a small diff in one area gets one reviewer. The three are draws of the
 same reviewer - same resolved backend/model, same base prompt, each differing by
 exactly one added axis line - dispatched concurrently where the host offers
 one-message parallel dispatch, back-to-back with the degradation disclosed in the
@@ -255,7 +256,7 @@ contracts-and-consistency (do docs, tests, and stated promises agree with what t
 code does), and integration-with-unchanged-code. The studies behind this measured
 single-pass review recall as stochastic sampling - roughly 45% of validated
 findings per draw, with a union of three axis-differentiated draws recovering
-1.56x single-draw recall (against a pre-registered 1.5x bar) at flat validity - so
+1.56x single-draw recall at flat validity - so
 one merged round harvests most of
 what previously trickled out across many serial rounds. The coordinator merges the
 draws (same-defect dedupe, evidence-bar drops with a count, ranked output with an
@@ -266,17 +267,24 @@ merged prior-finding container - the harvest value is the first round, and
 re-review verifies fixes, which needs continuity, not breadth. `rp` keeps its
 single stateful chat, and `copilot` / `cursor` / `claude` keep single dispatch every round.
 The residual is real: roughly a third of validated findings eluded every draw in
-the studies, so round 2 shrinks rather than disappears.
+the studies. By default there is exactly one re-review, in the same reviewer session
+and scoped to the fix commits: the author's `Declined #<n>: <reason>` commit lines let
+the reviewer withdraw a finding, and only a problem the fixes introduced can block.
+Unattended runs (`flow --auto`, any destination) and a request to review until SHIP loop
+further, bounded by the round cap and the stall check; the author may end that loop over
+declined findings below Major, recording each disagreement in the pull request. The trade-off:
+looping confirms every fix, which suits unattended runs and weaker implementing models, but
+costs rounds and invites hardening scope; one scoped re-review keeps an attended run short.
 
 **Rule of thumb: the model that writes is never the model that reviews.** Route the reviewer to a different family than your session model and blind spots stop being correlated.
 
-**Ambient-instruction contamination + persona override (fn-90, extended to codex by fn-187 / #331).** A reviewer subprocess can inherit instructions that were never meant for it, and each backend has its own channel:
+**Ambient-instruction contamination + persona override.** A reviewer subprocess can inherit instructions that were never meant for it, and each backend has its own channel:
 
 - **cursor** - `cursor-agent` has **no system-prompt mechanism**: the flow-next reviewer rubric travels as a plain user prompt *on top of* Cursor's own built-in persona (which carries its OWN review rubric and an end-to-end-thoroughness bias), and `cursor-agent` auto-attaches the workspace `AGENTS.md` / `CLAUDE.md`, skill catalogs, and MCP instruction blocks. That ambient guidance dilutes the in-scope anchor and biases the reviewer toward always-produce-findings - an amplifier of review-loop non-convergence, not the root cause. There is no cursor CLI knob to suppress the auto-attach.
-- **codex** - `codex exec` auto-loads the host repo's project doc (`AGENTS.md`); in a repo whose `AGENTS.md` routes all work through the flow-next skills, the reviewer adopts that role and re-dispatches the review at itself instead of performing it (#331 route A - suppressed at the argv level with `-c project_doc_max_bytes=0` on both the fresh and resume dispatch). With the flow-next codex plugin installed, the reviewer can also read the plugin's own coordinator skills ("never self-declares a verdict") and obediently withhold the verdict tag (#331 route B - no CLI knob exists).
+- **codex** - `codex exec` auto-loads the host repo's project doc (`AGENTS.md`); in a repo whose `AGENTS.md` routes all work through the flow-next skills, the reviewer adopts that role and re-dispatches the review at itself instead of performing it (route A - suppressed at the argv level with `-c project_doc_max_bytes=0` on both the fresh and resume dispatch). With the flow-next codex plugin installed, the reviewer can also read the plugin's own coordinator skills ("never self-declares a verdict") and obediently withhold the verdict tag (route B - no CLI knob exists).
 - **claude** - `claude -p` loads the repo's `CLAUDE.md` (and the user's own) into every run, the same channel as cursor's auto-attach; the child has no shell, so the route-A self-dispatch cannot happen, but the role adoption can.
 
-On all three backends flow-next prepends an explicit **persona-override preamble** on every review path: it declares that any ambient rubric/persona/instruction from the environment - built-in persona, auto-attached `AGENTS.md`/`CLAUDE.md`, skill catalogs, MCP blocks - is *superseded*, and the ONLY rubric + verdict contract is the flow-next one that follows. Repo-specific review invariants belong in `.flow/criteria.md` (standing G-IDs), which rides the review prompts themselves and reaches every reviewer regardless of backend - `AGENTS.md` is host-agent operating instructions, not a review-criteria channel, and a reviewer that inherits it returns no verdict at all rather than a stricter one (#331). Documented, not configurable; it rides automatically on `review.backend cursor:*`, `codex`, and `claude`. A review that still completes with no verdict is journaled as `missing_verdict` (not a transport failure class), and a streak of those terminates with instruction-contamination guidance instead of "repair the backend". The structured-findings ratchet and deterministic convergence terminals (unchanged-artifact refusal, early escalation when the reviewer explicitly marks the same finding `not-fixed` in two consecutive rounds, the round cap, and reviewer-emitted `NEEDS_HUMAN`) apply to every backend - see [`flowctl.md`](flowctl.md#codex-impl-review).
+On all three backends flow-next prepends an explicit **persona-override preamble** on every review path: it declares that any ambient rubric/persona/instruction from the environment - built-in persona, auto-attached `AGENTS.md`/`CLAUDE.md`, skill catalogs, MCP blocks - is *superseded*, and the ONLY rubric + verdict contract is the flow-next one that follows. Repo-specific review invariants belong in `.flow/criteria.md` (standing G-IDs), which rides the review prompts themselves and reaches every reviewer regardless of backend - `AGENTS.md` is host-agent operating instructions, not a review-criteria channel, and a reviewer that inherits it returns no verdict at all rather than a stricter one. Documented, not configurable; it rides automatically on `review.backend cursor:*`, `codex`, and `claude`. A review that still completes with no verdict is journaled as `missing_verdict` (not a transport failure class), and a streak of those terminates with instruction-contamination guidance instead of "repair the backend". The structured-findings ratchet and deterministic convergence terminals (unchanged-artifact refusal, early escalation when the reviewer explicitly marks the same finding `not-fixed` in two consecutive rounds, the round cap, and reviewer-emitted `NEEDS_HUMAN`) apply to every backend - see [`flowctl.md`](flowctl.md#codex-impl-review).
 
 #### Steering the fan-out: worked recipes
 
@@ -318,7 +326,7 @@ claude -p "<self-contained prompt>"     # the same bridge in reverse, from a Cod
 
 Two rules survive from the packaged path and are not optional:
 
-- **The bridged child writes code and may commit checkpoints on the branch the host names; the host keeps push, review, `flowctl done`, task state, and any history rewrite.** The child never pushes, never rebases or rewrites history, never decides scope, never issues a review verdict, and never spawns a bridge of its own. On return the host reviews the child's commit range from the base it recorded before dispatch, the same range the in-host worker path gets. Drop the never clauses and a bridge recipe becomes an unbounded second agent; forbidding the local commit bought nothing and forced host-inserted turns on long tasks (#431).
+- **The bridged child writes code and may commit checkpoints on the branch the host names; the host keeps push, review, `flowctl done`, task state, and any history rewrite.** The child never pushes, never rebases or rewrites history, never decides scope, never issues a review verdict, and never spawns a bridge of its own. On return the host reviews the child's commit range from the base it recorded before dispatch, the same range the in-host worker path gets. Drop the never clauses and a bridge recipe becomes an unbounded second agent; forbidding the local commit buys nothing and forces host-inserted turns on long tasks.
 - **Which tier to bridge to:** on well-specified work a value-tier implementer matches a strong-tier one on correctness at roughly two-thirds the wall clock, so send clear, well-scoped tasks to the value tier and escalate to the strong tier only for genuinely gnarly ones. Spec quality is what makes the trade safe - a vague brief burns the saving on rework.
 
 Full recipes (including the thin-wrapper pattern for unattended loops and the timebox-free brief for long bridged tasks): the usage guide's `## Orchestration & model steering` section - `flowctl usage`. Make it durable by writing the routing into your instruction file: [Durable routing](#durable-routing--a-model-table-in-claudemd).
@@ -356,7 +364,7 @@ review comes back NEEDS_WORK twice, stop bridging that task and implement it
 yourself on the session model.
 ```
 
-**Prompting a capability into existence** - no registry entry exists for a session-model reviewer; that didn't stop this repo's own loop from running fresh-context, session-model-reviewed rounds:
+**Prompting a capability into existence** - no registry entry exists for a session-model reviewer, yet one sentence runs fresh-context, session-model-reviewed rounds:
 
 ```text
 /flow-next:plan-review fn-12 — don't use the configured backend; spawn a
@@ -374,9 +382,9 @@ Direct execution through `/flow-next:work <id> --no-plan` is the default for a r
 |---|---|---|---|---|
 | **Flow, the attended conductor** | Whatever you gave it (nothing, a spec or task id, a branch, a path, a pasted report, a how or why question, a slowness, a cleanup, a design fork, free text) plus the `.flow/` state for it | The smallest sufficient route from the shared routing reference; runs it, re-evaluates after each hop, asks a stage's pick inline, stops at the next decision that ends the run. Offers landing for an existing PR with scoped consent, or continues through land under `--until=merge`. `--explain` prints the route and does nothing else | The route, its positive signal, the safe skip and its kind, why not the alternatives; one `stage:` line per stage reached | [`flow-next-flow/SKILL.md`](../skills/flow-next-flow/SKILL.md), [`references/route-matrix.md`](../skills/flow-next-flow/references/route-matrix.md) |
 | **Flow under `--auto`, the unattended driver** | One ready spec's state (the ready flag authorizes building, scoped landing authority is separate; tasks, plan-review status, done tasks, the recorded direct route and owner, explicit review requests, an open PR) | The same routing files (`route-matrix`, `plan-vs-no-plan`, `gate-selection`) classify `plan`, `plan-review`, `work`, `qa`, `make-pr`, or defer to land; an explicit merge destination continues through the land stage; hop after hop to a terminal, or one hop under `--tick` | `PILOT_VERDICT=<verdict> spec=<id> stage=<stage> reason="..."` as the last line, one evidence block and one `stage:` line per hop | [`flow-next-flow/auto.md`](../skills/flow-next-flow/auto.md) |
-| **Capture's next step** | The spec it just wrote: readiness, named open decisions, parked unknowns, design risk | `/flow-next:refine`, `/flow-next:plan-review`, `/flow-next:plan`, or `/flow-next:work <id> --no-plan`, derived from the same routing files flow reads | `Recommended next: /flow-next:<stage> <id> - <reason>` on every run | [`flow-next-capture/workflow.md`](../skills/flow-next-capture/workflow.md#phase-6-suggested-next-step-r16) |
-| **Work's Phase 3 route** | Whether the run was given a task id, `planSync.enabled`, the open task count, the dependency closure | Rolling frontier (default) or the wave loop; a zero-task spec forks to plan-first or work-directly | `Scheduling: rolling` or `Scheduling: wave (<reason>)` before the first claim | [`flow-next-work/phases.md`](../skills/flow-next-work/phases.md#phase-3-task-scheduling) and [`references/no-plan-route.md`](../skills/flow-next-work/references/no-plan-route.md) |
-| **The review triage gate** | The diff: lockfile-only, docs-only, release chore, generated files | Skip the review backend with a `triage_skip` receipt, or run the full review; `FLOW_TRIAGE_LLM=1` adds a judge for ambiguous diffs | `Triage-skip: <reason>` and a SHIP receipt with `mode: triage_skip` | [`flow-next-impl-review/SKILL.md`](../skills/flow-next-impl-review/SKILL.md#step-05-trivial-diff-triage), [`flowctl triage-skip`](flowctl.md#triage-skip) |
+| **Capture's next step** | The spec it just wrote: readiness, named open decisions, parked unknowns, design risk | `/flow-next:refine`, `/flow-next:plan-review`, `/flow-next:plan`, or `/flow-next:work <id> --no-plan`, derived from the same routing files flow reads | `Recommended next: /flow-next:<stage> <id> - <reason>` on every run | [`flow-next-capture/workflow.md`](../skills/flow-next-capture/workflow.md#phase-6-close) |
+| **Work's Phase 3 route** | Whether the run was given a task id, `planSync.enabled`, the open task count, the dependency closure | Rolling frontier (default) or the wave loop; a zero-task spec forks to plan-first or work-directly | `Scheduling: rolling` or `Scheduling: wave (<reason>)` before the first claim | [`flow-next-work/phases.md`](../skills/flow-next-work/phases.md#phase-3-implement) and [`references/no-plan-route.md`](../skills/flow-next-work/references/no-plan-route.md) |
+| **The review triage gate** | The diff: lockfile-only, docs-only, release chore, generated files | Skip the review backend with a `triage_skip` receipt, or run the full review; `FLOW_TRIAGE_LLM=1` adds a judge for ambiguous diffs | `Triage-skip: <reason>` and a SHIP receipt with `mode: triage_skip` | [`flow-next-impl-review/SKILL.md`](../skills/flow-next-impl-review/SKILL.md#2-codex-review), [`flowctl triage-skip`](flowctl.md#triage-skip) |
 | **`flowctl review-route`** | The review ledger: pending reservations, the last verdict, the artifact hash | First-round three-draw fan-out, fix-then-rereview, or stop (`NOT_RETRYABLE` on an unchanged artifact) | The route action in JSON, consumed by the review skills | [`flowctl.md`](flowctl.md) |
 
 Plan's next-steps menu derives its recommendation from the same files as capture's closer, so explanation, closer, and execution agree. Attended and unattended flow read the same routing references.
@@ -384,25 +392,6 @@ Plan's next-steps menu derives its recommendation from the same files as capture
 Two more gates sit beside these: [`flowctl gate classify`](flowctl.md#gate) tiers a diff so a docs-only change runs lint alone, and land's [single CI fix and patience window](../skills/flow-next-land/SKILL.md) decide when a PR merges. Every decider fails closed toward the more careful shape: a missing `Touches:` line holds a task out of the rolling frontier, a spec with unresolved questions routes to refine, an ambiguous diff gets the full review.
 
 **Overriding a decider** is one surface each: `--no-plan` or `flowctl spec set-no-plan` for the fork, a task id instead of a spec id for the wave route, `--no-triage` for the gate, `--review=<backend>` or `flowctl task set-backend` for the reviewer, and a sentence for anything else ("use 1 reviewer instead of 3").
-
-<a id="field-case-one-paragraph-twenty-specs"></a>
-
-## Field case: one paragraph, 38 PRs landed
-
-One unattended run building a Linux desktop app in a private repo landed **38 pull requests**, steered by a single paragraph of standing policy with nobody in the loop. Each item was planned or worked directly by judgment, reviewed by another model family, QA'd in the running app, CI-green, and merged with a receipt.
-
-The policy steered both routing axes. The host chose the pipeline shape per item and the model per job; the build driver (pilot ticks then; `flow --auto` now) advanced the work toward pull requests, and land handled CI and review convergence through merge.
-
-| Run outcome, as of 5 September 2026 | Result |
-|---|---|
-| Pull requests landed | 38 |
-| Steering | One paragraph of standing policy, nobody in the loop |
-| Pipeline shape | Planned or worked directly, chosen by judgment per item |
-| Review | Another model family reviewed each item |
-| Live QA | Each item exercised in the running app |
-| Merge evidence | CI green and a receipt for each merged pull request |
-
-The useful pattern is the malleable pipeline. One policy can send a fully understood change directly to work and give another change a planning pass, while assigning models and verification to suit the job. Rung 5 below shows how to write that kind of standing policy for your own repo.
 
 ## Field patterns, mapped to flow-next
 
@@ -417,11 +406,11 @@ The orchestration patterns that emerged in the wild through mid-2026 all have a 
 | **Token-hungry offload** | Computer use, live-app verification, bulk analysis go to other models/agents; results come back as evidence | `/flow-next:qa` drives the app in its own context and files P0/P1/P2 findings; workers run fresh-context and return receipts |
 | **Single path** | One request, one model, done | A tier pinned in the routing block (`implementer: <model> at <effort>`); absent, the session model |
 | **Cascade** | A cheap model tries first; a gate decides whether a stronger one takes over | The value tier implements, the review verdict is the gate, and the standing permission to escalate ("if a cheaper model misses the bar, rerun on a smarter one") moves the job up. The gate is a real review with a receipt, never a classifier |
-| **Critique** | A second model criticises and the first revises | Cross-family review on every backend, three axis draws on the first round of `codex` and `host`, one fresh reviewer per re-round, a bounded round cap, and `MAJOR_RETHINK` escalating to a human instead of looping |
+| **Critique** | A second model criticises and the first revises | Cross-family review on every backend, three axis draws on the first round of `codex` and `host` for a large or risky diff, one re-review in the same reviewer session scoped to the fixes (looping to SHIP only under `--until=merge` or on request) with a bounded round cap, and `MAJOR_RETHINK` escalating to a human instead of looping |
 
 ## A default pipeline, expressed as tiers
 
-The routing this repo runs, stated in [tier](#tiers--what-kind-of-model-a-job-wants) terms. It names no model identifiers on purpose: which model fills a tier is a property of your account and your harness, and only you can name it.
+A default routing, stated in [tier](#tiers--what-kind-of-model-a-job-wants) terms. It names no model identifiers on purpose: which model fills a tier is a property of your account and your harness, and only you can name it.
 
 | Stage | Tier | Why |
 |---|---|---|
@@ -458,7 +447,7 @@ Applies to **ad-hoc bridge reviews only** - a hand-rolled `codex exec` review wh
 - **P0-P3 severity tiers plus spec-grounded verdicts**, so an edge-case finding does not flip a ship gate. Reviewers reliably flag spec-gray edges as bugs (in the eval, behavior explicitly licensed by a plan amendment was reported as a defect by every reviewer) - severity tiers and "cite the spec line" are what keep those findings informative instead of gate-flipping.
 - Optionally **a minimal suggested fix and blast radius per finding** when no fix loop follows the review. Control runs showed this artifact is prompt-shaped: models produce it when the prompt demands it and omit it when not asked.
 
-The **packaged** `/flow-next:impl-review` prompt is deliberately NOT changed to this shape: its find-vs-fix split (the reviewer returns findings; the internal fix loop investigates and fixes, with validator and iteration caps) is by design, and its rubric already carries confidence anchors and introduced-vs-pre-existing classification. Deep-pass/validator merge math is autonomous-only (fn-113.4): under `FLOW_RALPH` / `REVIEW_RECEIPT_PATH` / `FLOW_AUTONOMOUS` flowctl mutates the receipt; interactive surfaces raw findings and the host judges.
+The **packaged** `/flow-next:impl-review` prompt is deliberately NOT changed to this shape: its find-vs-fix split (the reviewer returns findings; the internal fix loop investigates and fixes, with validator and iteration caps) is by design, and its rubric already carries confidence anchors and introduced-vs-pre-existing classification. Deep-pass/validator merge math is autonomous-only: under `FLOW_AUTONOMOUS` flowctl mutates the receipt; interactive surfaces raw findings and the host judges.
 
 ## Durable routing: the routing block in your instruction file
 
@@ -479,7 +468,7 @@ Flow can carry one selected spec through landing, using land's existing converge
 
 Destination and interaction mode are independent. Default unattended flow stops before merge; a plain attended rerun with an existing PR offers landing and asks once unless current scoped authority already exists. Declining or not answering causes no landing mutation. Consent remains active across retries and waits for this spec and PR; a fresh session needs the flag again or current explicit authority. The configured tracker touchpoint follows merge; release preparation is separate. See the [landing contract](../skills/flow-next-flow/references/tail.md).
 
-Flow invoking one land tick as its landing stage is the confined exception to driver nesting. Recursive flow, pilot, and Ralph dispatch remain prohibited; land never invokes a second driver. The route fixes the selected spec and PR, passes the PR and current authorization as ordinary arguments, and stops on an ambiguous or missing target or lost authority. A confirmed merge ends the run; a merged-PR land replay repeats only the tracker touchpoint.
+Flow invoking one land tick as its landing stage is the confined exception to driver nesting. Recursive flow dispatch remains prohibited; land never invokes a second driver. The route fixes the selected spec and PR, passes the PR and current authorization as ordinary arguments, and stops on an ambiguous or missing target or lost authority. A confirmed merge ends the run; a merged-PR land replay repeats only the tracker touchpoint.
 
 You can also compose the two standalone invocations under your own scoped policy. Both keep their existing verdict names. This default pre-merge recipe routes to land explicitly:
 
@@ -507,21 +496,19 @@ On a host without stable long sessions, run one hop per loop interval with `--ti
   Stop when flow prints NO_WORK, or on BLOCKED or NEEDS_HUMAN.
 ```
 
-The `/flow-next:pilot` command is removed: replace it with `/flow-next:flow --auto --tick` in driver prompts. The verdict grammar is unchanged.
+Driver prompts call `/flow-next:flow --auto --tick`; there is no separate pilot command. The verdict grammar is `PILOT_VERDICT=...`.
 
 ### Within one invocation vs across driver invocations
 
 A long-horizon `flow --auto` run advances the item hop after hop inside one invocation (route, run the routed stage, re-evaluate). By default it stops when a PR exists, the item is deferred to land, a question is parked, or a human is needed. With `--until=merge`, it can continue through land ticks and CI or review waits at the driver's cadence; external waits spend no pilot strikes or repair attempts. A tick performs at most one landing tick. Existing blockers and `NEEDS_HUMAN` still stop the run. Every hop ends with receipts, an evidence echo, and a ledger write, so a run cut mid-way resumes from disk on the next invocation; nothing is resumed from transcript. `--tick` runs exactly one hop and stops, and the loop interval becomes the seam between stages; the verdict line names every dispatched stage joined by `+` (`stage=work+qa+make-pr`) and carries the last hop's verdict, so existing verdict parsers keep working in both shapes. For landing, read the reason and evidence alongside the verdict name. They retain the original `LAND_VERDICT` and distinguish progress, waiting, blockage, a confirmed merge, and any tracker failure. `ADVANCED` alone is not proof that the merge destination is complete.
 
-`pipeline.chainStages` is deprecated because its one row (`qa → make-pr` in one tick) is what every hop boundary now does. For this release the key is honoured in tick mode and ignored with one stderr notice in long-horizon mode; it is removed together with the pilot alias in the next release. Config-table entry: [`flowctl.md`](flowctl.md#config).
-
 Land uses `land.patienceMinutes` after the last push only when flow authorizes the merge without a human's in-session merge authorization. The repository can tighten its review gate through instructions, branch protection, or `land.mergeVerdictCommand`; see the [landing upgrade](flowctl.md#landing-upgrade).
 
-**Dependent-spec chains.** A spec that depends on another spec no longer waits for the parent's PR to merge. A **chain** is flow-next's term for a dependent PR whose base is the parent spec's branch instead of the default branch; it exists on any code host because it is only a branch and a base ref. A **stack** is GitHub's server-side object over a chain (the stack map in the merge box, sequential merge, auto-retarget of the layers above); it is an enhancement, present only when the host is GitHub and the link call succeeded. A **layer** is one PR in either; the **frontier** is the bottom open layer, the only one that can merge next. When a parent spec's tasks are all done and its branch is on origin, the dependent spec becomes selectable (`flowctl spec chain`, the one predicate every consumer calls), `/flow-next:work` branches it from the parent's remote tip, and `/flow-next:make-pr` opens its PR against the parent's branch and, on GitHub, links it into the parent's stack. Chains are linear only: a spec with two open parents parks, and a second child of an already-chained parent parks until the first child's PR merges. Nothing is configured; the dependency graph is the only input, and a spec with no open parent behaves exactly as before. The model is human review: each layer carries its own clean diff, and a person merges from the bottom, from GitHub's stack UI or by letting land drive the chain. The one cost the serial model never paid: a parent reworked heavily after its child branched leaves the child needing a rebase (see the [manual single-layer recovery](troubleshooting.md)), or discarded if the parent dies. Chained layers with nothing open are created ready rather than draft, because a draft cannot be merged from the stack UI.
+**Dependent-spec chains.** A spec that depends on another spec does not wait for the parent's PR to merge. A **chain** is flow-next's term for a dependent PR whose base is the parent spec's branch instead of the default branch; it exists on any code host because it is only a branch and a base ref. A **stack** is GitHub's server-side object over a chain (the stack map in the merge box, sequential merge, auto-retarget of the layers above); it is an enhancement, present only when the host is GitHub and the link call succeeded. A **layer** is one PR in either; the **frontier** is the bottom open layer, the only one that can merge next. When a parent spec's tasks are all done and its branch is on origin, the dependent spec becomes selectable (`flowctl spec chain`, the one predicate every consumer calls), `/flow-next:work` branches it from the parent's remote tip, and `/flow-next:make-pr` opens its PR against the parent's branch and, on GitHub, links it into the parent's stack. Chains are linear only: a spec with two open parents parks, and a second child of an already-chained parent parks until the first child's PR merges. Nothing is configured; the dependency graph is the only input, and a spec with no open parent behaves exactly as before. The model is human review: each layer carries its own clean diff, and a person merges from the bottom, from GitHub's stack UI or by letting land drive the chain. The one cost the serial model never paid: a parent reworked heavily after its child branched leaves the child needing a rebase (see the [manual single-layer recovery](troubleshooting.md)), or discarded if the parent dies. Chained layers with nothing open are created ready rather than draft, because a draft cannot be merged from the stack UI.
 
 Land accepts one named PR and links its open children into a native stack before merging where supported. Only the lowest open layer merges, with a full head pin and `merge-async` on stacks. It deletes the merged branch only after no open PR targets it. Land never rebases or retargets children: where stacks are unavailable, a conflicted child needs the documented manual rebase. It retains no cascade record, patch-id evidence, pending merge UUID, or deletion list between runs. Reference: [merge one layer](../skills/flow-next-land/workflow.md#merge-one-layer).
 
-Loop internals: [`../skills/flow-next-flow/auto.md`](../skills/flow-next-flow/auto.md), [`../skills/flow-next-land/SKILL.md`](../skills/flow-next-land/SKILL.md), [`ralph.md`](ralph.md) for the deprecated hardened harness.
+Loop internals: [`../skills/flow-next-flow/auto.md`](../skills/flow-next-flow/auto.md), [`../skills/flow-next-land/SKILL.md`](../skills/flow-next-land/SKILL.md).
 
 ## Unattended chart driving (outside the build loop)
 
@@ -593,7 +580,7 @@ review comes back NEEDS_WORK twice, stop bridging it and implement it
 yourself.
 ```
 
-The host judges each item against the paragraph and prints the reason with each decision. The field case above shows both routing axes applied across 38 merged pull requests.
+The host judges each item against the paragraph and prints the reason with each decision.
 
 ## In your repo
 
@@ -616,5 +603,4 @@ Steering is broad but not unbounded - these hold no matter what the routing tabl
 - [`platforms.md`](platforms.md) - install matrix, Codex model mapping, cross-platform patterns.
 - [`flowctl.md`](flowctl.md) - `review.backend` grammar, `spec set-backend`.
 - [`running-lean.md`](running-lean.md) - which layers to run at all, what each costs, and the human-driven vs autonomous profiles.
-- [`ralph.md`](ralph.md) - autonomous-mode internals (deprecated).
 - [`teams.md`](teams.md) - the handover objects that make cross-model hand-offs safe.

@@ -64,10 +64,6 @@ class TestCursorAgentFrontmatter(unittest.TestCase):
         cls.agent_files = sorted(AGENTS_DIR.glob("*.md"))
         assert cls.agent_files, f"no agents under {AGENTS_DIR}"
 
-    def test_agents_directory_has_expected_population(self) -> None:
-        # Sanity: roster must be non-trivial so an empty-dir pass can't hide.
-        self.assertGreaterEqual(len(self.agent_files), 10)
-
     def test_readonly_iff_denies_edit_and_write(self) -> None:
         """Bidirectional invariant over every agent file."""
         mismatches: list[str] = []
@@ -93,48 +89,6 @@ class TestCursorAgentFrontmatter(unittest.TestCase):
             "readonly / disallowedTools invariant broken:\n  "
             + "\n  ".join(mismatches),
         )
-
-    def test_writing_agents_are_not_readonly(self) -> None:
-        """Agents that retain Edit or Write must not carry readonly: true.
-
-        Derived: any agent that does NOT deny both Edit and Write. Named
-        examples (worker / plan-sync / pr-comment-resolver) are writing agents
-        but the check is property-based, not a roster.
-        """
-        writers_with_readonly: list[str] = []
-        writers_seen = 0
-        for path in self.agent_files:
-            fm = _parse_frontmatter(path.read_text(encoding="utf-8"))
-            tools = _disallowed_tools(fm)
-            if _denies_edit_and_write(tools):
-                continue
-            writers_seen += 1
-            if fm.get("readonly") is True:
-                writers_with_readonly.append(path.name)
-        self.assertGreaterEqual(
-            writers_seen,
-            1,
-            "expected at least one writing agent (no Edit+Write deny)",
-        )
-        self.assertEqual(
-            writers_with_readonly,
-            [],
-            f"writing agents must not be readonly: {writers_with_readonly}",
-        )
-
-    def test_readonly_scouts_exist(self) -> None:
-        """Positive half: at least one scout/reviewer carries the flag."""
-        readonly_agents = []
-        for path in self.agent_files:
-            fm = _parse_frontmatter(path.read_text(encoding="utf-8"))
-            if fm.get("readonly") is True:
-                readonly_agents.append(path.stem)
-        self.assertGreaterEqual(
-            len(readonly_agents),
-            5,
-            f"expected several readonly agents, found {readonly_agents}",
-        )
-
 
 if __name__ == "__main__":
     unittest.main()

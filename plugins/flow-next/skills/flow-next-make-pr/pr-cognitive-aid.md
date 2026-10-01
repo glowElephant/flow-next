@@ -12,23 +12,25 @@ CURRENT_AID=$("$FLOWCTL" pr-cognitive-aid current "$SPEC_ID" --base-sha "$MERGE_
 Reuse `current` exactly; otherwise author a private 0600 `AID_INPUT` tempfile outside the repository.
 Replace skeleton identities, paths and evidence with export values; declare every R-ID, even uncovered:
 ```json
-{"schemaVersion":1,"artifactId":"aid-001","specId":"fn-136-cognitive-aid","specIds":["fn-136-cognitive-aid"],"baseSha":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","headSha":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","generatedAt":"2026-09-21T12:00:00Z",
- "sources":[{"id":"spec","kind":"spec","ref":"fn-136-cognitive-aid"},{"id":"task","kind":"task","ref":"fn-136-cognitive-aid.1"},{"id":"rid","kind":"rid","ref":"R6"},{"id":"row-rid","kind":"rid","ref":"R7"},{"id":"review","kind":"review_receipt","ref":".flow/receipts/review.json"},{"id":"qa","kind":"qa_receipt","ref":".flow/receipts/qa.json"},{"id":"diff","kind":"diff_metadata","ref":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa..bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},{"id":"commit","kind":"commit","ref":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}],
+{"schemaVersion":1,"artifactId":"aid-001","specId":"fn-7-rate-limit","specIds":["fn-7-rate-limit"],"baseSha":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","headSha":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","generatedAt":"2026-09-21T12:00:00Z",
+ "sources":[{"id":"spec","kind":"spec","ref":"fn-7-rate-limit"},{"id":"task","kind":"task","ref":"fn-7-rate-limit.1"},{"id":"rid","kind":"rid","ref":"R6"},{"id":"row-rid","kind":"rid","ref":"R7"},{"id":"review","kind":"review_receipt","ref":".flow/receipts/review.json"},{"id":"qa","kind":"qa_receipt","ref":".flow/receipts/qa.json"},{"id":"diff","kind":"diff_metadata","ref":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa..bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},{"id":"commit","kind":"commit","ref":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}],
  "changeWalkthrough":{"thesis":"Keep review grounded in the changed files.","userImpact":"Reviewers get a reading order.","blastRadius":"Read the validator first.","tradeoffs":"Keep provenance in the artifact.","openItems":"Live verification remains unverified.",
- "groups":[{"ordinal":1,"kind":"problem","title":"Review context","summary":"Check the intended review boundary.","sourceRefs":["spec"],"rIds":[],"taskIds":[],"files":[]},{"ordinal":2,"kind":"step","title":"Validate and render","summary":"Check validation before reviewing output.","sourceRefs":["spec","task","rid","row-rid","diff"],"rIds":["R6"],"taskIds":["fn-136-cognitive-aid.1"],"files":[{"path":"src/change_0.py","summary":"Validates the briefing.","attentionClass":"canonical","rIds":["R7"]}]}],
+ "groups":[{"ordinal":1,"kind":"problem","title":"Review context","summary":"Check the intended review boundary.","sourceRefs":["spec"],"rIds":[],"taskIds":[],"files":[]},{"ordinal":2,"kind":"step","title":"Validate and render","summary":"Check validation before reviewing output.","sourceRefs":["spec","task","rid","row-rid","diff"],"rIds":["R6"],"taskIds":["fn-7-rate-limit.1"],"files":[{"path":"src/change_0.py","summary":"Validates the briefing.","attentionClass":"canonical","rIds":["R7"]}]}],
  "proof":[{"label":"Review","value":"Passed at the bound head","sourceRefs":["review"],"outcome":"pass"},{"label":"Render time","value":"12 ms","sourceRefs":["task"]}]}}
 ```
 Use a unique portable `artifactId`; optional `supersedesArtifactId` names `latestArtifactId`.
 Export `tasks[].evidence.commits` are SHORT SHAs: expand with `git rev-parse` before citing full 40-hex commit refs.
 
 - When export has `specs`, set `specIds` to their IDs in export order; keep `specId` as host. Declare every
-  spec's requirements with qualified refs and `rIds` (`fn-250:R4`). At least one group per spec in review order
+  spec's requirements with qualified refs and `rIds` (`fn-8:R4`). At least one group per spec in review order
   (two allowed above ten must-read files), short ID in each title, using its task/evidence summary; no-spec commits get a group.
   Past the seven-step cap, merge the smallest specs into one group whose title names each short ID.
 - `changeWalkthrough.thesis`: intent and approach. Optional authored strings:
   `userImpact` describes user/operator changes; `blastRadius` names scope, reading order and what is unproven;
   `tradeoffs` records rejected alternatives; `openItems` records unfinished work.
 - Unevidenced work belongs in `openItems`; required PR findings belong there or in Tradeoffs.
+- Unattended runs put the run's Decisions list (defaults chosen, findings declined, reviews
+  skipped, each with its evidence; working-rules.md) in `tradeoffs`, so it reaches the PR body.
 - `proof[]` has at most 16 cells with `label` and `value` (each at most 160 characters), `sourceRefs`, and optional `outcome`.
   Use `pass` for a known green gate, `fail` for failure, `unverified` for inconclusive or never-run steps with the gap in `value`.
   A passed gate without a stored receipt cites the merge commit or pull request that carried it (a `review_receipt` ref can be its URL).
@@ -39,8 +41,8 @@ Export `tasks[].evidence.commits` are SHORT SHAs: expand with `git rev-parse` be
   metric and target, baseline to final with the percent change, attempt counts (kept, reverted, inconclusive), the kept commits in order,
   the harness proof, the final gate, and the best untried idea. A value the record lacks renders `unverified` with the gap; an unmet target is `unverified`, never `pass`.
 - QA receipts use `qa_outcome`, not the projected `verdict`: SHIP maps to pass,
-  NEEDS_WORK to fail, BLOCKED/NA to unverified with their reason. Open findings go in `openItems`, advisory only.
-  Verify head freshness against code, allowing only leading QA-receipt, lens and spec-close bookkeeping commits;
+  NEEDS_WORK to fail, BLOCKED/NA to unverified with their reason. Open findings go in `openItems` and make the PR a draft; QA never blocks it.
+  Verify head freshness against code, allowing only leading QA-receipt and spec-close bookkeeping commits;
   stale/malformed receipts cannot justify a pass.
 - At most 11 ordered `groups[]`: optional `problem`, optional `principle`, 1–7 `step`,
   optional `kept`, optional `verify`; author `ordinal`, `title`, `summary`, `sourceRefs`, `rIds`, `taskIds`.

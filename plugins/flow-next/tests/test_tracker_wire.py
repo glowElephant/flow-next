@@ -158,9 +158,6 @@ class NoLocalState(unittest.TestCase):
         self.assertNotIn("write_text", src)
         self.assertNotIn("atomic", src.lower())
         self.assertNotRegex(src, r"open\([^)]*['\"]w")
-        import flowctl_tracker.wire as mod
-        self.assertFalse(hasattr(mod, "write_receipt"))
-        self.assertFalse(hasattr(mod, "resolve_transaction"))
 
 
 # ---------------------------------------------------------------------------

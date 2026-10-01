@@ -11,11 +11,9 @@ while legacy receipts and unparseable responses remain valid.
 This is a receipt contract, not an internal API. Consumers read stored receipts;
 they do not call parser helpers or write resolution state back into Flow-Next.
 
-The maximum-item local parser/validation benchmark uses the same strict
-`<100 ms p95` ceiling over 30 warm runs. A representative parallel-suite run
-observed 90.57 ms; that cost is operationally negligible within the end-to-end
-workflow and supersedes the original 50 ms target. The benchmark permits no
-model or network I/O.
+Parsing and validating a maximum-size findings object stays under a
+`<100 ms p95` ceiling over 30 warm runs, with no model or network I/O; the cost
+is negligible within the end-to-end workflow.
 
 ## Contents
 
@@ -140,8 +138,10 @@ silently resolving it.
 
 ### Merged fan-out rounds
 
-On the codex and host backends the first review round of a scope fans out three
-axis draws that the coordinator merges into one finding set (fn-215). The
+On the codex and host backends the first review round of a large or cross-cutting
+diff, or one touching persisted or shared state, concurrency, security or data
+layout, fans out three axis draws that the coordinator merges into one finding set
+(a small diff in one area gets one reviewer). The
 finalized round records ONE valid v1 container over the union of the draws'
 surviving findings, with ordinals re-assigned 1..N across that union - draw-local
 ordinals do not survive the merge, and the container is indistinguishable in
@@ -154,6 +154,13 @@ receipt's `draws[]` array, never as a field on finding items: the v1 item
 allowlist is closed, and an axis field would make the container invalid.
 
 ### The prior-finding reply grammar
+
+A `NEEDS_WORK` review gets one fix pass and one re-review by default, in the same
+reviewer session and scoped to the fix commits. The author's commit carries a
+`Declined #<n>: <reason>` line for each finding left as a follow-up; the reviewer
+may accept the reason and answer `withdrawn`, and only a problem the fixes
+introduced can block. Unattended runs (`flow --auto`, any destination) and a request
+to review until SHIP loop further, with flowctl's round cap and stall check as the backstop.
 
 The ratchet prompt states one machine-read line per prior finding, at the start
 of a line, echoing the ordinal the finding was rendered with:
@@ -194,12 +201,13 @@ instead.
 `not_fixed` reverts to `open` before the round's own records apply, so a
 `not-fixed` stated once and then not restated cannot look like a repeat.
 `fixed` and `withdrawn` are preserved - they are resolved terminals. This is what
-makes the surviving stall rule (`same-not-fixed-lineage`) a statement about two
-consecutive rounds rather than an echo of one.
+makes the surviving stall rule (`same-not-fixed-lineage`), which matters only when
+a run loops until SHIP, a statement about two consecutive rounds rather than an
+echo of one.
 
 Prose resolutions are invisible to the parser: a reviewer that answers the
-ratchet in prose only leaves every prior carried forward, and the loop is then
-bounded by the round cap alone.
+ratchet in prose only leaves every prior carried forward, and a looping run is
+then bounded by the round cap alone.
 
 Repeated writes preserve the former latest receipt in the latest pointer's
 sibling history directory:
@@ -295,14 +303,12 @@ Limits are rejection boundaries, not truncation targets. Oversize input,
 overflowing output, duplicates, unsafe paths, invalid lineage, unknown enums,
 or unsupported schema versions produce no usable structured container.
 
-**Nothing shortens a prompt to fit a transport (fn-169).** Earlier releases sized
-the rendered prior-finding block to `cursor-agent`'s argv cap and stopped emitting
-items once the budget ran out. A reviewer shown a SUBSET of its own prior findings
-can truthfully answer `Prior findings: all fixed` for everything it saw, and
-sweeping the untruncated container then marked omitted, unverified findings
-`fixed` - a false SHIP. The interim guard that withheld the aggregate sweep on
-truncating backends is gone with the truncation itself: every backend now renders
-every prior item, so the aggregate is sound by construction on all of them. The
+**Nothing shortens a prompt to fit a transport.** Every backend renders every
+prior item. A reviewer shown only a SUBSET of its own prior findings could
+truthfully answer `Prior findings: all fixed` for everything it saw, and sweeping
+the full container would then mark omitted, unverified findings `fixed` - a false
+SHIP. Rendering every item keeps the aggregate sound by construction on every
+backend. The
 bounds above remain *rejection* boundaries, which is a different thing entirely.
 
 A resumed re-review carries no rendered items at all - the reviewer holds them in
@@ -428,5 +434,5 @@ Consumers should therefore:
 - [`architecture.md`](architecture.md) - receipt and history locations.
 - [`memory-schema.md`](memory-schema.md) - durable learning lifecycle.
 - [`spec-template.md`](spec-template.md) - confidence and classification rules.
-- [`../../../GLOSSARY.md`](https://github.com/gmickel/flow-next/blob/main/GLOSSARY.md) - canonical Receipt and
+- [Glossary](https://flow-next.dev/reference/glossary/) - canonical Receipt and
   Structured finding terms.

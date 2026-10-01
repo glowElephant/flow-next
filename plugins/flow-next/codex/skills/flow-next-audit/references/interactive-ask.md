@@ -1,7 +1,7 @@
 # Phase 3: Ask (gated reference — interactive mode only)
 
 > **Loaded only when `MODE` is `interactive`.** An autofix run (`mode:autofix`,
-> and therefore every `flow --auto` / Ralph invocation) skips Phase 3 entirely and never
+> and therefore every `flow --auto` invocation) skips Phase 3 entirely and never
 > reads this file: it asks nothing, marks genuinely ambiguous classifications
 > stale, and reports Harden candidates and un-graduation proposals under
 > Recommended without applying them. The autofix rules themselves stay inline in
@@ -31,7 +31,6 @@ Use `plain-text numbered prompt`.
 
 Rules:
 
-- **One question at a time.**
 - **Multiple choice** when natural.
 - **Lead with the recommendation** — don't enumerate all 6 outcomes if only 2 are plausible.
 - **One-sentence rationale** — evidence is in the report, not the question.
@@ -60,7 +59,7 @@ One question per candidate, via the same plain-text numbered prompt. Show the pr
 Entry: knowledge/conventions/timestamps-utc-2026-03-04
 Lesson: always stamp timestamps UTC ISO-8601; naive datetime.now() broke receipt comparisons
 Evidence:
-  - 2 `## Update` headings (re-taught in fn-97 and fn-104)
+  - 2 `## Update` headings (re-taught in fn-12 and fn-19)
   - 4 commits on the entry file
   - mechanizable: naive-datetime use is lint-detectable
   - duplication guard: no `DTZ` rule found in pyproject.toml

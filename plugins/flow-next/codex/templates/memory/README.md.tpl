@@ -30,7 +30,6 @@ Each entry is a markdown file with YAML frontmatter. Filename convention:
 ## Tracks
 
 - **bug** — post-mortem entries. Problem / What Didn't Work / Solution / Prevention.
-  Auto-captured by Ralph on NEEDS_WORK verdicts.
 - **knowledge** — human-curated guidance. Context / Guidance / When to Apply / Examples.
 
 ## Frontmatter

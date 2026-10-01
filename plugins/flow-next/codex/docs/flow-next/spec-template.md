@@ -41,7 +41,7 @@ When a skill needs the spec template, it walks three locations in order (first m
 2. `<repo_root>/spec.md` - lowercase honored when uppercase absent
 3. `${PLUGIN_ROOT}/templates/spec.md` - bundled (canonical source of truth)
 
-Since fn-220 flowctl itself applies this cascade for `spec create` and `spec skeleton`, so a repo `SPEC.md` shapes CLI-created specs as well as skill-authored ones.
+flowctl itself applies this cascade for `spec create` and `spec skeleton`, so a repo `SPEC.md` shapes CLI-created specs as well as skill-authored ones.
 
 Case-insensitive FS handling (macOS APFS, Windows NTFS) and the bash walker that implements it live in [`../references/spec-template-discovery.md`](../../references/spec-template-discovery.md).
 
@@ -60,7 +60,7 @@ git add SPEC.md && git commit -m "docs: project spec scaffold"
 
 Commit it. The scaffold is a team artifact - an uncommitted `SPEC.md` gives you a spec shape your teammates and your CI agents do not have.
 
-Frontmatter and the `<!-- scope: ... -->` markers are authoring guidance, not spec content; keep them if you want the interview passes to keep routing correctly, and know that they may be stripped from the finished spec body.
+Frontmatter is authoring guidance, not spec content, and may be stripped from the finished spec body. `<!-- scope: ... -->` comments copied from an older template are ignored.
 
 ### What is safe to change
 
@@ -80,7 +80,7 @@ Frontmatter and the `<!-- scope: ... -->` markers are authoring guidance, not sp
   - **R1:** Given a signed-in user with an expired session, when they submit the form, then the draft is preserved and they are returned to it after re-auth.
   ```
 
-  Every spec the project authors from then on arrives with that instruction, and every interview/capture pass writes criteria in that shape. The only load-bearing parts are the heading name and the `**R<n>:**` bullet marker - the criterion *text* is yours (the parser reads wrapped multi-line bullets, and anything it cannot read is surfaced as `acceptance_criteria_residue` rather than silently dropped). The same move works for any house convention.
+  Every spec the project authors from then on arrives with that instruction, and every refine/capture pass writes criteria in that shape. The only load-bearing parts are the heading name and the `**R<n>:**` bullet marker - the criterion *text* is yours (the parser reads wrapped multi-line bullets, and anything it cannot read is surfaced as `acceptance_criteria_residue` rather than silently dropped). The same move works for any house convention.
 
   More house styles, same mechanism - each is one instruction comment (or one rewritten guidance line) in your copied `SPEC.md`, and every spec the project authors from then on obeys it:
 
@@ -105,7 +105,7 @@ Position follows the template as well. An auxiliary section you place as a headi
 
 To stop a section from landing in your specs, delete its entry from that list in your `SPEC.md`. Two entries are worth knowing about:
 
-- **`Conversation Evidence`** is the block of verbatim user quotes capture puts at the top of a spec. No tool reads it. Capture still collects the quotes during the run and still checks every `[user]` tag against them before it writes. Dropping the entry costs one thing. A reviewer who later doubts a `[user]` tag can no longer look the quote up in the spec.
+- **`Conversation Evidence`** is the block of verbatim user quotes capture puts at the top of a spec. No tool reads it. Capture still collects the quotes during the run and still checks every untagged criterion against them before it writes. Dropping the entry costs one thing. A reviewer who later doubts an untagged criterion can no longer look the quote up in the spec.
 - **`Requirement coverage`** is the placeholder table capture adds on a planned route. `/flow-next:plan` writes its own coverage table, so dropping the entry only means the table arrives with the plan.
 
 A `SPEC.md` written from scratch, with no `auxiliary_sections` list, gets no auxiliary sections from capture. A `SPEC.md` copied from the bundled file keeps the list and behaves as before.
@@ -235,17 +235,17 @@ The rules mirror R-IDs where they apply:
 
 ### Source tags: what you said vs what the agent inferred
 
-`/flow-next:capture` **and** `/flow-next:refine` tag every acceptance criterion they write at source: `[user]` (the words of the human answering in that session), `[paraphrase]` (that meaning, tightened), `[inferred]` (the agent's own inference), plus `[strategy:<track>]` when a criterion traces to a STRATEGY.md track. The tag is a trailing token on the bullet:
+`/flow-next:capture` **and** `/flow-next:refine` mark the provenance of every acceptance criterion they write: `[paraphrase]` (the user's meaning, tightened), `[inferred]` (the agent's own inference), and `[strategy:<track>]` when a criterion traces to a STRATEGY.md track. For the user's own words, capture writes no tag (it checks each untagged criterion against the quotes it collected); refine tags them `[user]` (the human answering in that session). The tag is a trailing token on the bullet:
 
 ```markdown
-- **R1:** Root marketplace manifest exists and imports cleanly. [user]
+- **R1:** Root marketplace manifest exists and imports cleanly.
 - **R3:** Host detection switches to a positive signal. [inferred]
 ```
 
 Three rules matter when reading a tagged spec:
 
 - **A session tags only the criteria it authors**, and never retags an existing bullet - provenance is frozen exactly like the R-ID number. So on a spec a product owner refined and then a tech lead refined, each criterion's tag reflects the session that wrote it.
-- **Untagged means unknown provenance, never `[user]`.** Criteria written before this shipped, or by hand, carry no tag. Defaulting them to "a human said this" is wrong in the dangerous direction.
+- **Untagged is never an agent guess you cannot see.** In a captured criterion it means the user's own words; in one written by hand or before tags shipped it means unknown provenance. Either way, only a tagged line tells you the agent authored it, and `[inferred]` is the one to scrutinize.
 - **The tags distinguish source evidence from assumptions**: capture exposes the tally in its saved-spec summary and editor follow-up. Refine retains pre-write ratification and refuses to recommend `approve and write` for `[inferred]` criteria no question covered, since an answered question has already done the verifying. Both use [`read-back.md`](read-back.md); saving a capture never upgrades its source tags.
 
 They are also the cheapest review filter available, because reading them is a grep rather than a model judgment. Tally which criteria are grounded and which are guesswork:
@@ -256,11 +256,12 @@ flowctl cat fn-14 \
   | sed -E 's/^\*\*(R[0-9]+[a-z]?):.*\[([^]]+)\]$/\2\t\1/' \
   | sort | awk -F'\t' '{c[$1]=c[$1]" "$2; n[$1]++} END {for (t in c) printf "%-26s %2d %s\n", t, n[t], c[t]}'
 
-user                        6  R1 R13 R5 R6 R7 R8
 paraphrase                  3  R10 R12 R2
 inferred                    4  R11 R3 R4 R9
 strategy:Cross-platform parity  1  R14
 ```
+
+Untagged criteria do not appear; on a captured spec they are the user's own words.
 
 Two details in that pipeline are load-bearing, and both exist because a track name is **not** a lowercase slug - it keeps its literal casing and may contain spaces or hyphens (`[strategy:Cross-platform parity]`):
 
@@ -271,12 +272,12 @@ Then refine only the uncertainty instead of re-litigating settled requirements:
 
 ```text
 /flow-next:refine fn-14 - focus only on the [inferred] acceptance criteria
-(R3, R4, R9, R11); the [user] and [paraphrase] ones are settled, leave them alone
+(R3, R4, R9, R11); the rest are settled, leave them alone
 ```
 
 Append-only R-ID numbering is what makes that targeting safe - a later session cannot renumber or rewrite the criteria you already blessed, and it will not retag them either.
 
-Scope: tags apply to a spec's `## Acceptance Criteria` bullets. Task acceptance is plain `- [ ]` checklist items and carries no tags, and an interview over a loose markdown file leaves that file's structure alone - tags start when `/flow-next:plan` promotes it to a spec.
+Scope: tags apply to a spec's `## Acceptance Criteria` bullets. Task acceptance is plain `- [ ]` checklist items and carries no tags, and refining a loose markdown file leaves that file's structure alone - tags start when `/flow-next:plan` promotes it to a spec.
 
 Note: `flowctl spec export-cognitive-aid --json` does not surface parsed criteria with their tags as a top-level array today (the parse feeds the PR-body coverage table internally), so the grep above is the supported route.
 
@@ -301,7 +302,7 @@ Each finding is classified:
 - `introduced: true` - caused by this branch's diff.
 - `pre_existing: true` - broken on the base branch.
 
-Verdict gate considers only `introduced` findings. Pre-existing issues surface in a separate non-blocking "Pre-existing issues" section. Receipt carries `introduced_count` + `pre_existing_count` so Ralph stops fighting bugs it didn't introduce.
+Verdict gate considers only `introduced` findings. Pre-existing issues surface in a separate non-blocking "Pre-existing issues" section. Receipt carries `introduced_count` + `pre_existing_count` so an unattended loop stops fighting bugs it didn't introduce.
 
 ## Protected artifacts
 
@@ -311,7 +312,6 @@ Review prompts carry a hardcoded never-flag list - findings recommending deletio
 - `.flow/bin/*` (legacy flowctl copies - reviewers never advise deleting a user's committed files; removal is the user's own call at the setup / plan touchpoints)
 - `.flow/memory/*` (learnings store)
 - `docs/plans/*`, `docs/solutions/*` (when the project uses them)
-- `scripts/ralph/*` (Ralph harness)
 
 Prevents cross-model reviewers unfamiliar with flow-next conventions from proposing destructive cleanups.
 
@@ -326,7 +326,7 @@ flowctl triage-skip --base main
 # source=deterministic
 ```
 
-An optional LLM layer for ambiguous diffs is gated behind `FLOW_TRIAGE_LLM=1`. On by default in Ralph mode; opt-out via `--no-triage` or `FLOW_RALPH_NO_TRIAGE=1`.
+An optional LLM layer for ambiguous diffs is gated behind `FLOW_TRIAGE_LLM=1`; opt-out via `--no-triage`.
 
 ## Receipt schema (additive only)
 
@@ -346,6 +346,6 @@ All review receipts may carry these optional fields; existing consumers that rea
 ## See also
 
 - [`../templates/spec.md`](../../templates/spec.md) - the canonical scaffold (section list and per-section guidance).
-- [`../../../GLOSSARY.md`](https://github.com/gmickel/flow-next/blob/main/GLOSSARY.md) - definitions for *Spec*, *Task*, *R-ID*, *Frozen-at-handover*.
+- [Glossary](https://flow-next.dev/reference/glossary/) - definitions for *Spec*, *Task*, *R-ID*, *Frozen-at-handover*.
 - [`../skills/flow-next-refine/SKILL.md`](../../skills/flow-next-refine/SKILL.md) - 3-tier discovery cascade walker.
 - [`flowctl.md`](flowctl.md) - `flowctl spec create / set-plan / export-cognitive-aid` reference.

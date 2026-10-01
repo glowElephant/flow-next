@@ -2,8 +2,8 @@
 
 > Loaded ONLY when a `flowctl sync active` gate fires (bridge active, or the probe errored). With no
 > tracker configured, capture behaves exactly as it always has: `spec create` mints `fn-N` locally,
-> no lifecycle push happens, and Phase 6's mandatory `Tracker sync:` slot reads
-> `n/a (bridge inactive)` — the sync check itself stays inline in workflow.md and always runs.
+> no lifecycle push happens, and Phase 6 prints no `Tracker sync:` line — the sync check itself
+> stays inline in workflow.md and always runs.
 
 Contents:
 
@@ -15,7 +15,7 @@ Contents:
 
 ## 5.2 — Tracker-first mint
 
-**Tracker-first is the recommended team default** when a tracker is configured (`tracker.specIds=tracker`): the tracker is the distributed allocator, so parallel captures stop colliding on `fn-N`. Route from the preamble root config snapshot — **no new `config get`**. Explicit user override in the invocation always wins. Do **not** nag about the id scheme at this mint site (withdrawn R10).
+**Tracker-first is the recommended team default** when a tracker is configured (`tracker.specIds=tracker`): the tracker is the distributed allocator, so parallel captures stop colliding on `fn-N`. Route from the preamble root config snapshot — **no new `config get`**. Explicit user override in the invocation always wins. Do **not** nag about the id scheme at this mint site.
 
 ```bash
 FLOWCTL="${CODEX_HOME:-$HOME/.codex}/scripts/flowctl"
@@ -51,7 +51,7 @@ The flow-first `spec create` in workflow.md §5.2 is the **silent degrade** post
 
 ## 5.7 — Tracker sync (opt-in) — spec push/pull + merge
 
-**Optional. Runs only when the tracker bridge is active AND `capture` is opted in. With no tracker configured this is a no-op — capture behaves exactly as today.** After the spec is on disk, project the captured/enriched body to the linked (or freshly linked) tracker issue and reconcile two-way (R6): a flow-first capture pushes the body out; a tracker-first spec (one already linked) reconciles the new capture content against the issue via the agentic 3-way merge.
+**Optional. Runs only when the tracker bridge is active AND `capture` is opted in. With no tracker configured this is a no-op — capture behaves exactly as today.** After the spec is on disk, project the captured/enriched body to the linked (or freshly linked) tracker issue and reconcile two-way: a flow-first capture pushes the body out; a tracker-first spec (one already linked) reconciles the new capture content against the issue via the agentic 3-way merge.
 
 ```bash
 LEAF="$("$FLOWCTL" config get tracker.perEvent.capture --json | jq -r '.value')"
@@ -73,7 +73,7 @@ if [ "$("$FLOWCTL" sync active --json | jq -r '.active')" = "true" ] \
   # --body-file FIRST line is `evidence=<sha256-of-current-spec-file>`; delete
   # the file after the call. No content travels in argv.
   # No reachable transport is best-effort; genuine body conflicts surface scoped
-  # (interactive) or queue (Ralph, though capture itself is Ralph-blocked).
+  # (interactive) or queue (autofix).
   :
 fi
 ```
@@ -90,4 +90,4 @@ Best-effort — a tracker failure never blocks the capture. The skill emits its 
 2. Invoke the **inline flow-next-tracker-sync wrapper directly**. Re-resolve the operation with 5.7's complete `off | pull | push | reconcile | comment` mapping. For `comment`, Capture re-synthesizes the created/updated-spec summary plus captured context in a mode `0600` body file. The wrapper prepares the other legal operation inputs, makes exactly one `flowctl tracker sync <spec-id> --op <op> --event capture <legal file flags>` call, and deletes the temporary files. **The Phase 6 `sync check` block is an audit, never the wrapper.** A retro-fire that re-runs the check block in place of the `flowctl tracker sync` call has broken this — it re-reads the same MISSING state and writes nothing.
 3. Re-check with `--since` = the step-1 anchor:
    `"$FLOWCTL" sync check "$SPEC_ID" --events capture --since "<retro-fire-start>" --json`
-4. Record the final state in the footer slot. Still MISSING after the one cycle is a recorded, visible outcome — never a second retro-fire, never a block (the spec is already on disk; a tracker hiccup must not become a hard stop). Recovery guidance lives in the receipt note + `docs/tracker-sync.md`.
+4. Record the final state on the `Tracker sync:` line. Still MISSING after the one cycle is a recorded, visible outcome — never a second retro-fire, never a block (the spec is already on disk; a tracker hiccup must not become a hard stop). Recovery guidance lives in the receipt note + `docs/tracker-sync.md`.

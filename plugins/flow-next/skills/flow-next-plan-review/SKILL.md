@@ -30,6 +30,8 @@ Conduct a John Carmack-level review of spec plans.
 - When `RP_ELIGIBLE=0`: Codex CLI, GitHub Copilot CLI, Cursor CLI, Claude Code CLI, or
   host-native — rp remains accepted explicitly but errors at runtime
 
+Read [working-rules.md](../../references/working-rules.md) first; it holds for every step of this skill.
+
 ## Preamble — execute common routing exactly once
 
 Read and execute [workflow.md](workflow.md) Phase 0 once. It defines `$FLOWCTL`,
@@ -60,8 +62,8 @@ mode, never a configured backend.
 - The coordinator never self-declares a verdict.
 - Stick to one backend for the full review/fix cycle.
 - If `REVIEW_RECEIPT_PATH` is set, every review verdict writes a receipt.
-- Any backend/transport failure outputs `<promise>RETRY</promise>` and stops;
-  never silently fall back to a different backend. Autonomous/Ralph callers
+- Any backend/transport failure outputs `RETRY: no verdict (backend or transport failure)` and stops;
+  never silently fall back to a different backend. Autonomous callers
   receive the same retry terminal and decide whether to re-enter. A no-verdict
   dispatch is refunded and recorded by flowctl; never manually reset the review
   counter for a transport failure. Exit 5 / `TRANSPORT_UNHEALTHY` means stop
@@ -90,20 +92,18 @@ Format: `<flow-spec-id> [focus areas] [--review=<mode>]`
    Fix Loop below.
 5. Continue in that loop until its terminal contract is satisfied.
 
-## Fix Loop (INTERNAL - do not exit to Ralph)
+## Fix Loop (INTERNAL)
 
-**The fix loop never pauses for user confirmation.** Every valid finding is
-fixed and re-reviewed automatically. A loop that stops to ask, or that exits
-with a valid finding unfixed, has broken this. Never use AskUserQuestion in this
-loop.
+**The fix loop never pauses for user confirmation**; never use AskUserQuestion in it. Which findings it fixes, and which it lists as follow-ups, follows the Review section of [working-rules.md](../../references/working-rules.md).
 
 `MAJOR_RETHINK` is not a fix-loop input. Surface the reviewer's rationale and
-stop with `BLOCKED: DESIGN_CONFLICT` (Ralph: `<promise>RETRY</promise>`). Only
+stop with `BLOCKED: DESIGN_CONFLICT`. Only
 `NEEDS_WORK` enters the loop.
 
-Fix+re-review cycles are bounded at `${MAX_REVIEW_ITERATIONS:-8}`. The counter
-is flowctl-owned; never keep an agent-side counter. On cap exhaustion, surface
-surviving findings and stop (Ralph: `<promise>RETRY</promise>`).
+Attended: one fix pass, then one re-review, whose verdict is terminal. When working-rules.md's
+review loop applies (an unattended run, or a request to review until SHIP), repeat the steps
+below until SHIP or an `ESCALATE:`. The flowctl cap below stays as the backstop; never keep an
+agent-side counter.
 
 **The cap is enforced deterministically by flowctl:** every dispatch reserves a
 spec-scoped round before launch. SHIP / NEEDS_WORK / MAJOR_RETHINK / NEEDS_HUMAN consume it;
@@ -139,11 +139,14 @@ When the verdict is `NEEDS_WORK`:
 4. Re-enter the SAME selected backend file's re-review step. Never load or mix
    another backend. Codex/Copilot/Cursor/Claude resume only through a same-mode receipt;
    host uses a fresh read-only subagent; rp stays in the same chat.
-5. Repeat until `SHIP`, `MAJOR_RETHINK`, backend failure, or deterministic cap.
+5. Attended, stop after that one re-review: `SHIP` completes; `NEEDS_WORK` surfaces the
+   surviving findings to the caller, never a second fix pass. In the review loop, repeat
+   from step 1 as above.
 
-**Done when:** the round ends in one of exactly four states — a `SHIP` from the
-backend, a `MAJOR_RETHINK` escalated as `BLOCKED: DESIGN_CONFLICT`, a
-`<promise>RETRY</promise>` from a backend/transport failure, or flowctl's
+**Done when:** the review ends in one of exactly five states — a `SHIP` from the
+backend, a re-review `NEEDS_WORK` with its surviving findings surfaced, a
+`MAJOR_RETHINK` escalated as `BLOCKED: DESIGN_CONFLICT`, a
+`RETRY: no verdict (backend or transport failure)` from a backend/transport failure, or flowctl's
 `ESCALATE:` cap refusal with the surviving findings surfaced. A round that ends
 with a `NEEDS_WORK` neither fixed in the current spec nor re-entered into the
 same backend has broken this.

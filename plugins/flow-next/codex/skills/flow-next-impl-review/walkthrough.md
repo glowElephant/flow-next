@@ -5,12 +5,8 @@ each review finding on a NEEDS_WORK verdict. Active only when:
 
 - `--interactive` flag set at invocation time
 - Primary review verdict is NEEDS_WORK (or still NEEDS_WORK after validator)
-- **Not in Ralph mode** (`REVIEW_RECEIPT_PATH` and `FLOW_RALPH` both unset)
 
-**No env var form.** `--interactive` is per-invocation only — this is a
-hard-coded rule in SKILL.md to prevent Ralph from accidentally engaging a flow
-that requires user input. If `REVIEW_RECEIPT_PATH` is set OR `FLOW_RALPH=1`,
-the skill exits 2 with a clear error before running anything. See SKILL.md Step 0's parse fence for the guard.
+**No env var form.** `--interactive` is per-invocation only.
 
 ## Finding source
 
@@ -200,9 +196,8 @@ Receipt extension:
 }
 ```
 
-All fields are **additive** — existing Ralph scripts and receipt consumers
-read `verdict` as before and ignore the new `walkthrough` key. (Note: Ralph
-never sees this block because `--interactive` hard-errors in Ralph mode.)
+All fields are **additive** — receipt consumers read `verdict` as before
+and ignore the new `walkthrough` key.
 
 ## Verdict after walkthrough
 
@@ -217,18 +212,8 @@ Walkthrough never flips the verdict itself. The verdict was set by the
 primary review (or validator); walkthrough only sorts findings into buckets
 and records decisions.
 
-## Acceptance criteria coverage
-
-- **R8:** Per-finding plain-text numbered prompt with five options ✓ (§ "Per-finding flow")
-- **R9:** Ralph env detection hard-errors with clear message ✓ (SKILL.md Step 0 parse fence)
-- **R10:** `.flow/review-deferred/<branch-slug>.md` as a durable record ✓ (§ "Branch slug + defer sink")
-- **R11:** Apply list dispatches fixer; Skip/Acknowledge logged no-op ✓ (§ "After walkthrough")
-- **R12:** Receipt extensions additive / Ralph-ignoring ✓ (§ "Update receipt")
-
 ## Anti-patterns
 
-- **Running walkthrough in Ralph mode** — hard error at skill entry; never
-  silently downgrade to non-interactive.
 - **Rewriting the defer file** — append-only. Users may have added manual
   context between sessions.
 - **Committing before the user chooses "Apply"** — the fixer runs only for

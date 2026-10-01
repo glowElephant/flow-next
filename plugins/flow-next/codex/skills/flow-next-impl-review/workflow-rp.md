@@ -98,7 +98,7 @@ and `Unaddressed R-IDs: [...]`; a non-deferred not-addressed R-ID blocks.
 Confidence must be exactly 0/25/50/75/100. Suppress below 75 except P0 at 50+.
 Classify every finding introduced or pre_existing; only introduced findings
 block. Never recommend deleting protected `.flow/*`, generated plugin mirrors,
-spec/task records, review receipts, or Ralph artifacts.
+spec/task records, or review receipts.
 
 For each surviving introduced finding emit Severity (P0-P3), Confidence,
 Classification, File:Line, Problem, and Suggestion. List pre-existing findings
@@ -176,18 +176,18 @@ source "$SETUP_FILE"
 
 # Both paths retain numeric window/context identity; CE also returns the chat.
 if [[ -z "${W:-}" || -z "${T:-}" || -z "${RP_MODE:-}" ]]; then
-  echo "<promise>RETRY</promise>"
+  echo "RETRY: no verdict (backend or transport failure)"
   exit 0
 fi
 if [[ "$RP_MODE" == "ce" && ( -z "${CHAT_ID:-}" || ! -s "$RESPONSE_FILE" ) ]]; then
-  echo "<promise>RETRY</promise>"
+  echo "RETRY: no verdict (backend or transport failure)"
   exit 0
 fi
 
 echo "Setup complete: mode=$RP_MODE W=$W T=$T"
 ```
 
-If this block fails, output `<promise>RETRY</promise>` and stop. Do not improvise.
+If this block fails, output `RETRY: no verdict (backend or transport failure)` and stop. Do not improvise.
 **Do NOT re-run setup-review** — the builder runs inside it. Re-running = double context build.
 
 ---
@@ -471,7 +471,7 @@ fi
 
 if [[ -z "$VERDICT" ]]; then
   echo "No verdict tag found in response"
-  echo "<promise>RETRY</promise>"
+  echo "RETRY: no verdict (backend or transport failure)"
   exit 0
 fi
 echo "VERDICT=$VERDICT"
@@ -484,14 +484,14 @@ if [[ -n "${REVIEW_RECEIPT_PATH:-}" ]]; then
     if ! "$FLOWCTL" review-findings attach \
       --reservation-id "$RESERVATION_ID" \
       --receipt "$REVIEW_RECEIPT_PATH" --json >/dev/null; then
-      echo "<promise>RETRY</promise>"
+      echo "RETRY: no verdict (backend or transport failure)"
       exit 0
     fi
   else
     ATTACH_ARGS=(--input "$RECEIPT_INPUT" --receipt "$REVIEW_RECEIPT_PATH"
       --review-file "$RESPONSE_FILE" --base "$REVIEW_BASE_SHA" --head "$REVIEW_HEAD_SHA")
     if ! "$FLOWCTL" review-findings attach "${ATTACH_ARGS[@]}" --json >/dev/null; then
-      echo "<promise>RETRY</promise>"
+      echo "RETRY: no verdict (backend or transport failure)"
       exit 0
     fi
   fi
@@ -504,7 +504,7 @@ if [[ "$VERDICT" == "NEEDS_HUMAN" ]]; then
 fi
 ```
 
-If no verdict tag in response, output `<promise>RETRY</promise>` and stop.
+If no verdict tag in response, output `RETRY: no verdict (backend or transport failure)` and stop.
 
 ## Optional phases (gated by flags)
 
@@ -520,15 +520,17 @@ See [optional-phases.md](optional-phases.md) "Phase ordering & flag-combination 
 
 ## Fix Loop (RP)
 
-**The fix loop never pauses for user confirmation.** Every valid finding is fixed and re-reviewed automatically — the goal is production-grade world-class software and architecture. A loop that stops to ask, or that exits with a valid finding unfixed, has broken this. Never use the plain-text numbered prompt in this loop.
+**Ask the user via plain text.** Render the options below as a numbered list `1.` … `N.`, followed by a final option `N+1. Other — type your own answer`. Print the question, then the numbered list, then **stop and wait for the user's next message before continuing**. Parse the reply as: a bare number `1`–`N+1` → that option; the literal text of an option label → that option; free text after `Other` → custom answer.
+
+**The fix loop never pauses for user confirmation**; never use plain-text numbered prompt in it. Which findings it fixes, and which it lists as follow-ups, follows the Review section of [working-rules.md](../../references/working-rules.md).
 
 **Committed code changes land before every re-review.** A re-review dispatched with no change since the last verdict has broken this — the reviewer just returns NEEDS_WORK again.
 
-**MAX ITERATIONS**: Limit fix+re-review cycles to **${MAX_REVIEW_ITERATIONS:-8}** iterations (default 8, configurable in Ralph's config.env). If still NEEDS_WORK after max rounds, output `<promise>RETRY</promise>` and stop — let the next Ralph iteration start fresh. The `review-rounds increment` gate (step 6 below and Phase 3) enforces this deterministically across fresh invocations: at the cap it refuses with an `ESCALATE:` marker + exit 4, which is NOT retryable — surface it and stop (Ralph: NEEDS_HUMAN).
+**One fix pass, one re-review** (other-paths.md § Fix Loop); the re-review's verdict is terminal unless working-rules.md's review loop applies (an unattended run, or a request to review until SHIP). **MAX ITERATIONS** (**${MAX_REVIEW_ITERATIONS:-8}**, default 8) stays as a safety net: the `review-rounds increment` gate (step 6 below and Phase 3) enforces this deterministically across fresh invocations: at the cap it refuses with an `ESCALATE:` marker + exit 4, which is NOT retryable — surface it and stop.
 
 If verdict is NEEDS_WORK:
 
-1. **Parse issues** - Extract ALL issues by severity (Critical → Major → Minor) from the response-file Read
+1. **Parse issues** - Extract the issues by severity (Critical → Major → Minor) from the response-file Read; fix those other-paths.md's Fix Loop says to fix
 2. **Snapshot the pre-fix state** (BEFORE touching any file — literal paths per the path-persistence rule):
    ```bash
    git status --porcelain > "${TMPDIR:-/tmp}/flow-impl-review-snap-pre-<task-id-or-branch-slug>-<suffix>.txt"
@@ -658,9 +660,9 @@ If verdict is NEEDS_WORK:
    pass them to the same task-scoped
    `review-rounds record ... --review-type impl` command with the captured
    `rp chat-send` exit code, capture and check `RECORD_EXIT`, and publish by
-   reservation id. Then Read the file once for the next round's findings.
+   reservation id. Then Read the file once for the re-review's verdict and findings.
    A nonzero recorder exit stops the round before any verdict/control path.
-7. **Repeat** until Ship
+7. **Stop.** The re-review's verdict is terminal unless working-rules.md's review loop applies (an unattended run, or a request to review until SHIP); surface surviving findings to the caller
 
 **Anti-pattern**: Re-adding already-selected files before re-review. RP auto-refreshes; re-adding can cause issues.
 

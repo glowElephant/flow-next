@@ -1,16 +1,11 @@
 #!/usr/bin/env bash
 # Source after authoring the body and draft inputs; preserves PR_URL for finalize.
-# fence:draft-matrix — inputs: RALPH, AUTONOMOUS, OPEN_ITEMS_COUNT, DRAFT_FORCE, CHAIN_PARENT (from PHASE0_CONTEXT.chain_parent; empty when not chained)
+# fence:draft-matrix — inputs: OPEN_ITEMS_COUNT, DRAFT_FORCE, CHAIN_PARENT (from PHASE0_CONTEXT.chain_parent; empty when not chained)
 DRAFT_FLAG=""
-if [[ "$RALPH" == "1" || "$AUTONOMOUS" == "1" ]]; then DRAFT_FLAG="--draft"; fi
-if [[ -n "${CHAIN_PARENT:-}" && "$OPEN_ITEMS_COUNT" -eq 0 ]]; then DRAFT_FLAG=""; fi
 if [[ "$OPEN_ITEMS_COUNT" -gt 0 ]]; then DRAFT_FLAG="--draft"; fi
+if [[ "$DRAFT_FORCE" == "ready" ]]; then DRAFT_FLAG=""; fi
 if [[ "$DRAFT_FORCE" == "draft" ]]; then DRAFT_FLAG="--draft"; fi
-if [[ "$DRAFT_FORCE" == "ready" && "$RALPH" != "1" && "$AUTONOMOUS" != "1" ]]; then DRAFT_FLAG=""; fi
 if [[ -n "${CHAIN_PARENT:-}" && "$OPEN_ITEMS_COUNT" -gt 0 ]]; then DRAFT_FLAG="--draft"; fi
-if [[ "$DRAFT_FORCE" == "ready" && ( "$RALPH" == "1" || "$AUTONOMOUS" == "1" ) ]]; then
-  echo "Note: --ready ignored under Ralph/autonomous mode. PR will open as draft (autonomous-loop terminus)." >&2
-fi
 # end:block
 HEAD_BRANCH=$(git branch --show-current)
 if [[ -z "$HEAD_BRANCH" ]]; then

@@ -1,8 +1,6 @@
 # /flow-next:flow workflow - the hop loop
 
-Mode, `FLOW_UNTIL`, `EXPLAIN`, and `REVIEW_OVERRIDE` come from SKILL.md. `$FLOWCTL` is the SKILL.md preamble value.
-
-## Preamble
+Mode, `FLOW_UNTIL`, `EXPLAIN` and `REVIEW_OVERRIDE` come from SKILL.md, and so does `$FLOWCTL`:
 
 ```bash
 FLOWCTL="${DROID_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/flowctl"
@@ -14,107 +12,81 @@ If `.flow/` does not exist, print `No .flow/ directory - run \`$FLOWCTL init\` f
 
 ## Step 1: Read the starting point
 
-Read what was given and decide what it is. Examples, never a closed list: nothing, a spec id, a task id, a tracker issue id or URL, a branch, a path, a prototype directory, a pasted bug report or console output, a sentence of intent. Read a spec or task through `$FLOWCTL show <id> --json` and `$FLOWCTL cat <id>`; a branch through `git log` and the spec whose `branch_name` matches; a tracker issue through the access this session already has; a path or prototype through the files. The result is text plus context: what exists in `.flow/` for it, what the repo shows, what the user said.
-
-With no argument, resolve the item from the most recent thing Flow can see, first match wins, then route it as if its id had been given:
-
-1. The item this conversation last touched: the spec capture wrote, the task work closed, the PR make-pr opened. Capture's `Recommended next:` line names the step.
-2. The spec whose `branch_name` matches the current branch.
-3. Intent in the conversation that no spec captures yet. Ask whether to capture it into 1..n specs; a "yes" routes to `flow-next:flow-next-capture from:flow`, a "no" continues down the ladder.
-4. The next open spec in `.flow`, by your judgement of readiness and order; `$FLOWCTL next` and the `ready` flag are hints. A candidate with dependencies is admitted by `$FLOWCTL spec chain <id> --json` reporting `eligible: true`, never by judgement: every dependency done, or one open **chain parent** with all tasks done and its branch on origin (work then branches from that parent's tip). An `eligible: false` candidate is skipped with the command's `reason`. Several equally plausible candidates are an inline pick, never a guess.
-5. Ask once what to work on (`AskUserQuestion`, or the plain-text fallback).
-
-On that no-argument reading, also run `$FLOWCTL features status --json` once (in a home-base workspace, where sibling repos hold the product code, add `--repo <path>` for each one the project instructions name). When its `recommendation` is `maintain` (a map exists and an open drift note or a feature's last-proven age makes it due), print `Also recommended: /flow-next:features - feature map due a maintain pass (<reasons>)` after the report's `Next:` line. Flow recommends it and never dispatches it; the skill stays user-invoked.
+Read what was given and decide what it is: a spec or task id (`$FLOWCTL show <id> --json`,
+`$FLOWCTL cat <id>`), a tracker issue (through the access this session already has), a branch
+(`git log` and the spec whose `branch_name` matches), a path, a pasted bug report, a sentence of
+intent. With no argument, read [references/no-argument.md](references/no-argument.md).
 
 ## Step 2: Route
 
-Read [references/route-matrix.md](references/route-matrix.md). In auto mode use the route already returned by `pilot snapshot`; in attended mode call once per hop:
+Read [references/route-matrix.md](references/route-matrix.md). Routing and the QA gate never
+ask the judge, so a run with a TypeSafe key and one without take the same route. Once per run,
+check whether the judge can run for the fork hint (this never prints the key); when it prints
+`judge: off`, skip the fork-gate call for the rest of the run:
 
 ```bash
-ROUTE_JSON="$("$FLOWCTL" judge --preset route --spec <spec-id> --json)"
-# Intake without a live spec: the state file is exactly one of
-#   {"view": "intent", "intent": "<text>"}
-#   {"view": "brief", "spec_title": "<title>", "spec_body": "<body>"}
-# Code assembles every other route fact; write no lifecycle or PR field.
-ROUTE_JSON="$("$FLOWCTL" judge --preset route --state-file <route-state.json> --json)"
+JUDGE=on
+[ -n "${TYPESAFE_API_KEY:-}" ] || JUDGE=off
+"$FLOWCTL" config get judge.enabled --json | jq -e '.value == false' >/dev/null && JUDGE=off
+[ "$JUDGE" = off ] && echo "judge: off"
 ```
 
-Use only the applicable command. `--spec` assembles fresh lifecycle state in code from the normalized spec/task inventory and `gh pr list --head <branch> --state all` (or the tracker bridge). A failed probe retains today's failure path, never a fabricated absent PR. The code resolves startable targets from documented commands, deploy URLs or the features map, trims `spec_body` at 100000 characters with `spec_body_truncated: true`, and applies first-match lifecycle order: observed PR (open, merged or closed) -> landing rules; closed spec without an observed PR -> host; all tasks done -> QA/make-pr; intentional tasks or sole implicit owner -> recorded work route; ready with zero tasks -> recorded direct or the plan-signal regex rule; not ready -> host. Existing `spec chain` admission and work's direct-owner resume admission still apply.
-
-For intent/brief, apply `decision.value` when `decision.met`; otherwise use today's matrix judgment with only `decision.candidates` (top three probabilities), never raw Nouls as facts. `none_of_the_above` always goes to the host. Unavailable judge answers keep any returned code lifecycle decision; only intake without one uses today's host route and names `reason`. Keep the answer only for this hop: fork and auto-QA consume its answers without another request. Nouls feed the code's defect-repro/research branch and the `Signal:` line; `tiny_one_context_change` and `intent_and_boundaries_stateable` are hints only.
-
-Print `Route: <kind> (jev <confidence>)`, `Route: <lifecycle route> (code)`, `Route: host (jev below floor: <top three>)`, or `Route: host (jev-unavailable(<reason>))` on every hop. Match the resulting route to the matrix. When the match is a ready spec with no tasks and no recorded route, also read [references/plan-vs-no-plan.md](references/plan-vs-no-plan.md) and resolve the rule now; the route is recorded after the explain stop below, before any stage runs.
-
-A spec with an intentional plan (tasks beyond the sole implicit owner) runs the planned route unchanged. An open spec whose tasks are all done and which has no existing or previously bound PR reads [references/gate-selection.md](references/gate-selection.md) for the QA decision and then routes to make-pr. A spec with an existing PR, including a closed spec with an open PR, reads [references/tail.md](references/tail.md).
-
-Keep `ROUTE_JSON` inside the tool process or an ephemeral run temporary file, not tool output. Before handing a fallback to the host, run this projection with `result` parsed from that JSON; print only `host_route`. Shared QA/fork consumers read the retained full JSON directly. No durable judge state or answer log is created.
-
-```python
-# fence:judge-route-consumer
-if not result["available"] and "decision" not in result:
-    route_value = "host"
-    host_route = {"route": "host", "line": "Route: host (jev-unavailable(%s))" % result["reason"]}
-    if result.get("pr_probe_failed"):
-        host_route["pr_probe_failed"] = True
-else:
-    decision = result["decision"]
-    route_value = decision["value"] if decision["met"] else "host"
-    if route_value == "host" and not result["available"]:
-        # No external answers: name why, never an empty below-floor list.
-        host_route = {"route": "host", "line": "Route: host (jev-unavailable(%s))" % result["reason"]}
-    elif route_value == "host":
-        candidates = decision.get("candidates", [])
-        detail = ", ".join("%s %.2f" % (kind, probability) for kind, probability in candidates)
-        host_route = {"route": "host", "candidates": candidates,
-                      "line": "Route: host (jev below floor: %s)" % detail}
-    elif "kind" in result.get("answers", {}):
-        host_route = {"route": route_value, "line": "Route: %s (jev %.2f)" % (
-            route_value, result["answers"]["kind"]["confidence"])}
-    else:
-        host_route = {"route": route_value, "line": "Route: %s (code)" % route_value}
-    if route_value != "host":
-        if decision.get("research_recommended"):
-            host_route["next_modifier"] = "read unfamiliar dependency documentation first"
-        if "defect_repro" in decision:
-            host_route["defect_repro"] = decision["defect_repro"]
-```
-
-`next_modifier` runs the research-only refine pass before work; `defect_repro=provided` runs the supplied repro, while `needed` obtains one before the fix. Neither branch predicts a verification result.
-
-When the starting point is intent that has not been captured and the criteria you would draft trip the tripwire, read [references/spec-count.md](references/spec-count.md); capture applies the same file at its split-choice step, so the count is decided once.
-
-When two routes would materially differ and the answer is not observable, read [references/prototype-before-ask.md](references/prototype-before-ask.md) before asking; ask at most one question per hop.
-
-**`EXPLAIN=1` ends here.** Add `--explain` to the same `--json` judge invocation (never a second request): the structured result still feeds the projection above and the shared QA/fork consumers, and it gains an `explain` list holding the `Next:`, `Route:`, `Signal:`, `Skip/narrow:`, and `Why not the alternatives:` lines. Run the projection, then print those lines. The signal names the firing fact-grade Noul and probability; alternatives name the next two kinds and probabilities. Below-floor output names all three candidates and says the host decides. An unavailable result renders `host decides` placeholders: resolve today's route from the matrix first, then print `Next:` and `Skip/narrow:` from that route's matrix row, `Route: host (jev-unavailable(<reason>))` unchanged, and the reason as the `Signal:`. Stop. No `.flow/` write, no dispatch, no route recording.
-
-**Record the route.** Past the explain stop, when the match was a ready spec with no tasks and no recorded route, write the resolved route before anything else runs:
+Then route once per hop (in auto mode, use the route `pilot snapshot` returned instead). A spec
+gets the route call, which decides its lifecycle in code and never asks the judge:
 
 ```bash
-$FLOWCTL spec set-no-plan <spec-id> --json      # the rule resolved to direct
-$FLOWCTL spec clear-no-plan <spec-id> --json    # a positive plan signal was present
+"$FLOWCTL" judge --preset route --spec <spec-id> --json | jq -c '{available, reason, pr_probe_failed, decision}'
 ```
+
+For a spec, code applies lifecycle order: an observed PR goes to landing, a closed spec without a
+PR to you, all tasks done to QA and make-pr, tasks to the recorded work route, a ready zero-task
+spec to direct or plan. When `decision.met` is true, use `decision.value`. Intake without a spec
+is yours: decide from the matrix. Print one line per hop: `Route: <route> (code)` or
+`Route: <route> (host)`.
+
+`EXPLAIN=1`: resolve the route (reading the references below as needed) but record nothing, then
+read [references/explain.md](references/explain.md) and stop there.
+
+A ready spec with no tasks and no recorded route: read
+[references/plan-vs-no-plan.md](references/plan-vs-no-plan.md), resolve the rule, and record it
+before any stage runs (`$FLOWCTL spec set-no-plan <id> --json` for direct,
+`$FLOWCTL spec clear-no-plan <id> --json` for a positive plan signal). All tasks done and no PR:
+read [references/gate-selection.md](references/gate-selection.md) for QA, then make-pr. An
+existing PR: read [references/tail.md](references/tail.md). Uncaptured intent whose criteria trip
+the tripwire: read [references/spec-count.md](references/spec-count.md). Two routes that would
+materially differ with an answer you cannot observe: read
+[references/prototype-before-ask.md](references/prototype-before-ask.md) before asking, and ask at
+most one question per hop.
 
 ## Step 3: Run the routed stage
 
-Invoke the stage skill by name with its normal arguments; pass `--review=<backend>` through when `REVIEW_OVERRIDE` is set. Flow never copies a stage's steps inline. Stage-specific notes:
+Invoke the stage skill by name with its normal arguments, passing `--review=<backend>` through when
+`REVIEW_OVERRIDE` is set. Never copy a stage's steps inline.
 
-- **Capture under flow** is invoked with the exact token `from:flow`. Capture then applies `references/plan-vs-no-plan.md` itself, sets `no_plan` when the rule resolves to direct, and writes no placeholder requirement-coverage table on that route. The capture request authorizes saving the spec; capture then offers the saved file for review. Honor a request to capture or review only: neither saving nor editor continuation authorizes work. A previously authorized implementation route may continue after the capture follow-up.
-- **Defect reproduction** (the defect route with a reproduction still to obtain): check once whether `.flow/features/` exists. When it does and the report does not say where the problem is (a screenshot with no page title or route, "this thing in my list", a symptom with no location), read [references/defect-intake.md](references/defect-intake.md) before driving the reproduction. When the report names the page, control or command, go there directly as before, and read the reference only if that lookup does not find it. Without a map, reproduce as before.
-- **Work** runs `flow-next:flow-next-work <spec-id>`; with `no_plan` recorded the fork is pre-answered and never asks.
-- **QA** runs per `references/gate-selection.md`. Under `pipeline.qa=auto`, judge drivability from the acceptance criteria and the repo before dispatching; a skip is recorded, never silent.
-- **Make-pr** ends a run from intent unless the selected merge destination or current explicit scoped consent authorizes continuation.
-- **Existing PR / land** follows `references/tail.md`: obtain current consent when required, bind one spec/PR, invoke one land tick, and observe its result. Explicit review-only convergence remains available without landing consent.
+- **Capture** gets the exact token `from:flow`; it applies plan-vs-no-plan itself and offers the
+  saved spec for review. A request to capture or review only never authorizes work.
+- **Defect reproduction**, when the report does not say where the problem is and `.flow/features/`
+  exists: read [references/defect-intake.md](references/defect-intake.md) first.
+- **Work** runs `flow-next:flow-next-work <spec-id>`; a recorded `no_plan` pre-answers its fork.
+  Pick the branch rather than letting work ask: `--branch=current` on a branch other than the
+  default, else `--branch=new`, unless the user named one. State the choice in one line.
+- **QA** follows gate-selection.md; a skip is recorded, never silent.
+- **Make-pr** ends a run from intent unless `--until=merge` or current explicit consent authorizes
+  landing (tail.md).
 
-If a stage stops with `NEEDS_HUMAN`, a review verdict that needs a person, or an unresolved product question, flow stops with the same report; it never answers on the user's behalf.
+A stage that stops with `NEEDS_HUMAN`, a verdict that needs a person, or an open product question
+stops flow with the same report; never answer on the user's behalf.
 
 ## Step 4: Re-evaluate
 
-After the stage returns, re-read state (`$FLOWCTL show <spec-id> --json`, the PR probe, the receipts) and return to Step 2. Advancement is judged on observed state, never on the stage's narration. Each hop matches the matrix afresh; there is no fixed conveyor.
+Re-read state (`$FLOWCTL show <spec-id> --json`, the PR, the receipts) and return to Step 2.
+Advance on observed state, never on a stage's narration.
 
 ## Step 5: Stop and report
 
-Two kinds of human decision reach this step. A **pick among options a stage produced** (prospect's ranked candidates, a chart briefing's capture-or-split question, refine's choices when it hands back) is asked inline under the one-question-per-hop invariant, and the run continues with the answer through Step 2. A **decision that ends the run** is not askable here: a review verdict that needs a person, a `NEEDS_HUMAN` from a stage, or a product question no stage framed as options.
-
-Apply `references/tail.md` at the PR boundary: offer landing on a plain attended existing-PR run, continue an authorized merge destination through land, and stop on decline, unanswered consent, a landing blocker, or confirmed merge. Otherwise stop at the first of: the PR exists (run from intent without landing authority), a run-ending decision surfaced by a stage, or a blocking question this hop must ask that is not a pick. Print the report shape from SKILL.md with one `stage:` line per stage reached and each inline pick on the `Route taken` line, then the `Next:` line in the host's command form.
-
-Done when: every hop matched one matrix row, every dispatched or skipped stage carries a `stage:` line with its reason, every inline pick is on the `Route taken` line, any merge was land-owned and currently authorized, and make-pr owned spec closure, and the report names the decision that ended the run.
+A pick among options a stage produced (prospect's candidates, chart's capture-or-split, refine's
+choices) is asked inline, one per hop, and the run continues. Otherwise stop at the first of: the PR
+exists (without landing authority), a decision a stage handed to the person, or a blocking question
+that is not a pick. At a PR boundary apply tail.md. Print the report shape from SKILL.md: one
+`stage:` line per stage reached (a skipped stage with its reason), inline picks on the `Route taken`
+line, then `Next:` in the host's command form.

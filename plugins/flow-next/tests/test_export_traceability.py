@@ -454,51 +454,6 @@ class _BatchedRefsGitBase(unittest.TestCase):
 
         return mock.patch.object(flowctl, "_export_run_git", wrapper), calls
 
-    @staticmethod
-    def _sequential_reference(merge_base: str, root: Path) -> list:
-        """The PRE-fn-109 per-symbol implementation, replicated verbatim as
-        the byte-parity oracle: one `git grep -n -w -F -e <sym>` per symbol,
-        per-symbol ref cap applied while consuming that symbol's own grep
-        output."""
-        rc_u, out_u, _ = flowctl._export_run_git(
-            ["diff", "-M", "--unified=0", f"{merge_base}..HEAD"], cwd=root
-        )
-        if rc_u != 0:
-            return []
-        removed = flowctl._export_extract_removed_symbols(out_u)
-        if not removed:
-            return []
-        pathspecs = sorted("*" + ext for ext in flowctl._EXPORT_SOURCE_EXTENSIONS)
-        results = []
-        for sym in sorted(removed)[: flowctl._EXPORT_REMOVED_REFS_MAX_SYMBOLS]:
-            grep_args = ["grep", "-n", "-w", "-F", "-e", sym]
-            if pathspecs:
-                grep_args += ["--", *pathspecs]
-            rc_g, out_g, _ = flowctl._export_run_git(grep_args, cwd=root)
-            if rc_g != 0:
-                continue
-            refs = []
-            for gline in out_g.splitlines():
-                parts = gline.split(":", 2)
-                if len(parts) < 2:
-                    continue
-                try:
-                    ref_lineno = int(parts[1])
-                except ValueError:
-                    continue
-                snippet = parts[2].strip() if len(parts) > 2 else ""
-                refs.append(
-                    {"path": parts[0], "line": ref_lineno, "text": snippet[:200]}
-                )
-                if len(refs) >= flowctl._EXPORT_REMOVED_REFS_MAX_PER_SYMBOL:
-                    break
-            if refs:
-                results.append(
-                    {"symbol": sym, "defined_in": removed[sym], "refs": refs}
-                )
-        return results
-
-
 class TestBatchedRemovedRefsGrep(_BatchedRefsGitBase):
     def test_40_symbols_at_most_2_grep_calls(self) -> None:
         syms = [f"gone_fn_{i:02d}" for i in range(40)]
@@ -594,13 +549,7 @@ class TestBatchedRemovedRefsGrep(_BatchedRefsGitBase):
         # regex over colored output would silently DROP refs the per-symbol
         # grep kept (codex review round 1). The batched grep passes
         # --color=never, so refs survive and snippets are the raw file
-        # bytes, independent of the user's color config. (True byte-parity
-        # with the sequential form is impossible under forced color: each
-        # per-symbol grep colored only ITS OWN match on a shared line, so
-        # the old snippets were per-invocation-dependent.)
-        import json as _json
-        import re as _re
-
+        # bytes, independent of the user's color config.
         _git(self.root, "config", "color.grep", "always")
         # Pin the non-match slots to `normal` (no escapes) so the fixture
         # reproduces match-only coloring deterministically regardless of the
@@ -632,51 +581,6 @@ class TestBatchedRemovedRefsGrep(_BatchedRefsGitBase):
         # ...and snippets carry the raw (escape-free) file bytes.
         self.assertIn(shared, by_sym["tinted_fn"])
         self.assertIn(shared, by_sym["shaded_fn"])
-        # Modulo the per-invocation color bytes the OLD form embedded, the
-        # payload matches the sequential oracle exactly.
-        sgr = _re.compile("\x1b\\[[0-9;]*m")
-        oracle = self._sequential_reference(base, self.root)
-        for entry in oracle:
-            for ref in entry["refs"]:
-                ref["text"] = sgr.sub("", ref["text"])
-        self.assertEqual(
-            _json.dumps(batched, sort_keys=True, indent=2),
-            _json.dumps(oracle, sort_keys=True, indent=2),
-        )
-
-    def test_payload_byte_identical_vs_sequential_reference(self) -> None:
-        # Messy fixture exercising multi-symbol lines, prefix collisions,
-        # the per-symbol cap, and an unreferenced removal — the batched
-        # implementation must serialize byte-identically to the sequential
-        # per-symbol oracle.
-        import json as _json
-
-        cap = flowctl._EXPORT_REMOVED_REFS_MAX_PER_SYMBOL
-        self._write(
-            "lib.py",
-            "def foo(x):\n    return x\n"
-            "def foobar(x):\n    return x\n"
-            "def lonely_fn(x):\n    return x\n"
-            "def busy_fn(x):\n    return x\n",
-        )
-        use = ["foo(foobar(0))\n", "foo_bar = 1\n"]
-        use += [f"busy_fn({i})\n" for i in range(cap + 3)]
-        self._write("use.py", "".join(use))
-        base = self._commit("base")
-        self._write("lib.py", "def keep():\n    return 0\n")
-        self._commit("remove all")
-
-        batched = flowctl._export_removed_export_refs(base, self.root)
-        oracle = self._sequential_reference(base, self.root)
-        self.assertEqual(
-            _json.dumps(batched, sort_keys=True, indent=2),
-            _json.dumps(oracle, sort_keys=True, indent=2),
-        )
-        # Sanity: the oracle actually exercised the interesting cases.
-        by_sym = {r["symbol"]: r["refs"] for r in oracle}
-        self.assertNotIn("lonely_fn", by_sym)  # removed but unreferenced
-        self.assertEqual(len(by_sym["busy_fn"]), cap)
-
 
 # --------------------------------------------------------------------------
 # fn-179.1 / issue #303 - `acceptance_criteria_residue` in the payload

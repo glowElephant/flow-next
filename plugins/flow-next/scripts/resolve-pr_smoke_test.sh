@@ -11,8 +11,6 @@
 #   5. File-overlap shape: workflow.md Phase 5 covers file sets, serializing overlaps, batch 4.
 #   6. Dry-run shape: workflow.md Phase 4 has --dry-run early-exit before mutation phases.
 #   7. Open-thread detection: null is treated as open, not dropped by == false.
-#   8. Ralph isolation: no ralph template references resolve-pr / flow-next-resolve-pr /
-#      pr-comment-resolver.
 #
 # Pure shape assertions — no live PR operations, no GraphQL calls, no mutations.
 # Targets < 60s runtime on a modern laptop.
@@ -25,7 +23,6 @@ SKILL_DIR="$PLUGIN_ROOT/skills/flow-next-resolve-pr"
 SKILL_SCRIPTS="$SKILL_DIR/scripts"
 COMMAND_FILE="$PLUGIN_ROOT/commands/resolve-pr.md"
 AGENT_FILE="$PLUGIN_ROOT/agents/pr-comment-resolver.md"
-RALPH_TEMPLATES="$PLUGIN_ROOT/skills/flow-next-ralph-init/templates"
 
 TEST_DIR="$(mktemp -d -t resolve-pr-smoke-XXXXXX)"
 PASS=0
@@ -340,36 +337,6 @@ if grep -q -- '--dry-run' "$SKILL_DIR/SKILL.md"; then
   pass "SKILL.md documents --dry-run flag"
 else
   fail "SKILL.md does not document --dry-run flag"
-fi
-
-# -----------------------------------------------------------------------------
-# Section 7: Ralph isolation — no resolve-pr references in Ralph template tree
-# -----------------------------------------------------------------------------
-echo
-echo -e "${YELLOW}--- Section 7: Ralph isolation ---${NC}"
-
-# grep -c returns rc=1 when a file has 0 matches (common on fresh Ralph templates),
-# which trips set -e. Guard the whole pipeline with `|| true` and then compute the
-# total via awk.
-RALPH_HITS="$({ grep -rEc 'resolve-pr|flow-next-resolve-pr|pr-comment-resolver' "$RALPH_TEMPLATES" 2>/dev/null || true; } | awk -F: '{sum += $2} END {print sum+0}')"
-if [[ "$RALPH_HITS" -eq 0 ]]; then
-  pass "Ralph templates contain 0 references to resolver surfaces"
-else
-  fail "Ralph templates contain $RALPH_HITS resolver reference(s) — should be 0"
-  grep -rEn 'resolve-pr|flow-next-resolve-pr|pr-comment-resolver' "$RALPH_TEMPLATES" 2>/dev/null || true
-fi
-
-# Also check the installed ralph_smoke_test.sh itself doesn't invoke resolver
-# scripts (it's read-only from our perspective — we assert it stays that way).
-RALPH_SMOKE="$PLUGIN_ROOT/scripts/ralph_smoke_test.sh"
-if [[ -f "$RALPH_SMOKE" ]]; then
-  if grep -qE 'resolve-pr|flow-next-resolve-pr|pr-comment-resolver' "$RALPH_SMOKE"; then
-    fail "ralph_smoke_test.sh references resolver surfaces"
-  else
-    pass "ralph_smoke_test.sh does not reference resolver surfaces"
-  fi
-else
-  fail "ralph_smoke_test.sh missing from scripts/"
 fi
 
 # -----------------------------------------------------------------------------

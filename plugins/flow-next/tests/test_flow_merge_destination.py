@@ -63,15 +63,9 @@ class MergeDestinationTest(unittest.TestCase):
                 self.assertEqual("dispatched" in result.stdout, allowed)
 
 
-    def test_r10_named_pr_handoff_removes_retired_inputs(self):
-        root = PLUGIN / "skills/flow-next-flow"
-        tail = (root / "references/tail.md").read_text()
-        self.assertIn("flow-next:flow-next-land <PR> <current authorization>", tail)
-        for path in root.rglob("*.md"):
-            with self.subTest(path=path):
-                self.assertNotRegex(path.read_text(),
-                    r"LAND_BASE_ROOT|land's.*ledger|tick claim|source checkout|base checkout|"
-                    r"flow-next-land/references/|LAND_COMPLETE|merged-tail|incomplete tail")
+    def test_r10_tail_hands_off_to_land(self):
+        tail = (PLUGIN / "skills/flow-next-flow/references/tail.md").read_text()
+        self.assertIn("flow-next:flow-next-land", tail)
 
     def test_r10_disappeared_pr_never_continues(self):
         self.assert_target_stops("MISSING")

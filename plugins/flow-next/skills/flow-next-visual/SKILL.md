@@ -13,8 +13,6 @@ Restate one thing visually, in compact markdown, on one screen. The structure IS
 
 **Read-only.** This skill reads state and responds. It never writes files, never mutates flow state, never commits, never runs a workflow. (If the user asks to save a digest, that is an ordinary Write with ordinary consent — not a mode of this skill.)
 
-Rich HTML render lenses are a different register and stay where they are (`artifacts.html.enabled`); this skill never produces or replaces them.
-
 ## Preamble
 
 flowctl is bundled with the plugin (not on PATH). Define once; subsequent blocks use `$FLOWCTL`:
@@ -29,8 +27,8 @@ FLOWCTL="${DROID_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/flowctl"
 
 Arguments: `$ARGUMENTS` — optional. One of:
 
-- **Spec id** (`fn-189-human-first-visual-digest-skill`) → spec digest
-- **Task id** (`fn-189-human-first-visual-digest-skill.1`) → task digest
+- **Spec id** (`fn-12-add-oauth`) → spec digest
+- **Task id** (`fn-12-add-oauth.1`) → task digest
 - **Git range** (`main..HEAD`, `abc123..def456`, or the bare word `diff`) → diff digest
 - **Nothing, or free-form text** → ad-hoc restate of the current topic (or of the text pointed at)
 
