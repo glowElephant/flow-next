@@ -4,6 +4,12 @@ All notable changes to the flow-next.
 
 Flow-Next changed shape with 5.0.0. One command, `/flow-next:flow`, reads whatever you have and picks the route, and `flow --auto` runs the same route unattended. If you are arriving from 4.x, start with [the 5.0.0 entry](#flow-next-500---2026-09-12) and [the flow skill](plugins/flow-next/skills/flow-next-flow/SKILL.md) before reading the items below.
 
+## Unreleased
+
+### Fixed
+
+- **Upgrading Codex clears out skills a release removed.** `install-codex.sh` retired only one old alias, so the skills 7.0 removed (`ralph-init` and the pilot and interview stubs) and the `ralph-init` prompt stayed in every Codex home. It now moves any flow-next skill or prompt the release no longer ships into `~/.codex/.flow-next-retired/`, where you can restore it. It only touches files that carry flow-next's own name; your own skills and prompts stay where they are.
+
 ## [flow-next 7.0.0] - 2026-10-01
 
 **7.0.0, codename Roadrunner. Flow-Next is now blazing fast.**
