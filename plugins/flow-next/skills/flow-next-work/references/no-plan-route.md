@@ -18,37 +18,8 @@ On a later invocation, Phase 1 recognizes a sole `implicit_owner: true` task und
 `no_plan: true` as this route's continuation. Intentional tasks stay authoritative.
 A run that asked under a clean `NO_PLAN=1` has broken this.
 
-## Autonomous refusal
-
-Under ANY autonomy marker (`FLOW_AUTONOMOUS`, `AUTONOMOUS=1` /
-`mode:autonomous` — scan the marker family/namespace, never a fixed two-var list) WITHOUT an explicit no-plan instruction, stop with the typed
-report: `NEEDS_HUMAN: spec has no tasks - choose /flow-next:work <spec-id> --no-plan or /flow-next:plan <spec-id>`.
-Never ask, never fall through. An explicit no-plan instruction — the flag or stated
-intent in the dispatching invocation, or the spec's own `no_plan: true` field (an explicit human write, or the route `flow --auto` records before dispatch, which is how its classification routes here) — is the
-only thing that lets an autonomous run take the Direct route; a contradicted signal
-(flag or field says direct, prose says plan) is never an explicit no-plan instruction.
-A run that asked or continued under autonomy without that instruction has broken this.
-
-## The ask (interactive only)
-
-Read [`plan-vs-no-plan.md`](../../flow-next-flow/references/plan-vs-no-plan.md) and
-judge this spec against it; print its `Recommended next:` line in that file's shape,
-with the reason. Ordinary implementation decisions may remain with the worker.
-
-Then ask via `AskUserQuestion` (call `ToolSearch` with `select:AskUserQuestion` first
-if its schema isn't loaded) — question "This spec has no tasks. How should this run
-proceed?" plus the recommendation line, with these two options — and wait for the
-answer. Fall back to numbered options in plain text only if the tool is unreachable or errors. Never silently skip the question.
-
-- **Plan first** — stop; run /flow-next:plan (reviewed task breakdown, parallelizable waves, per-task review)
-- **Flow-Next work --no-plan** — mint one implicit task and run the pipeline now (no task decomposition, whole spec as one unit; 3g single-task skip applies)
-
-A run that continued before the answer arrived has broken this.
-
-## Plan-first answer
-
-Persist this choice with `$FLOWCTL spec clear-no-plan <spec-id> --json`; stop on
-failure. Then STOP this run with a one-line pointer: run `/flow-next:plan <spec-id>`, then re-run `/flow-next:work <spec-id>`. Work never invokes plan itself and never chains into it. A run that invoked or chained `/flow-next:plan` has broken this.
+Unless `NO_PLAN=1` is set with no contradicting signal: read [no-plan-ask.md](no-plan-ask.md)
+and follow its autonomous refusal, ask and plan-first sections before the Direct route.
 
 ## Direct route: mint the implicit task
 
@@ -86,51 +57,12 @@ judge, while the 3g skip then waives completion review. A goal-only spec words t
 same pointer against the spec's goal instead of R-IDs. MINIMAL body — the task never emulates plan-full by
 copying a plan into the body; the agent works from the spec, the task artifact exists
 for the plumbing (receipts, evidence, review dispatch, done). No `Touches:` line — a
-whole-spec task genuinely cannot name its paths. `--require-empty-spec` makes the mint
-atomic: flowctl refuses (nonzero exit, naming the existing task) when the spec already
-has any task, checked under the same lock that allocates ids — so of two concurrent
-direct-route runs exactly one mints. The loser STOPS with a typed report naming that
-existing task — it never claims, resumes, or dispatches in the same invocation: the
-winner is live, and `flowctl start` refuses an `in_progress` task held by this same
-actor unless `--reclaim` is passed, which only Phase 1's evidence-checked resume
-admission licenses. A LATER re-invocation — after the concurrent run finished or
-died — resumes the task through the normal path (task count is 1; a second mint is
-unreachable by construction; Phase 1 admits the owner on evidence and 3b claims it
-with `--reclaim`): crash-resume stays legal, concurrent double-dispatch does not.
+whole-spec task genuinely cannot name its paths.
 Then continue with Phase 2 (branch choice) and the standard pipeline. A run that
 minted a second task, or copied a plan into the body, has broken this.
 
-## Dispatch shape for the minted task
+If the `task create` above exits nonzero: read
+[no-plan-ask.md § Concurrent mint](no-plan-ask.md#concurrent-mint) and stop as it says.
 
-The minted task is normally implemented inline (phases.md Phase 3). When it goes to a
-worker instead, the standard multi-task.md 3c dispatch applies with these renderings. The 3a report still prints all
-five report lines including `Selection rule:` — state: single minted implicit task;
-the frontier is exactly one. The dispatch template's `FORBIDDEN:` field echoes declared
-Touches and the minted task declares NONE, so the path ban is omitted — the field still
-renders, carrying only the non-path clauses (no force-push; no rebase of the target);
-the whole-spec surface is the point. `TIMEBOX:` applies unchanged. A run that printed a
-path-ban `FORBIDDEN:` for this task has broken this.
-
-## Judicious subagent use (minted-task dispatch prose)
-
-Append the license below to the minted task's 3c dispatch prompt as extra prose.
-worker.md itself gains no subagent prose, and plan-full workers get no such
-license — judgment governs there (spec Decision Context). When the conductor implements the minted task inline
-(phases.md Phase 3), the conductor is the owner and holds this license itself.
-
-The worker prompt for the minted task carries a broad license: parallel implementation
-of independent surfaces, background research, scouting — the SHAPE is chosen by the
-harness at execution time, never prescribed here. The holder is the owner wherever the
-owner runs: the in-host worker on the standard path, or the bridged child when
-worker.md's Phase 1b hands the task over a CLI bridge — the long-task brief in
-`flowctl usage` carries the same license, and the worker passes this paragraph through
-to the child verbatim. Wrappers, scouts, and conductors never fan out on the owner's
-behalf (STRATEGY.md, "The owner holds the license"). A host without nested dispatch
-degrades to serial, never errors; no capability probing. Commit ownership unchanged:
-the owner is the only committer — hand subagents disjoint surfaces or serialize — and the
-commit convention is the owner's path's (staging its changed files plus `.flow/`, and the single-commit convention
-in-host; the long-task brief's checkpoint convention when the owner is a bridged child).
-Join barrier: every dispatched subagent
-is awaited and reconciled BEFORE staging, verification, and commit — no live writer
-exists at staging time (same discipline as the wave-level workspace cleanup gate
-in [wave-join.md](wave-join.md)).
+Only when the minted task goes to a worker, or before you dispatch any subagent while
+implementing it: read [minted-task-dispatch.md](minted-task-dispatch.md).
