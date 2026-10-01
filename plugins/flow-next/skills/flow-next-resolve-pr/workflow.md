@@ -373,7 +373,13 @@ git commit -m "Address PR review feedback (#$PR_NUMBER)
 $(echo "$VERDICTS" | jq -r '.[] | select(.files_changed|length>0) | "- " + .reason')
 ${PRE_EXISTING_FAILURE_NOTE:-}"
 
-git push
+# On the PR branch a plain push works; from a detached checkout (land's isolated worktree)
+# push to the PR's head branch by name.
+if git symbolic-ref -q HEAD >/dev/null; then
+  git push
+else
+  git push origin "HEAD:$(gh pr view "$PR_NUMBER" --json headRefName -q .headRefName)"
+fi
 ```
 
 ---

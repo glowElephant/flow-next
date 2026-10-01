@@ -44,14 +44,17 @@ merge. If behind its base, use server-side `gh pr update-branch <PR> --repo
 
 Next enumerate all review threads with pagination. Open threads invoke
 `$flow-next-resolve-pr <PR>` with `mode:autonomous`, bound to this PR and an
-isolated checkout; the invoking checkout stays untouched. Resolver refusal
+isolated checkout; the invoking checkout stays untouched. The isolated checkout is a detached
+worktree at the PR head (`git worktree add --detach <dir> <headRefOid>`, removed afterwards),
+because the invoking checkout may hold the PR branch; pushes from it name the branch
+(`git push origin HEAD:<headRefName>`). Resolver refusal
 `NOT_RETRYABLE: artifact unchanged since last verdict` stops `NEEDS_HUMAN`.
 Re-read the head
 and threads afterward; unresolved threads stop `RESOLVING`.
 
 Then inspect CI checks and failed logs. Pending checks stop `RESOLVING`.
-Red CI in this PR's own code gets one focused fix in an isolated checkout,
-verification, and an ordinary push. A flaky check gets one
+Red CI in this PR's own code gets one focused fix in an isolated checkout (the same detached
+worktree), verification, and a push to the PR branch. A flaky check gets one
 `gh run rerun <run-id> --failed`; inspect prior attempts on this head first.
 An identical second failure is not a flake and gets no second rerun.
 If the fix does not turn CI green, stop `BLOCKED` naming the failing check;
