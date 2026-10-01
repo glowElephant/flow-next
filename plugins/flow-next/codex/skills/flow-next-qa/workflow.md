@@ -37,26 +37,8 @@ the receipt and exit cleanly.
 
 ### 1.1 Spec id
 
-When `SPEC_ID` is empty, match the current branch against each spec's stored `branch_name` (never
-against the spec id itself):
-
-```bash
-if [[ -z "$SPEC_ID" ]]; then
-  CURRENT_BRANCH="$(git -C "$REPO_ROOT" branch --show-current 2>/dev/null || echo "")"
-  if [[ -n "$CURRENT_BRANCH" ]]; then
-    SPEC_ID=$(
-      { find "$REPO_ROOT/.flow/specs" -maxdepth 1 -name '*.json' 2>/dev/null
-        find "$REPO_ROOT/.flow/epics" -maxdepth 1 -name '*.json' 2>/dev/null
-      } \
-      | xargs -I{} jq -r --arg b "$CURRENT_BRANCH" \
-          'select(.branch_name == $b) | .id' {} 2>/dev/null \
-      | head -1)
-  fi
-fi
-```
-
-Still empty: ask which spec to QA (options from `$FLOWCTL specs`), or under `NO_PROMPT=1` exit
-non-zero with a message. Never default silently. Then confirm it is a spec, not a task:
+When `SPEC_ID` is empty: read [references/spec-from-branch.md](references/spec-from-branch.md) and
+resolve it as it says. Then confirm it is a spec, not a task:
 
 ```bash
 $FLOWCTL show "$SPEC_ID" --json | jq -e '.tasks != null' >/dev/null \
@@ -266,39 +248,9 @@ surface or file).
 
 ### 5.5 Stale mapped routes
 
-When a mapped route does not match the live app, record a drift note (not a P0/P1/P2 finding)
-under the contract's "Writers and drift notes" rules, never edit `.flow/features/`, then derive
-another route for the scenario and keep testing the criterion. Only when no route reaches the
-surface does the scenario become a gap.
-
-```bash
-if [ "$($FLOWCTL config get memory.enabled --json | jq -r '.value')" = "true" ]; then
-  mkdir -p .flow/tmp/qa-"$SPEC_ID"
-  cat > .flow/tmp/qa-"$SPEC_ID"/drift-<sid>.md <<'EOF'
-Expected: <mapped route / command>
-Observed: <what the live app did>
-EOF
-  # upsert exits non-zero when 2+ entries share the title; never let that abort the run.
-  if _out="$($FLOWCTL memory upsert \
-    --track knowledge --category workflow \
-    --title "drift: <surface>/<feature-slug> <sub-feature-id>" \
-    --tags "feature-map-drift" \
-    --body-file .flow/tmp/qa-"$SPEC_ID"/drift-<sid>.md --json)"; then
-    _p="$(printf '%s' "$_out" | jq -r '.path // empty')"
-    [ -n "$_p" ] && QA_FILED_MEMORY="${QA_FILED_MEMORY:+$QA_FILED_MEMORY }$_p"
-    # A recurrence reopens a stale note; hardened or active notes keep their status.
-    if [ "$(printf '%s' "$_out" | jq -r '.action // empty')" = "updated" ]; then
-      _id="$(printf '%s' "$_out" | jq -r '.entry_id')"
-      if [ "$($FLOWCTL memory read "$_id" --json 2>/dev/null | jq -r '.frontmatter.status // empty')" = "stale" ]; then
-        $FLOWCTL memory mark-fresh "$_id" --json >/dev/null || true
-      fi
-    fi
-  fi
-fi
-```
-
-With memory disabled or a failed upsert, put Expected, Observed (and any listed entry ids) in the
-run notes and continue.
+When a mapped route does not match the live app: that is a drift note, never a P0/P1/P2 finding,
+and `.flow/features/` is never edited. Read [references/drift-notes.md](references/drift-notes.md)
+to record it, then keep testing the criterion by another route.
 
 ---
 
@@ -351,23 +303,8 @@ the receipt.
 
 ### 6.3b Commit (autonomous only)
 
-When `QA_AUTONOMOUS=1`, commit exactly QA's own files so `flow --auto` gets a clean tree. Never
-`git add -A` or a `.flow/memory` glob. An interactive run leaves commits to the user.
-
-```bash
-if [ "$QA_AUTONOMOUS" = "1" ]; then
-  RECEIPT_HISTORY_DIR="${RECEIPT_PATH}.history"
-  QA_HISTORY_PATHS=()
-  [ -d "$RECEIPT_HISTORY_DIR" ] && QA_HISTORY_PATHS=("$RECEIPT_HISTORY_DIR")
-  git -C "$REPO_ROOT" add -- "$RECEIPT_PATH" "${QA_HISTORY_PATHS[@]}" ${QA_FILED_MEMORY:+$QA_FILED_MEMORY}
-  git -C "$REPO_ROOT" diff --cached --quiet -- "$RECEIPT_PATH" "${QA_HISTORY_PATHS[@]}" ${QA_FILED_MEMORY:+$QA_FILED_MEMORY} \
-    || git -C "$REPO_ROOT" commit -m "chore(flow): qa verdict $SPEC_ID" -- "$RECEIPT_PATH" "${QA_HISTORY_PATHS[@]}" ${QA_FILED_MEMORY:+$QA_FILED_MEMORY}
-fi
-```
-
-`flow --auto` recognises this subject when it looks past the commit for the code head that
-`head_sha` recorded, so keep it exactly. A user running `mode:autonomous` with uncommitted
-`.flow/memory` edits should commit them first, since an updated entry would ride this commit.
+Only when `QA_AUTONOMOUS=1`: read [references/autonomous-commit.md](references/autonomous-commit.md)
+and run its commit. An interactive run leaves commits to the user.
 
 ### 6.4 Report
 
