@@ -38,7 +38,7 @@ It runs on Claude Code, OpenAI Codex, Factory Droid, Cursor, xAI Grok Build and 
 
 ## How much faster, and how much better
 
-I measured this over more than 140 full end-to-end runs against plain Claude Code on the same model, each case run several times. Hidden tests the agent never sees check every result, and a blind judge scores the handoff. Speed is time to the working change, before any review or QA.
+I measured this over more than 170 full end-to-end runs against plain Claude Code on the same model, each case run several times. Hidden tests the agent never sees check every result, and a blind judge scores the handoff. Speed is time to the working change, before any review or QA.
 
 | Task | Speed on the work | Quality | What the quality stages did |
 |---|---|---|---|

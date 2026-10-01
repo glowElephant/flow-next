@@ -22,7 +22,7 @@ None of that ever hurt the quality of the output. It was consistently better tha
 
 ### Benchmarks
 
-I tested 7.0 against plain Claude Code on the same model across a wide spread of work: a simple bug, a hard bug, a small feature and a large feature, attended and unattended, plus a held-out large feature from a repository and stack the tuning never touched. That came to more than 140 full end-to-end runs, each case drawn several times, never a single lucky run. Hidden tests the agent never sees check each result, and a blind judge scores the handoff.
+I tested 7.0 against plain Claude Code on the same model across a wide spread of work: a simple bug, a hard bug, a small feature and a large feature, attended and unattended, plus a held-out large feature from a repository and stack the tuning never touched. That came to more than 170 full end-to-end runs, each case drawn several times, never a single lucky run. Hidden tests the agent never sees check each result, and a blind judge scores the handoff.
 
 | Task | Speed on the work | Quality | What the quality stages did |
 |---|---|---|---|
