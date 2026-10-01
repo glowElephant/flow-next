@@ -23718,10 +23718,12 @@ def judge_route_lifecycle(state: dict) -> dict:
             reasons = "; ".join(state.get("blocked_reasons", []))
             return decision("host", reasons or "all remaining tasks blocked")
         return decision("work_planned", "recorded task route")
-    if not state["ready"]:
-        return decision("host", "spec not ready")
+    # A recorded direct route is the build decision: flow's own capture leaves readiness
+    # unchanged, and --auto admits only ready specs before it ever routes.
     if state.get("no_plan") is True:
         return decision("work_no_plan_default", "recorded no_plan")
+    if not state["ready"]:
+        return decision("host", "spec not ready")
     text = state["spec_body"]
     patterns = {
         # Affirmative requests only: a negated request or a code identifier is not a plan signal.

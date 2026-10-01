@@ -43,6 +43,8 @@ class JudgeRouteTests(unittest.TestCase):
             ({"spec_body": "Do not decompose this into tasks; deliver one PR."}, "work_no_plan_default"),
             ({"spec_body": "Don't plan this out; never break it down into tasks."}, "work_no_plan_default"),
             ({"ready": False}, "host"),
+            ({"ready": False, "no_plan": True}, "work_no_plan_default"),
+            ({"ready": False, "tasks_total": 1}, "work_planned"),
         ]
         for overrides, expected in cases:
             with self.subTest(overrides=overrides):
