@@ -106,7 +106,7 @@ When your prompt's `IMPLEMENTER` line or the project routing block names an impl
    - Constraints discovered (validation rules, type contracts, env requirements)
    - Anything surprising that might affect your approach
 
-**If the task spec contains `## Design context`:** read [worker-design-context.md](../skills/flow-next-work/references/worker-design-context.md) before writing code.
+**If the task spec contains a `Design context` heading (`##` or `###`; task creation demotes `##` to `###`):** read [worker-design-context.md](../skills/flow-next-work/references/worker-design-context.md) before writing code.
 
 2. **Similar functionality search** — before writing new code:
    ```bash
