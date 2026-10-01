@@ -9,6 +9,8 @@ Flow-Next changed shape with 5.0.0. One command, `/flow-next:flow`, reads whatev
 ### Changed
 
 - **When you're there, Flow opens the pull request when you ask.** An attended build now hands back the change, commits locally and ends with one line: say "open the PR" when you want it. Nothing is pushed or opened on GitHub until you do. `flow --auto` is unchanged and still stops at the open PR, ready or as a draft with open items. A PR the run just opened no longer gets a "land it now?" question.
+- **`--until=merge` decides what it can and never merges over what it can't.** When you hand a run the merge, it now makes a reversible, evidence-backed call inside the spec itself (for example refreshing a frozen test baseline whose only change is its own) and records it in the PR's Decisions list. A call it cannot make (irreversible, a product choice the spec leaves open, or one that makes merging unsafe) stops the run before the merge. Land no longer marks a draft PR ready on an unattended merge; it stops `NEEDS_HUMAN` and names the open items. A human saying "land it" still merges a draft.
+- **Work and plan no longer ask setup questions.** With no review backend configured, review is off and the handoff says so once; plan's depth takes its default. Set the backend in setup, `review.backend`, or the prompt.
 - **Audit's autofix stops at a local branch.** On the default branch it used to create a branch, commit and open a pull request on its own. It now commits to `docs/audit-memory-<date>` and reports the branch; nothing is pushed or opened until you ask.
 
 ### Deprecated

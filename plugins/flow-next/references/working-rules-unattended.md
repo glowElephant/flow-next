@@ -9,6 +9,11 @@
   for a call only a human can make or an irreversible action. A human call that does not block
   the rest of the work (refreshing a frozen fixture, a requirement only CI can prove) goes in the
   pull request as an open item, on a draft pull request; finish the rest instead of stopping.
+  Under `--until=merge` you also hold the merge, so make such a call yourself when it is
+  reversible, inside the spec and backed by evidence (a frozen fixture whose only change is one
+  you made), and record it in the Decisions list. A call that is not (irreversible, a product
+  choice the spec does not settle, or one that makes merging unsafe) stops the run `NEEDS_HUMAN`
+  before the merge.
   Fix a discovery only when it blocks the goal, as its own commit; list the rest as follow-ups
   in the final report. Keep a
   Decisions list in the final report and the pull request body: each default you chose, finding

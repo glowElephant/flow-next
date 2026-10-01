@@ -100,8 +100,10 @@ Paginate these reads. Skip [references/stacks.md](references/stacks.md) only whe
 succeed completely and find no open children and no native stack; otherwise (children, a stack,
 or any read error) read it and follow it here, at the merge call, and after the merge.
 
-If the authorized PR is draft, mark it ready with `gh pr ready <PR> --repo <owner/repo>` and re-read
-checks and review state before proceeding.
+If the authorized PR is draft and flow authorized the merge without a human's in-session merge
+authorization, stop `NEEDS_HUMAN` naming its open items: the draft marks a call the run left for a
+person. With a human's current authorization, mark it ready with `gh pr ready <PR> --repo
+<owner/repo>` and re-read checks and review state before proceeding.
 Refresh the full head SHA and all gates immediately before merge. A shortened
 SHA is invalid. Ordinary PRs use `gh pr merge <PR> --repo <owner/repo>
 --squash --match-head-commit <full-head-sha>`, adding `--delete-branch` only

@@ -146,7 +146,7 @@ branch_git merge-base HEAD "$BASE_BRANCH" > .flow/tmp/spec_base || exit 2
 rm -f .flow/tmp/spec_base_repos   # sibling bases are per run; recorded below
 ```
 
-Based on user's answer from setup questions (`BRANCH_MODE`):
+Based on the resolved branch mode (`BRANCH_MODE`):
 
 - **Worktree**: use `skill: flow-next-worktree-kit`, with the same `BASE_BRANCH` the fence resolved (the parent's remote-tracking ref on a chained spec, the default branch otherwise).
 - **New branch**: the fence's `new` arm - from `origin/<parent_branch>` on a chained spec (carrying the spec's own tracked `.flow/specs/<id>.*` and `.flow/tasks/<id>.*` files from the pre-checkout commit when the start point lacks them or holds an older version, as one bookkeeping commit), else the resolved default base (refreshed from origin when remote). Existing task branches are checked out unchanged.

@@ -59,8 +59,6 @@ A ready or captured spec is plan input. An unshaped, oversized idea with several
 
 **Review.** `--review=codex` ("review with codex", "codex review", "use codex"), `--review=rp` ("rp chat", "repoprompt review"), `--review=host` ("host review", "use host": the host-native fresh-context reviewer), `--review=export` ("export review", "external llm"), `--review=none` or `--no-review` ("no review", "skip review").
 
-An option found in the arguments, as a flag or in these words, skips its setup question.
-
 Initialize and capture one preflight snapshot before routing or scouting (also under autonomy). Every later config read uses this literal path:
 
 ```bash
@@ -69,24 +67,13 @@ PLAN_CFG="${TMPDIR:-/tmp}/flow-plan-config-<suffix>.json"
 $FLOWCTL preflight --json > "$PLAN_CFG" 2>/dev/null || printf '{"key":null,"value":{}}' > "$PLAN_CFG"
 ```
 
-```bash
-ACTIVE=0
-# No pipelines in the probe: capture raw first, rc-checked; parse separately.
-RAW="$(jq -er 'if .probes.review_backend.status == "ok" then .probes.review_backend.value.backend else error("review backend probe") end' "${TMPDIR:-/tmp}/flow-plan-config-<suffix>.json" 2>/dev/null)" || ACTIVE=1        # probe error => ACTIVE
-if [ "$ACTIVE" = "0" ]; then
-  REVIEW_BACKEND="$(printf '%s' "$RAW" | tr -d '[:space:]' 2>/dev/null)" || ACTIVE=1   # parse error => ACTIVE
-  [ "$REVIEW_BACKEND" = "ASK" ] && ACTIVE=1
-fi
-[ "${AUTONOMOUS:-0}" = "1" ] && ACTIVE=0        # autonomous never asks
-if [ "$ACTIVE" = "1" ]; then
-  echo "SETUP-QUESTIONS GATE ACTIVE — STOP. Read references/setup-questions.md before continuing."
-fi
-```
-
-When the sentinel prints, read [`references/setup-questions.md`](references/setup-questions.md) before any further step. When a backend is configured (`rp`, `codex`, `copilot`, `cursor`, `claude`, `host`, `none`), ask nothing: flags win, depth defaults, review uses that backend. Show the hint:
+Plan asks no setup question: flags win, depth takes its default, and review uses the configured
+backend from the snapshot (`.probes.review_backend.value.backend`). When that reads `ASK` (nothing
+configured), review is `none` and the handoff says once "no review backend set; run setup or set
+review.backend". Show the hint:
 
 ```
-(Tip: --depth=short|standard|deep, --review=rp|codex|copilot|cursor|claude|host|none)
+(Tip: --depth=short|standard|deep, --review=codex|copilot|cursor|claude|host|none)
 ```
 
 ## Workflow

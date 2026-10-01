@@ -99,7 +99,7 @@ configured/overridden backend — codex, copilot, cursor, claude, rp, or host �
 - The fork's semantics (ask, autonomous refusal, durable choice, implicit-task mint) live in phases.md Phase 1's gated [references/no-plan-route.md](references/no-plan-route.md), read only when the fork fires
 
 **Autonomous mode**:
-- `AUTONOMOUS=1` → suppress all setup questions; use the defaults above.
+- `AUTONOMOUS=1` → use the defaults above.
 
 ### If the options are absent from the arguments
 
@@ -107,18 +107,18 @@ configured/overridden backend — codex, copilot, cursor, claude, rp, or host �
 
 **Otherwise (interactive)**: do not ask about the branch. Stay on the current branch when it is
 not the default branch, otherwise create a new one (named for the spec's `branch_name`), and say
-which in one line. Ask only when `REVIEW_BACKEND` is `ASK`: then read
-[references/setup-questions.md](references/setup-questions.md) and ask its review question before
-reading or writing anything else.
+which in one line. Never ask about review either: with no review option in the arguments and
+`REVIEW_BACKEND` at `ASK` (nothing configured), the review mode is `none`, and the handoff says once
+"no review backend set; run setup or set review.backend".
 
-Done when: the branch mode (and, under `REVIEW_BACKEND=ASK`, the review mode) is resolved from
-arguments, this default, the user's answer, or the autonomous defaults.
+Done when: the branch and review modes are resolved from arguments, these defaults, or the
+autonomous defaults.
 
 ## Workflow
 
 Read [working-rules.md](../../references/working-rules.md) first unless you already have this run; it holds on every phase and in every worker dispatch.
 
-After setup questions answered, read [phases.md](phases.md) and execute each phase in order.
+Once the modes are resolved, read [phases.md](phases.md) and execute each phase in order.
 
 **One task is implemented inline by this conversation** (phases.md Phase 3). Several tasks, or a
 task that goes to a worker, follow [references/multi-task.md](references/multi-task.md), which owns
