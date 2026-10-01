@@ -43,7 +43,7 @@ MODE="interactive"
 if [[ "$RAW_ARGS" == *"mode:autofix"* || "$RAW_ARGS" == *"mode:autonomous"* || "${FLOW_AUTONOMOUS:-}" == "1" || "${AUTONOMOUS:-}" == "1" ]]; then
   MODE="autofix"
   # Strip token, collapse whitespace, trim.
-  SCOPE_HINT=$(printf "%s" "$RAW_ARGS" | sed 's/mode:autofix//' | tr -s ' ' | sed 's/^ //;s/ $//')
+  SCOPE_HINT=$(printf "%s" "$RAW_ARGS" | sed 's/mode:autofix//; s/mode:autonomous//' | tr -s ' ' | sed 's/^ //;s/ $//')
 else
   SCOPE_HINT="$RAW_ARGS"
 fi

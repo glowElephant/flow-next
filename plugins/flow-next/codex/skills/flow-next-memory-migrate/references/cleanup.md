@@ -26,7 +26,9 @@ The `.gitignore` content is just `*` — every file in `_migrated/` is ignored b
 
 ### 4.3 — Rename each migrated original
 
-For each filename whose entries were migrated in this run (not already in `ALREADY_MIGRATED`):
+For each filename whose entries were all written and verified in this run (not already in
+`ALREADY_MIGRATED`). A file with any skipped or failed entry stays in place, named in the report,
+so its unmigrated lessons are not hidden in the ignored `_migrated/` directory:
 
 ```bash
 mv "$MEMORY_DIR/$filename" "$MIGRATED_DIR/${filename}.bak"

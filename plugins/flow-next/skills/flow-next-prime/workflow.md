@@ -168,7 +168,8 @@ ladder with an honest no-playbook line (per stacks.md's last section).
 ### 2.2 Test discovery (G2 / TS4)
 
 Verify tests are **discoverable** (list / dry-run - never a full run) using the detected
-framework's command. Illustrative equivalents (the stacks.md verify column wins):
+framework's command. Illustrative equivalents (use stacks.md only to pick the framework, never its
+test command):
 
 | Framework | Discovery command |
 |-----------|---------------------|
@@ -197,7 +198,7 @@ PRE_SNAP="$(git -C "$ROOT" status --porcelain 2>/dev/null)"
 # pipeline is the LAST command's status (tail), which would mark a broken
 # build as passing BS2/G1.
 BUILD_OUT="$(mktemp)"
-run_bounded 300 sh -c 'cd "$0" && <stacks.md verify build command>' "$ROOT" > "$BUILD_OUT" 2>&1
+run_bounded 300 sh -c 'cd "$0" && <the build step of the stacks.md verify cell, without lint or test>' "$ROOT" > "$BUILD_OUT" 2>&1
 BUILD_RC=$?
 tail -20 "$BUILD_OUT"
 POST_SNAP="$(git -C "$ROOT" status --porcelain 2>/dev/null)"

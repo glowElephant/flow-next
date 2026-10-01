@@ -54,7 +54,7 @@ Examples:
 - `/flow-next:prime ~/other-project`
 
 **Resolve `ROOT` from `$ARGUMENTS`** (the first non-flag token; default `.`). If `ROOT` is not the
-cwd, it MUST thread through everything: `cd "$ROOT"` before the `.flow/meta.json` pre-check, the
+cwd, resolve it first (`ROOT=$(cd "$ROOT" && pwd)`), then it MUST thread through everything: `cd "$ROOT"` before the `.flow/meta.json` pre-check, the
 Phase 0.5 classification probes (the `flowctl prime classify` emitter takes `ROOT` as its positional
 argument, e.g. `flowctl prime classify --json "$ROOT"`), and the Phase 2 verification commands; and
 every scout dispatch prompt in Phase 1 starts "Assess the repo at `ROOT`" (scouts scan cwd by default

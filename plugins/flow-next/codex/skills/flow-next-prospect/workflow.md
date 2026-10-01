@@ -45,7 +45,7 @@ fi
 
 ## Phase 0: Resume check
 
-**Goal:** if the user already has an active prospect artifact <30 days old, surface it and ask whether to extend it, start fresh, or open it. Corrupt artifacts must be detected and listed with `status: corrupt` so the user knows they exist, but never offered for extension or promote.
+**Goal:** if the user already has an active prospect artifact <30 days old, surface it and ask whether to start fresh or open it. Corrupt artifacts must be detected and listed with `status: corrupt` so the user knows they exist, but never offered for extension or promote.
 
 ### 0.1 — Discover candidates (gate)
 
@@ -68,11 +68,11 @@ fi
 
 **Ask the user via plain text.** Render the options below as a numbered list `1.` … `N.`, followed by a final option `N+1. Other — type your own answer`. Print the question, then the numbered list, then **stop and wait for the user's next message before continuing**. Parse the reply as: a bare number `1`–`N+1` → that option; the literal text of an option label → that option; free text after `Other` → custom answer.
 
-When the sentinel prints, STOP and Read [references/resume-artifacts.md](references/resume-artifacts.md) before any further step — it carries §0.2 parse + classify, §0.3 surface rules, §0.4 the frozen `fresh | extend N | open N` plain-text numbered prompt, and §0.5 routing (including the `EXTEND_TARGET` Phase 5 appends to). When the sentinel does not print, `.flow/prospects/` holds no artifacts: skip the rest of Phase 0 — go straight to Phase 1.
+When the sentinel prints, STOP and Read [references/resume-artifacts.md](references/resume-artifacts.md) before any further step — it carries §0.2 parse + classify, §0.3 surface rules, §0.4 the frozen `fresh | open N` plain-text numbered prompt, and §0.5 routing. When the sentinel does not print, `.flow/prospects/` holds no artifacts: skip the rest of Phase 0 — go straight to Phase 1.
 
 ### Done when
 
-- The gate has been evaluated, and — when it fired — the reference's routing has resolved to fresh or to a named `EXTEND_TARGET`.
+- The gate has been evaluated, and — when it fired — the reference's routing has resolved to fresh or exited on open.
 - Corrupt artifacts, if any, are listed with `status: corrupt` and excluded from extension.
 
 ---
@@ -105,10 +105,10 @@ Each subsection writes a small structured block into a single snapshot buffer. E
 #### git log (last 30 days)
 
 ```bash
-if [[ -d "$REPO_ROOT/.git" ]] && command -v git >/dev/null 2>&1; then
+if [[ -e "$REPO_ROOT/.git" ]] && command -v git >/dev/null 2>&1; then
   GIT_FILES=$(git -C "$REPO_ROOT" log --since="30 days ago" --name-only --pretty=format: 2>/dev/null \
     | grep -v '^$' | sort -u)
-  GIT_COUNT=$(printf "%s\n" "$GIT_FILES" | grep -c .)
+  GIT_COUNT=$(printf "%s\n" "$GIT_FILES" | grep -c . || true)
   GIT_TOP=$(printf "%s\n" "$GIT_FILES" | head -10)
   GIT_BLOCK="git_log_30d: ${GIT_COUNT} files modified
 top:
@@ -476,7 +476,7 @@ backward-incompat          — would break public contracts / users without stro
 other                      — explain in `reason` field; use sparingly
 ```
 
-`out-of-scope-vs-strategy` is **advisory only**. It fires when a candidate's direction contradicts an active track from the strategy snapshot (Phase 1 §1.2). The rejection cites the violated track verbatim: `Rejected: [out-of-scope-vs-strategy] — contradicts active track "<track-name>"`. The user can `flowctl prospect promote <id> --idea N --force` to override (existing flag, no new plumbing). When the strategy snapshot scanned `none`, this category is unreachable — Phase 3 will not emit it.
+`out-of-scope-vs-strategy` is **advisory only**. It fires when a candidate's direction contradicts an active track from the strategy snapshot (Phase 1 §1.2). The rejection cites the violated track verbatim: `Rejected: [out-of-scope-vs-strategy] — contradicts active track "<track-name>"`. Promote reads only survivors, so a rejected idea cannot be promoted; to pursue it anyway, capture it with `/flow-next:capture`. When the strategy snapshot scanned `none`, this category is unreachable — Phase 3 will not emit it.
 
 Prompt template:
 
@@ -737,8 +737,7 @@ Use `plain-text numbered prompt`. If the tool is unreachable, print the frozen-s
 
 If the tool is available, use it with these labelled choices (one per survivor + chart when warranted + skip + refine):
 
-- `Promote #1: <title>`
-- `Promote #2: <title>`
+- `Promote #<position>: <title>` (the survivor's artifact position)
 - ... (one per survivor across all buckets)
 - `Chart #N: <title>` (offer **only** when that survivor is still singular, oversized, and unclear - never for clear candidates)
 - `Skip`
@@ -757,8 +756,8 @@ Normalize the reply (strip whitespace, lowercase). Route by exact match:
 
 | Reply | Action |
 |-------|--------|
-| `1`, `2`, ..., `N-1` (where `N` is the Skip slot) | Run `flowctl prospect promote <artifact-id> --idea <reply>`. Echo the new spec id and exit. |
-| `N`, `skip`, empty string | Print `Skipped. Artifact saved at .flow/prospects/<artifact-id>.md` and exit. |
+| A survivor position, or a `Promote #<position>` label | Run `flowctl prospect promote <artifact-id> --idea <position>`. Echo the new spec id and exit. |
+| `s`, `skip`, `Skip`, empty string | Print `Skipped. Artifact saved at .flow/prospects/<artifact-id>.md` and exit. |
 | `c`, `chart` | Print suggestion: `Run $flow-next-chart on the selected survivor only if it is still singular, oversized, and unclear; otherwise capture/promote. Artifact saved at .flow/prospects/<artifact-id>.md`. **Do not auto-invoke.** |
 | `i`, `refine`, `interview` | Print suggestion: `Run $flow-next-refine <spec-or-task-id> to refine. Artifact saved at .flow/prospects/<artifact-id>.md`. **Do not auto-invoke** - the user picks the target id. |
 | anything else | Reprint the menu once with `Unrecognized choice: <reply>`. On second invalid reply, print `Skipped (no valid choice). Artifact saved at .flow/prospects/<artifact-id>.md` and exit cleanly. |

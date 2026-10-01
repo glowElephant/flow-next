@@ -174,12 +174,20 @@ AGENTS_SRC="${PLUGIN_ROOT}/codex/agents"
 
 if [ -d "$AGENTS_SRC" ]; then
   mkdir -p .codex/agents
-  cp "$AGENTS_SRC"/*.toml .codex/agents/
-  echo "Copied $(ls .codex/agents/*.toml 2>/dev/null | wc -l | tr -d ' ') agent configs to .codex/agents/"
+  DIFFERING=()
+  for f in "$AGENTS_SRC"/*.toml; do
+    t=".codex/agents/$(basename "$f")"
+    if [ ! -e "$t" ]; then cp "$f" "$t"; elif ! cmp -s "$f" "$t"; then DIFFERING+=("$t"); fi
+  done
+  echo "Agent configs in .codex/agents/: $(ls .codex/agents/*.toml 2>/dev/null | wc -l | tr -d ' '); differing from this release: ${#DIFFERING[@]}"
 else
   echo "Warning: No agent .toml files found at ${PLUGIN_ROOT}/codex/agents/ or ${CODEX_HOME:-$HOME/.codex}/agents/"
 fi
 ```
+
+A file in `DIFFERING` was edited locally or comes from an older release. Attended, ask once whether
+to replace those files with this release's versions (local edits are lost); otherwise leave them
+and list them in the summary.
 
 ### Done when
 

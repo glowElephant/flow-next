@@ -144,7 +144,7 @@ The verdict headline leads with the **top-5 ranked next-actions** drawn from thi
 | 6 | Deterministic gates at the RIGHT layer (SV4): format/lint via harness hook or staged-files commit hook; tests via the verify command + acceptance requirements + CI required check - never test suites in pre-commit | High | harness-hook portion = explicit-consent; EDITING EXISTING CI/verify config = `--fix-all`; CREATING a new CI workflow = explicit-consent (matches SKILL.md Bonus rule) |
 | 7 | `.env.example` covering every env var actually read | Critical | `--fix-all` (in-root) |
 | 8 | Seeded db reset (where a db exists) | Medium | `--fix-all` (in-root) |
-| 9 | Cloud-agent env config (copilot-setup-steps.yml / devcontainer postCreate that installs) | Medium | `--fix-all` (in-root) |
+| 9 | Cloud-agent env config (copilot-setup-steps.yml / devcontainer postCreate that installs) | Medium | explicit request only (creates a CI workflow or devcontainer; `--fix-all` never covers it) |
 | 10 | Prune doc sprawl; root file becomes pointers ("where to look" table) | Medium | explicit-consent (restructures the instruction file) |
 | 11 | Per-package instruction files in monorepos past ~200 root lines | Medium | explicit-consent (structural) |
 | 12 | CI/local command parity (CI steps exist as identically named local scripts) | Medium | `--fix-all` (in-root) |

@@ -54,7 +54,7 @@ Count remaining entries (`TOTAL`). Route:
 
 | TOTAL | Path | Notes |
 |-------|------|-------|
-| 0 | exit cleanly | Print `No categorized memory entries found.` plus legacy skip note if any |
+| 0 | skip the memory phases | Print `No categorized memory entries found.` plus legacy skip note if any; continue with Phase 0.5 and the report |
 | 1-2 | **Focused** | Investigate directly, then present recommendation(s) |
 | 3-8 | **Batch** | Investigate (parallel subagents on 3+), then present grouped recommendations |
 | 9+ | **Broad** | Triage first: pick highest-impact cluster, recommend starting there (interactive) or process all clusters in impact order (autofix) |
@@ -544,7 +544,7 @@ Skip Phase 5 commit logic if no files were modified (all Keep, all writes failed
 If `GIT_BRANCH` matches `main` / `master` / `$GIT_DEFAULT`:
 
 ```
-1. Create a branch + commit + open PR (recommended)
+1. Create a branch + commit (recommended; push or open a PR only when asked)
    Branch: docs/audit-memory-<date>  (or topic-specific if scope was narrow)
 2. Commit directly to <GIT_BRANCH>
 3. Don't commit — I'll handle it

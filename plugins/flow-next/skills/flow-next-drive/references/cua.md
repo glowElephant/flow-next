@@ -206,7 +206,7 @@ get_window_state      → fresh AX tree (element_index / role / label / frame)  
 act                   → click / type_text on an element_index (NOT pixels) toward the next step
 verify                → confirm the expected element / label / state appeared in the AX tree
 capture               → get_window_state screenshot (Screen Recording) OR the AX tree as evidence
-kill_app + end_session → clean teardown, no leaked session
+end_session (+ kill_app only for an app this run launched; never a user's running app) → clean teardown
 ```
 
 This is the universal flow (SKILL.md Step 2) expressed in Cua tools — only the

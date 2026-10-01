@@ -170,6 +170,8 @@ for c in listing:
      # else (no matching open question) fall through — it is a genuine comment
   if norm(c.body) == norm(f.body) for any flow marker comment f in the listing:
                                   continue   # human paste of flow content — skip
+  if a ## Sync Log line already has c's created_at and text:
+                                  continue   # logged on an earlier pull — skip
   append c to the spec's ## Sync Log         # a genuine tracker-side comment
 ```
 
@@ -177,7 +179,8 @@ for c in listing:
 
 Genuine tracker comments fold into a dedicated `## Sync Log` section of the spec —
 append-only, newest at the bottom, each line crediting the tracker-side author and
-timestamp (from the normalized `comment.author` / `createdAt`):
+timestamp (from the normalized `created_at`; the author from `raw` when the provider gives one,
+otherwise omitted):
 
 ```markdown
 ## Sync Log
@@ -189,7 +192,7 @@ The sync log is **not** a flow requirement source — a tracker comment that rea
 like a requirement is **logged as a comment, never promoted to an R-ID** (same
 "bridge projects, never authors" rule as the body fold in
 [body-merge.md](body-merge.md) Step 3). Promotion is a flow-authoring act
-(interview/plan), not a sync act.
+(refine/plan), not a sync act.
 
 ## Evidence comments — the flow → tracker payload
 
@@ -404,6 +407,6 @@ threaded one.
   round-trip live in [steps.md](../steps.md) Phase 7; this file owns their dedup +
   the `flow-next:answer`-vs-Sync-Log distinction.
 - **Never promote a tracker comment to an R-ID** — log it; promotion is a flow-
-  authoring act (interview/plan), not a sync act. The bridge projects.
+  authoring act (refine/plan), not a sync act. The bridge projects.
 - **Lifecycle wiring lives in the lifecycle skills** — this file defines the comment shape + dedup; the
   per-skill hooks that call it land there.
