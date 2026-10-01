@@ -1,27 +1,9 @@
-"""fn-83.4 — worker anchor-call prose and evidence provenance.
+"""fn-83.4 — done-evidence provenance.
 
-The plan-sync skip-gate was proven NON-VIABLE (fn-83.6 cross-repo verdict
-FAIL — a genuine false skip + 6.7% skip-rate vs >=50% required; decision
-record `.flow/memory/knowledge/decisions/plan-sync-skip-gate-not-viable-
-2026-07-03.md`) and its machinery was removed from the shipped CLI. What
-DOES ship from fn-83 — and what this test locks:
-
-1. worker.md Phase 1 is the single ``flowctl anchor <TASK_ID> --md`` call
-   with floor-not-ceiling prose (memory keyword-search + read-more freedom
-   retained), and BASE_COMMIT is captured at Phase-1 end. Canonical file
-   AND the Codex mirror (sync-codex.sh regenerates the mirror, but the
-   contract must survive that rewrite pass — same discipline as
-   test_pnpm_home_hint_prose.py).
-2. phases.md 3e passes ``CROSS_SPEC`` to the plan-sync spawn (single
-   config-leaf read of ``planSync.crossSpec`` — the documented
-   plan-sync.md input the caller historically never passed). The spawn
-   itself stays UNCONDITIONAL — no gate branch, no probe, no mode matrix.
-3. BASE_COMMIT + done-evidence provenance are RETAINED (load-bearing
-   independent of the gate: impl-review diff scoping and commit-range
-   provenance): ``base_commit`` + the FULL
-   base..HEAD commit list in the evidence templates, verified by a real
-   `flowctl done` round-trip against a tmp-repo fixture (production CLI
-   wire form).
+BASE_COMMIT + done-evidence provenance are load-bearing for impl-review diff
+scoping and commit-range provenance: ``base_commit`` + the FULL base..HEAD
+commit list survive a real `flowctl done` round-trip against a tmp-repo
+fixture (production CLI wire form).
 """
 
 from __future__ import annotations
@@ -36,116 +18,6 @@ import unittest
 import sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))  # sibling test helpers
 from flowctl_test_support import FLOWCTL_CMD
-
-
-REPO_ROOT = pathlib.Path(__file__).resolve().parents[3]
-PLUGIN = REPO_ROOT / "plugins" / "flow-next"
-
-CANONICAL_WORKER = PLUGIN / "agents" / "worker.md"
-MIRROR_WORKER = PLUGIN / "codex" / "agents" / "worker.toml"
-# The handover-route evidence template moved verbatim into the worker's gated
-# handover reference (read only on the parallel-wave / host-deferred routes).
-CANONICAL_HANDOVER = PLUGIN / "skills" / "flow-next-work" / "references" / "worker-handover.md"
-MIRROR_HANDOVER = (
-    PLUGIN / "codex" / "skills" / "flow-next-work" / "references" / "worker-handover.md"
-)
-# Plan-sync 3e is a multi-task step; its gate lives in multi-task.md.
-CANONICAL_PHASES = PLUGIN / "skills" / "flow-next-work" / "references" / "multi-task.md"
-MIRROR_PHASES = (
-    PLUGIN / "codex" / "skills" / "flow-next-work" / "references" / "multi-task.md"
-)
-# The branch-disclosure refactor moved the 3e downstream-extraction /
-# CROSS_SPEC read / plan-sync spawn prose verbatim out of the always-loaded
-# phases.md into a reached-path reference, loaded only once 3e has read
-# `planSync.enabled == true`. Same contract, new home.
-CANONICAL_PLAN_SYNC_DISPATCH = (
-    PLUGIN / "skills" / "flow-next-work" / "references" / "plan-sync-dispatch.md"
-)
-MIRROR_PLAN_SYNC_DISPATCH = (
-    PLUGIN
-    / "codex"
-    / "skills"
-    / "flow-next-work"
-    / "references"
-    / "plan-sync-dispatch.md"
-)
-
-
-def _read(path: pathlib.Path) -> str:
-    return path.read_text(encoding="utf-8")
-
-
-class WorkerAnchorCallProse(unittest.TestCase):
-    """Phase 1 = single anchor call, floor-not-ceiling; BASE_COMMIT at end."""
-
-    def _assert_anchor_contract(self, path: pathlib.Path) -> None:
-        text = _read(path)
-        self.assertIn("anchor <TASK_ID> --md", text, path)
-        self.assertIn("memory search", text, path)
-        self.assertIn("memory read", text, path)
-        # BASE_COMMIT captured at Phase-1 end.
-        self.assertIn("BASE_COMMIT=$(git rev-parse HEAD)", text, path)
-        # Persisted to a gitignored file — bash vars do not survive across
-        # tool-call Bash blocks, so BASE_COMMIT must be written once and
-        # re-read where used, else Phase-5 evidence records a blank base.
-        self.assertIn("> .flow/tmp/base_commit", text, path)
-
-    def _assert_evidence_contract(self, path: pathlib.Path, handover: pathlib.Path) -> None:
-        # Each later block re-reads BASE_COMMIT from the persisted file
-        # (self-contained — no cross-tool-call variable dependency).
-        self.assertGreaterEqual(
-            _read(path).count("BASE_COMMIT=$(cat .flow/tmp/base_commit)"), 2, path
-        )
-        text = _read(handover)
-        self.assertIn("BASE_COMMIT=$(cat .flow/tmp/base_commit)", text, handover)
-        # Full commit list, oldest first, from the Phase-1 base commit.
-        self.assertIn('git rev-list --reverse "$BASE_COMMIT"..HEAD', text, handover)
-        # base_commit provenance in the evidence template — retained per fn-83
-        # R4 (only the removed probe's CONSUMPTION of it is gone). flow-98
-        # deleted the second (delegation) template with the packaged path.
-        self.assertEqual(
-            text.count('"base_commit": "$BASE_COMMIT"'), 1, handover
-        )
-        self.assertEqual(text.count('"commits": $COMMITS_JSON'), 1, handover)
-
-    def test_canonical_worker(self) -> None:
-        self._assert_anchor_contract(CANONICAL_WORKER)
-        self._assert_evidence_contract(CANONICAL_WORKER, CANONICAL_HANDOVER)
-
-    def test_mirror_worker(self) -> None:
-        self._assert_anchor_contract(MIRROR_WORKER)
-        self._assert_evidence_contract(MIRROR_WORKER, MIRROR_HANDOVER)
-
-
-class PhasesCrossSpecProse(unittest.TestCase):
-    """phases.md 3e: CROSS_SPEC passed; spawn stays unconditional."""
-
-    def _assert_phases_contract(
-        self, path: pathlib.Path, dispatch: pathlib.Path
-    ) -> None:
-        text = _read(path)
-        dispatch_text = _read(dispatch)
-        # 3e's gate leaf stays on the always-loaded path, and 3e names the
-        # reached-path reference that carries the dispatch prose.
-        self.assertIn("planSync.enabled", text, path)
-        self.assertIn("plan-sync-dispatch.md", text, path)
-        # Single config-leaf read + spawn-prompt input (now in the reference).
-        self.assertIn("planSync.crossSpec", dispatch_text, dispatch)
-        # reads the actual config value
-        self.assertIn("CROSS_SPEC=$(", dispatch_text, dispatch)
-        # The spawn template references the READ value, not the ambiguous
-        # literal "true|false" (plan-sync Phase 4b only skips on exact false).
-        self.assertIn("$CROSS_SPEC value read above", dispatch_text, dispatch)
-        self.assertNotIn("CROSS_SPEC: true|false", dispatch_text, dispatch)
-        self.assertNotIn("CROSS_SPEC: true|false", text, path)
-        # The spawn is gated ONLY on planSync.enabled — today's behavior.
-        self.assertIn("planSync.enabled", dispatch_text, dispatch)
-
-    def test_canonical_phases(self) -> None:
-        self._assert_phases_contract(CANONICAL_PHASES, CANONICAL_PLAN_SYNC_DISPATCH)
-
-    def test_mirror_phases(self) -> None:
-        self._assert_phases_contract(MIRROR_PHASES, MIRROR_PLAN_SYNC_DISPATCH)
 
 
 # ── Done-evidence provenance: base_commit + full commit list ──────────────

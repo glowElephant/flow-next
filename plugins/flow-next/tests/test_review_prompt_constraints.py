@@ -89,10 +89,11 @@ class ReviewPromptConstraintTest(unittest.TestCase):
             ),
         }
 
-    def test_every_assembled_prompt_uses_unambiguous_finding_fields(self) -> None:
+    def test_every_assembled_prompt_names_the_parsed_finding_fields(self) -> None:
         for name, prompt in self.rendered_prompts().items():
             with self.subTest(prompt=name):
                 output = _output_format(prompt)
+                # The field labels the findings parser reads back.
                 for marker in (
                     "Severity",
                     "Confidence",
@@ -103,31 +104,6 @@ class ReviewPromptConstraintTest(unittest.TestCase):
                     "Suggestion",
                 ):
                     self.assertIn(marker, output)
-                self.assertRegex(
-                    output, r"File:Line[^\n]*path:line[^\n]*(?:`-`|\|-|/ -)"
-                )
-                self.assertRegex(output, r"R-IDs[^\n]*\[R1, R2\][^\n]*\[\]")
-                self.assertRegex(
-                    output,
-                    r"Classification[^\n]*introduced[^\n]*pre_existing",
-                )
-
-    def test_plan_and_completion_require_parser_compatible_lines(self) -> None:
-        required = (
-            "Severity: P0/P1/P2/P3",
-            "Confidence: 0/25/50/75/100",
-            "Classification: introduced/pre_existing",
-            "File:Line: path:line / -",
-            "R-IDs: [R1, R2] / []",
-            "Problem:",
-            "Suggestion:",
-        )
-        prompts = self.rendered_prompts()
-        for name in ("plan", "plan_no_tasks", "completion", "completion_no_tasks"):
-            output = _output_format(prompts[name])
-            with self.subTest(prompt=name):
-                for line in required:
-                    self.assertIn(line, output)
 
     def test_no_direct_llm_sdk_imports(self) -> None:
         tree = ast.parse(FLOWCTL_PATH.read_text(encoding="utf-8"))

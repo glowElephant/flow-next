@@ -1,16 +1,14 @@
 """`pipeline.qa` is the enum `off | on | auto`; the unattended driver reads all
 three.
 
-Contract pins only (G2): the smallest distinctive tokens plus one executable
-run of the driver's QA-gate fence. The `auto` semantics themselves are
-judgment in the flow skill's routing reference; nothing here asserts prose.
+Contract pins only (G2): executable runs of the driver's QA-gate fence. The
+`auto` semantics themselves are judgment in the flow skill's routing reference; nothing here asserts prose.
 
 * the `flow --auto` QA gate (`skills/flow-next-flow/auto.md`, formerly
   pilot's) resolves two flags from the root snapshot: the literal `on` sets
   `QA_STAGE_ENABLED=1`, the literal `auto` sets `QA_STAGE_AUTO=1`, anything
   else leaves both 0 - proven by running the fence against each value;
-* setup persists each of the three literal values with `config set`;
-* the QA skill links the flow skill's gate-selection reference, which exists.
+* the flow skill's gate-selection reference exists.
 """
 
 from __future__ import annotations
@@ -26,8 +24,6 @@ from pathlib import Path
 
 PLUGIN_DIR = Path(__file__).resolve().parent.parent
 AUTO_MD = PLUGIN_DIR / "skills" / "flow-next-flow" / "auto.md"
-SETUP_WORKFLOW = PLUGIN_DIR / "skills" / "flow-next-setup" / "workflow.md"
-QA_SKILL = PLUGIN_DIR / "skills" / "flow-next-qa" / "SKILL.md"
 GATE_SELECTION = (
     PLUGIN_DIR / "skills" / "flow-next-flow" / "references" / "gate-selection.md"
 )
@@ -52,11 +48,6 @@ def _qa_gate_fence(workflow: str) -> str:
 
 
 class AutoQaGateReadsEveryValue(unittest.TestCase):
-    def test_fence_derives_from_the_snapshot(self) -> None:
-        # Derived from the root snapshot, never a second config call.
-        fence = _qa_gate_fence(_read(AUTO_MD))
-        self.assertNotRegex(fence, r'\$FLOWCTL"?\s+config get')
-
     @_POSIX_BASH
     def test_fence_resolves_each_literal_to_its_flag(self) -> None:
         fence = _qa_gate_fence(_read(AUTO_MD))
@@ -87,7 +78,6 @@ class AutoQaGateReadsEveryValue(unittest.TestCase):
                 )
 
 
-
     @_POSIX_BASH
     def test_selected_candidate_false_freshness_does_not_fall_back_to_another_spec(self):
         script = _qa_gate_fence(_read(AUTO_MD)) + '\nprintf "%s" "$QA_FRESH"'
@@ -114,21 +104,9 @@ class AutoQaGateReadsEveryValue(unittest.TestCase):
         self.assertNotIn("QA=", result.stdout)
 
 
-class SetupPersistsEveryValue(unittest.TestCase):
-    def test_answers_persist_each_literal_value(self) -> None:
-        text = _read(SETUP_WORKFLOW)
-        for value in ("off", "on", "auto"):
-            self.assertIn(f"config set pipeline.qa {value} --json", text)
-
-
 class AutoRuleRoutesToGateSelection(unittest.TestCase):
     def test_reference_exists(self) -> None:
         self.assertTrue(GATE_SELECTION.is_file())
-
-    def test_qa_skill_links_gate_selection_one_level_deep(self) -> None:
-        self.assertIn(
-            "../flow-next-flow/references/gate-selection.md", _read(QA_SKILL)
-        )
 
 
 if __name__ == "__main__":

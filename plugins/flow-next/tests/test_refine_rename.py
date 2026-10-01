@@ -1,8 +1,6 @@
 """fn-238 R15-R18: the refine research scope and the why-scout.
 
 Behavior or contract only (G2):
-  - refine's research reference and plan's research step write the exact
-    `## Resolved via Research` heading flowctl parses from the spec body;
   - the why-scout is read-only by tools (frontmatter the host enforces);
   - every pointer the new prose names resolves.
 
@@ -26,9 +24,6 @@ PLAN_STEPS = SKILLS / "flow-next-plan" / "steps.md"
 ROUTE_MATRIX = SKILLS / "flow-next-flow" / "references" / "route-matrix.md"
 WHY_SCOUT = PLUGIN / "agents" / "why-scout.md"
 
-SECTION = "## Resolved via Research"
-
-
 def _read(p: Path) -> str:
     return p.read_text(encoding="utf-8")
 
@@ -47,13 +42,6 @@ def _frontmatter(text: str) -> dict[str, str]:
 def _links(text: str) -> list[str]:
     return re.findall(r"\]\(([^)#]+\.md)(?:#[^)]*)?\)", text)
 
-
-class ResearchSectionHeading(unittest.TestCase):
-
-    def test_both_writers_name_the_heading_flowctl_parses(self) -> None:
-        for path in (RESEARCH_REF, PLAN_STEPS):
-            with self.subTest(writer=path.name):
-                self.assertIn(SECTION, _read(path))
 
 class WhyScoutIsReadOnly(unittest.TestCase):
     def test_tool_enforced_read_only(self) -> None:

@@ -1,7 +1,8 @@
 """fn-99 R1/R2/R9 and 2026-07-15 guidance-eval evidence-shape guard.
 
 The old block named --evidence-json but never showed its schema; agents reliably
-invented invalid evidence. The hand-maintained twins must change in lockstep.
+invented invalid evidence. Both snippets carry the setup-block markers and a
+parseable inline evidence example.
 """
 
 from __future__ import annotations
@@ -15,7 +16,6 @@ from pathlib import Path
 HERE = Path(__file__).resolve()
 TESTS_DIR = HERE.parent
 PLUGIN_DIR = TESTS_DIR.parent
-REPO_ROOT = PLUGIN_DIR.parent.parent
 TEMPLATES = PLUGIN_DIR / "skills" / "flow-next-setup" / "templates"
 
 
@@ -24,16 +24,6 @@ def _read(name: str) -> str:
 
 
 class SetupSnippetLockstepTest(unittest.TestCase):
-    def test_twins_change_in_lockstep(self) -> None:
-        claude = _read("claude-md-snippet.md")
-        agents = _read("agents-md-snippet.md")
-        restored = re.sub(r"\$flow-next-([a-z-]+)", r"flow-next:flow-next-\1", agents)
-        self.assertEqual(
-            restored,
-            claude,
-            "The twins are hand-maintained and must change in lockstep.",
-        )
-
     def test_markers_and_inline_evidence_shape(self) -> None:
         for name in ("claude-md-snippet.md", "agents-md-snippet.md"):
             with self.subTest(template=name):

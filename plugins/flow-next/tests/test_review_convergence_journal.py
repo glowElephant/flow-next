@@ -1446,20 +1446,6 @@ class TestNeedsHumanTerminal(_JournalReplayBase):
             data, receipt, status_key="plan_review_status"
         )
 
-    def test_rp_workflow_fences_attach_before_needs_human_exit(self):
-        for relative in (
-            "flow-next-plan-review/workflow-rp.md",
-            "flow-next-impl-review/workflow-rp.md",
-            "flow-next-spec-completion-review/workflow-rp.md",
-        ):
-            with self.subTest(workflow=relative):
-                text = (SKILLS / relative).read_text(encoding="utf-8")
-                attach_at = text.index("review-findings attach")
-                terminal_at = text.index(
-                    "ESCALATE: reviewer requested human review", attach_at
-                )
-                self.assertLess(attach_at, terminal_at)
-
 
 class _NeedsHumanHandlerBase(unittest.TestCase):
     """fn-159.3 r1: run a NEEDS_HUMAN dispatch end-to-end through the

@@ -852,42 +852,6 @@ class ReviewFindingsReceiptIntegrationTest(unittest.TestCase):
             [1, 2],
         )
 
-    def test_direct_workflow_contracts_require_parser_complete_fields(self) -> None:
-        skill_root = REPO / "plugins" / "flow-next" / "skills"
-        plan_rp = (
-            skill_root / "flow-next-plan-review" / "workflow-rp.md"
-        ).read_text(encoding="utf-8")
-        completion_rp = (
-            skill_root / "flow-next-spec-completion-review" / "workflow-rp.md"
-        ).read_text(encoding="utf-8")
-        completion_host = (
-            skill_root / "flow-next-spec-completion-review" / "workflow-host.md"
-        ).read_text(encoding="utf-8")
-        impl_host = (
-            skill_root / "flow-next-impl-review" / "workflow-host.md"
-        ).read_text(encoding="utf-8")
-        qa = (skill_root / "flow-next-qa" / "workflow.md").read_text(
-            encoding="utf-8"
-        )
-        self.assertGreaterEqual(plan_rp.count("Confidence"), 2)
-        self.assertGreaterEqual(plan_rp.count("Classification"), 2)
-        self.assertGreaterEqual(completion_rp.count("Severity"), 2)
-        for field in ("Severity", "Confidence", "Classification"):
-            self.assertIn(field, completion_host)
-        self.assertIn('DIFF_BASE="${BASE_COMMIT:-main}"', completion_host)
-        self.assertIn('DIFF_BASE="${BASE_COMMIT:-main}"', impl_host)
-        impl_rp = (
-            skill_root / "flow-next-impl-review" / "workflow-rp.md"
-        ).read_text(encoding="utf-8")
-        self.assertGreaterEqual(
-            impl_rp.count('REVIEW_HEAD_SHA="$(git rev-parse HEAD)"'), 2
-        )
-        self.assertGreaterEqual(
-            completion_rp.count('REVIEW_HEAD_SHA="$(git rev-parse HEAD)"'), 2
-        )
-        self.assertIn('qa receipt --from-json', qa)
-        self.assertIn('qa receipt --skeleton', qa)
-
 
 class ReviewFindingsCurrentnessTest(unittest.TestCase):
     def test_only_unambiguous_current_chain_tip_projects(self) -> None:

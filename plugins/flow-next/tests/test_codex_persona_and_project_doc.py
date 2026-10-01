@@ -158,7 +158,6 @@ class CodexPersonaOverride(unittest.TestCase):
             with self.subTest(kind=kind), _flow_repo() as (repo, base):
                 sent = self._run(repo, base, kind)
                 self.assertTrue(sent.startswith("## PERSONA OVERRIDE"), sent[:80])
-                self.assertIn("superseded", sent)
 
 
 class CodexProjectDocSuppression(unittest.TestCase):

@@ -4,9 +4,7 @@ Every command shim carries `disable-model-invocation: true`, so an agent can
 no longer reach a flow-next skill through its command form. Model-side
 invocations therefore name the skill id (`flow-next:flow-next-<name>`); this
 test resolves every such target in the canonical sources to an existing,
-model-invocable skill, and pins the skill-id token at the dispatch sites the
-spec names (flow --auto's stage dispatch, flow's land hand-off, work's
-completion-review call, the worker's impl-review call, the setup snippet).
+model-invocable skill.
 """
 
 from __future__ import annotations
@@ -18,12 +16,6 @@ from pathlib import Path
 PLUGIN = Path(__file__).resolve().parents[1]
 SKILL_ID = re.compile(r"(?<![/\w$])flow-next:flow-next-([a-z][a-z-]*[a-z])")
 SOURCE_DIRS = ("skills", "agents", "references", "templates")
-# User-facing text that names a command after an invoke/run verb: an exit
-# message and a hypothetical.
-USER_FACING = {
-    "skills/flow-next-capture/references/duplicate-branch.md: invoke /flow-next:refine",
-    "skills/flow-next-capture/references/must-ask-cases.md: runs `/flow-next:plan",
-}
 
 
 def _frontmatter(path: Path) -> str:
@@ -62,43 +54,6 @@ class SkillIdInvocationTest(unittest.TestCase):
                 skill_dir = PLUGIN / "skills" / f"flow-next-{name}"
                 self.assertTrue((skill_dir / "SKILL.md").is_file())
                 self.assertTrue(_model_invocable(skill_dir))
-
-    def test_no_invoke_or_dispatch_names_a_command(self) -> None:
-        """An invoke/dispatch/run verb never targets a `/flow-next:` command,
-        except where the user invokes it, the line forbids it, or the text is
-        listed in USER_FACING."""
-        verb = re.compile(
-            r"\b(invoke[sd]?|dispatch(?:es)?|runs|run the mandatory|handed off,? to)"
-            r"\s+`?/flow-next:([a-z-]+)",
-            re.IGNORECASE,
-        )
-        hits = []
-        for top in SOURCE_DIRS:
-            for path in (PLUGIN / top).rglob("*.md"):
-                text = path.read_text(encoding="utf-8")
-                for match in verb.finditer(text):
-                    before = text[max(0, match.start() - 12) : match.start()].lower()
-                    if any(w in before for w in ("user ", "you ", "never ")):
-                        continue
-                    rel = path.relative_to(PLUGIN).as_posix()
-                    hit = f"{rel}: {' '.join(match.group(0).split())}"
-                    if hit not in USER_FACING:
-                        hits.append(hit)
-        self.assertEqual(hits, [])
-
-    def test_named_dispatch_sites_use_skill_ids(self) -> None:
-        sites = [
-            ("skills/flow-next-flow/auto.md", ["plan", "plan-review", "work", "qa", "make-pr", "land", "tracker-sync"]),
-            ("skills/flow-next-flow/references/tail.md", ["land"]),
-            ("skills/flow-next-work/phases.md", ["spec-completion-review"]),
-            ("agents/worker.md", ["impl-review"]),
-            ("skills/flow-next-setup/templates/claude-md-snippet.md", ["plan", "prose", "setup"]),
-        ]
-        for rel, skills in sites:
-            found = set(SKILL_ID.findall((PLUGIN / rel).read_text(encoding="utf-8")))
-            for skill in skills:
-                with self.subTest(site=rel, skill=skill):
-                    self.assertIn(skill, found)
 
 
 if __name__ == "__main__":

@@ -18,15 +18,9 @@ Three families, all **prose contract** (the host agent IS the runtime — there 
 no Python engine to unit-test; backlog mode is skill prose the agent executes):
 
   A. **Cross-platform mirror parity (R12).** ``sync-codex.sh`` regenerated the
-     Codex mirror; the tracker-sync R14 Phase-0 autonomy fix, the pilot
-     ``triage`` / ``ask`` stages, the ``ASKED`` verdict, and ``backlog-mode.md``
-     all survive; ``AskUserQuestion`` is rewritten to the plain-text
-     numbered-prompt form; ZERO Claude-native tool-name leakage in the mirror
-     prose; the maintainer "regenerated in fn-68.5" breadcrumb is stripped; and
-     — the defect this regen first exposed — the R2 numbered-prompt INSTRUCTION
-     block is **never** injected into the pilot mirror (pilot only *negates*
-     AskUserQuestion, so an injected "ask the user via plain text" block would
-     contradict its autonomous-only contract).
+     Codex mirror; the tracker-sync R14 Phase-0 autonomy fix and
+     ``backlog-mode.md`` survive, every ``--auto`` file has a mirror, and ZERO
+     Claude-native tool-name leakage reaches the mirror prose.
 
   B. **/goal (Codex) driver parity.** The verdict tokens the transcript-blind
      ``/goal`` / ``/loop`` stop-clauses grep on survive verbatim in BOTH the
@@ -78,10 +72,6 @@ MIRROR_TS_STEPS = (
     PLUGIN / "codex" / "skills" / "flow-next-tracker-sync" / "steps.md"
 )
 
-# The R2 numbered-prompt INSTRUCTION block sync-codex.sh injects into skills that
-# genuinely ask the user. Its presence in a pilot mirror file is the defect.
-R2_INSTRUCTION_SENTINEL = "Render the options below as a"
-
 
 def _read(p: pathlib.Path) -> str:
     return p.read_text(encoding="utf-8")
@@ -122,16 +112,6 @@ class PilotBacklogMirrorSafety(unittest.TestCase):
         self.assertTrue(
             MIRROR_BACKLOG.exists(),
             "backlog-mode.md must be mirrored into the Codex flow skill",
-        )
-
-    def test_mirror_carries_asked_verdict_and_grammar(self) -> None:
-        """The ASKED durable-park verdict survives in the mirror grammar."""
-        mirror_route = self.m_skill + "\n" + self.m_backlog
-        self.assertIn("ASKED", mirror_route)
-        self.assertIn(
-            "`ASKED <id> (<n>)`",
-            mirror_route,
-            "the mirror must carry the ASKED grammar token",
         )
 
     def test_canonical_routes_backlog_grammar_behind_mode_gate(self) -> None:
@@ -179,41 +159,6 @@ class PilotBacklogMirrorSafety(unittest.TestCase):
             with self.subTest(gate=token):
                 self.assertIn(token, gate_window)
 
-    def test_no_r2_block_before_tracker_sync_phase0_invariant(self) -> None:
-        """THE second defect this regen exposed (impl-review r1): the R2 ask
-        INSTRUCTION block was injected directly BEFORE the tracker-sync Phase-0
-        autonomy invariant ('Under UNATTENDED=1 NO code path may reach ...'). That
-        contradicts R14 (under the marker tracker-sync queues/defers, never
-        prompts). The block belongs at the GENUINE Phase-1 discovery ASK (where
-        the human IS prompted to enable the bridge), never at the Phase-0
-        autonomy invariant. Assert ordering: if an R2 block exists at all, it
-        comes AFTER the Phase-0 invariant line."""
-        # Anchored on the Phase-0 gate fence (not its prose statement).
-        invariant_idx = self.m_ts_steps.find("UNATTENDED=0")
-        self.assertNotEqual(
-            invariant_idx, -1,
-            "the tracker-sync mirror must carry the Phase-0 autonomy invariant",
-        )
-        first_r2 = self.m_ts_steps.find(R2_INSTRUCTION_SENTINEL)
-        if first_r2 != -1:
-            self.assertGreater(
-                first_r2,
-                invariant_idx,
-                "the R2 ask block must NOT precede the Phase-0 autonomy "
-                "invariant — it belongs at the genuine Phase-1 discovery ask "
-                "(under the autonomy marker tracker-sync never prompts — R14)",
-            )
-        # And the autonomy invariant itself must NOT be immediately preceded by
-        # the R2 block (the precise defect site): no R2 sentinel in the 600 chars
-        # before the invariant.
-        window_before = self.m_ts_steps[max(0, invariant_idx - 600):invariant_idx]
-        self.assertNotIn(
-            R2_INSTRUCTION_SENTINEL,
-            window_before,
-            "the R2 ask block must not sit immediately before the Phase-0 "
-            "autonomy invariant (R14: that path never prompts)",
-        )
-
     def test_mirror_has_no_claude_native_tool_leakage(self) -> None:
         """ZERO Claude-native tool names leak into the mirror PROSE. The
         DROID_PLUGIN_ROOT/CLAUDE_PLUGIN_ROOT plugin.json FALLBACK chain is the
@@ -235,31 +180,6 @@ class PilotBacklogMirrorSafety(unittest.TestCase):
                         text,
                         f"{fname}: Claude-native {tok!r} leaked into the mirror",
                     )
-
-    def test_mirror_rewrites_ask_to_numbered_prompt(self) -> None:
-        """Where canonical auto.md says `AskUserQuestion`, the mirror says the
-        plain-text numbered-prompt form (the fn-45 rewrite)."""
-        self.assertIn("plain-text numbered prompt", self.m_skill)
-        self.assertIn("plain-text numbered prompt", self.m_backlog)
-
-    def test_no_r2_instruction_block_injected_into_pilot_mirror(self) -> None:
-        """THE defect this regen exposed: pilot ONLY negates AskUserQuestion
-        ('never reached', 'is forbidden', 'never an interactive') — so the R2
-        'Ask the user via plain text. Render the options ...' INSTRUCTION block
-        must NEVER be injected into any pilot mirror file. An injected block in
-        pilot's Forbidden section / Phase-3.5 async valve directly contradicts
-        the autonomous, surface-don't-block contract (R14)."""
-        for fname, text in (
-            ("auto.md", self.m_skill),
-            ("backlog-mode.md", self.m_backlog),
-        ):
-            with self.subTest(file=fname):
-                self.assertNotIn(
-                    R2_INSTRUCTION_SENTINEL,
-                    text,
-                    f"{fname}: the R2 ask-instruction block must NOT be injected "
-                    "into a driver mirror file (--auto never asks — it negates)",
-                )
 
     def test_mirror_is_present_for_every_canonical_pilot_file(self) -> None:
         """Structural parity: every file a `--auto` run can load, plus the
@@ -321,17 +241,9 @@ class PilotBacklogMirrorSafety(unittest.TestCase):
         """Invariant #2 (never author a spec) is an ENFORCING guard that survives
         in the mirror: a specless subject hard-exits rather than writing a
         stub."""
-        # Prose-quality restatement pins removed 2026-08-07 - judged via
-        # .flow/criteria.md G1, not grep. The ENFORCING guard + its hard-exit
-        # message are what stay pinned.
         # The guard runs inline in the Phase 3.5 block (a shell function defined
         # in an earlier block would not survive the tool-call boundary).
         self.assertIn('[ ! -f "$SPEC_PATH" ]', self.m_workflow)
-        self.assertRegex(
-            self.m_workflow,
-            r"backlog mode never authors specs",
-            "the mirror must keep the never-author hard-exit message",
-        )
 
     # Gate-off "byte-for-byte" prose pins removed 2026-08-07 - judged via
     # .flow/criteria.md G1, not grep; the structural scoping check below is

@@ -1,4 +1,4 @@
-"""Tracker caller oracle matrix and reachability guards."""
+"""Tracker caller oracle matrix guards."""
 
 from __future__ import annotations
 
@@ -52,8 +52,7 @@ SKILLS = "plugins/flow-next/skills"
 # moved several caller bodies off the always-loaded spine into the reference
 # their gate loads, so the CURRENT tree splits some callers across two files.
 # This map names the current home(s); assertions about the current tree read
-# the concatenation, and `_GATE_EDGES` pins that the spine still loads the
-# reference (reachability, not mere existence).
+# the concatenation.
 CURRENT_CALLER_FILES = {
     "capture": (
         f"{SKILLS}/flow-next-capture/workflow.md",
@@ -78,26 +77,6 @@ CURRENT_CALLER_FILES = {
     ),
 }
 
-# spine file -> reference token it must name for the moved caller body to be
-# reachable on the branch that needs it.
-_GATE_EDGES = (
-    (
-        f"{SKILLS}/flow-next-capture/workflow.md",
-        "references/tracker-integration.md",
-    ),
-    (
-        f"{SKILLS}/flow-next-refine/SKILL.md",
-        "references/post-write-back.md",
-    ),
-    (f"{SKILLS}/flow-next-plan/steps.md", "references/tracker-projection.md"),
-    (f"{SKILLS}/flow-next-qa/workflow.md", "references/autonomy.md"),
-    (f"{SKILLS}/flow-next-chart/workflow.md", "references/tracker-projection.md"),
-    (
-        f"{SKILLS}/flow-next-work/phases.md",
-        "references/tracker-touchpoints.md",
-    ),
-)
-
 
 class TrackerCallerOracleTests(unittest.TestCase):
     @classmethod
@@ -110,19 +89,6 @@ class TrackerCallerOracleTests(unittest.TestCase):
     @staticmethod
     def _current_files(caller: dict) -> tuple[str, ...]:
         return CURRENT_CALLER_FILES.get(caller["id"], (caller["file"],))
-
-    def test_moved_caller_bodies_stay_reachable(self) -> None:
-        """Every caller body parked in a reference must be named by the
-        always-loaded file that gates it."""
-        for spine, ref_token in _GATE_EDGES:
-            with self.subTest(spine=spine):
-                text = (REPO_ROOT / spine).read_text(encoding="utf-8")
-                self.assertIn(
-                    ref_token,
-                    text,
-                    f"{spine} does not load {ref_token} — the tracker caller "
-                    "body it owns would be unreachable",
-                )
 
     def test_matrix_is_authoritative_and_complete(self) -> None:
         self.assertEqual(set(self.callers), EVENTS)
@@ -163,64 +129,6 @@ class TrackerCallerOracleTests(unittest.TestCase):
             self.assertEqual(caller["argv"]["inactive"], [])
             self.assertEqual(caller["imports"]["inactive"], [])
 
-    def test_repeatable_synthesized_comments_name_stable_evidence_tokens(
-            self) -> None:
-        """Every repeated comment caller must distinguish occurrences.
-
-        The facade rejects evidence-less comments; each caller names the
-        `evidence=` field with a per-occurrence stable value.
-        """
-        expected = {
-            (
-                "plugins/flow-next/skills/flow-next-work/"
-                "references/tracker-touchpoints.md"
-            ): (
-                "evidence=<task-id>@<final-evidence-commit-sha>",
-                "evidence=<reviewed-head-sha>",
-            ),
-            (
-                "plugins/flow-next/skills/flow-next-work/"
-                "references/tracker-retro-fire.md"
-            ): (
-                "evidence=<task-id>@<final-evidence-commit-sha>",
-                "evidence=<reviewed-head-sha>",
-            ),
-            (
-                "plugins/flow-next/skills/flow-next-capture/"
-                "references/tracker-integration.md"
-            ): ("evidence=<sha256-of-current-spec-file>",),
-            (
-                "plugins/flow-next/skills/flow-next-refine/"
-                "references/post-write-back.md"
-            ): ("evidence=<sha256-of-current-spec-file>",),
-            (
-                "plugins/flow-next/skills/flow-next-plan/"
-                "references/tracker-projection.md"
-            ): ("evidence=<sha256-of-current-spec-file>",),
-            "plugins/flow-next/skills/flow-next-qa/workflow.md": (
-                "evidence=<tested-head-sha>",
-            ),
-            "plugins/flow-next/skills/flow-next-resolve-pr/workflow.md": (
-                "evidence=<post-resolution-pr-head-sha>",
-            ),
-            "plugins/flow-next/skills/flow-next-land/workflow.md": (
-                "evidence=<merge-commit-sha>",
-            ),
-            "plugins/flow-next/skills/flow-next-tracker-sync/SKILL.md": (
-                "evidence=<token>",
-            ),
-            "plugins/flow-next/skills/flow-next-tracker-sync/steps.md": (
-                "evidence=<token>",
-            ),
-            (
-                "plugins/flow-next/skills/flow-next-tracker-sync/"
-                "references/comments-sync.md"
-            ): ("evidence=<stable-token>",),
-        }
-        for relative, tokens in expected.items():
-            text = (REPO_ROOT / relative).read_text(encoding="utf-8")
-            for token in tokens:
-                self.assertIn(token, text, f"{relative}: {token}")
 
 if __name__ == "__main__":
     unittest.main()

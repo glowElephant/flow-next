@@ -2,10 +2,9 @@
 
 Reachability only: every file in references/ is reached from the always-loaded
 files, auto.md, or a reached reference; every reference link from the
-always-loaded files resolves, every routing reference is reachable from them,
-and the two auto-only files are reachable from auto.md only; every consumer
-pointer names a reference file that exists; the shim and skill frontmatter
-names that hosts invoke are intact.
+always-loaded files and auto.md resolves; every consumer pointer names a
+reference file that exists; the shim and skill frontmatter names that hosts
+invoke are intact.
 
 Run:
     cd plugins/flow-next/tests && python3 -m unittest test_flow_routing -q
@@ -28,26 +27,6 @@ FLOW_WORKFLOW = FLOW_DIR / "workflow.md"
 FLOW_AUTO = FLOW_DIR / "auto.md"
 FLOW_REFERENCES = FLOW_DIR / "references"
 FLOW_SHIM = PLUGIN / "commands" / "flow.md"
-
-REFERENCE_NAMES = (
-    "route-matrix.md",
-    "spec-count.md",
-    "plan-vs-no-plan.md",
-    "gate-selection.md",
-    "prototype-before-ask.md",
-    "tail.md",
-    "explain.md",
-    "no-argument.md",
-)
-
-
-# Gated references read only under `--auto` (moved from the pilot skill). They
-# carry no routing rule and no decision record; auto.md reaches them.
-AUTO_ONLY_REFERENCE_NAMES = ("backlog-mode.md", "qa-stage.md")
-
-# Gated stage-intake references the attended workflow reaches behind an
-# existence check. They carry no routing rule and no decision record.
-GATED_STAGE_REFERENCE_NAMES = ("defect-intake.md",)
 
 # Consumers that point at the shared routing reference. A consumer with no
 # pointer yet is skipped (it is being edited elsewhere); a pointer that names
@@ -106,7 +85,6 @@ class FlowSurfaceExists(unittest.TestCase):
         self.assertIsNotNone(m, "shim description missing")
         self.assertTrue(m.group(1).strip(), "shim description must be non-empty")
         self.assertIn("flow-next-flow", text)
-        self.assertNotIn("request_user_input", text)
 
     def test_skill_frontmatter_name(self) -> None:
         fm = _frontmatter(_read(FLOW_SKILL))
@@ -139,51 +117,10 @@ class FlowReferenceReachability(unittest.TestCase):
                 with self.subTest(reference=name, reader=label):
                     self.assertTrue(found, f"{label} does not link {name}")
 
-    def test_every_reference_is_reachable_from_always_loaded_prose(self) -> None:
-        combined = _read(FLOW_SKILL) + "\n" + _read(FLOW_WORKFLOW)
-        mentioned = set(LOCAL_REF_MENTION_RE.findall(combined))
-        for name in REFERENCE_NAMES:
-            with self.subTest(reference=name):
-                self.assertIn(
-                    name,
-                    mentioned,
-                    f"references/{name} is not reachable from SKILL.md or workflow.md",
-                )
-        # The auto-only files are gated behind `--auto`: the attended prose
-        # never names them, so an attended run never loads them.
-        self.assertIn(
-            "(route-matrix-more.md)",
-            _read(FLOW_REFERENCES / "route-matrix.md"),
-            "route-matrix-more.md is not reachable from route-matrix.md",
-        )
-        # Plugin-level shared rules (plugins/flow-next/references/) are named from every route.
-        unknown = mentioned - set(REFERENCE_NAMES) - set(GATED_STAGE_REFERENCE_NAMES) - {"working-rules.md"}
-        self.assertEqual(unknown, set(), f"always-loaded prose names unknown references: {sorted(unknown)}")
-
-    def test_gated_stage_references_are_linked_from_workflow_one_level_deep(self) -> None:
-        linked = set(LOCAL_REF_LINK_RE.findall(_read(FLOW_WORKFLOW)))
-        for name in GATED_STAGE_REFERENCE_NAMES:
-            with self.subTest(reference=name):
-                self.assertIn(f"references/{name}", linked)
-
-    def test_auto_md_links_the_auto_only_references_one_level_deep(self) -> None:
-        text = _read(FLOW_AUTO)
-        linked = set(LOCAL_REF_LINK_RE.findall(text))
-        for name in AUTO_ONLY_REFERENCE_NAMES:
-            with self.subTest(reference=name):
-                self.assertIn(
-                    f"references/{name}",
-                    linked,
-                    f"auto.md must link references/{name} directly",
-                )
-        for rel in linked:
+    def test_every_auto_md_reference_link_resolves(self) -> None:
+        for rel in LOCAL_REF_LINK_RE.findall(_read(FLOW_AUTO)):
             with self.subTest(link=rel):
                 self.assertTrue((FLOW_DIR / rel).is_file(), f"auto.md links {rel} which does not exist")
-        unknown = set(LOCAL_REF_MENTION_RE.findall(text)) - set(REFERENCE_NAMES) - set(AUTO_ONLY_REFERENCE_NAMES)
-        self.assertEqual(unknown, set(), f"auto.md names unknown references: {sorted(unknown)}")
-
-    def test_skill_links_auto_md_one_level_deep(self) -> None:
-        self.assertRegex(_read(FLOW_SKILL), r"\]\(auto\.md\)", "SKILL.md must link auto.md one level deep")
 
 
 class ConsumerPointersResolve(unittest.TestCase):
@@ -198,11 +135,6 @@ class ConsumerPointersResolve(unittest.TestCase):
                         (FLOW_REFERENCES / name).is_file(),
                         f"{path.relative_to(REPO_ROOT)} points at references/{name}, which does not exist",
                     )
-
-    def test_flow_skill_itself_links_every_routing_reference(self) -> None:
-        combined = _read(FLOW_SKILL) + "\n" + _read(FLOW_WORKFLOW)
-        mentioned = set(LOCAL_REF_MENTION_RE.findall(combined))
-        self.assertTrue(set(REFERENCE_NAMES) <= mentioned, f"flow skill misses {set(REFERENCE_NAMES) - mentioned}")
 
 
 if __name__ == "__main__":

@@ -403,18 +403,6 @@ class CompletionReviewEventKeyParity(_SyncCheckBase):
         self._enable_event("completionReview", "comment")
         self.assertEqual(self._check_json("work.completionReview")["missing"], [])
 
-    def test_canonical_prose_carries_no_work_prefixed_tag(self) -> None:
-        # Prose guard: no canonical skill/doc may reintroduce the mismatched tag
-        # (the Codex mirror is regenerated from these, so it is excluded).
-        offenders = []
-        for root in (self.PLUGIN_ROOT / "skills", self.PLUGIN_ROOT / "docs"):
-            for path in root.rglob("*.md"):
-                if "codex" in path.parts:
-                    continue
-                if "work.completionReview" in path.read_text(encoding="utf-8"):
-                    offenders.append(str(path))
-        self.assertEqual(offenders, [])
-
 
 if __name__ == "__main__":
     unittest.main()

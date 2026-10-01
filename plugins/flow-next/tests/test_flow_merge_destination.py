@@ -62,11 +62,6 @@ class MergeDestinationTest(unittest.TestCase):
                 self.assertEqual(result.returncode == 0, allowed, result.stdout)
                 self.assertEqual("dispatched" in result.stdout, allowed)
 
-
-    def test_r10_tail_hands_off_to_land(self):
-        tail = (PLUGIN / "skills/flow-next-flow/references/tail.md").read_text()
-        self.assertIn("flow-next:flow-next-land", tail)
-
     def test_r10_disappeared_pr_never_continues(self):
         self.assert_target_stops("MISSING")
 

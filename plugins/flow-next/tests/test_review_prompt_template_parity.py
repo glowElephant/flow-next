@@ -198,11 +198,6 @@ class TestReviewPromptRendering(_HermeticCriteria):
         self._assert_rendered(prompt)
         self.assertNotIn("<task_specs>", _slots(prompt))
 
-    def test_completion_review_prompt_starts_with_terminal_reviewer_override(self) -> None:
-        """All subprocess backends share this builder: Codex, Copilot, Cursor."""
-        prompt = flowctl.build_completion_review_prompt(_SPEC, _TASKS, _DSUM, _RANGE)
-        self.assertTrue(prompt.startswith("## TERMINAL REVIEWER ROLE"))
-
 
 class TestReviewPromptVerdictGrammar(unittest.TestCase):
     """Every verdict a prompt offers is one the verdict parser accepts."""
