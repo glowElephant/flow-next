@@ -12,7 +12,7 @@ All task state is read and written through `flowctl`; `.flow/` is the only track
 
 Refine clarifies a spec that can already be specified. Route back to `/flow-next:chart` only when the answers show the effort itself is not yet specifiable; unsure of the hop, use `$flow-next-flow --explain`.
 
-Read [working-rules.md](../../references/working-rules.md) first; it holds for every step of this skill.
+Read [working-rules.md](../../references/working-rules.md) first unless you already have this run; it holds for every step of this skill.
 
 ## Preamble
 

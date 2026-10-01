@@ -15,7 +15,7 @@ There is no Python classifier subprocess, no `codex`/`copilot` dispatch, no fast
 
 **Read [workflow.md](workflow.md) for the full phase-by-phase execution. Read [phases.md](phases.md) for the (track, category) decision tree with mechanical baseline + override examples.**
 
-Read [working-rules.md](../../references/working-rules.md) first; it holds for every step of this skill.
+Read [working-rules.md](../../references/working-rules.md) first unless you already have this run; it holds for every step of this skill.
 
 ## Preamble
 

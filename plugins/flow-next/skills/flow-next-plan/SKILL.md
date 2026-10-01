@@ -8,7 +8,7 @@ user-invocable: false
 
 Turn an idea or an existing spec into a spec with right-sized tasks in `.flow/`, grounded in repo research. Plan writes no code.
 
-Read [working-rules.md](../../references/working-rules.md) first; it holds for every step of this skill.
+Read [working-rules.md](../../references/working-rules.md) first unless you already have this run; it holds for every step of this skill.
 
 **`.flow/` is the only task tracker.** Every spec and task is created or changed through `flowctl`. A markdown TODO list, a TodoWrite call, or a plan file outside `.flow/` has broken this.
 

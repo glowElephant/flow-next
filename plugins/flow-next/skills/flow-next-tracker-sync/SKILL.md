@@ -11,7 +11,7 @@ The flow spec is the source of truth and quality layer. The tracker is a
 co-editable projection. Tracker activity never starts agents or changes Flow
 task state.
 
-Read [working-rules.md](../../references/working-rules.md) first; it holds for every step of this skill.
+Read [working-rules.md](../../references/working-rules.md) first unless you already have this run; it holds for every step of this skill.
 
 ## Load the reached path
 

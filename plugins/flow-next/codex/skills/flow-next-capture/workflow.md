@@ -165,6 +165,8 @@ Write the complete body once to `${TMPDIR:-/tmp}/flow-capture-draft-<working-tit
 
 ### 4.2 — Snapshot readiness before writing
 
+Under `from:flow`, skip this step and §5.9: flow builds the spec in this session and never asks about readiness.
+
 Readiness is a separate follow-up; capture the predicate now, before a rewrite resets the old flag. This step asks and writes nothing:
 
 ```bash

@@ -15,7 +15,7 @@ Clear ideas and finished chart briefings route here; capture never manufactures 
 
 **Read [workflow.md](workflow.md) for the phases and [phases.md](phases.md) for the source tags and confidence tiers.** Branch-specific machinery lives in `references/*.md`, loaded only when its gate fires.
 
-Read [working-rules.md](../../references/working-rules.md) first; it holds for every step of this skill.
+Read [working-rules.md](../../references/working-rules.md) first unless you already have this run; it holds for every step of this skill.
 
 ## Preamble
 

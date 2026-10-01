@@ -126,7 +126,7 @@ arguments, this default, the user's answer, or the autonomous defaults.
 
 ## Workflow
 
-Read [working-rules.md](../../references/working-rules.md) first; it holds on every phase and in every worker dispatch.
+Read [working-rules.md](../../references/working-rules.md) first unless you already have this run; it holds on every phase and in every worker dispatch.
 
 After setup questions answered, read [phases.md](phases.md) and execute each phase in order.
 

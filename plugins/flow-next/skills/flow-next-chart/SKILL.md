@@ -13,7 +13,7 @@ Takes **one unshaped idea that is too big for a single capture session and wrapp
 
 **Role**: discovery coordinator (inline skill - keep blocking questions reachable). Host agent owns grounding, interpretation, frontier judgment, evidence-route dispatch, prototype presentation, attended consent, re-charting, and the terminal verdict. flowctl owns atomic create/claim/resolve/scope/briefing/store mutations.
 
-Read [working-rules.md](../../references/working-rules.md) first; it holds for every step of this skill.
+Read [working-rules.md](../../references/working-rules.md) first unless you already have this run; it holds for every step of this skill.
 
 ## Preamble
 

@@ -11,7 +11,7 @@ The host authors one grounded aid object; flowctl validates, stores and renders 
 Invocation authorizes push and PR creation; `--dry-run` previews without repository writes, push, PR edits
 or memory writes.
 
-Read [working-rules.md](../../references/working-rules.md) first; it holds for every step of this skill.
+Read [working-rules.md](../../references/working-rules.md) first unless you already have this run; it holds for every step of this skill.
 
 Define `FLOWCTL` from `${DROID_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/flowctl`, then
 `<plugin-root>/scripts/flowctl` (two levels above this SKILL.md), then `.flow/bin/flowctl`, choosing the first

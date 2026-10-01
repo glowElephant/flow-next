@@ -14,7 +14,7 @@ The document is short and structured on purpose. Good answers to a handful of sh
 
 **Date the strategy document from `date -u +%Y-%m-%d`** (run it; never assume the year).
 
-Read [working-rules.md](../../references/working-rules.md) first; it holds for every step of this skill.
+Read [working-rules.md](../../references/working-rules.md) first unless you already have this run; it holds for every step of this skill.
 
 ## Preamble
 
