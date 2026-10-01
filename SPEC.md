@@ -202,8 +202,9 @@ are exempt and unchanged — `**Files:**` / `**Touches:**` are a task's job.
 
 <!--
 Quick commands convention: per-task Quick commands list FOCUSED suites for the
-files the task touches; the FULL suite runs once at the final gate (prefer the
-repo's parallel entrypoint when one exists). See the project instruction file.
+files the task touches; the FULL suite runs only when the repository's
+instructions or the person ask for it (prefer the repo's parallel entrypoint
+when one exists). See the project instruction file.
 -->
 
 <!--

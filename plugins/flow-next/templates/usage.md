@@ -160,7 +160,7 @@ If a sandbox denies `git commit`, still complete `done` with the evidence you ha
 
 ## Verification scoping
 
-Per-task Quick commands list FOCUSED suites for the files you touch - that is what workers baseline and verify per task. The FULL suite runs once at the final gate; prefer the repo's parallel test entrypoint when one exists (see the project instruction file for the canonical command).
+Per-task Quick commands list FOCUSED suites for the files you touch - that is what workers baseline and verify per task. The FULL suite runs only when the repository's instructions or the person ask for it; prefer the repo's parallel test entrypoint when one exists (see the project instruction file for the canonical command).
 
 ## Evidence JSON Format
 
