@@ -8,7 +8,7 @@ decision in one line, short reasoning, then `## Prior requests` opened with toda
 request that just came in. When the file already exists, append the dated line to
 `## Prior requests` and leave the decision untouched. Write the file yourself, like the rest of
 `.flow/memory/`; it is memory, not a plan artifact, and there is no flowctl verb for it. Its prose
-follows [docs/prose.md](../docs/prose.md) when that doc exists.
+follows the plugin's `docs/prose.md` when that doc exists.
 
 Not a decline, so no entry:
 
