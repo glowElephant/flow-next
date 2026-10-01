@@ -280,9 +280,9 @@ Best-effort: a refusal (the spec already has tasks, reachable only on a `--rewri
 
 ## Phase 6: Close
 
-**Tracker-sync check first.** Read the tracker probe from the preflight snapshot
-(`.probes.tracker`). Only when it reads `status: "ok"` with `value.active: false`: skip the check
-and print no `Tracker sync:` line. Otherwise, including a probe error: read
+**Tracker-sync check first.** Run a fresh `$FLOWCTL sync active --json` now (the preflight
+snapshot can be stale). Only when it parses and reads `active: false`: skip the check and print no
+`Tracker sync:` line. Otherwise, including a probe error: read
 [references/tracker-integration.md § Phase 6 — sync check](references/tracker-integration.md#phase-6-sync-check)
 and run it.
 

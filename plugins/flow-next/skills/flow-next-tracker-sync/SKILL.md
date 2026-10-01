@@ -90,7 +90,8 @@ deterministic.
 
 ## Discovery ceremony
 
-The bridge is off until the user confirms it; [steps.md](steps.md) §1 is the procedure.
+The bridge is off until the user confirms it; [steps.md](steps.md) §1 is the procedure. Every
+discovery surfaces the provider signals, the proposed project or team, and the lifecycle defaults.
 Credentials remain in the environment. Never copy credentials into config, a prompt, argv,
 receipt, or error note.
 

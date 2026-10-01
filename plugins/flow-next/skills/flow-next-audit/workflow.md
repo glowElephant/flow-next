@@ -328,7 +328,8 @@ Apply [phases.md](phases.md) §Outcome precedence: **correctness (Replace / Dele
 
 ### Harden gate (both conditions required)
 
-Recurrence-qualified entries only (§0.75.1): apply
+Recurrence-qualified entries (§0.75.1), or ones whose evidence you judge recurring below the
+numeric thresholds (state that evidence): apply
 [references/harden-classify.md § Phase 2 Harden gate](references/harden-classify.md#phase-2-harden-gate).
 **In autofix mode, Harden candidates are never applied** — they are classified and reported under Recommended only.
 
@@ -420,7 +421,7 @@ Execute per [phases.md](phases.md) §Replace — the authoritative copy:
 
 - Evidence **sufficient** (Phase 2 check) → §Replace "Action steps (sufficient evidence)".
 - Evidence **insufficient** → §Replace's mark-stale fallback (same helper as §4.6).
-- `knowledge/decisions/` entries → §"Replace = supersede": the old entry is **never** `git rm`'d — decision history stays on disk (round-trip rules from §4.2 apply when editing its frontmatter).
+- `knowledge/decisions/` entries → [references/decision-entries.md](references/decision-entries.md) §"Replace = supersede": the old entry is **never** `git rm`'d — decision history stays on disk (round-trip rules from §4.2 apply when editing its frontmatter).
 
 ### 4.4.1 — Glossary stale-marking (Phase 0.5 outcomes)
 

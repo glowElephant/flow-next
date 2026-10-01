@@ -248,7 +248,8 @@ That's it. No archive directory, no metadata flag. Git history preserves the fil
 ## Harden
 
 **Meaning:** correct AND recurring AND mechanizable — graduate the lesson into a gate and demote the
-entry to a pointer. Only for an entry or cluster §0.75.1 marked recurrence-qualified: read
+entry to a pointer. Only for an entry or cluster §0.75.1 marked recurrence-qualified, or one whose evidence you judge
+recurring below the numeric thresholds (state that evidence): read
 [references/harden-classify.md](references/harden-classify.md) for the two conditions, gate targets,
 duplication guard and edge cases. Harden never applies in autofix, and never `git rm` on Harden.
 

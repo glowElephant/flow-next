@@ -212,7 +212,8 @@ build command actually runs OR operability tier ≥ 1 evidence exists.**
 
 Operability and the executed substance checks are graded **PER SURFACE / PER MEMBER, never per
 repo**.
-Only for a monorepo (`flowctl prime classify --json` reports workspace members): read
+Only for a monorepo (the resolved classification's topology is monorepo, including the Phase 0.5
+fallback; read it when unsure): read
 [references/monorepo-sampling.md](references/monorepo-sampling.md) for the sampling order, caps and
 progress lines.
 

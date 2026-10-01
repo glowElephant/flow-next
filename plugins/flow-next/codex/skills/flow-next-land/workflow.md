@@ -96,9 +96,9 @@ a head race in this invocation; re-read and return `RESOLVING` for fresh gating.
 ## Merge one layer
 
 Read open children targeting this PR's head branch and its native stack.
-Paginate these reads. Only when that read finds open children or a native stack: read
-[references/stacks.md](references/stacks.md) and follow it here, at the merge call, and after
-the merge.
+Paginate these reads. Skip [references/stacks.md](references/stacks.md) only when both reads
+succeed completely and find no open children and no native stack; otherwise (children, a stack,
+or any read error) read it and follow it here, at the merge call, and after the merge.
 
 If the authorized PR is draft, mark it ready with `gh pr ready <PR> --repo <owner/repo>` and re-read
 checks and review state before proceeding.

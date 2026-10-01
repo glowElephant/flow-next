@@ -256,10 +256,10 @@ A run that closed the spec on its own initiative has broken this.
 
 Then push + open PR if user wants.
 
-**Tracker-sync end-of-run check - LAST action before the final summary.** Read this run's
-`sync active` snapshot (Phase 3 step 2's run file, or multi-task.md's). Only when it parses and
-reads `active: false`: the slot reads `n/a (bridge inactive)` and the check is skipped. Otherwise,
-including when the snapshot is missing or unreadable: read
+**Tracker-sync end-of-run check - LAST action before the final summary.** Run a fresh
+`$FLOWCTL sync active --json` now (the run may have changed the config since its first probe).
+Only when it parses and reads `active: false`: the slot reads `n/a (bridge inactive)` and the check
+is skipped. Otherwise, including when the probe fails or is unreadable: read
 [references/tracker-touchpoints.md § End-of-run check](references/tracker-touchpoints.md#end-of-run-check)
 and run it.
 
@@ -309,6 +309,7 @@ as `unknown`), and never write a selector placeholder (`auto`, `default`,
 **A skipped stage is an event with a reason, never an absence** — review treats a
 stage with no line as failed (that inversion is the point: "no record" can never
 again masquerade as "nothing to do"). A stage this run reached
-that left no line has broken this.
+that left no line has broken this. Timestamps ride the line only where this orchestrator knows
+them; there is no separate timing store.
 
-Done when: all tasks read `done`, `flowctl validate` passes, the tracker-sync check has run (or the snapshot read `active: false`), and the final summary block is printed with its `Tracker sync:` slot and one `Gates:` line per Phase 4 outcome.
+Done when: all tasks read `done`, `flowctl validate` passes, the tests and lint/format pass, the working tree is clean, the tracker-sync check has run (or the fresh probe read `active: false`), and the final summary block is printed with its `Tracker sync:` slot and one `Gates:` line per Phase 4 outcome.

@@ -22,7 +22,9 @@ PLATFORM="codex"
 ```
 
 **Never reorder the rungs.** Each host's own signal (Droid, Cursor, Grok, OpenCode) outranks the
-inherited `CLAUDECODE` marker, and `codex` is the fallback. The rationale for each rung and the
+inherited `CLAUDECODE` marker, and `codex` is the fallback. Nested Droid → Grok is unsupported: a
+grok child that inherits `DROID_PLUGIN_ROOT` classifies as `droid`, so stop NEEDS_HUMAN unless a
+smoke confirms `DROID_PLUGIN_ROOT` does not propagate. The rationale for each rung and the
 detection fixture matrix are in
 [docs/platforms.md § Setup host detection](../../docs/flow-next/platforms.md#setup-host-detection-rung-order-and-rationale).
 

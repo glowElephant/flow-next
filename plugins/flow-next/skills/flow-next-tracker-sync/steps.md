@@ -79,7 +79,8 @@ Three supported starts share one durable locator:
   fails after the remote create, retry links the recovery record and never
   creates a duplicate.
 
-Before any remote create (create-first, or a Flow-first issue create): read
+Before any remote create (create-first, or a Flow-first issue create), a retry or recovery of
+one, or linking an existing issue that needs a back-reference: read
 [references/create-first.md](references/create-first.md) for the retry-key receipt contract and
 the back-reference rule.
 

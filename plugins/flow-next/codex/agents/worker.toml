@@ -328,7 +328,7 @@ EOF
 every optional stage THIS worker orchestrated (the impl-review dispatch; the
 Phase 1b bridge when the implementer tier resolved to a bridged model — the
 standard path writes no `implement` line) — pick
-the branch that happened and delete the others. Stages you did not reach at all need no line — the rule
+the branch that happened and delete the others. Timestamps only where you know them. Stages you did not reach at all need no line — the rule
 binds stages orchestrated, not the full catalog.
 
 Complete the task only on the standard branch (parallel-wave and host-deferred

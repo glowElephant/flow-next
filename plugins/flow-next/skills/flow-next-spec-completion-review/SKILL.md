@@ -37,7 +37,7 @@ When `RP_ELIGIBLE=0` (not macOS, no supported RepoPrompt CLI), never *steer* the
 ## Backend Selection
 
 **Priority** (first match wins):
-1. `--review=rp|codex|copilot|cursor|claude|host|none` argument
+1. `--review=<backend>` or `--review <backend>` argument (`rp|codex|copilot|cursor|claude|host|none`)
 2. `FLOW_REVIEW_BACKEND` env var — bare backend (`rp`, `codex`, `copilot`, `cursor`, `claude`, `host`, `none`) OR spec form (`codex:<model>:xhigh`, `copilot:<model>`, `cursor:<model>`, `claude:<model>:<effort>`); `host` is bare-only (`host:<model>` is rejected)
 3. `.flow/config.json` → `review.backend` (same bare / spec forms)
 4. **Error** - no auto-detection

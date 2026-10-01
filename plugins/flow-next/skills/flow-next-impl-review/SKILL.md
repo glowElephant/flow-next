@@ -108,6 +108,10 @@ flowctl refuses the round, and the retry is a full fresh review instead of the s
 - `NEEDS_WORK`: read [references/codex-fix-pass.md](references/codex-fix-pass.md) and run its one fix
   pass and re-review.
 
+On any backend, when an unattended loop ends with the reviewer keeping only findings you declined
+under working-rules.md's rule, all below Major, print `OVERRIDDEN: <n> declined findings` with
+each finding and both sides' reasons after `VERDICT=NEEDS_WORK`; the caller completes the task on it.
+
 If a review command ends without a verdict (a transport error), retry it once. `ESCALATE:`,
 `TRANSPORT_UNHEALTHY`, `NOT_RETRYABLE:` and other refusals end this review: report the message
 as printed and stop. Never widen the reviewer's sandbox, call `codex` directly, or reset review
