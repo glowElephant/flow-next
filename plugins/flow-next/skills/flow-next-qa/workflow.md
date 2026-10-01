@@ -193,8 +193,8 @@ capture the storage contents before clearing them as its evidence.
 ### 3.4 Viewports and order
 
 On a web surface, run at one desktop (1280×800) and one mobile (375×812) viewport (emulation),
-leading with the spec's primary target. If the spec does not say, ask, or under `NO_PROMPT=1`
-infer it from the repo and note the assumption. Layout bugs hide at the size you skip, so run the
+leading with the spec's primary target. If the spec does not say, infer it from the repo and note
+the assumption; never ask, since both run either way. Layout bugs hide at the size you skip, so run the
 relevant scenarios at both. The viewport never blocks the run.
 
 Run write paths first when later scenarios read what they create, and note the created ids.

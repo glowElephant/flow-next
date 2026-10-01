@@ -34,7 +34,7 @@ fi
 
 ## Mark-ready offer
 
-Only for a spec input; tasks and files carry no spec readiness. Runs after the write-back and any tracker sync.
+Only for a spec input; tasks and files carry no spec readiness. Runs after the write-back and any tracker sync. Skip it when `/flow-next:flow` dispatched this refine in the current run: flow's route decides the next step.
 
 The gate fails open to this file, so check both conditions before asking:
 
