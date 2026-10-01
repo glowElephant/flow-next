@@ -51,6 +51,17 @@ Stage values add `triage` / `ask` to the common set.
 
 ---
 
+## Backlog additions to the Forbidden list
+
+These extend `auto.md`'s Forbidden list for a backlog run.
+
+- In backlog mode, ambiguity that needs a person is surfaced **async** via the `ask` stage (`ASKED`), never an interactive `AskUserQuestion`.
+- **Backlog mode additionally invokes tracker-sync for `reconcile` and `question`; read-only `list-open`, `comment-list`, and `relation-list` run directly through `$FLOWCTL tracker wire`**, never as pipeline stages.
+- The question-anchor authoring plus answer round-trip live in tracker-sync; backlog mode invokes them, never re-implements them.
+- Never authoring a spec and no merge authority: see [What backlog mode must NOT do](#what-backlog-mode-must-not-do-load-bearing-boundaries).
+
+---
+
 ## How this extends the ready-only run
 
 The ready-mode run (`auto.md` Phase 1 SELECT) two-pass-filters on `status==open`
@@ -279,12 +290,109 @@ candidate**:
 - **`NO_WORK`** - no signalled, unparked candidate exists at all (and no dep wait to
   report). A signalled-but-dep-blocked candidate is *selectable*, so its presence
   yields `BLOCKED`, never `NO_WORK`.
+
+  ```text
+  PILOT_VERDICT=NO_WORK spec=- stage=- reason="no signalled, unparked backlog item"
+  ```
+
 - **`DEFERRED_TO_LAND`** - every all-done candidate has an open PR (verbatim from
-  `auto.md` Phase 6).
+  `auto.md` Phase 6) and no current landing authority. A currently authorized selected item stays selected for the landing handoff.
 
 Backlog mode adds neither verdict and changes neither - it only ensures a
 ready-but-blocked item reaches `BLOCKED` (Phase 2) rather than collapsing into
 `NO_WORK`.
+
+---
+
+## Phase 1.5 - SELECT (wide, backlog mode only)
+
+**Active only when `PILOT_AUTONOMY=backlog`.** Execute the SELECT workflow in Phase 1 above (1a to 1g); its mechanics are authoritative and single-sourced there. What stays here is the enforcing bash: the explain gate, the guarded dispatches, and the invariants.
+
+**`--explain` is dispatch-free.** An explain backlog run is inspection-only: **it dispatches nothing and mutates nothing**, no readiness projection, no receipts. An explain run that fired a tracker-sync op has broken this. So when `PILOT_DRY_RUN=1`, **skip the tracker-sync `reconcile` (1a) and `list-open` (1c) dispatches entirely** and select from the **flow-side `ready --all` facts alone**; then Phase 1.6 classifies and the run stops with the diagnostic `TRIAGED` line (no `ask`, no pilot-log row). The gate below wraps every Phase 1.5 dispatch:
+
+```bash
+DRY="${PILOT_DRY_RUN:-0}"   # 1 => inspection-only: no tracker-sync dispatch, flow-side facts only
+```
+
+1. **1a - pull-before-scan** (1a above). **Skipped under `--explain`** (dispatch-free; the explain readiness read is whatever `ready --all` already reflects locally). Otherwise dispatch this fixed, allowlisted read:
+
+   ```bash
+   if [ "$DRY" = "0" ]; then
+     echo "DISPATCH: flow-next:flow-next-tracker-sync reconcile mode:autonomous"
+     # -> dispatch: flow-next:flow-next-tracker-sync reconcile mode:autonomous   (FLOW_AUTONOMOUS=1; no-op when the bridge is inactive)
+   fi
+   ```
+
+2. **1b - scan the flow side (facts)** (1b above): `READY_ALL_JSON="$($FLOWCTL ready --all --json)"`.
+
+3. **1c - union the tracker side (`list-open`)** (1c above). **Skipped under `--explain`**; the candidate set is then the flow specs (1b) only. Otherwise dispatch this fixed, allowlisted read:
+
+   ```bash
+   if [ "$DRY" = "0" ]; then
+     $FLOWCTL tracker wire list-open --json   # no-ops when tracker.readyState unset -> flow-ready specs only)
+   fi
+   ```
+
+4. **1d - skip parked subjects** (1d above). For every tracker-only candidate, execute the missing comment read before deciding whether its latest question round is parked:
+
+   ```bash
+   if [ "$DRY" = "0" ]; then
+     echo "DISPATCH: tracker wire comment-list per tracker-only issue"
+     # -> dispatch per tracker-only issue: $FLOWCTL tracker wire comment-list --locator "$LOCATOR" --json
+     #   LOCATOR = {"durable":issue.id,"display":issue.identifier} from the list-open row.
+     # Any error or truncated listing fails closed: do not select from an
+     # incomplete question/answer history.
+   fi
+   ```
+
+5. **1e - dep-order the survivors** (1e above). The tracker relation edges come from the per-issue `list-relations` READ (invariant #1: on the allowlist, never a merge):
+
+   ```bash
+   if [ "$DRY" = "0" ]; then
+     echo "DISPATCH: tracker wire relation-list per tracker issue"
+     # For each TRACKER candidate, read its relations to add the tracker dep edges.
+     # -> dispatch per tracker issue: $FLOWCTL tracker wire relation-list --locator "$LOCATOR" --json
+     #   LOCATOR = {"durable":issue.id,"display":issue.identifier} from the list-open row
+     #   (GitLab indexes /issues/:iid from the <project>#<iid> the display handle carries).
+     #   (the listIssueRelations read; no-op/empty when the bridge is inactive or the issue has no relations)
+   fi
+   ```
+
+   (Under `--explain` there are no tracker candidates, 1c was skipped, so 1e uses the flow `blockedBy` edges only and issues no tracker read; the dispatch above is skipped.) **Invariant #4: a cycle/deadlock is surfaced, never spun on.** When the topo-sort cannot place the chosen candidate because its dep chain is circular or a dep is itself parked/unsatisfiable, set `DEP_DEADLOCK=1` and route it to a state-changing terminal, never fall through to re-pick it next run:
+
+   ```bash
+   if [ "${DEP_DEADLOCK:-0}" = "1" ]; then
+     # The unresolvable dependency is surfaced as an async question (Phase 3.5 ask -> ASKED).
+     # (A plain unsatisfied-but-acyclic dep is NOT a deadlock; it routes to BLOCKED in Phase 1.6.)
+     SUBJECT_ID="$DEADLOCK_SUBJECT_ID"; HAS_SPEC="$DEADLOCK_HAS_SPEC"; SPEC_PATH="$DEADLOCK_SPEC_PATH"
+     ASK_REASON="unresolvable/circular dependency — $DEADLOCK_DETAIL"
+     # -> fall into Phase 3.5 ASK (terminal ASKED). Selection terminates this run.
+   fi
+   ```
+
+6. **1f - pick the top actionable item** (1f above); it becomes `SUBJECT_ID`, the one item to triage in Phase 1.6.
+
+7. **1g - apply the ready-mode claim / collision / re-bless checks to the picked candidate** (1g above) before triage; Phase 1.6 CLASSIFY assumes other-actor `in_progress` claims were already skipped here. Under `--explain`, write no ledger; report a re-bless entry as would-clear instead.
+
+**Invariant #3 (single item per run) is enforced here.** Selection sets exactly ONE `SUBJECT_ID`; there is no `for item in candidates` advance/park loop downstream. **Assign `SELECTED_SUBJECTS` to the chosen subject** (the single id 1f/1g settled on, or empty when the pool yielded none), resolve `SPEC_PATH` (the spec file path when spec-backed, else **empty** for a tracker-only item, whose `SUBJECT_ID` is the candidate's `list-open` `issue.identifier`, the display handle the downstream `list-relations` / `question` dispatches resolve against, never the opaque global id) and `HAS_SPEC`, then hard-assert the count:
+
+```bash
+# SELECTED_SUBJECTS = the chosen subject id; selection yields exactly one (or
+# empty when no candidate survived 1f/1g). Assign it from SUBJECT_ID here so the
+# single-item guard below counts the REAL selection (an unset var would always
+# count 0 and wrongly fall through to NO_WORK even after a subject was picked).
+SELECTED_SUBJECTS="${SUBJECT_ID:-}"
+SELECTED_COUNT="$(printf '%s\n' "$SELECTED_SUBJECTS" | grep -c . )"
+if [ "$SELECTED_COUNT" -gt 1 ]; then
+  echo "Evidence: backlog selection yielded $SELECTED_COUNT subjects — single-tick contract violated"
+  echo 'PILOT_VERDICT=NEEDS_HUMAN spec=- stage=- reason="backlog single-tick — selection must pick exactly one item"'
+  exit 1
+fi
+```
+
+A `SELECTED_COUNT` of 0 (empty `SUBJECT_ID`, no candidate survived 1f/1g) falls through to the terminal split at the end of 1g (`NO_WORK`); exactly 1 proceeds to Phase 1.6.
+
+Done when: `SELECTED_COUNT` is 0 or 1, `SPEC_PATH` / `HAS_SPEC` are resolved for the picked subject, and no dispatch happened under `--explain`.
 
 ---
 
@@ -319,7 +427,7 @@ read **never overrides an explicit ready signal to *force* work** on an item the
 human did not promote, and **never sets the ready flag itself**, and **never
 promotes** on its own reading of the prose. The signal gates eligibility; the
 completeness read is a one-way safety net that can only hold work back, never start
-it.
+it. A read that started work the human had not promoted has broken this.
 
 **`needs-spec` is always a *promoted* item missing a workable spec** - never an
 un-promoted backlog idea (that is silently skipped, above). A tracker-only promoted
@@ -338,8 +446,30 @@ owned by `auto.md`.)
 The `dep-unsatisfied` → `BLOCKED` terminal is a **dep-wait surface, NOT a strike**:
 it records no strike, never unreadies the spec, and emits its own `blocked`
 decision-log row - its concrete verdict-line + `pilot-log` template live in
-`auto.md` Phase 6 ("Backlog-mode dep-wait `BLOCKED` terminal"), distinct from
+[Backlog-mode dep-wait `BLOCKED` terminal](#backlog-mode-dep-wait-blocked-terminal) below, distinct from
 the strike-based `BLOCKED`.
+
+---
+
+## Phase 1.6 - TRIAGE the selected item (backlog mode only)
+
+**Active only when `PILOT_AUTONOMY=backlog`.** TRIAGE runs **in front of** CLASSIFY: a thin / specless / blocked item never reaches the pipeline. Execute Phase 2 above; its class table and routes are authoritative and single-sourced there (first match wins; **`dep-unsatisfied` is checked BEFORE `workable`**). The classification is the **host agent's READ** of the item, never a flowctl field, never a score, never a regex grader, never a second LLM. flowctl supplied facts (Phase 1.5b); the agent supplies judgment here.
+
+**Optional force-gate.** Apply [the optional force-gate](#full-auto-default--the-optional-force-gate) below; a matching item routes to `ask` even when otherwise workable.
+
+**A live triage always resolves to a state-changing terminal**: `ADVANCED` / `ASKED` / `BLOCKED` / `NEEDS_HUMAN`. It never ends on a bare `TRIAGED` no-op line; `TRIAGED <id> <class>` is diagnostic / explain only. Append the matching decision-log row at the resolving terminal (Backlog-mode decision log below).
+
+**Explain is the only case that emits `TRIAGED`, and it short-circuits every route.** Under `--explain` (`PILOT_DRY_RUN=1`), backlog triage classifies the subject and stops; an explain run that reached Phase 2 CLASSIFY, Phase 3.5 ASK, the `BLOCKED` terminal, or the Phase 6 pilot-log row has broken this. This branch runs immediately after the class is resolved, before any routing:
+
+```bash
+if [ "${PILOT_DRY_RUN:-0}" = "1" ]; then
+  # $TRIAGE_CLASS = the class resolved above (workable | ready-but-thin | needs-spec | dep-unsatisfied | needs-human).
+  echo "PILOT_VERDICT=TRIAGED spec=$SUBJECT_ID stage=triage reason=\"dry-run: classified $TRIAGE_CLASS, nothing dispatched or parked\""
+  exit 0
+fi
+```
+
+When NOT explaining, route by class: **workable** sets `SELECTED_SPEC="$SUBJECT_ID"` and continues into Phase 2 CLASSIFY (the existing pipeline; the hop loop then drives this one item); every other class skips Phases 2 to 5 and resolves in Phase 3.5 (ask) or directly at the dep-wait `BLOCKED` terminal below. A live run never emits `TRIAGED` (it always lands on a state-changing terminal).
 
 ---
 
@@ -410,6 +540,67 @@ The terminal for a parked item is `ASKED <id> (<n>)` - a **durable** park that s
 the `status=open` anchor so Phase 1d skips it next run (the verdict grammar +
 durable-park semantics are owned by `auto.md`).
 
+```text
+PILOT_VERDICT=ASKED spec=<id> stage=ask reason="parked behind <n> open question(s): <one line>"
+```
+
+(`spec=<id>` is the spec id for a spec-backed subject, else the tracker id for a tracker-only subject.)
+
+---
+
+## Backlog-mode dep-wait `BLOCKED` terminal
+
+**Active only when `PILOT_AUTONOMY=backlog` AND Phase 1.6 routed the subject to `dep-unsatisfied`.** It writes a `blocked` decision-log row, records no strike, preserves readiness, and names the first unsatisfied dependency (`<dep>`, a flow `blockedBy` edge or a tracker relation). For a spec-backed subject the `<dep>` clause is the `reason` string `spec chain` returned (1f above), so an unpushed parent reads `parent branch <b> not on origin; push it or land the parent first` rather than a bare `not yet done`; on a chained subject the row's `--reason` is the verdict line's reason text.
+
+```bash
+# No ledger write; a dep wait is healthy, not a strike. STAGE is the stage the
+# item would advance to once unblocked (or '-'); $SUBJECT_ID is spec-backed or a
+# tracker key. The `blocked` action distinguishes the dep wait from the strike path.
+$FLOWCTL pilot-log append --id "$SUBJECT_ID" --action blocked --stage "${STAGE:--}" ${COST_TOKENS:+--cost-tokens "$COST_TOKENS"} ${CHAIN_PARENT:+--reason "$REASON"}
+```
+
+```text
+PILOT_VERDICT=BLOCKED spec=<id> stage=<stage> reason="dep wait — blocked by <dep> (not yet done); topo-sort offers the blocker first next tick"
+```
+
+(A circular/unsatisfiable dep does NOT reach here; Phase 1e routes it to `ASKED` instead. This terminal is for the plain acyclic dep wait only.)
+
+---
+
+## Backlog-mode decision log - one row per dispatched stage, at the resolving terminal
+
+**Active only when `PILOT_AUTONOMY=backlog`.** Every backlog run that selected a subject appends exactly **one** decision-log row per dispatched stage (one per hop), each with its own `--stage`, keyed to the verdict grammar action, at its resolving terminal. The row co-occurs with the state-changing terminal; a live `TRIAGED` is never a bare no-op, so the logged action is always a terminal action. Stored under `.flow/pilot-runs/` (a sync-runs-style dir, NOT a `receipts/` path), auto-gitignored:
+
+```bash
+# ACTION in {advanced, asked, blocked, needs-human}  (mapped from the terminal verdict)
+#   ADVANCED  -> advanced   · ASKED -> asked   · BLOCKED -> blocked   · NEEDS_HUMAN -> needs-human
+# STAGE is the pipeline stage advanced/blocked-at, or 'ask' for ASKED, or '-' when none.
+# COST_TOKENS is host-reported (this run's token cost); omit the flag when unavailable.
+$FLOWCTL pilot-log append --id "$SUBJECT_ID" --action "$ACTION" --stage "${STAGE:--}" ${COST_TOKENS:+--cost-tokens "$COST_TOKENS"} ${CHAIN_PARENT:+--reason "$REASON"}
+# --reason is passed ONLY on a chained dispatch (CHAIN_PARENT set): REASON is the verdict
+# line's reason text after the `# fence:verdict-reason` prefix, so that row begins
+# `chained on <parent-id>; ` exactly like the verdict. A non-chained dispatch omits the
+# flag and its row keeps the frozen shape byte-identically.
+
+# A run that dispatched several stages appends one row per stage, in dispatch order.
+# Every intermediate row is `advanced` (the loop continued only from ADVANCED) and
+# carries NO cost; the last row carries the run's terminal action and the
+# whole-run cost ONCE. Each append mints its own row id, so a multi-hop run
+# reads as several rows in the log, never as a doubled cost.
+# $FLOWCTL pilot-log append --id "$SUBJECT_ID" --action advanced --stage qa
+# $FLOWCTL pilot-log append --id "$SUBJECT_ID" --action "$ACTION" --stage make-pr ${COST_TOKENS:+--cost-tokens "$COST_TOKENS"}
+```
+
+- **`--id`** takes the spec id (spec-backed) OR the bare tracker key (tracker-only); flowctl safe-filename-normalizes it.
+- **`--action`** is the frozen enum `triaged|advanced|asked|blocked|needs-human`. A **live** run logs only terminal actions (`advanced`/`asked`/`blocked`/`needs-human`); `triaged` is for a diagnostic/explain inspection only, matching the `TRIAGED` diagnostic-only verdict.
+- **`--cost-tokens`** is host-reported by the skill (flowctl only stores the row; it never measures cost). Omit the flag when the host cannot report it.
+
+Under backlog, a dispatched waiting land tick records `--action blocked --stage land` once (the existing log enum has no wait action), with its actual wait reason in the output; this is not a strike.
+
+A default `NO_WORK` / `DEFERRED_TO_LAND` run that dispatched no subject writes **no** row. A scoped land tick that reports waiting did dispatch the selected item and records its one row as described above. An `--explain` run writes no row (classification/inspection only). Exactly one row per dispatched stage on an acting backlog run.
+
+**The dep-wait `BLOCKED` terminal above already emits its own `--action blocked` row inline**; that is its single decision-log row, so this generic block adds none for that path. It covers the other resolving terminals (`advanced` / `asked` / `needs-human`) and the strike-based `BLOCKED`. Whichever terminal resolves a dispatched stage writes exactly **one** row for it; a second row for the same stage, or a dispatched stage with no row, has broken this.
+
 ---
 
 ## Full-auto default + the optional force-gate
@@ -426,6 +617,7 @@ downstream of a workable spec runs unattended to the pull request.
 selected item matches a configured gate class (e.g. `risky`, `prod-config`), route
 it to `ask` (Phase 3) instead of advancing - even when it is otherwise workable. An
 empty / unset `gateClasses` (the default) gates nothing; full-auto is unconditional.
+A scalar `flowctl config set pilot.gateClasses risky` is read as the single class `risky`; multiple classes use a JSON array.
 
 ```bash
 [ -n "${PILOT_SNAPSHOT:-}" ] || PILOT_SNAPSHOT="$(cat "$(git rev-parse --show-toplevel)/.flow/tmp/pilot-snapshot.json" 2>/dev/null)"
