@@ -42,26 +42,9 @@ When `RP_ELIGIBLE=0` (not macOS, no supported RepoPrompt CLI), never *steer* the
 3. `.flow/config.json` → `review.backend` (same bare / spec forms)
 4. **Error** - no auto-detection
 
-### Parse from arguments first
-
-Check $ARGUMENTS for:
-- `--review=rp` or `--review rp` → use rp
-- `--review=codex` or `--review codex` → use codex
-- `--review=copilot` or `--review copilot` → use copilot
-- `--review=cursor` or `--review cursor` → use cursor
-- `--review=claude` or `--review claude` → use claude
-- `--review=host` or `--review host` → use host
-- `--review=none` or `--review none` → skip review
-
-If found, use that backend and skip all other detection.
-
-### Otherwise: Phase 0 resolves it
-
-No `--review` flag → `$BACKEND` comes from [workflow-common.md](workflow-common.md) Phase 0 (executed once per the Preamble): the single `flowctl review-backend "$SPEC_ID"` call with ASK handling included. Do not re-resolve here.
-
 ### Backend at a glance
 
-The per-backend summary (models, env vars, `--spec` forms) and the `backend[:model[:effort]]` spec grammar live in [references/backend-at-a-glance.md](references/backend-at-a-glance.md). Read it **only** when you surface backend guidance to the user (ASK branch, recommendation, override hint) — routing does not need it.
+The per-backend summary (models, env vars, `--spec` forms and `FLOW_REVIEW_BACKEND` spec-form examples) and the `backend[:model[:effort]]` spec grammar live in [references/backend-at-a-glance.md](references/backend-at-a-glance.md). Read it **only** when you surface backend guidance to the user (ASK branch, recommendation, override hint) — routing does not need it.
 
 ## Critical Rules
 
