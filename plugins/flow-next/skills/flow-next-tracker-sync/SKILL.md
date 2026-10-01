@@ -90,15 +90,9 @@ deterministic.
 
 ## Discovery ceremony
 
-The bridge is off until the user confirms it. Surface available and unavailable
-provider signals, the proposed project or team, and lifecycle defaults. Resolve
-environment overrides before stored configuration. If the destination is
-ambiguous, ask. If the user declines, write nothing.
-
-After confirmation, use `flowctl config set` for the selected provider and
-`flowctl tracker resolve` to persist `tracker.resolved`. Credentials remain in
-the environment. Never copy credentials into config, a prompt, argv, receipt,
-or error note.
+The bridge is off until the user confirms it; [steps.md](steps.md) §1 is the procedure.
+Credentials remain in the environment. Never copy credentials into config, a prompt, argv,
+receipt, or error note.
 
 Linear MCP is discovery/create only. All later shell-reachable operations use
 the deterministic GraphQL route. If an MCP create returns only a display key,
