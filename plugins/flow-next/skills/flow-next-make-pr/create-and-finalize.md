@@ -25,27 +25,13 @@ URL. The 3-attempt retry loop retries eventual-consistency failures only.
 After an exhausted create retry, wait 30 seconds and re-run /flow-next:make-pr (skill detects the existing branch and re-tries).
 
 ## Finalize
-After successful creation or update, optionally write a grounded `knowledge/architecture-patterns` memory
-entry under `--memory`, with tag `spec-<SPEC_ID>` as its idempotency key; skip if that tag already exists.
-Its prose follows [docs/prose.md](../../docs/prose.md) when present. Memory failure is non-fatal; never write by default or in dry-run.
+Only under `--memory`: read [memory-entry.md](memory-entry.md) after a successful creation or update.
 
-When the bridge is active, invoke the inline tracker-sync wrapper with the prepared snapshots and optional
-private breadcrumb, making one lifecycle call:
-```bash
-if [[ -n "$PR_URL" ]] && [ "$("$FLOWCTL" sync active --json | jq -r '.active')" = "true" ]; then
-  # "$FLOWCTL" tracker sync "$SPEC_ID" --op reconcile --event makePr --pr-url "$PR_URL" <other legal file flags>
-  :
-fi
-```
-`off|pull|push|reconcile|comment` all use body-preserving `reconcile` for PR linkage and In Review;
-`tracker.perEvent.makePr` gates only the optional breadcrumb, which Make PR synthesizes from the URL and
-opened-PR context. Create-if-unlinked first; unreachable transport is a no-op. Use provider-native links or
-URL-deduplicated fallback; never overwrite issue prose or mark Done. Failures warn without changing PR
-success.
+Run `"$FLOWCTL" sync active --json`. Only when it reads `active: false`: skip the tracker step;
+the slot reads `n/a (bridge inactive)`. Otherwise, including an error: read
+[tracker-finalize.md](tracker-finalize.md) and run it.
 
-Audit `sync check "$SPEC_ID" --events makePr --since <PR-createdAt> --json` independently of dispatch. If
-MISSING, record a UTC start, Retro-fire the same wrapper once with explicit `--pr-url`, then recheck since
-that start. Never loop. Print the PR URL, `Reviewer feedback → /flow-next:resolve-pr <number>` and
+Print the PR URL, `Reviewer feedback → /flow-next:resolve-pr <number>` and
 `Body inspection → /flow-next:make-pr <spec-id> --dry-run` in native host invocation syntax (OpenCode
 hyphenates the command). The last summary line is: `Tracker sync: <OK |
 MISSING:makePr → retro-fired → OK | MISSING:makePr (retro-fire failed: <reason>) | n/a (bridge inactive)>`.

@@ -17,7 +17,8 @@ source "$(dirname "$FLOWCTL")/make-pr-preflight.sh"
 ```
 
 Exit 1 is failure; exit 2 needs human intervention; exit 3 carries `NEED_INPUT:`; exit 4 (`NO_SPEC`)
-means the branch carries no spec: take the no-spec path below and skip every later phase. A repo
+means the branch carries no spec: take the no-spec path in [no-spec-path.md](no-spec-path.md) and skip
+every later phase. A repo
 without `.flow/` takes that path without running the script.
 Under `FLOW_AUTONOMOUS=1`, `AUTONOMOUS=1`, or `mode:autonomous`, never prompt: preserve the exit outcome. Attended, resolve
 only the named missing input and rerun.
@@ -26,16 +27,6 @@ Already-closed specs stay untouched. Otherwise completed specs close on the head
 task-less specs have no close commit and still compose interactively. For `OPEN_COUNT > 0`,
 autonomous hard-errors (exit 2). Dry-run and body-only updates never close. Under `--update` an
 existing OPEN PR is REQUIRED; closed/merged PRs do not prevent a create. Preserve `PHASE0_CONTEXT.head`.
-### No-spec path
-
-Never create a spec to open a pull request. Under `--dry-run`, write the body below, print it and
-stop, with no branch, commit or push. Otherwise, on the default branch, first create a branch
-named for the change, and commit the change if it is not committed yet (`git add -- <files you
-changed>`). Write the session's handoff (what changed, how it was verified, open items and
-follow-ups) to a temporary body file, push, and run `gh pr create` with a one-line title and that
-body file; add `--draft` for `--draft` or when the handoff lists an open item (a call left for
-the person, an open QA finding; follow-ups alone never draft), and `--base` when given. Under `--update`, run
-`gh pr edit` with the body file instead. Print the PR URL.
 
 ## Phase 1: Gather inputs
 
