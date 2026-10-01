@@ -24,30 +24,8 @@ The SKILL.md preflight already ran `init` and wrote the config snapshot at `${TM
 
 **Handle recognition.** Before treating a single-token argument as a new idea, run `$FLOWCTL show <arg> --json`. A tracker key (`wor-17`, `wor-17.2`) resolves to its linked spec or task. If it resolves, use the canonical id and take Route A in Step 5; only a token that does not resolve is a new idea (Route B).
 
-**Existing id.** Fetch it once, with the readiness check in the same bash block (variables do not survive across prompt turns; never run a second `show --json`). The readiness check applies only to an existing spec, not to a task id:
-
-```bash
-$FLOWCTL cat <id>
-SHOW_JSON=$($FLOWCTL show <id> --json)
-echo "$SHOW_JSON"
-# Readiness soft-check (spec ids only): warn, never block. Fires only in repos that
-# use readiness (any spec marked ready, or tracker.readyState configured).
-SPEC_READY=$(jq -r '.ready // false' <<< "$SHOW_JSON")
-READINESS_WARN=false
-# The owner-reconciliation stop (Planning choice, below) comes before any readiness prompt.
-OWNER_STOP=$(jq -r 'if .no_plan == true and ((.tasks // []) | length) == 1 and .tasks[0].implicit_owner == true then 1 else 0 end' <<< "$SHOW_JSON" 2>/dev/null)
-[[ "$OWNER_STOP" == "1" ]] && echo "OWNER RECONCILIATION — STOP. Apply Planning choice below; skip the readiness check."
-if [[ "$SPEC_READY" != "true" && "$OWNER_STOP" != "1" ]]; then
-  READY_STATE=$(jq -r '.value.tracker.readyState // empty' "${TMPDIR:-/tmp}/flow-plan-config-<suffix>.json" 2>/dev/null)
-  READY_ADOPTED=$($FLOWCTL specs --json 2>/dev/null | jq '[.specs[] | select(.ready == true)] | length' 2>/dev/null || echo 0)
-  if [[ -n "$READY_STATE" || "$READY_ADOPTED" -ge 1 ]]; then
-    READINESS_WARN=true
-    echo "READINESS GATE ACTIVE — STOP. Read references/readiness-warn.md before continuing."
-  fi
-fi
-```
-
-When the sentinel prints, read [`references/readiness-warn.md`](references/readiness-warn.md) before any further step. Otherwise continue silently.
+**Existing id** (the input resolved): read [references/existing-id.md](references/existing-id.md) and run its
+fetch-and-readiness block once, before research; then apply the Planning choice below.
 
 **Planning choice.** Read the spec's metadata (for a task id, `$FLOWCTL show <spec-id> --json` on its parent). If `no_plan: true` and the spec has exactly one task, marked `implicit_owner: true`, stop with `NEEDS_HUMAN: needs-owner-reconciliation`, naming the owner and the decision needed about its whole-spec scope and existing work; never convert, delete or duplicate the owner, and never prompt under autonomy. Otherwise, for `no_plan: true`, run `$FLOWCTL spec clear-no-plan <spec-id> --json` before creating or changing tasks, and stop if it fails.
 
