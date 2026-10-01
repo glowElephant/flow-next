@@ -211,51 +211,16 @@ build command actually runs OR operability tier ≥ 1 evidence exists.**
 ### 2.4 Per-surface / per-member sampling with progress lines
 
 Operability and the executed substance checks are graded **PER SURFACE / PER MEMBER, never per
-repo**. For a monorepo (the emitter's topology + workspace members from
-`flowctl prime classify --json`, see [classification.md](classification.md)), verification is
-**SAMPLED, not exhaustive**:
-
-- **Sampling order:** deployable members first (web service/app, CLI, desktop), then default /
-  entry members. **Max ~5 member executions** and a **~10 min global wall-clock cap** per run.
-- **Graph-native `affected` commands may substitute** for per-member runs where the toolchain
-  provides them (`turbo run … --affected`, `nx affected`) - one bounded affected run can stand in
-  for many member runs.
-- **Unsampled members are listed NOT ASSESSED** - never silently skipped.
-
-**Progress observability - a ~10-minute silent run is not acceptable UX.** Emit a
-concise line per surface/member as the loop runs, with elapsed vs the global budget, and print the
-NOT ASSESSED list as the budget exhausts:
-
-```
-[2.4] api (web)        build … ok (12s)          | elapsed 0:12 / 10:00
-[2.4] cli (CLI)        --help … ok (1s)           | elapsed 0:13 / 10:00
-[2.4] worker (web)     boot probe … ready (28s)   | elapsed 0:41 / 10:00
-[2.4] budget: 5/5 member executions used - NOT ASSESSED: web-admin, docs-site, packages/ui
-```
+repo**.
+Only for a monorepo (`flowctl prime classify --json` reports workspace members): read
+[references/monorepo-sampling.md](references/monorepo-sampling.md) for the sampling order, caps and
+progress lines.
 
 ### 2.5 Tier-3 boot probe (BS3, AO3) - ready-signal gated, SaaS-gated, host-honest
 
-A tier-3 "runs" claim requires an **executed** boot probe - it is the SOLE evidence source for
-BS3 and for AO3 (parseable ready line + deterministic port). Rules:
-
-- **Ready-signal gate.** Run the boot probe **only when a cheap ready signal is detectable** - a
-  health endpoint, a dev-server ready line - and always **time-bounded (~60s)**. If no ready
-  signal is detectable, the tier is recorded **"not probed"**, never failed.
-- **External-SaaS gate.** A ready line + bound port is **NOT tier 3** when the backend of record
-  is a cloud service requiring interactive auth (Convex/Firebase-class repos boot a nonfunctional
-  shell). Report **"tier 3 gated on <service> credentials"** - never fabricate a pass.
-- **Not-probed-on-this-host.** A surface whose boot cannot run here (platform/toolchain/license)
-  is "not probed on this host", never ❌ and never ✅.
-
-```bash
-ROOT="${ROOT:-.}"
-run_bounded() { _limit="$1"; shift; _mark=$(mktemp); python3 -c 'import os,sys; getattr(os,"setsid",int)(); os.execvp(sys.argv[1],sys.argv[1:])' "$@" & _pid=$!; ( sleep "$_limit"; echo fired > "$_mark"; kill -TERM -- -"$_pid" || kill -TERM "$_pid"; sleep 2; kill -KILL -- -"$_pid" || kill -KILL "$_pid" ) >/dev/null 2>&1 & _watch=$!; wait "$_pid" 2>/dev/null; _rc=$?; if [ -s "$_mark" ]; then wait "$_watch" 2>/dev/null; echo "TIMEOUT: exceeded ${_limit}s"; _rc=124; else kill "$_watch" 2>/dev/null; fi; rm -f "$_mark"; return "$_rc"; }
-# Boot only behind a detected ready signal; capture the ready line + bound port as evidence.
-run_bounded 60 sh -c 'cd "$0" && <stacks.md dev/boot command>' "$ROOT" 2>&1 | grep -aiE '(ready|listening|started).*[0-9]{2,5}' | head -3
-```
-
-The boot probe's ready line + port also feed AO3; BS3 never triggers a second long-lived run
-(non-mutating rule 5).
+Only when a surface could boot into a long-running process (web service/app, desktop app, server or
+worker; when unsure, read it): read [references/boot-probe.md](references/boot-probe.md) before any
+tier-3 or AO3 claim. Without it, BS3/AO3 are "not probed", never failed and never passed.
 
 ### 2.6 Agent-file quoted-command extraction + execution (G3 / DC2 execute check)
 
@@ -594,22 +559,9 @@ For each pillar with a failing or ⚠️ criterion, expand ONLY those rows with 
 
 ### Informational suggestions (not scored)
 
-**DE7 `/flow-next:map` - stack-GATED via the [stacks.md](stacks.md) Map column.** The suggestion fires ONLY when (a) no map exists yet AND (b) the detected stack's Map cell is `yes` (`none` / `partial` SUPPRESSES it and routes to the LEG3 substitute-navigation class - a generated dependency-graph artifact, a hand-written orientation map, or static analysis as the proxy verifier; never suggest `/flow-next:map` on a stack clawpatch cannot parse). It is also size-gated: below ~400K LOC recommend the orientation map + tighter loops instead of heavy index tooling (Axis 3, measured net-negative). When all gates pass, append:
-
-> Consider: `/flow-next:map` — builds a semantic feature index for richer scope anchoring (optional).
-
-Detection - `flowctl` is **bundled, not on `PATH`** after install, so use the same `FLOWCTL` prelude pattern as the other skills (canonical Droid+Claude fallback). Each fenced block re-declares its own vars; POSIX shell:
-
-```bash
-FLOWCTL="${DROID_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/flowctl"
-[ -x "$FLOWCTL" ] || FLOWCTL="<plugin-root>/scripts/flowctl"   # <plugin-root> = the directory two levels above this skill's SKILL.md file (the harness gave you that file's absolute path when the skill loaded); substitute it literally
-[ -x "$FLOWCTL" ] || FLOWCTL=".flow/bin/flowctl"
-# Suggestion fires only when NO map exists AND the detected stack's stacks.md Map cell is `yes`.
-[ -d .clawpatch ] && [ "$("$FLOWCTL" repo-map list --count 2>/dev/null)" -gt 0 ] && MAP_EXISTS=1 || MAP_EXISTS=0
-# MAP_EXISTS=0 AND stacks.md Map(detected stack) == yes AND size >= ~400K LOC → append the suggestion.
-```
-
-DE7 is informational — surface as a suggestion only; do NOT include it in Phase 5 remediation prompts.
+**DE7 `/flow-next:map`:** only when the classification size is ~400K LOC or more and the detected
+stack's [stacks.md](stacks.md) Map cell is `yes`: read [references/map-suggestion.md](references/map-suggestion.md)
+for the map-exists check and the suggestion line. Otherwise no map suggestion. DE7 is never a Phase 5 option.
 
 Glossary (DC8) lines — driven by the Phase 3 glossary signal:
 
@@ -641,186 +593,10 @@ Close with key observations from Pillars 6-8 (informational - no fixes offered).
 
 ---
 
-## Phase 5: Interactive Remediation
+## Phases 5-7: Remediation, glossary bootstrap, apply, summary
 
-**Remediation is CATALOG-DRIVEN.** The questions below are NOT a fixed four - they are assembled from the [playbooks.md](playbooks.md) ranked-actions catalog, filtered to the ACTUAL gaps found across Pillars 1-5 + the scored groups (AO / DR / TO / HP-core / FH-scored). Each option maps to a catalog row and carries that row's **tier** (Critical / High / Medium / Bonus) and **consent boundary**. Never offer a fix for a criterion that already passes; never invent an option not in the catalog.
-
-**If `--fix-all`** - the catalog tier column + consent boundaries govern what auto-applies. `--fix-all` auto-applies ONLY **in-root, non-structural, non-harness** fixes at **Critical / High / Medium** tier - the in-root Pillars 1-5 fixes PLUS scored-group agent-file content whose catalog row is marked `--fix-all`-eligible (per the catalog's consent column; **the [playbooks.md](playbooks.md) catalog is authoritative** on which scored-group items qualify). **Explicit-consent-only regardless of `--fix-all`:** anything outside the repo ROOT (the home-base kit), any harness settings / hook file (deny/ask/hook scaffolds), and ALL structural / playbook artifacts (a generated map, nested instruction files, the home base, the greenfield bootstrap plan). **On greenfield, `--fix-all` applies ONLY to exercised hygiene files** (`.gitignore`, lockfile, `.env.example`, `.editorconfig`) - never structural or generated artifacts (playbooks.md greenfield anti-pattern rules). When `--fix-all` is set, skip the questions, apply exactly the auto-eligible set, and continue at Phase 5.5 (the glossary bootstrap keeps its read-back gate even under `--fix-all`); Phase 6 then applies the selected fixes.
-
-**Under any autonomy marker (`FLOW_AUTONOMOUS=1` or `mode:autonomous`), this entire phase is SKIPPED - exactly like `--report-only`.** No remediation is offered and no interactive consent is sought; the report states the gaps (and their catalog rows) so a human can settle them later. There is no autonomous person to answer, so the phase produces zero prompts and applies zero fixes.
-
-**CRITICAL**: You MUST use the `AskUserQuestion` tool for consent. Do NOT just print questions as text. (Call `ToolSearch` with `select:AskUserQuestion` first if its schema isn't loaded.)
-
-### Using AskUserQuestion correctly
-
-The tool provides an interactive UI. Each question should:
-- Have a clear header (max 12 chars)
-- Explain what each option does and WHY it helps agents
-- Use `multiSelect: true` so users can pick multiple items
-- Include impact description for each option, and its catalog tier + consent boundary
-
-### Question structure - catalog-driven
-
-Group the gap-matched catalog items by category (Documentation, Tooling, Testing, Environment, Drivability/Observability, …) and ask **ONE question per category that has gaps** - skip any category with none. The options in each question are the catalog rows that apply to THIS repo's gaps, each labelled with its tier and (where not the default `--fix-all` in-root) its consent boundary. Explicit-consent-only items (structural artifacts, harness files, out-of-ROOT kit) are asked here even under `--fix-all`.
-
-Illustrative shape (Tooling category - the exact options come from the catalog filtered to the repo's gaps, NOT this fixed list):
-
-```json
-{
-  "questions": [{
-    "question": "Which tooling improvements should I add? These give agents instant feedback instead of waiting for CI.",
-    "header": "Tooling",
-    "multiSelect": true,
-    "options": [
-      {
-        "label": "Layered deterministic gates (Recommended)",
-        "description": "Catalog #6 (High). Format/lint at the edit or commit layer (harness hook OR staged-files commit hook, file-scoped, <10s, auto-fix) - tests stay at the verify command + acceptance requirements + CI required check. Prime NEVER wires test suites into a pre-commit hook (known agent bypass/stall risk). Harness-hook portion is explicit-consent."
-      },
-      {
-        "label": "File-scoped feedback commands",
-        "description": "Catalog #4 (High). Single-test + single-file lint/typecheck commands so agents verify a change in seconds, not a full-suite wait. In-root, `--fix-all`."
-      },
-      {
-        "label": "Add linter/formatter config",
-        "description": "Catalog-adjacent (SV1/SV2). Only if NONE detected - never replace an existing tool. In-root, `--fix-all`."
-      },
-      {
-        "label": "Add runtime version file",
-        "description": "Catalog-adjacent (DE3). Pin the runtime from an evidenced version, never a literal. In-root, `--fix-all`."
-      }
-    ]
-  }]
-}
-```
-
-### Rules for Questions
-
-1. **MUST use `AskUserQuestion` tool** — Never just print questions as text
-2. **Options come from the [playbooks.md](playbooks.md) catalog** - each labelled with its tier (Critical / High / Medium / Bonus) and consent boundary; never an option outside the catalog
-3. **Mark recommended items** - Add "(Recommended)" to high-impact (Critical/High) options; "(Bonus)" to nice-to-have (Bonus tier)
-4. **Explain agent benefit** - Each description says WHY it helps agents AND names its catalog #/tier
-5. **Skip empty categories** - Don't ask if no gaps in that category
-6. **Max 4 options per question** - Tool limit, prioritize by catalog leverage order if more
-7. **Hooks = layered gates, never test-runners** - the hook option is ALWAYS framed as fast file/staged-scoped format+lint at the edit/commit layer; prime NEVER offers a test-running pre-commit hook (SV4 / catalog #6). Tests belong at the verify command + acceptance requirements + CI. Any offered hook is built from Phase-2-verified commands, read-back gated, and exercised in the same pass (HP7 read-vs-exercise; harness.md)
-8. **Never offer Pillar 6-8 items** - Production readiness is informational only
-9. **Never offer informational sub-criteria (DC7, DE7)** - Surface as suggestions in Top Recommendations only; no auto-run from Phase 5
-10. **Never offer DC8 (glossary) as a Phase 5 option** - Its remediation is the dedicated Phase 5.5 bootstrap with its own read-back; a Phase 5 checkbox would bypass the never-write-terms-unseen gate
-11. **Structural / out-of-ROOT / harness items are explicit-consent** - even under `--fix-all`; ask before a map, nested instruction files, the home base, the bootstrap plan, or any harness settings/hook file
-
----
-
-## Phase 5.5: Glossary Bootstrap (DC8)
-
-Runs only when the Phase 3 glossary signal reported `GLOSSARY_TERMS == 0` (GLOSSARY.md absent or husk). When `GLOSSARY_TERMS > 0`, skip this phase entirely — prime never rewrites a populated glossary and never re-proposes existing terms; staleness/alias pruning belongs to `/flow-next:audit`.
-
-**Under any autonomy marker (`FLOW_AUTONOMOUS=1` or `mode:autonomous`), this entire phase is SKIPPED - exactly like `--report-only`.** No glossary read-back is presented and no terms are written; the report notes the glossary gap (DC8) so a human can seed it later. There is no autonomous person to confirm the proposed definitions, and canonical vocabulary is never written unseen.
-
-`--fix-all` does NOT bypass the read-back below: term definitions are judgment-bearing canonical vocabulary, not mechanical templates — never write terms unseen. (`--report-only` never reaches this phase; the workflow stops at Phase 4.)
-
-### 5.5.1 Scan for load-bearing vocabulary
-
-Build the candidate pool from what Phase 1 already collected plus targeted reads:
-
-- README.md, docs/, CLAUDE.md / AGENTS.md (claude-md-scout and docs-gap-scout findings already summarize these — reuse them, don't re-read wholesale)
-- Top-level module / package / directory names
-- Domain nouns recurring across `.flow/specs/*.md` and source files
-- Places where the SAME concept goes by two names in the repo (naming drift → `_Avoid_` candidates)
-
-Selection bar: a term earns a slot when an agent could plausibly build around the wrong meaning — project-specific nouns, flows, and distinctions (e.g. two near-synonyms that mean different things in THIS repo). Exclude generic programming vocabulary (server, test, build) and anything without file evidence.
-
-### 5.5.2 Propose terms
-
-Definition prose follows the artifact prose contract in [docs/prose.md](../../docs/prose.md); proceed without it when the doc is absent.
-
-Draft ~10-20 candidates (fewer is fine for small repos — never pad). Each proposal carries:
-
-- **Term** — canonical name
-- **Definition** — 1-3 sentences, concrete, written against the code (not aspirational)
-- **Evidence** — at least one file ref (`path` or `path:line`) where the concept lives; a term with no evidence is dropped, not guessed
-- **`_Avoid_` aliases** (optional) — only where naming drift is visible in the repo
-- **`_Relates to_`** (optional) — cross-references between proposed terms
-
-### 5.5.3 Read-back (mandatory — never write unseen)
-
-Present the FULL proposal — every term with its definition, evidence, and aliases — then ask via `AskUserQuestion`:
-
-- **Approve all** — write every proposed term
-- **Select subset** — user indicates which terms to keep (follow up for the list)
-- **Skip** — write nothing
-
-No write happens before this approval. Decline/skip ⇒ DC8 stays ❌, note it in the Phase 7 summary, move on — never re-ask in the same run.
-
-### 5.5.4 Write accepted terms
-
-One `flowctl glossary add` per accepted term — stdin definition so multi-sentence text round-trips cleanly (same call shape as refine's doc-aware write). `glossary add` creates `GLOSSARY.md` at the repo root when no ancestor file exists, and upserts on re-runs:
-
-```bash
-"$FLOWCTL" glossary add "<term>" --definition-file - --json <<'EOF'
-<definition — 1-3 sentences>
-EOF
-# optional flags when proposed: --avoid "alt1,alt2" --relates-to "x,y"
-```
-
-Verify after the last write:
-
-```bash
-"$FLOWCTL" glossary list --json | jq -r '.total_terms'   # must equal the accepted count
-```
-
-Record the outcome for Phase 7: seeded N terms / user declined / count mismatch (report it, don't retry-loop).
-
----
-
-## Phase 6: Apply Fixes
-
-For each approved fix:
-1. Read [remediation.md](remediation.md) for the template
-2. Detect project conventions (indent style, quote style, etc.)
-3. Adapt template to match conventions
-4. Check if target file exists:
-   - **New file**: Create it
-   - **Existing file**: Show diff and ask before modifying
-5. Report what was created/modified
-
-**Non-destructive rules:**
-- Never overwrite without explicit consent
-- Merge with existing configs when possible
-- Use detected project style
-- Don't add unused features
-
----
-
-## Phase 7: Summary
-
-After fixes applied:
-
-```markdown
-## Changes Applied
-
-### Created
-- `CLAUDE.md` — Project conventions for agents
-- `.env.example` — Environment variable template
-- `GLOSSARY.md` — Seeded with [N] terms (Phase 5.5 bootstrap)
-
-### Modified
-- `package.json` — Added lint-staged config
-
-### Skipped (user declined)
-- Pre-commit hooks
-- Glossary bootstrap (declined at read-back)
-
-### Not Offered (production readiness)
-- CI/CD, PR templates, observability, security — address independently if desired
-```
-
-Offer re-assessment only if changes were made:
-
-```
-Run assessment again to see updated score?
-```
-
-**Re-run reuse.** A re-assessment **reuses this session's Phase 0.5 classification and the Phase 0.6 answers** - it does NOT re-classify from scratch and does NOT re-ask a question already answered this session. Only the criteria/gates **affected by the fixes just applied** re-verify (the ranked catalog is re-ranked from the new state, not re-derived); untouched pillars carry their prior grades forward. Show:
-
-- New Agent Readiness score and maturity level
-- Score changes per pillar (only the re-verified criteria move)
-- Remaining recommendations, re-ranked
+**Under any autonomy marker (`FLOW_AUTONOMOUS=1` or `mode:autonomous`), Phases 5 and 5.5 are SKIPPED -
+exactly like `--report-only`:** no remediation is offered, no glossary terms are written, and the report
+states the gaps. Otherwise (interactive, or `--fix-all`): read
+[references/remediation-flow.md](references/remediation-flow.md) and run Phases 5, 5.5, 6 and 7 as it says.
+`--fix-all` never bypasses the glossary read-back or the explicit-consent boundaries in SKILL.md.

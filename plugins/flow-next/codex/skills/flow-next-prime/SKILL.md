@@ -77,56 +77,10 @@ Parse the mode before loading any reference:
 This dispatch is fail-open for an unknown/malformed mode: use the full workflow,
 never silently skip assessment or safety instructions.
 
-## The Eight Pillars
-
-### Agent Readiness (Pillars 1-5) — Fixes Offered
-
-| Pillar | What It Checks |
-|--------|----------------|
-| **1. Style & Validation** | Linters, formatters, type checking, pre-commit hooks |
-| **2. Build System** | Build tools, commands, lock files, monorepo tooling |
-| **3. Testing** | Test framework, commands, coverage, verification |
-| **4. Documentation** | README, CLAUDE.md, setup docs, architecture |
-| **5. Dev Environment** | .env.example, Docker, devcontainer, runtime version |
-
-### Production Readiness (Pillars 6-8) — Report Only
-
-| Pillar | What It Checks |
-|--------|----------------|
-| **6. Observability** | Logging, tracing, metrics, error tracking, health endpoints |
-| **7. Security** | Branch protection, secret scanning, CODEOWNERS, Dependabot |
-| **8. Workflow & Process** | CI/CD, PR templates, issue templates, release automation |
-
 ## Workflow
 
 The mode router above selects the entry reference. Do not pre-read references
 for branches that will not execute.
-
-## Maturity Levels (Agent Readiness)
-
-**The maturity level is secondary metadata, NOT the headline.** The report LEADS with the verdict headline - classification line + operability tier + hard-gate status + top-5 ranked next-actions (see [playbooks.md](playbooks.md)). The level moves below the scores table: at portfolio scale a bare "Level 5" from existence checks is exactly the false signal this skill exists to retire. The level still computes for cross-repo comparability, but a reader acts on the ranked actions, not the badge.
-
-| Level | Name | Description | Score |
-|-------|------|-------------|-------|
-| 1 | Minimal | Basic project structure only | <30% |
-| 2 | Functional | Can build and run, limited docs | 30-49% |
-| 3 | **Standardized** | Agent-ready for routine work | 50-69% |
-| 4 | Optimized | Fast feedback loops, comprehensive docs | 70-84% |
-| 5 | Autonomous | Full autonomous operation capable | 85%+ |
-
-**Level 3 is the target** for most teams. Don't over-engineer.
-
-> **The score band above is necessary but NOT sufficient.** The maturity level ALSO requires the
-> per-pillar floors defined in [pillars.md](pillars.md) (Level 3 needs every pillar ≥40%, L4 ≥60%,
-> L5 ≥80%). pillars.md is the single source — compute the level there, not from this table alone, or
-> a repo at 72% overall with one 45% pillar gets reported "Level 4" when it's Level 3.
-
-## What Gets Fixed vs Reported
-
-| Pillars | Category | Remediation |
-|---------|----------|-------------|
-| 1-5 | Agent Readiness | ✅ Fixes offered via plain-text numbered prompt |
-| 6-8 | Production Readiness | ❌ Reported only, address independently |
 
 ## Guardrails
 
@@ -158,20 +112,3 @@ for branches that will not execute.
 - **Never create LICENSE files** — license choice requires explicit user decision
 - **Never offer Pillar 6-8 fixes** — production readiness is informational only
 - Focus fixes on what helps agents work (not team governance)
-
-## Scouts
-
-### Agent Readiness (fast-scout-tier scanners; agents-md-scout + docs-gap-scout on the thinking scout tier)
-- `tooling-scout` — linters, formatters, pre-commit, type checking
-- `agents-md-scout` — CLAUDE.md/AGENTS.md analysis (thinking scout tier — judgment-heavy)
-- `env-scout` — environment setup
-- `testing-scout` — test infrastructure
-- `build-scout` — build system
-- `docs-gap-scout` — README, ADRs, architecture (thinking scout tier — judgment-heavy)
-
-### Production Readiness (fast scout tier)
-- `observability-scout` — logging, tracing, metrics, health
-- `security-scout` — GitHub settings, CODEOWNERS, secrets
-- `workflow-scout` — CI/CD, templates, automation
-
-All 9 scouts run in parallel for speed.
