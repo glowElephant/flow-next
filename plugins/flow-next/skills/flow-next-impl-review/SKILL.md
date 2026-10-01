@@ -48,8 +48,7 @@ takes `REVIEW_ID` and `DIFF_BASE` as literals.
 ## 2. Codex review
 
 Run each review command as one blocking foreground Bash call with a 600-second timeout. Never
-run it in the background: its completion would not resume you. (An attended caller may run this
-whole skill as background work; the commands inside it still run in the foreground.)
+run it in the background: its completion would not resume you.
 
 ```bash
 FLOWCTL="${DROID_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/flowctl"
