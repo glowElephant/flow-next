@@ -68,13 +68,7 @@ Examples:
 
 If no input provided, ask for it.
 
-## FIRST: Parse Options or Ask Questions
-
-Check configured backend:
-```bash
-REVIEW_BACKEND=$($FLOWCTL review-backend)
-```
-Returns: `ASK` (not configured), or `rp`/`codex`/`copilot`/`cursor`/`claude`/`host`/`none` (configured).
+## FIRST: Parse Options
 
 ### Option Parsing (skip questions if found in arguments)
 
@@ -107,9 +101,8 @@ configured/overridden backend â€” codex, copilot, cursor, claude, rp, or host â€
 
 **Otherwise (interactive)**: do not ask about the branch. Stay on the current branch when it is
 not the default branch, otherwise create a new one (named for the spec's `branch_name`), and say
-which in one line. Never ask about review either: with no review option in the arguments and
-`REVIEW_BACKEND` at `ASK` (nothing configured), the review mode is `none`, and the handoff says once
-"no review backend set; run setup or set review.backend".
+which in one line. Never ask about review either: the review step resolves the backend per task
+(phases.md Phase 3).
 
 Done when: the branch and review modes are resolved from arguments, these defaults, or the
 autonomous defaults.

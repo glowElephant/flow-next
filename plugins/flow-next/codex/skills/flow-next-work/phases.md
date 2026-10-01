@@ -190,7 +190,7 @@ here, inline.** Print `Scheduling: inline (single task)`.
    attended, hand the result back first, then run
    `$flow-next-impl-review <task-id> --base <base_commit> --review=<mode>` in the
    background and report its verdict when it lands (`<mode>` is a backend the user named for this run, else
-   `$FLOWCTL review-backend <task-id>`, so a task's own backend wins over the project default); unattended, run it and wait. `done` waits for
+   `$FLOWCTL review-backend <task-id>` run from the repository root, so a task's own backend wins over the project default; `ASK` there means nothing is configured: skip review and say once in the handoff "no review backend set; run setup or set review.backend"); unattended, run it and wait. `done` waits for
    SHIP, or for an `OVERRIDDEN:` line from an unattended loop (its declined findings go in the
    summary and the Decisions list) or from the person accepting an attended `NEEDS_WORK`. Not selected: record `stage: impl-review - skipped(policy: risk - <reason>)`. When a
    review went NEEDS_WORK then SHIP on a non-trivial fix and memory is enabled, capture the lesson

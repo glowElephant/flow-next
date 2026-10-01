@@ -60,7 +60,7 @@ A ready or captured spec is plan input. An unshaped, oversized idea with several
 **Review.** `--review=codex` ("review with codex", "codex review", "use codex"), `--review=rp` ("rp chat", "repoprompt review"), `--review=host` ("host review", "use host": the host-native fresh-context reviewer), `--review=export` ("export review", "external llm"), `--review=none` or `--no-review` ("no review", "skip review").
 
 
-Initialize and capture one preflight snapshot before routing or scouting (also under autonomy). Every later config read uses this literal path:
+Initialize and capture one preflight snapshot before routing or scouting (also under autonomy), from the repository root (never this skill's directory, where flowctl finds no config). Every later config read uses this literal path:
 
 ```bash
 $FLOWCTL init --json
