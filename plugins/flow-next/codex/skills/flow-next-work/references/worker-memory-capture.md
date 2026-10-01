@@ -1,8 +1,19 @@
 # Worker Phase 4.5: memory auto-capture (gated reference)
 
-> **Read only when worker.md Phase 4.5's conditions all hold** (memory enabled, at least one
-> NEEDS_WORK → SHIP transition, a non-trivial fix, and none of its skip cases). A conductor running
-> the capture on a worker's behalf reads it the same way.
+> **Read after a NEEDS_WORK → SHIP cycle with memory enabled** (worker.md Phase 4.5, or a
+> conductor running the capture on a worker's behalf). Check the conditions below first.
+
+Only runs when **all** are true:
+- `memory.enabled` is true (checked in Phase 1)
+- The review cycle went through at least one NEEDS_WORK → SHIP transition (a clean first-pass SHIP captures nothing)
+- The fix was non-trivial
+
+**Skip capture when:**
+- Review was a triage-skip fast-path (`receipt.mode == "triage_skip"`)
+- Fix was mechanical (lockfile bump, typo, formatting-only)
+- Same fingerprint (title + module + primary tag) was already captured in this session — skip the call entirely if you know it's a repeat; if you know the prior entry id, re-run with `memory add --update <id>` instead of creating a sibling
+
+Otherwise capture the entry below. If capture fails (memory disabled mid-run, flowctl error, etc.), log and continue — never block task completion on memory capture.
 
 Synthesize a bug-track entry from the NEEDS_WORK findings + the fix you applied. Entry-body prose follows the artifact prose contract in [docs/prose.md](../../../docs/flow-next/prose.md); proceed without it when the doc is absent.
 

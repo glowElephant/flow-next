@@ -65,8 +65,6 @@ Parse the spec carefully. Identify:
 
 **Baseline check (before any edit — run the focused Quick commands for the code this task changes, never a full-suite gate; record the result):**
 ```bash
-# FOREGROUND RULE: run each gate suite as ONE blocking foreground Bash call (timeout 600s).
-# NEVER run_in_background + monitor - a background completion does not resume a subagent context.
 # Run the focused Quick commands for the code this task changes (lint/build included) to establish
 # the pre-edit baseline, and RECORD it so a task-CAUSED failure is distinguishable from
 # an INHERITED one at review time (the impl-review "Tests" criterion judges blind otherwise):
@@ -254,16 +252,7 @@ flow-next:flow-next-impl-review <TASK_ID> --base $BASE_COMMIT --review=$REVIEW_M
 Pass `--review=$REVIEW_MODE` so an explicit run-wide `work --review=<backend>` override reaches
 the review — `REVIEW_MODE` holds the backend resolved for THIS task (the explicit run override if
 given, else the **task-aware** backend from `review-backend "$TASK_ID"`, which already honors the
-task's own `review:` override; see the work skill's references/multi-task.md §3c). impl-review cannot see the worker prompt variable
-otherwise, so passing it propagates the correct explicit-or-per-task precedence rather than
-re-resolving from config. The skill still handles everything else:
-- Scoped diff (BASE_COMMIT..HEAD, not main..HEAD)
-- Receipt paths (don't pass --receipt yourself)
-- Sending to reviewer (rp, codex, copilot, cursor, or claude backend)
-- Parsing verdict (SHIP/NEEDS_WORK/MAJOR_RETHINK)
-- One fix pass and one re-review attended; unattended, the loop until SHIP
-
-**Foreground rule (do not background the review).** When the impl-review workflow shells a `flowctl <backend> …` review command, run it as one **blocking foreground** Bash call with a generous timeout (10 minutes; verdicts typically land in 1–7). Never launch it with `run_in_background` + a monitor — a background completion does not reliably resume your (subagent) context, and you would idle on an already-finished review. Blocking is safe: the call is bounded.
+task's own `review:` override; see the work skill's references/multi-task.md §3c). Don't pass `--receipt` yourself; the skill owns the scoped diff, receipts, verdict and fix loop.
 
 **impl-review owns its internal fix loop** (one fix pass and one re-review attended; unattended it loops until SHIP; the round cap is a safety net). **impl-review is invoked exactly once per task, and you act on the terminal verdict it returns.** A second invocation wrapping it in a re-invoke-until-SHIP loop resets the skill's iteration counter every round and makes the cap unbounded in aggregate — that has broken this.
 
@@ -276,19 +265,9 @@ Done when: one impl-review invocation has returned a terminal verdict, and the t
 
 ## Phase 4.5: Auto-capture on successful fix (after NEEDS_WORK → SHIP)
 
-Only runs when **all** are true:
-- `memory.enabled` is true (checked in Phase 1)
-- The review cycle went through at least one NEEDS_WORK → SHIP transition (a clean first-pass SHIP captures nothing)
-- The fix was non-trivial
-
-**Skip capture when:**
-- Review was a triage-skip fast-path (`receipt.mode == "triage_skip"`)
-- Fix was mechanical (lockfile bump, typo, formatting-only)
-- Same fingerprint (title + module + primary tag) was already captured in this session — skip the call entirely if you know it's a repeat; if you know the prior entry id, re-run with `memory add --update <id>` instead of creating a sibling
-
-Otherwise, read [worker-memory-capture.md](../skills/flow-next-work/references/worker-memory-capture.md) and capture the bug-track entry it describes.
-
-If capture fails (memory disabled mid-run, flowctl error, etc.), log and continue — never block task completion on memory capture.
+Only after a NEEDS_WORK → SHIP cycle with `memory.enabled` true: read
+[worker-memory-capture.md](../skills/flow-next-work/references/worker-memory-capture.md); it holds
+the remaining conditions and skip cases.
 
 ## Phase 5: Complete
 
@@ -307,8 +286,6 @@ BASE_COMMIT=$(cat .flow/tmp/base_commit)
 # Exit nonzero: run the focused Quick commands for the code this task changed (lint/format
 # included). Never a full-suite gate here: work's Phase 4 runs those once, at the end of the run,
 # when the repository or the user asks for them. Must pass before marking done.
-# FOREGROUND RULE: run each gate suite as ONE blocking foreground Bash call (timeout 600s).
-# NEVER run_in_background + monitor - a background completion does not resume a subagent context.
 # Apply the Suite-output capture rule above: capture output to a log, observe green from
 # `suite_rc`, and read any summary from that log.
 ```
@@ -351,10 +328,7 @@ EOF
 every optional stage THIS worker orchestrated (the impl-review dispatch; the
 Phase 1b bridge when the implementer tier resolved to a bridged model — the
 standard path writes no `implement` line) — pick
-the branch that happened and delete the others. A
-skipped stage is an event with a reason (policy/config/empty/error), never an
-absence; a stage with no line is treated by review as failed. Timestamps only
-where you know them. Stages you did not reach at all need no line — the rule
+the branch that happened and delete the others. Stages you did not reach at all need no line — the rule
 binds stages orchestrated, not the full catalog.
 
 Complete the task only on the standard branch (parallel-wave and host-deferred
