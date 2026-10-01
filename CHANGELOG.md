@@ -9,6 +9,7 @@ Flow-Next changed shape with 5.0.0. One command, `/flow-next:flow`, reads whatev
 ### Fixed
 
 - **Upgrading Codex clears out skills a release removed.** `install-codex.sh` retired only one old alias, so the skills 7.0 removed (`ralph-init` and the pilot and interview stubs) and the `ralph-init` prompt stayed in every Codex home. It now moves any flow-next skill or prompt the release no longer ships into `~/.codex/.flow-next-retired/`, where you can restore it. It only touches files that carry flow-next's own name; your own skills and prompts stay where they are.
+- **Land lands a pull request opened without a spec.** 7.0 let a direct change open a PR with no spec behind it, and land then stopped with "no matching spec". It now runs the same gates on that PR (threads, CI, review state, your merge authorization) and merges it, with no spec to close.
 
 ## [flow-next 7.0.0] - 2026-10-01
 

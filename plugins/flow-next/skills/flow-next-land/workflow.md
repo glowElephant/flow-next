@@ -26,7 +26,8 @@ the base tree.
 A closed spec has `status: done` and at least one
 `.flow/tasks/<spec-id>.*.json` blob in the same tree. If any selected spec is
 open, stop `BLOCKED`, reason `work not finished` naming every open selection;
-change nothing. If the selected set is empty, stop `NO_WORK`, reason `no matching spec`.
+change nothing. An empty selected set is a pull request opened without a spec (make-pr's no-spec
+path): land it through the same gates below, with no spec to check and no tracker touchpoint.
 Missing or malformed blobs, incomplete tree reads (including `truncated: true`), or API errors stop
 `NEEDS_HUMAN`; they are not evidence of no match. Repeat this head-bound
 selection after any head move. A merged replay reads its original head to
