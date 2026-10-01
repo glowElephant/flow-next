@@ -89,7 +89,7 @@ The codex bridge also works FROM a Codex host (same-family self-bridge): `codex 
 
 ```text
 Branch: <branch>, already checked out. Commit each completed scope unit (one spec step or one
-commit-sized unit) as a checkpoint on this branch: git add -A && git commit -m "<type>(<scope>): <what>".
+commit-sized unit) as a checkpoint on this branch: git add -- <files you changed> .flow/ && git commit -m "<type>(<scope>): <what>".
 Never push. Never rebase, amend, or rewrite history. Never change the scope. Never issue a review
 verdict. Never spawn another bridge. You own delegation for this scope: parallel implementation of
 independent surfaces, background research, scouting - the shape is yours to choose at execution time,

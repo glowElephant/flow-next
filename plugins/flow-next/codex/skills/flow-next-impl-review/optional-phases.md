@@ -152,7 +152,7 @@ TASK_ID="$(jq -r '.task_id // empty' <<<"$ROUTE")"
 RECEIPT_PATH="$(jq -r '.receipt_path' <<<"$ROUTE")"
 PRIMARY_FINDINGS="/tmp/primary-findings.jsonl"
 
-for pass in $SELECTED_PASSES; do
+for pass in $(printf '%s\n' $SELECTED_PASSES); do
   case "$BACKEND" in
     codex)
       $FLOWCTL codex deep-pass \

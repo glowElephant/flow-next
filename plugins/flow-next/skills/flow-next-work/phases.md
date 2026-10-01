@@ -218,8 +218,9 @@ here, inline.** Print `Scheduling: inline (single task)`.
    git state, matching glossary terms and the memory index. Search memory
    (`$FLOWCTL memory search "<keyword>" --json`) when an entry looks relevant. Record the base:
    `mkdir -p .flow/tmp && git rev-parse HEAD > .flow/tmp/base_commit`.
-2. **Tracker.** Run `$FLOWCTL sync active --json` once. Only when it reports `active: true` (or
-   fails) read [references/tracker-touchpoints.md](references/tracker-touchpoints.md) and fire its
+2. **Tracker.** Run `$FLOWCTL sync active --json > <run-sync-active.json>` once (a run-unique file
+   under `.flow/tmp/`). Only when it reports `active: true` (or fails) read
+   [references/tracker-touchpoints.md](references/tracker-touchpoints.md), passing it that file, and fire its
    `First claim` section now, its `Task done` section after step 6, and its `Completion review`
    section when step 7 ran a completion review that returned SHIP; otherwise nothing fires.
 3. **Implement** to the acceptance criteria, following working-rules.md: a failing test first
