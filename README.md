@@ -21,7 +21,7 @@ It's also fast now. On the same model, the working change comes back in about th
 | You say | What Flow-Next does |
 |---|---|
 | "This fails: `<pasted stack trace>`" | Turns the failure into a failing test, fixes the cause, and shows you the test going from red to green. |
-| "Add passwordless login" (or the conversation you just had about it) | Writes a spec with numbered acceptance criteria, builds it, has it reviewed, and opens a PR that maps every change to a criterion. |
+| "Add passwordless login" (or the conversation you just had about it) | Writes a spec with numbered acceptance criteria, builds it, has it reviewed, and opens a PR that maps every change to a criterion when you ask for one. |
 | "The /reports page takes four seconds, it should take under one" | Measures the real page before touching anything. The before-and-after numbers are the evidence. |
 | "Extract the pricing rules into their own module" | Pins the current behaviour with a characterization test first, so the refactor has to keep it. |
 | "Work ticket WOR-17" | Reads the issue with the access you already have and routes on what it says. |
@@ -121,7 +121,7 @@ Use installation commands in your terminal or the host's plugin interface as sho
 
 1. Install for your host with the block above, then run `/flow-next:setup` in a project (Codex: `$flow-next-setup`). Setup writes the agent instruction snippet and asks once which reviewer you want.
 2. Tell it what you have: `/flow-next:flow <anything>`. A pasted error, an idea, a spec id, a branch or a ticket all work. Flow picks the smallest route that does the job, runs it, and stops at the next decision that's yours. For an idea too big to write down in one go, the optional `/flow-next:chart` stage comes first.
-3. Read what it hands back. The stage lines say what ran and what was skipped and why, and the PR body maps each change to the acceptance criterion it satisfies.
+3. Read what it hands back. The stage lines say what ran and what was skipped and why. Say "open the PR" when you want one; its body maps each change to the acceptance criterion it satisfies.
 
 [Your first 30 minutes](https://flow-next.dev/first-30-minutes/) walks through the same three steps on a two-file Python example, review setup and all. You need your agent, Python 3.11+ and the project's own tools; review and PR steps also use `jq` and `gh`.
 

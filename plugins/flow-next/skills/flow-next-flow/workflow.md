@@ -71,8 +71,9 @@ Invoke the stage skill by name with its normal arguments, passing `--review=<bac
   Pick the branch rather than letting work ask: `--branch=current` on a branch other than the
   default, else `--branch=new`, unless the user named one. State the choice in one line.
 - **QA** follows gate-selection.md; a skip is recorded, never silent.
-- **Make-pr** ends a run from intent unless `--until=merge` or current explicit consent authorizes
-  landing (tail.md).
+- **Make-pr** runs under `--auto`, or attended when the person asks for the PR (working-rules.md);
+  it ends a run from intent unless `--until=merge` or current explicit consent authorizes landing
+  (tail.md). A PR this run just opened gets no landing question.
 
 A stage that stops with `NEEDS_HUMAN`, a verdict that needs a person, or an open product question
 stops flow with the same report; never answer on the user's behalf.

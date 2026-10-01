@@ -6,6 +6,10 @@ Flow-Next changed shape with 5.0.0. One command, `/flow-next:flow`, reads whatev
 
 ## Unreleased
 
+### Changed
+
+- **When you're there, Flow opens the pull request when you ask.** An attended build now hands back the change, commits locally and ends with one line: say "open the PR" when you want it. Nothing is pushed or opened on GitHub until you do. `flow --auto` is unchanged and still stops at the open PR, ready or as a draft with open items. A PR the run just opened no longer gets a "land it now?" question.
+
 ### Deprecated
 
 - **RepoPrompt support is deprecated and will be removed in 8.0.0.** That covers the `rp` review backend and `/flow-next:export-context`. A project already set to `review.backend: rp`, or a run with `--review=rp`, keeps working until then and says once that it's deprecated. Setup and plan no longer offer RepoPrompt to new projects. To switch, run `flowctl config set review.backend codex` (or `host`, `claude`, `copilot`, `cursor`).

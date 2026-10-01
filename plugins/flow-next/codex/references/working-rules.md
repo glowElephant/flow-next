@@ -62,9 +62,10 @@ failed, question the idea before trying a third.
 - **Attended** (a person is in the session): they want fast feedback. Ask only what only they can
   answer, and put related questions in one prompt rather than one per turn; settle anything
   observable by running it. Do not ask where a sensible default exists (a branch, a readiness
-  flag): take it and say so in one line. Outside a spec build (which commits its task and opens its
-  pull request through make-pr), commit on a local branch only when review needs it (review reads
-  commits); never push or open a pull request unless asked. List discoveries in the handoff as follow-ups ("found X, not part of this");
+  flag): take it and say so in one line. Commit on a local branch only when review needs it (review
+  reads commits) or a spec build commits its task; never push or open a pull request unless asked.
+  When the change is ready for one, end the handoff with one line saying so ("Say 'open the PR'
+  when you want it"), not a question. List discoveries in the handoff as follow-ups ("found X, not part of this");
   the person decides what to pick up.
 - **Unattended** (`--auto`): nobody is waiting. Never ask; decide from evidence, and stop only
   for a call only a human can make or an irreversible action. A human call that does not block

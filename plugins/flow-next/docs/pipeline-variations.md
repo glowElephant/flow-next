@@ -60,7 +60,7 @@ flowchart LR
     E([Epic intent]) --> C[/capture/] --> I[/refine/] --> P[/plan/] --> PR[/plan-review/] --> W[/work/]
     W -->|qa on, or auto qualifying| Q[/qa/] --> M[/make-pr/]
     W -->|qa off, or auto skip recorded| M
-    M --> D([Open PR, default stop])
+    M --> D([Open PR: --auto stop, or on request])
     D -.scoped consent or --until=merge.-> L[/land/]
 ```
 
