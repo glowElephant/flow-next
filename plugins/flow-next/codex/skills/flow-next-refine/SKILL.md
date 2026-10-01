@@ -164,7 +164,7 @@ Write each answer into the section it belongs in, whatever the lens: a target us
 
 When the person declines a feature as product judgment (we could build it and choose not to), read [declined-scope.md](../../references/declined-scope.md) and record it.
 
-Before the write-back, when the refined criteria reach 8 or more or visibly serve more than one independently shippable outcome, read [references/split.md](references/split.md).
+Before the write-back on a spec (a task or a plain file never splits), when the refined criteria reach 8 or more or visibly serve more than one independently shippable outcome, read [references/split.md](references/split.md).
 
 ## Write-back
 
