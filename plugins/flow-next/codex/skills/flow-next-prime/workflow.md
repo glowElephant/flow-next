@@ -462,7 +462,7 @@ FLOWCTL="${CODEX_HOME:-$HOME/.codex}/scripts/flowctl"
 GLOSSARY_TERMS=$("$FLOWCTL" glossary list --json 2>/dev/null | jq -r '.total_terms // 0')
 ```
 
-Gate on `total_terms == 0`, NEVER on `[[ -f GLOSSARY.md ]]` — `flowctl glossary remove` leaves a `# Glossary` H1 husk after the last term is removed (the file is project state, never deleted), so a presence check false-passes on an empty husk. Same invariant as interview's doc-aware autodetect.
+Gate on `total_terms == 0`, NEVER on `[[ -f GLOSSARY.md ]]` — `flowctl glossary remove` leaves a `# Glossary` H1 husk after the last term is removed (the file is project state, never deleted), so a presence check false-passes on an empty husk. Same invariant as refine's doc-aware autodetect.
 
 - `GLOSSARY_TERMS > 0` → DC8 ✅. Report term coverage in Phase 4. Never rewrite, never re-propose existing terms — staleness/alias pruning belongs to `/flow-next:audit`, not prime.
 - `GLOSSARY_TERMS == 0` (file absent or husk) → DC8 ❌. Phase 5.5 offers the bootstrap.
@@ -619,7 +619,7 @@ Glossary (DC8) lines — driven by the Phase 3 glossary signal:
 
 - When `GLOSSARY_TERMS > 0`, report coverage instead:
 
-  > GLOSSARY.md: [N] terms — canonical vocabulary available to interview / plan / audit. No action; pruning belongs to `/flow-next:audit`.
+  > GLOSSARY.md: [N] terms — canonical vocabulary available to refine / plan / audit. No action; pruning belongs to `/flow-next:audit`.
 
 DC8 is informational like DE7, but its remediation path differs: it is handled exclusively by the Phase 5.5 bootstrap (read-back gated), never as a Phase 5 question option.
 
@@ -754,7 +754,7 @@ No write happens before this approval. Decline/skip ⇒ DC8 stays ❌, note it i
 
 ### 5.5.4 Write accepted terms
 
-One `flowctl glossary add` per accepted term — stdin definition so multi-sentence text round-trips cleanly (same call shape as interview's doc-aware write). `glossary add` creates `GLOSSARY.md` at the repo root when no ancestor file exists, and upserts on re-runs:
+One `flowctl glossary add` per accepted term — stdin definition so multi-sentence text round-trips cleanly (same call shape as refine's doc-aware write). `glossary add` creates `GLOSSARY.md` at the repo root when no ancestor file exists, and upserts on re-runs:
 
 ```bash
 "$FLOWCTL" glossary add "<term>" --definition-file - --json <<'EOF'

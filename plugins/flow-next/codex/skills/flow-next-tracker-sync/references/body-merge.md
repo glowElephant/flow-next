@@ -310,7 +310,7 @@ Let users export their data.
 
 ## Notes
 Also we should rate-limit the export endpoint. (PM note from the tracker — not yet a
-tracked requirement; promote via interview/plan if it should become one.)
+tracked requirement; promote via refine/plan if it should become one.)
 ~~~
 
 **Oracle:** the `R17:` prose folded under a real flow section; **no `[R17]` R-ID was
