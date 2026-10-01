@@ -105,7 +105,7 @@ Tag only what capture authored: `[paraphrase]`, `[inferred]`, `[strategy:<track>
 The section structure comes from the canonical [the bundled `templates/spec.md`](../../templates/spec.md) (cross-link, never re-embed the list), resolved first-match from `<repo_root>/SPEC.md` → `<repo_root>/spec.md` → the bundled file. **The resolved template decides what goes in the spec:** write the sections it names as headings or in `auxiliary_sections`, in its order and positions, follow its instructions, and add no section it leaves out (the bundled entries put `Conversation Evidence` at the top and `Requirement coverage` at the end). A section with no conversation signal stays absent; empty beats fabricated.
 
 - **`## Acceptance Criteria`** — `- **R1:** ...` prose bullets, allocated from R1 (fresh spec, no renumber concern). When `.flow/criteria.md` exists, never restate a G-ID as an R-ID; reference it in prose and write an R only for what this spec adds.
-- **`## Requirement coverage`** — only when the template names it and the route is planned (`NO_PLAN_OPT=0`, and under `from:flow` §2.8 resolved to plan): each R-ID mapped to `fn-N.M (TBD - populate via /flow-next:plan)`. Omitted on the direct route, where work's single implicit task is the coverage. Capture writes no tasks.
+- **`## Requirement coverage`** — only when the template names it, `NO_PLAN_OPT=0`, and §2.8 resolved to `plan`: each R-ID mapped to `fn-N.M (TBD - populate via /flow-next:plan)`. Omitted on the `direct` and `refine` routes: work's single implicit task is the coverage, and a placeholder nobody fills would mislead completion review. Capture writes no tasks.
 - **`## Parked unknowns`** (optional) — only genuine fog, one bullet each, naming what would resolve it. Decidable now → decide it; resolvable by scheduled work → a task for plan; inferred fill-in stays tagged, not parked.
 
 ### 2.4 — Testability
@@ -140,7 +140,7 @@ On the sentinel, read [references/glossary-terms.md](references/glossary-terms.m
 
 ### 2.8 — Route judgment
 
-Once criteria are drafted, judge the spec once against [`plan-vs-no-plan.md`](../flow-next-flow/references/plan-vs-no-plan.md) (plus [`route-matrix.md`](../flow-next-flow/references/route-matrix.md) when product or authority questions or design risk remain). Record `ROUTE_DIRECT=1` or `0`. It feeds the coverage rule, the summary's `Recommended next:`, §5.9b, and Phase 6. Re-judge only when an edit changes the criteria.
+Once criteria are drafted, judge the spec once against [`plan-vs-no-plan.md`](../flow-next-flow/references/plan-vs-no-plan.md) (plus [`route-matrix.md`](../flow-next-flow/references/route-matrix.md) when product or authority questions or design risk remain). Record the route as `direct`, `refine` or `plan`, and `ROUTE_DIRECT=1` only for `direct`. It feeds the coverage rule, the summary's `Recommended next:`, §5.9b, and Phase 6. Re-judge only when an edit changes the criteria.
 
 ---
 

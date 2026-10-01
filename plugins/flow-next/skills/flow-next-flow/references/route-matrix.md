@@ -5,7 +5,7 @@ output, a prototype, a branch, a path, and a sentence of intent all become text 
 was given, then match the starting state. The rows are an inventory, not a precedence order: when
 more than one could apply, judge from intent, evidence, and current state. Each hop re-evaluates.
 
-A skipped stage is recorded as `skipped(<kind>: <reason>)`, never silently absent. Skip kind is
+A skipped stage is recorded as `skipped(<kind>: <reason>)`, never silently absent. A route skip's kind is
 `signal absent` (the stage's work is not needed) or `despite unresolved risk` (a smaller path was
 chosen; its contracts still apply later). Implementation review follows the risk rule in
 working-rules.md instead.

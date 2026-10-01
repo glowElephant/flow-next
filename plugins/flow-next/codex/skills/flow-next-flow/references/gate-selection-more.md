@@ -20,7 +20,7 @@ Unchanged single-task policy: with one minted task whose acceptance is the whole
 Every stage flow routes or skips records one line in the receipt surface that stage already writes - the task's done summary for task-scoped stages, the run's final report for run-scoped ones:
 
 ```
-stage: <name> - ran [<start>..<end>] | skipped(<policy|config|empty|error>: <detail>) | failed(<reason>: <detail>)
+stage: <name> - ran [<start>..<end>] | skipped(<policy|config|empty|error|reach|signal absent|despite unresolved risk>: <detail>) | failed(<reason>: <detail>)
 ```
 
 `flowctl usage --stages <spec-id>` summarizes the task-scoped lines. A skipped stage is an event with a reason, never an absence.

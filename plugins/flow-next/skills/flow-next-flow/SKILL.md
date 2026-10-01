@@ -80,6 +80,6 @@ With `--auto` there is no marker refusal, because `--auto` sets `FLOW_AUTONOMOUS
 ```
 Flow stopped at: <the human decision, "PR exists", or the observed landing outcome>
 Route taken: <hop 1> -> <hop 2> -> ...   (an inline pick reads `prospect [picked: <candidate>]`)
-stage: <name> - ran [<start>..<end>] | skipped(<policy|config|empty|error>: <detail>) | failed(<reason>: <detail>)   (one line per stage reached)
+stage: <name> - ran [<start>..<end>] | skipped(<policy|config|empty|error|reach|signal absent|despite unresolved risk>: <detail>) | failed(<reason>: <detail>)   (one line per stage reached)
 Next: <natural-language prompt or slash command, or the decision the user must make>
 ```

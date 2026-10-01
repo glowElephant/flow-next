@@ -92,7 +92,7 @@ tests, not another review. Hand the result back first, in its own message, and e
 start the review in the background and report its verdict (and any fix) when it lands. If the
 re-review still finds the change wrong, give the person the remaining findings with the
 reviewer's reasons and leave the task open until they decide; when they accept it as is, record
-an `OVERRIDDEN:` line with their words and complete the task.
+an `OVERRIDDEN:` line with their words in the task's done summary and complete the task.
 
 Unattended (`--auto`, with or without `--until=merge`), or when a person or project instruction
 asks to review until SHIP: read [working-rules-unattended.md § Review loop](working-rules-unattended.md#review-loop)
