@@ -52,7 +52,9 @@ repository and branch by name (`git push <head repository URL> HEAD:<headRefName
 the PR itself even when it comes from a fork. Resolver refusal
 `NOT_RETRYABLE: artifact unchanged since last verdict` stops `NEEDS_HUMAN`.
 Re-read the head
-and threads afterward; unresolved threads stop `RESOLVING`.
+and threads afterward. `RESOLVE_PR_VERDICT=NEEDS_HUMAN` (a thread the resolver handed to a
+person) stops `NEEDS_HUMAN` with its `NEEDS_HUMAN:` lines, so the run asks once instead of
+re-running on the same thread each tick; other unresolved threads stop `RESOLVING`.
 
 Then inspect CI checks and failed logs. Pending checks stop `RESOLVING`.
 Red CI in this PR's own code gets one focused fix in an isolated checkout (the same detached
