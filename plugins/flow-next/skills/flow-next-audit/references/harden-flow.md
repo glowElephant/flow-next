@@ -6,7 +6,7 @@
 > An interactive run with no accepted Harden candidate never reads it either.
 > The decision-shaping rules (verification is a hard precondition of demotion;
 > `<rule-id>` must be a literal substring; never `git rm` on Harden) also live
-> in the always-loaded phases.md §Harden.
+> in [harden-classify.md](harden-classify.md).
 
 ### 4.7 — Harden flow (interactive only — autofix never applies)
 

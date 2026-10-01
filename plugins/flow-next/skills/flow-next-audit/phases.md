@@ -15,7 +15,7 @@ Memory-entry body prose authored by the Update / Replace / Harden outcomes follo
 
 For **autofix mode** ambiguity: mark as stale via `flowctl memory mark-stale` instead of guessing.
 
-The 6 outcomes apply to every categorized entry, including the `knowledge/decisions/` category. Decision entries reuse the same classifier with a tighter judging question and a different shape for `Replace` — see the [Decision-entry calibration](#decision-entry-calibration) section below.
+The 6 outcomes apply to every categorized entry, including the `knowledge/decisions/` category. Decision entries reuse the same classifier with a tighter judging question and a different shape for `Replace` — see [references/decision-entries.md](references/decision-entries.md).
 
 **Outcome precedence** when an entry qualifies for more than one — the [decision tree](#decision-tree-quick-reference) encodes this order:
 
@@ -27,7 +27,7 @@ Keep and Update are unaffected by this ordering: an entry that needs a reference
 
 **Intake filters** — for lessons arriving at the store (a new entry proposed during this audit, or judged as a fresh capture would be):
 
-1. **A mechanizable lesson routes to a gate proposal, not a memory entry.** If a machine can check it deterministically, writing it as prose parks enforcement in the context window forever — propose the gate (the Harden target types below) instead of banking the entry.
+1. **A mechanizable lesson routes to a gate proposal, not a memory entry.** If a machine can check it deterministically, writing it as prose parks enforcement in the context window forever — propose the gate (the Harden target types in [references/harden-classify.md](references/harden-classify.md)) instead of banking the entry.
 2. **Accept only lessons that route to something actually used in the transcript** — a file, command, or decision the session genuinely touched. A lesson abstracted past its evidence is speculation wearing a memory entry's clothes.
 3. **A rule that existed but did not fire gets a retrieval fix, not a rewrite.** When the lesson was already in the store and the failure still happened, the defect is retrieval — description, placement, module/tags — not content; rewriting a correct rule that nobody surfaced just forks it.
 
@@ -247,152 +247,19 @@ That's it. No archive directory, no metadata flag. Git history preserves the fil
 
 ## Harden
 
-**Meaning:** the entry is correct, keeps getting re-learned, and states a rule a machine can check. Graduate it into an enforced gate (lint rule / CI step / instruction-file rule) and demote the entry to a pointer at that gate — the file stays on disk, body intact. The lesson stops riding the context window on every run and starts firing automatically — for every agent and every human, in every harness.
-
-An entry that is re-injected each run and re-taught each time is the anti-pattern: the agent re-fixes the same class instead of the class being impossible. Harden closes that loop.
-
-**Two conditions, both required (AND):**
-
-**(1) Recurrence signal.** Inferred from **write-side artifacts plus LLM judgment, never a usage count** — flow-next has no read-side telemetry: `memory-scout` retrieval and worker re-anchor reads leave zero trace, and nothing records "this entry fired during a run." Cite the artifacts in evidence bullets, never a count of uses. An entry (or cluster) becomes a **candidate** when ANY primary signal fires:
-
-- **`>= 2` `## Update` headings** on the entry — the lesson was explicitly re-taught at least twice.
-- **`>= 4` substantive commits** touching the entry file — sustained write churn on one lesson. Audit-bookkeeping commits and pure renames are not re-teachings and do not count.
-
-`related_to` cluster size is a **corroborating signal only**: a cluster of `>= 3` raises a candidate ONLY when it co-occurs with at least one `## Update` heading somewhere in the cluster, or with the commit signal on any member. **On its own it proposes nothing.**
-
-The scan that produces these numbers — the rename-following `git log`, the bookkeeping filter and why it exists, the cluster aggregates — lives in [workflow.md](workflow.md) §0.75.1 and runs before the auto-Keep decision.
-
-> **Why these thresholds.** On a real store, the `## Update` signal matches about 4% of entries and the commit signal about 5%; the bookkeeping filter holds the commit rate steady as audits accumulate. A standalone `related_to >= 3` trigger would match about **28%**. `related_to` is auto-populated by overlap scoring on every `memory add`, so cluster size measures topic collision, not re-teaching — left standalone it would flag more than a quarter of the store on the first run and train the user to decline Harden reflexively. The two primary signals are selective and match the recurring-pain intuition, so they keep their values.
-
-Thresholds gate **proposing** only; the human gates **applying**. They are overridable by judgment in either direction — state the evidence when you override (e.g. a single-`## Update` entry that names a rule the linter already almost covers is worth proposing; four commits that were all typo fixes are not recurrence).
-
-**(2) Mechanizability.** The lesson must be expressible as a deterministic check a gate can run — always LLM-judged, never inferred from the counts. "Never use naive `datetime.now()`" is mechanizable. "Prefer composition over inheritance when the hierarchy gets awkward" is not.
-
-**When to use:**
-
-- Both conditions hold: a recurrence signal fires AND the lesson is a deterministic, checkable rule.
-- The rule can land in a gate surface that **already exists** in this repo (see Gate targets below).
-- No existing, active gate already enforces the class (see Duplication guard).
-
-**When NOT to use:**
-
-- The lesson is wrong, misleading, or its code is gone → Replace / Delete win outright (precedence). Never graduate a wrong lesson.
-- The entry is one of several overlapping entries → Consolidate first; the merged entry is the Harden unit.
-- One-off lesson, no recurrence signal → Keep.
-- Judgment-only lesson ("prefer X style when ambiguous", "escalate when the review disagrees") → not Harden. A gate that cannot decide mechanically becomes a false-positive generator. With a recurrence signal **and a nameable retrieval defect** the entry is an Update (retrieval-fix variant); with recurrence but no nameable defect — as without recurrence at all — it falls through to the ordinary reference-drift check, so Keep absent drift of its own. Recurrence alone never licenses a metadata edit: §0.75.1's counters never decrease, so an ungated branch re-fires on the same entry every run.
-- The repo has no surface to host the gate — see the degradation rule below; the instruction file is the universal floor, and if even that does not exist, Keep.
-- **Autofix mode.** Harden never auto-applies. Candidates are reported under Recommended only — no artifact write, no demotion. Gate surfaces are shared repo infrastructure; an autonomous sweep must not edit lint config, CI, or CLAUDE.md unattended.
-
-**Gate targets — cheapest-fitting first, discovered from repo files, never assumed and never scaffolded:**
-
-- **(a) Lint rule** — extend the repo's existing linter config (ruff, biome, eslint, … — discovered by reading the repo, not assumed from the language). No linter configured → unavailable, fall through.
-- **(b) CI step** — a check in the repo's existing CI workflow (e.g. under `.github/workflows/`). No CI → unavailable, fall through.
-- **(c) Instruction-file rule** — a one-to-two-line rule appended to the **substantive** CLAUDE.md / AGENTS.md (the one that is not just an `@`-include shim — the same "which file is real" discovery as [workflow.md](workflow.md) Phase 6). This is the **universal floor** and the degradation target for review-shaped lessons, since a first-class review-checklist gate type is deliberately out of v1 (no canonical checklist artifact exists to write into).
-
-**Never scaffold infrastructure to host a gate.** Do not create a linter setup, a CI pipeline, or a config file that does not already exist. The gate lands in what the repo already has, or it degrades to (c), or the entry stays Keep.
-
-**Duplication guard (run BEFORE proposing):** grep the candidate gate surfaces (linter config, CI workflows, instruction files) for a rule already covering the class.
-
-- **Matched AND active** (confirmed by the same activeness check as gate verification — [workflow.md](workflow.md) §4.7 step 2) → the class is already enforced. Propose **pointer-demotion only**: no new artifact, `mark-hardened` citing the *existing* gate as `--gate-ref`.
-- **Matched but inactive** (commented out, sitting in an `ignore` list, in a config the tool does not read, in a disabled or unreferenced CI job) → this is **not** a duplicate, it is a broken gate. The entry **stays `active`**, nothing is demoted, and the finding is reported so a human can fix the gate.
-- **No match** → proceed with a new artifact.
-
-A textual hit is never sufficient evidence of enforcement.
-
-**Execution.** The procedure is [workflow.md](workflow.md) §4.7 (interactive only): write the accepted draft, **verify the gate actually fires**, then demote via `flowctl memory mark-hardened` with a `<path>#<rule-id> -- <note>` gate-ref. Three rules from it are decision-shaping, so know them before you propose:
-
-- **Verification is a hard precondition of demotion.** Writing config is not enforcing a rule, and a gate that does not fire is strictly worse than no gate: it retires the only working copy of the lesson while enforcing nothing. Verification failure → the entry stays `active`, `mark-hardened` is NOT called, and the run reports a failed graduation.
-- **`<rule-id>` must be a literal substring of the artifact**, not a locator expression — the next run's gate-liveness check greps for it verbatim.
-- **Never `git rm` on Harden**, on any track. The entry becomes a pointer so "why does this rule exist?" stays answerable forever.
-
-**Already-hardened entries on later runs** are never dropped silently and never re-investigated: they get the cheap gate-liveness check in [workflow.md](workflow.md) §0.75.2 (gate live → still-hardened; gate gone or inactive → propose un-graduation via `mark-fresh`; gate upgraded → re-`mark-hardened` with the new ref).
-
-**Edge cases:**
-
-- **Cluster candidates** — the cluster, not each member, is the Harden unit. Consolidate first (precedence), then evaluate the merged entry once. Never write one gate per member.
-- **Decision-track entries** (`knowledge/decisions/`) — legal and **rare**; most decisions are judgment records, not mechanizable checks. See [Decision-entry calibration](#decision-entry-calibration) below.
-- **Stale entries** — `stale → hardened` is legal. A lesson can be stale as written and still name a real, mechanizable class; `mark-hardened` clears `stale_reason` / `stale_date` as part of the flip. Do not force a `mark-fresh` round trip first.
-- **Non-code repos** (docs sites, an Obsidian vault) — targets (a)/(b) are simply unavailable; (c) is the floor.
-- **First post-ship run** — recurrence signals are derived retroactively, so the first ordinary audit after this ships may surface several candidates at once. That is intended: the thresholds above are what keeps the volume sane, and there is no first-run suppression or rate limit.
-- **Legacy flat files** — skipped as always; migrate first.
+**Meaning:** correct AND recurring AND mechanizable — graduate the lesson into a gate and demote the
+entry to a pointer. Only for an entry or cluster §0.75.1 marked recurrence-qualified: read
+[references/harden-classify.md](references/harden-classify.md) for the two conditions, gate targets,
+duplication guard and edge cases. Harden never applies in autofix, and never `git rm` on Harden.
 
 ---
 
 ## Decision-entry calibration
 
-Entries under `knowledge/decisions/` document forward-looking choices: the project picked approach X, considered Y and Z, and committed to a constraint. The 6 outcomes still apply, but the per-entry judging question changes — and `Replace` means **supersede**, not rewrite-in-place.
-
-### Per-entry judging question
-
-For non-decision entries, Phase 1 asks "is this still relevant?". For decision entries, ask:
-
-> **Does the constraint that motivated this decision still hold?**
-
-The constraint is whatever made the decision hard-to-reverse, surprising-without-context, and a real trade-off when it was made. If the constraint is still in force, the decision is still active. If the constraint has dissolved (the trade-off no longer exists, the surprising context is now the obvious default, the codebase changed shape so reversal is now cheap), the decision is a candidate for supersession.
-
-### Decision-specific frontmatter
-
-Decision entries may carry these optional fields (see `MEMORY_DECISION_FIELDS` in `flowctl.py`):
-
-- `decision_status`: one of `proposed`, `accepted`, `superseded` (`MEMORY_DECISION_STATUSES`)
-- `superseded_by`: id of the successor entry that replaced this one
-- `alternatives_considered`: list of options that were rejected when the decision was made
-
-When auditing, treat `decision_status: superseded` as already-handled — the entry is historical record. Audit the `superseded_by` target instead. If `superseded_by` points at a missing entry, that's an Update (broken cross-reference) on this entry.
-
-### Outcome calibration for decisions
-
-| Outcome | Meaning for a decision entry | Action |
-|---------|------------------------------|--------|
-| **Keep** | Constraint still holds; rejected alternatives are still rejected for the same reasons | No edit |
-| **Update** | Constraint holds; only references / `alternatives_considered` text / cross-refs drifted | Edit in place; `decision_status` unchanged |
-| **Consolidate** | Two decision entries cover the same choice (rare — usually means a rushed double-write) | Merge into canonical, `git rm` subsumed |
-| **Replace** | Constraint no longer holds; a different choice is now in force | **Supersede** — see flow below |
-| **Delete** | The entire problem area is gone (the system that needed the decision was removed) | `git rm` (prefer Replace + supersede when problem domain still exists) |
-| **Harden** | Rare — the decision states a constraint a machine can check, and it keeps being re-taught | Write the gate, verify it fires, `flowctl memory mark-hardened`; file stays on disk, supersession fields preserved |
-
-**Harden is expected to be rare on decision entries.** Most decisions are judgment records — "we chose X over Y because of trade-off Z" — and a trade-off rationale is not a deterministic check. The calibrated judging question above ("does the constraint still hold?") stays primary; only reach for Harden when the decision's constraint is itself mechanically checkable (e.g. "all timestamps are UTC ISO-8601" rather than "we prefer a monorepo"). Because `mark-hardened` never removes the file, hardening a decision does not conflict with the supersede-not-delete rule.
-
-### Replace = supersede
-
-For non-decision entries, `Replace` means write a successor and `git rm` the old. For decision entries, the old entry stays — it's part of the history of why the project arrived where it is. Replace becomes a two-step supersession:
-
-1. **Write the new decision entry** — a fresh `knowledge/decisions/<slug>-<date>.md` describing the current choice, what changed in the constraint, and why the prior decision no longer applies. Optionally include `alternatives_considered` listing both the original alternatives and the prior decision itself (now also rejected). Include `related_to: [<old-id>]` for traceability.
-2. **Mark the old entry superseded** — Edit the old entry's frontmatter to set `decision_status: superseded` and `superseded_by: <new-entry-id>`. Body untouched. Do **not** `git rm` — the historical record stays on disk.
-
-When autofix evidence is insufficient to write the successor decision (the constraint clearly dissolved but the new approach is too unstable to commit to), mark the old entry stale via `flowctl memory mark-stale` instead of half-shipping a supersession. The user (or a follow-up audit) can revisit when the new approach has settled.
-
-### Edge cases
-
-- A decision whose `decision_status` is `proposed` but never reached `accepted` (the project never committed) → if no code reflects the proposal, classify Delete; if partial implementation exists, mark stale and surface in the report.
-- A decision that references a constraint visible only in external context (a contract, a partner integration, a regulatory rule) → audit cannot verify the constraint from code alone. Skip with a "cannot mechanically verify" note in the report; do not auto-Delete.
-- A decision pointing at `superseded_by: <id>` where the successor itself is now superseded → walk the chain; the audit target is the head of the chain.
-
----
-
-## Glossary scan (parallel to memory audit)
-
-Glossary terms are not memory entries — they live in `GLOSSARY.md` files at the repo root and (optionally) under subdirectories. The audit walks them in [Phase 0.5](workflow.md) of the workflow. The 6-outcomes table doesn't apply directly; the per-term decisions are simpler:
-
-| Outcome | Meaning for a glossary term | Action |
-|---------|-----------------------------|--------|
-| **Keep** | Term has hits in tracked code (case-insensitive whole-word match) | No edit |
-| **Mark stale** | Zero hits for the term AND zero hits for any `_Avoid_` alias | Edit tool: append `<!-- stale: <reason> -->` HTML comment after the term heading |
-| **Alias-creep** | An `_Avoid_` alias has hits in code | Phase 3 question (interactive) or stale-flag note (autofix) — propose renaming code uses to the canonical term, or moving the alias out of `_Avoid_` |
-
-There is no `flowctl glossary mark-stale` subcommand. Stale-marking is an Edit-tool operation only. The agent must **never delete** the term entry on stale-detection — deletion is the operator's call, surfaced as a recommendation in the report.
-
-### Husk awareness
-
-A glossary file with `count: 0` from `flowctl glossary list --json` is a husk — `# Glossary` H1 with no terms after the last term was removed. Husks have no terms to audit; skip the walk for that file and surface a single advisory in Phase 5:
-
-```
-GLOSSARY.md at <path> is an empty husk (no terms defined).
-Remove the file manually if it's no longer needed; flow-next keeps it as
-project state.
-```
-
-The audit never deletes the file. Removing it is a project decision, not a memory-audit decision.
+Only when the audit set holds a `knowledge/decisions/` entry: read
+[references/decision-entries.md](references/decision-entries.md) before judging it. Its core rule
+holds everywhere: for a decision entry, Replace = supersede (write the successor, mark the old
+`decision_status: superseded`, `superseded_by: <new-id>`), never `git rm` the old.
 
 ---
 
@@ -440,7 +307,7 @@ Is the entry already status: hardened?
   no  → continue
 
 Is the entry under knowledge/decisions/?
-  yes → use the Decision-entry calibration block above
+  yes → use references/decision-entries.md
         (judging question = "does the constraint still hold?";
          Replace = supersede, not git rm; Harden is rare but legal — file stays on disk)
   no  → continue with the standard tree below
@@ -493,4 +360,4 @@ An entry needing both an Update and a Harden gets the Update applied first — f
 
 In autofix mode, replace any "ask user" branch with mark-stale, and **Harden never applies**: candidates (and un-graduation proposals) are reported under Recommended only — no artifact write, no demotion.
 
-For glossary terms (separate from memory entries — see [Glossary scan](#glossary-scan-parallel-to-memory-audit) above): the tree is `code-hit? → Keep`; `no code-hit AND no alias-hit? → mark stale via Edit tool`; `alias hit in code? → Phase 3 question (interactive) or stale-flag note (autofix)`.
+For glossary terms (separate from memory entries — see [references/glossary-scan.md](references/glossary-scan.md)): the tree is `code-hit? → Keep`; `no code-hit AND no alias-hit? → mark stale via Edit tool`; `alias hit in code? → Phase 3 question (interactive) or stale-flag note (autofix)`.

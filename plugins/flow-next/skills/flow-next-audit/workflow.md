@@ -120,7 +120,7 @@ An entry is **recurrence-qualified** when `UPDATE_HEADINGS >= 2` OR `ENTRY_COMMI
 A `related_to` **cluster** qualifies only as a corroborated whole, never on size alone: a cluster of `>= 3` entries qualifies when **any member** has at least one `## Update` heading, or **any member** meets the commit signal. Cluster aggregates must therefore be computed here too, before anything is auto-Kept — a cluster whose members all have unchanged modules would otherwise be auto-Kept entry-by-entry and never seen:
 
 
-A bare `related_to >= 3` with no `## Update` anywhere and no member meeting the commit signal **proposes nothing** — see [phases.md](phases.md) §Harden for the thresholds and the calibration evidence behind them.
+A bare `related_to >= 3` with no `## Update` anywhere and no member meeting the commit signal **proposes nothing** — see [references/harden-classify.md](references/harden-classify.md) for the thresholds and the calibration evidence behind them.
 
 - **Recurrence-qualified → bypass auto-Keep.** The entry — or, for a qualified cluster, **every member of that cluster** — enters the Phase-1 investigation set for Harden consideration even when its module is unchanged. Record why: `recurrence bypass — 2 Update headings, module unchanged`, or `recurrence bypass — cluster of 4, 1 Update heading on <member-id>`.
 - Not qualified → fall through to the normal auto-Keep decision below.
@@ -154,6 +154,9 @@ probes keep investigation enabled.
 **Auto-Kept entries still flow into Phase 1.75 cross-doc analysis and the Phase-5 report.** An auto-Kept entry missing from the contradiction scan or from the report has broken this — the pre-filter skips only the expensive per-entry investigation, never the cheap pairwise contradiction scan, so an entry that went stale because a *different* entry changed is still caught. Autofix always applies the pre-filter; interactive mode may offer "re-investigate all anyway" (rare, user-driven).
 
 A recurrence-qualified entry (§0.75.1) is never auto-Kept, even when its module is untouched.
+
+When §0.75.1 marked any entry or cluster recurrence-qualified: read
+[references/harden-classify.md](references/harden-classify.md) before Phase 1.
 
 ### Done when
 
@@ -325,7 +328,9 @@ Apply [phases.md](phases.md) §Outcome precedence: **correctness (Replace / Dele
 
 ### Harden gate (both conditions required)
 
-**A Harden classification rests on two independent conditions.** A Harden proposed on one of them alone has broken this: it needs both a recurrence signal from §0.75.1 (`>= 2` `## Update` headings or `>= 4` entry-file commits; `related_to >= 3` corroborates only) and an LLM judgment that the lesson is mechanizable. Missing recurrence → Keep. **Recurrence present but not mechanizable → Update (retrieval fix), when the retrieval surface is actually deficient:** the lesson was re-learned while a correct entry sat in the store, so the defect is in how the entry is found, not what it says. Name the defect first — the field or fields (`title`, `tags`, `module`, `applies_when`, placement) that would miss the query this lesson's topic gets searched by. **No nameable defect → no retrieval fix**, recurrence notwithstanding (the entry falls through to the ordinary reference-drift check, so Keep unless it has drift of its own): the recurrence counters are all-history and never decrease, and a retrieval repair is itself a substantive commit in the §0.75.1 scan, so a branch that fired on recurrence alone would re-fire on every later audit forever and churn a repaired entry's metadata once per run in autofix. Evidence bullets cite the write-side artifacts (the `## Update` headings, the entry-file commits), never a usage count; the fix is scoped by [phases.md](phases.md) §Update, retrieval-fix variant. The duplication guard runs before the candidate reaches Phase 3: an already-enforced-and-active class becomes a pointer-demotion proposal with no new artifact; a matched-but-inactive rule is a broken gate, so the entry stays `active` and the finding is reported. **In autofix mode, Harden candidates are never applied** — they are classified and reported under Recommended only.
+Recurrence-qualified entries only (§0.75.1): apply
+[references/harden-classify.md § Phase 2 Harden gate](references/harden-classify.md#phase-2-harden-gate).
+**In autofix mode, Harden candidates are never applied** — they are classified and reported under Recommended only.
 
 ### Replace evidence sufficiency check
 
