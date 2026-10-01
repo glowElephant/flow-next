@@ -68,6 +68,10 @@ I'm going to keep improving Flow-Next, both what it does and how fast it does it
 
 ### Fixed
 
+- **A spec flow just captured goes straight to the build.** Flow's route check looked at readiness before the route capture recorded, so every freshly captured spec came back "not ready" and the agent had to reason its way to the build. The recorded route now wins; `--auto` still builds only ready specs.
+- **A pull request opened without a spec carries the change.** When you ask for a PR on a direct change that isn't committed yet, make-pr commits it (only the files you changed) before pushing. `--dry-run` prints the body and touches nothing.
+- **Tracker updates fire from a one-task build.** The single-task path checked whether a tracker is connected but never kept the answer its tracker steps read, so lifecycle updates could misfire on a connected repo.
+- **Deep review passes run under zsh.** The loop over selected passes sent them as one value in zsh, the default shell on macOS.
 - **The Copilot reviewer is read-only now.** It ran with `--allow-all-tools`, which Copilot needs for a non-interactive run, and that also let it edit files and run any shell command in your checkout. The reviewer and the Copilot triage judge now run with `--deny-tool write --deny-tool shell`, the same read-only tools the Claude reviewer gets.
 - **The optional Jev judge works behind a proxy.** Keyed judge calls ignored `HTTPS_PROXY`, so behind a corporate proxy, or in a sandbox whose only way out is one, every call failed and the run quietly fell back to no Jev. They now go through `HTTPS_PROXY` and respect `NO_PROXY`, including entries with a port.
 
