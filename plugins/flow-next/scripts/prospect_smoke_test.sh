@@ -628,13 +628,16 @@ assert_grep "already archived" "$out" "Case 9d: error mentions 'already archived
 # =============================================================================
 echo -e "${YELLOW}--- Case 10: numbered-options fallback (R19) ---${NC}"
 
+# The frozen menu lives in the fallback reference workflow.md §6.2 gates on.
+FB_TEXT="$(cat "$PLUGIN_ROOT/skills/flow-next-prospect/references/failure-branches.md")"
+
 # Workflow.md must carry the literal frozen-format strings the smoke greps.
 # Spec §6.2 freezes the format; this is the smoke contract.
-assert_grep "Saved: .flow/prospects/<artifact-id>.md"   "$WF_TEXT" "Case 10: 'Saved: …' literal present in workflow.md"
-assert_grep "Promote a survivor to a spec?"           "$WF_TEXT" "Case 10: 'Promote a survivor to a spec?' literal present"
-assert_grep "Enter choice [1-N|i|skip]:"               "$WF_TEXT" "Case 10: 'Enter choice [1-N|i|skip]:' literal present"
-assert_grep "i) Refine"                                "$WF_TEXT" "Case 10: refine alphabetic shortcut present"
-assert_grep "N) Skip"                                  "$WF_TEXT" "Case 10: numeric Skip slot present"
+assert_grep "Saved: .flow/prospects/<artifact-id>.md"   "$FB_TEXT" "Case 10: 'Saved: …' literal present in the fallback reference"
+assert_grep "Promote a survivor to a spec?"           "$FB_TEXT" "Case 10: 'Promote a survivor to a spec?' literal present"
+assert_grep "Enter choice [1-N|i|skip]:"               "$FB_TEXT" "Case 10: 'Enter choice [1-N|i|skip]:' literal present"
+assert_grep "i) Refine"                                "$FB_TEXT" "Case 10: refine alphabetic shortcut present"
+assert_grep "N) Skip"                                  "$FB_TEXT" "Case 10: numeric Skip slot present"
 
 # Reply routing simulator: the workflow defines exact reply-parsing rules.
 # Drive the parser via a shell snippet (matches §6.3) and verify routing for

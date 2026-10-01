@@ -441,16 +441,8 @@ Any candidate missing `title`, `summary`, or `affected_areas` is dropped before 
 
 Hand the printed JSON list (valid YAML) to Phase 3 as `CANDIDATES_YAML`, so downstream prompts get a clean shape.
 
-If fewer than `floor(GENERATION_TARGET_MIN * 0.7)` valid candidates survive validation, surface a blocking question:
-
-```
-Phase 2 produced only K valid candidates (target was M-N). Options:
-  retry      — re-run Phase 2 with the same prompt
-  loosen     — proceed with K candidates anyway (Phase 3 floor still applies)
-  abort      — exit; no artifact written
-```
-
-The `loosen` path keeps the run going but flags the under-volume in the eventual artifact frontmatter (`generation_under_volume: true`) so downstream readers know the spread was narrow.
+If fewer than `floor(GENERATION_TARGET_MIN * 0.7)` valid candidates survive validation: read
+[references/failure-branches.md § Under-volume](references/failure-branches.md#under-volume) and ask its blocking question.
 
 ### Done when
 
@@ -540,19 +532,8 @@ Pair each critique entry with its candidate by `index`. Compute:
 rejection_rate = drops / total
 ```
 
-If `rejection_rate < REJECTION_FLOOR`, surface a **blocking question** with the frozen options:
-
-```
-Critique rejected only X% (below the ≥Y% floor). Options:
-  regenerate    — re-run Phase 2 + Phase 3 from scratch (new candidates)
-  loosen-floor  — accept this critique result; ship survivors as-is
-  ship-anyway   — same as loosen-floor; preserved for clarity in transcripts
-```
-
-Frozen string format (anchor — must match across backends): `regenerate | loosen-floor | ship-anyway`. Use `AskUserQuestion`; fall back to numbered-options when the tool is unreachable. Validate the choice; reject anything outside the three options.
-
-- `regenerate` → loop back to Phase 2 §2.3 with a fresh prompt invocation. Cap at **1 regeneration**; a second floor violation auto-routes to `loosen-floor` with a printed warning (avoids infinite loops on a model that genuinely can't reject).
-- `loosen-floor` / `ship-anyway` → continue to Phase 4. Record `floor_violation: true` in the eventual artifact frontmatter.
+If `rejection_rate < REJECTION_FLOOR`: read [references/failure-branches.md § Critique floor](references/failure-branches.md#critique-floor) and ask
+its blocking question with the frozen options.
 
 ### 3.3 — Hand off survivors + drops to Phase 4
 
@@ -750,7 +731,7 @@ Empty buckets render `_(none)_`. Empty `## Rejected` renders `_(none)_`.
 
 ### 6.1 — Use the blocking-question tool
 
-Use `AskUserQuestion` (deferred — load via `ToolSearch select:AskUserQuestion` if its schema isn't yet in scope). If the tool is unreachable, print the frozen-string format below and read the user's reply from chat.
+Use `AskUserQuestion` (deferred — load via `ToolSearch select:AskUserQuestion` if its schema isn't yet in scope). If the tool is unreachable, print the frozen-string format §6.2 points to and read the user's reply from chat.
 
 If the tool is available, use it with these labelled choices (one per survivor + chart when warranted + skip + refine):
 
@@ -765,22 +746,8 @@ The tool's free-text `description` field gets the artifact path so the user has 
 
 ### 6.2 — Frozen numbered-options fallback
 
-When no blocking tool is reachable (or the platform tool errors), print this **exact** string format. Do not paraphrase, re-order, or add commentary — the smoke test in task 6 grep-checks this format:
-
-```
-Saved: .flow/prospects/<artifact-id>.md
-
-Promote a survivor to a spec?
-  1) Promote #1: <title>
-  2) Promote #2: <title>
-  ...
-  N) Skip
-  i) Refine (ask /flow-next:refine what to refine)
-
-Enter choice [1-N|i|skip]:
-```
-
-Number the survivors 1-N in the same order they appear in the artifact (high_leverage first, then worth_considering, then if_you_have_the_time). `Skip` is the last numeric option (`N`); `i` is the alphabetic interview shortcut. (The frozen menu does not advertise chart; a typed `c`/`chart` reply still routes via 6.3.)
+When no blocking tool is reachable (or the platform tool errors): print the exact frozen menu in
+[references/failure-branches.md § Numbered-options fallback](references/failure-branches.md#numbered-options-fallback).
 
 ### 6.3 — Reply parsing
 
