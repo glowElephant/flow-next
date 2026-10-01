@@ -2460,7 +2460,7 @@ from pathlib import Path
 source, mirror = map(Path, sys.argv[1:])
 passive = {
     ("references/route-matrix.md", "flow"),
-    ("references/gate-selection.md", "impl-review"),
+    ("references/gate-selection-more.md", "impl-review"),
 }
 inline = re.compile(r"`(/flow-next:|flow-next:flow-next-|\$flow-next-)([a-z-]+)([^`]*)`")
 
