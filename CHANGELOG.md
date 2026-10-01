@@ -6,6 +6,10 @@ Flow-Next changed shape with 5.0.0. One command, `/flow-next:flow`, reads whatev
 
 ## Unreleased
 
+### Deprecated
+
+- **RepoPrompt support is deprecated and will be removed in 8.0.0.** That covers the `rp` review backend and `/flow-next:export-context`. A project already set to `review.backend: rp`, or a run with `--review=rp`, keeps working until then and says once that it's deprecated. Setup and plan no longer offer RepoPrompt to new projects. To switch, run `flowctl config set review.backend codex` (or `host`, `claude`, `copilot`, `cursor`).
+
 ### Fixed
 
 - **Upgrading Codex clears out skills a release removed.** `install-codex.sh` retired only one old alias, so the skills 7.0 removed (`ralph-init` and the pilot and interview stubs) and the `ralph-init` prompt stayed in every Codex home. It now moves any flow-next skill or prompt the release no longer ships into `~/.codex/.flow-next-retired/`, where you can restore it. It only touches files that carry flow-next's own name; your own skills and prompts stay where they are.

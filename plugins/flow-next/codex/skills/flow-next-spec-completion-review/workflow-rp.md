@@ -27,6 +27,8 @@
 
 ---
 
+> **Deprecated.** RepoPrompt support is deprecated and will be removed in flow-next 8.0.0. When this runs, say so once in the report and suggest another review backend (`codex`, `host`, `claude`, `copilot` or `cursor`).
+
 Use when `BACKEND="rp"`. Prerequisite: Phase 0 backend detection in [workflow-common.md](workflow-common.md) has resolved `BACKEND`, `FLOWCTL`, `REPO_ROOT`, and `SPEC_ID`.
 
 ## Critical rules (rp backend)

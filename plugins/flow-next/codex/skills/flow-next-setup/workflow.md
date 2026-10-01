@@ -366,7 +366,6 @@ Available questions (include only if corresponding config is unset):
     {"label": "Copilot CLI", "description": "Routes to Claude- or GPT-family reviewers via your GitHub Copilot plan. Requires gh copilot auth. <detected if HAVE_COPILOT=1, (not detected) if HAVE_COPILOT=0>"},
     {"label": "Cursor CLI (secondary — circular from inside Cursor)", "description": "Runs the external cursor-agent CLI. Circular when already inside Cursor — prefer Host. Still selectable for multi-family reach via the cursor-agent model menu. <detected if HAVE_CURSOR=1, (not detected) if HAVE_CURSOR=0>"},
     {"label": "Claude Code CLI", "description": "Runs claude -p headless, read-only, on a Claude-family reviewer. Cross-platform; needs the claude CLI on PATH. Same-family when Claude Code is the writer - the receipt records it; prefer Codex or Host there when family independence matters. <detected if HAVE_CLAUDE=1, (not detected) if HAVE_CLAUDE=0>"},
-    {"label": "RepoPrompt", "description": "macOS only. Auto-discovers git diffs + context, reviews scoped to actual changes, far fewer tokens than full-repo approaches. <detected if HAVE_RP=1, (not detected) if HAVE_RP=0>"},
     {"label": "None", "description": "No review gates. Fastest runs; tests/lint still gate and work still audits large or risky diffs in-host, but nothing checks R-ID coverage at spec completion - fits diffs you read yourself. Set later: flowctl config set review.backend <name>, or per-run via --review"}
   ],
   "multiSelect": false
@@ -384,7 +383,6 @@ Available questions (include only if corresponding config is unset):
     {"label": "Copilot CLI", "description": "Routes to Claude- or GPT-family reviewers via your GitHub Copilot plan. Requires gh copilot auth. <detected if HAVE_COPILOT=1, (not detected) if HAVE_COPILOT=0>"},
     {"label": "Cursor CLI", "description": "Runs cursor-agent with a multi-family model menu (pick the family that did not write the diff). Billed to your Cursor subscription. <detected if HAVE_CURSOR=1, (not detected) if HAVE_CURSOR=0>"},
     {"label": "Claude Code CLI", "description": "Runs claude -p headless, read-only, on a Claude-family reviewer. Cross-platform; needs the claude CLI on PATH. Same-family when Claude Code is the writer - the receipt records it; prefer Codex or Host there when family independence matters. <detected if HAVE_CLAUDE=1, (not detected) if HAVE_CLAUDE=0>"},
-    {"label": "RepoPrompt", "description": "macOS only. Auto-discovers git diffs + context, reviews scoped to actual changes, far fewer tokens than full-repo approaches. <detected if HAVE_RP=1, (not detected) if HAVE_RP=0>"},
     {"label": "None", "description": "No review gates. Fastest runs; tests/lint still gate and work still audits large or risky diffs in-host, but nothing checks R-ID coverage at spec completion - fits diffs you read yourself. Set later: flowctl config set review.backend <name>, or per-run via --review"}
   ],
   "multiSelect": false
@@ -401,7 +399,6 @@ Available questions (include only if corresponding config is unset):
     {"label": "Copilot CLI", "description": "Routes to Claude- or GPT-family reviewers via your GitHub Copilot plan. Requires gh copilot auth. <detected if HAVE_COPILOT=1, (not detected) if HAVE_COPILOT=0>"},
     {"label": "Cursor CLI", "description": "Runs cursor-agent with a multi-family model menu (pick the family that did not write the diff). Billed to your Cursor subscription. <detected if HAVE_CURSOR=1, (not detected) if HAVE_CURSOR=0>"},
     {"label": "Claude Code CLI", "description": "Runs claude -p headless, read-only, on a Claude-family reviewer. Cross-platform; needs the claude CLI on PATH. Same-family when Claude Code is the writer - the receipt records it; prefer Codex or Host there when family independence matters. <detected if HAVE_CLAUDE=1, (not detected) if HAVE_CLAUDE=0>"},
-    {"label": "RepoPrompt", "description": "macOS only. Auto-discovers git diffs + context, reviews scoped to actual changes, far fewer tokens than full-repo approaches. <detected if HAVE_RP=1, (not detected) if HAVE_RP=0>"},
     {"label": "Host", "description": "Host-native fresh-context subagent - no second CLI to install. Name a cross-family model on the `reviewer` tier of the routing block (setup writes it commented out; you fill in the slug). Keeps every review gate at the lowest setup cost."},
     {"label": "None", "description": "No review gates. Fastest runs; tests/lint still gate and work still audits large or risky diffs in-host, but nothing checks R-ID coverage at spec completion - fits diffs you read yourself. Set later: flowctl config set review.backend <name>, or per-run via --review"}
   ],
@@ -511,7 +508,7 @@ Send the config call, then the files call, each through `plain-text numbered pro
 
 **Note:** If docs are already current, skip the Docs question entirely.
 
-**Note:** If no supported RepoPrompt CLI, codex, copilot, cursor-agent, or claude is detected, add this note to the Review question: "No review backend detected. Install RepoPrompt CE (`rpce-cli`), codex, copilot, cursor-agent, or claude for review support."
+**Note:** If no codex, copilot, cursor-agent, or claude is detected, add this note to the Review question: "No review backend detected. Install codex, copilot, cursor-agent, or claude for review support, or choose Host."
 
 ### Done when
 
