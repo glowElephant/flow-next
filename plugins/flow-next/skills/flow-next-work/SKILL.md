@@ -42,12 +42,10 @@ all else verbatim (spaces/quotes/globs). Set/export `AUTONOMOUS=1` if found or
 `FLOW_AUTONOMOUS=1`; otherwise set/export `AUTONOMOUS=0`.
 
 Continue with `WORK_ARGS`; carry the exported marker into later shell fragments.
-If `AUTONOMOUS=1`:
+If `AUTONOMOUS=1`: read [references/autonomous-defaults.md](references/autonomous-defaults.md)
+before any question, and:
 
-- **No setup question is asked** (branch + review questions below are suppressed). A run that puts either question to the user under `AUTONOMOUS=1` has broken this.
 - **Branch defaults deterministically to `--branch=new`** when no explicit branch option is present — under autonomy "the user's answer" never exists, and defaulting to the current branch could commit straight to main. A chained spec (`flowctl spec chain` names a parent) forks from the parent's remote tip instead of main (phases.md Phase 2). **Name the new branch exactly the spec's `branch_name` field** (`$FLOWCTL show <spec-id> --json | jq -r '.branch_name'`) — the branch matrix of `flow --auto`, its all-done PR probe, and make-pr's branch-match spec detection all key on that name; an ad-hoc name breaks continuity across hops and invocations.
-- **Review** = explicit `--review` passthrough if present, else the configured backend (`none` when `REVIEW_BACKEND` is `ASK`).
-- **Never hang on a question.** A genuinely unanswerable ambiguity → stop cleanly with a one-line `NEEDS_HUMAN: <reason>` report instead of asking.
 
 ## Input
 
@@ -88,13 +86,8 @@ Parse `WORK_ARGS` for these patterns. If found, use them and skip corresponding 
 - `--branch=worktree` or `--worktree` or "isolated worktree" or "worktree" → isolated worktree
 
 **Review mode**:
-- `--review=codex` or "review with codex" or "codex review" or "use codex" → Codex CLI
-- `--review=copilot` or "review with copilot" or "copilot review" → GitHub Copilot CLI
-- `--review=cursor` or "review with cursor" or "cursor review" → Cursor CLI (`cursor-agent`)
-- `--review=claude` or "review with claude" or "claude review" → Claude Code CLI (`claude -p`; same-family on a Claude Code host, recorded in the receipt)
-- `--review=host` or "host review" or "host-native review" → host-native fresh-context reviewer subagent (cross-family pin from the AGENTS.md model-routing section)
-- `--review=rp` or "review with rp" or "rp chat" or "repoprompt review" → RepoPrompt chat (via `flowctl rp chat-send`)
-- `--review=none` or `--no-review` or "no review" or "skip review" → no review
+- `--review=<codex|copilot|cursor|claude|host|rp|none>`, or the same backend named in words
+  ("review with codex", "host review", "skip review"); `--no-review` = `none`
 - `--review=export` or "export review" or "external llm" → REFUSE at parse time, before any dispatch: export is not an impl-review backend — never fall through to the configured backend and never pass it as `REVIEW_MODE`; stop and point at `/flow-next:plan-review --review=export`, where export lives
 
 (All non-`none` review modes route through `flow-next:flow-next-impl-review`, which resolves the
@@ -102,10 +95,7 @@ configured/overridden backend — codex, copilot, cursor, claude, rp, or host �
 
 **No-plan (direct spec execution)**:
 - `--no-plan` or "no plan" or "skip planning" or "work directly without planning" → set `NO_PLAN=1`; it pre-answers Phase 1's zero-task fork so the fork's ask never fires when intent is stated
-- The spec's own `no_plan` field (`no_plan: true` in `$FLOWCTL show <spec-id> --json`, set at capture time or via `flowctl spec set-no-plan`) counts the same as the flag: it is an explicit human instruction carried by the item, read at Phase 1's fork, never inferred
-- Contradictory signals (the flag or field says direct, the prose asks to plan first) → the fork asks instead of guessing
-- Existing intentional tasks govern despite a stale direct signal. A sole `implicit_owner` task under `no_plan: true` retains the direct route on resume; Phase 1 resolves the distinction.
-- The fork's recommendation comes from the shared rule in [`plan-vs-no-plan.md`](../flow-next-flow/references/plan-vs-no-plan.md), read only when the fork fires; implementation review, coverage, completion policy and opt-in QA remain unchanged on this route.
+- Implementation review, coverage, completion policy and opt-in QA remain unchanged on this route.
 - The fork's semantics (ask, autonomous refusal, durable choice, implicit-task mint) live in phases.md Phase 1's gated [references/no-plan-route.md](references/no-plan-route.md), read only when the fork fires
 
 **Autonomous mode**:

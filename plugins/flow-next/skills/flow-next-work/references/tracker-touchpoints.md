@@ -3,8 +3,9 @@
 > **Loaded only when a work tracker gate (multi-task.md, or the inline path in phases.md) prints its active
 > read/execute/continue sentinel** (bridge active, or the gate's probe/parse
 > errored — fail open). A default (bridge-inactive) run never reads this file. Phase 5's end-of-run
-> `sync check` + retro-fire + the mandatory four-state `Tracker sync:` summary
-> slot are NOT here — they stay inline in phases.md Phase 5 and run on EVERY run.
+> `sync check` + retro-fire live in [End-of-run check](#end-of-run-check), read unless this run's
+> `sync active` snapshot reads `active: false`; the mandatory four-state `Tracker sync:` summary
+> slot stays inline in phases.md Phase 5 and is filled on EVERY run.
 
 Contents:
 
@@ -13,6 +14,7 @@ Contents:
 - [Task done](#task-done) — multi-task.md 3d.1: task done → status comment + evidence (`work.done`)
 - [Completion review](#completion-review) — multi-task.md 3g or the inline Phase 3 step 7: SHIP → verdict comment, never terminal Done (`completionReview`)
 - [Unlink / re-link lifecycle](#unlink--re-link-lifecycle) — detaching a spec from its issue (no work-run step)
+- [End-of-run check](#end-of-run-check) — phases.md Phase 5: `sync check` over the triggered events, one retro-fire cycle on MISSING
 
 ## Bridge overview
 
@@ -108,3 +110,41 @@ fi
 ## Unlink / re-link lifecycle
 
 Detaching a spec from its tracker issue is done via `/flow-next:tracker-sync unlink <id>` — that ceremony (in the tracker-sync skill) clears the tracker id + `lastSyncedAt` + merge-base atomically (`flowctl sync clear`) and posts a one-line "detached" comment to the issue. After unlink, all lifecycle touchpoints above no-op for that spec (no linked id). A later re-link re-seeds the merge base from the current issue body (so re-link does not resurrect stale state). The spec/task ids, branch, and files are NEVER touched by unlink (no rename).
+
+## End-of-run check
+
+**Tracker-sync end-of-run check - LAST action before the final summary.** Read-only audit: did every lifecycle touchpoint that triggered this run actually fire (receipt-backed)? It runs independently of the touchpoints, so a wholesale-skipped facade call is still caught. With no tracker configured, `sync check` exits silently in constant time; the summary slot then reads `n/a (bridge inactive)` and nothing else changes.
+
+```bash
+# Tasks worked this run = the task ids Phase 3 claimed/completed (you know these
+# from the loop; substitute them).
+WORKED="<task-id-1> <task-id-2> ..."
+
+# --since: earliest claimed_at among tasks worked this run. On-disk anchor —
+# bash vars do NOT survive across tool calls; flowctl show re-derives it anytime.
+SINCE=""
+for T in $WORKED; do
+  TS="$($FLOWCTL show "$T" --json | jq -r '.claimed_at // empty')"
+  [ -n "$TS" ] && { [ -z "$SINCE" ] || [ "$TS" \< "$SINCE" ]; } && SINCE="$TS"
+done
+
+# --events: ONLY what actually triggered this run (triggered-set contract):
+#   ≥1 task claimed this run            → include work.firstClaim
+#   ≥1 task reached done this run       → include work.done
+#   completion review ran this run (3g) → include completionReview
+# Configured-but-not-triggered events are never checked, never MISSING.
+EVENTS="work.firstClaim,work.done"   # ← substitute the actual triggered set
+
+"$FLOWCTL" sync check "$SPEC_ID" --events "$EVENTS" --since "$SINCE" --json
+# Empty output → bridge inactive → slot = `n/a (bridge inactive)`. Otherwise
+# `.missing` empty → slot = `OK`; non-empty → retro-fire (below).
+```
+
+(Nothing triggered at all — no claims, no dones, no 3g, e.g. a resumed no-op run — skip the check; the slot is vacuously `OK`.)
+
+**Retro-fire on MISSING — exactly ONE cycle, never blocking.** When `.missing` is
+non-empty, read [tracker-retro-fire.md](tracker-retro-fire.md)
+and execute its cycle (anchor → per-event inline tracker-sync wrapper call → re-check
+the missed events only → record the final state in the summary slot). Still MISSING
+after the one cycle is a recorded, visible outcome — never a second retro-fire, never
+a block.

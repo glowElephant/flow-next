@@ -666,8 +666,10 @@ SECTION3C
     -e 's|Next: /flow-next:make-pr <spec-id>   # or /flow-next:qa <spec-id> first|Next: $flow-next-make-pr <spec-id>   # or $flow-next-qa <spec-id> first|g' \
     -e 's/spawn worker/run worker agent/g' \
     -e 's/\*\*For each task\*\*, spawn a worker subagent with fresh context/**For each task**, use the worker agent with fresh context/g' \
-    "$phases" "$CODEX_DIR/skills/flow-next-work/phases.md"
-  rm -f "${phases}.bak" "$CODEX_DIR/skills/flow-next-work/phases.md.bak"
+    "$phases" "$CODEX_DIR/skills/flow-next-work/phases.md" \
+    "$CODEX_DIR/skills/flow-next-work/references/quality-auditor.md"
+  rm -f "${phases}.bak" "$CODEX_DIR/skills/flow-next-work/phases.md.bak" \
+    "$CODEX_DIR/skills/flow-next-work/references/quality-auditor.md.bak"
 
   # fn-208.2 guard: SECTION3C above is a HARDCODED replacement of canonical 3c,
   # so a canonical dispatch-template field the heredoc misses vanishes silently
