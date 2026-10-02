@@ -9391,8 +9391,9 @@ request it came from. Look for these four things only:
 
 1. **Wrong behaviour** in a scenario the request covers, including its edge cases (empty or
    malformed input, boundaries, concurrency the change takes part in).
-2. **Regressions** in behaviour the change touches: its callers, shared or persisted state,
-   data written by earlier versions.
+2. **Regressions** in behaviour the change touches: its callers, shared or persisted state (a
+   write the change throttles, batches or defers must still persist every state change it used
+   to, including one that shortens or undoes an earlier value), data written by earlier versions.
 3. **Security holes** the change opens.
 4. **Overengineering in what this change added**: machinery, options, abstractions or code paths
    the request does not need. Report these as P2 with what to remove; never ask for more.
@@ -9492,8 +9493,9 @@ request it came from. Look for these four things only:
 
 1. **Wrong behaviour** in a scenario the request covers, including its edge cases (empty or
    malformed input, boundaries, concurrency the change takes part in).
-2. **Regressions** in behaviour the change touches: its callers, shared or persisted state,
-   data written by earlier versions.
+2. **Regressions** in behaviour the change touches: its callers, shared or persisted state (a
+   write the change throttles, batches or defers must still persist every state change it used
+   to, including one that shortens or undoes an earlier value), data written by earlier versions.
 3. **Security holes** the change opens.
 4. **Overengineering in what this change added**: machinery, options, abstractions or code paths
    the request does not need. Report these as P2 with what to remove; never ask for more.
