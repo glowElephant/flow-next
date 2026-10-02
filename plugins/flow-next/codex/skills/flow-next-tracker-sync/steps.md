@@ -22,8 +22,10 @@ value to `comment`. Work events use their fixed operation. Make PR and the
 successful land merge have their documented unconditional active-bridge paths.
 
 Manual runs use the matching granular `flowctl tracker` verb and carry no event
-tag. The `tracker sync` facade is event-only and always receives the caller's
-real event key; never invoke that facade without `--event`.
+tag, except pull and reconcile: their body preparation (§4) exists only in the
+facade, so a manual one calls it with `--event manual`. Otherwise the `tracker
+sync` facade always receives the caller's real event key; never invoke it
+without `--event`.
 
 All autonomous signals collapse into one no-prompt gate:
 

@@ -33,7 +33,7 @@ A Flow spec id, a Flow task id, a tracker handle linked to one, or a file path. 
 - `/flow-next:refine fn-1-add-oauth` (legacy `fn-1`, `fn-1-xxx` and task ids like `fn-1-add-oauth.3` work too)
 - `/flow-next:refine docs/oauth-spec.md`
 - `/flow-next:refine fn-1-add-oauth --scope=qa` (the same interview, focused on what QA decides)
-- `/flow-next:refine fn-1-add-oauth --scope=research` (external-docs pass; no questions)
+- `/flow-next:refine fn-1-add-oauth --scope=research` (external-docs pass; no interview, one write-back approval)
 
 Empty: ask "What should I refine? Give me a Flow ID (e.g. fn-1-add-oauth) or a file path (e.g. docs/spec.md)."
 
