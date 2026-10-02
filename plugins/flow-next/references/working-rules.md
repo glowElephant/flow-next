@@ -48,8 +48,8 @@ question, it was underspecified: reframe it and re-run, never average or pick on
 - A check the person asks for by name (the full suite, a command, a scenario) is run as asked,
   every time they ask; these rules never override it. Wait for it to finish and report its result
   in the same reply; do not hand back while it is still running. Run it in the foreground with a
-  timeout long enough for it (a full suite often needs the tool's maximum, not its default); if it
-  does go to the background, wait on it before you reply. Only the review runs in the background.
+  timeout long enough for it (a long check needs the tool's maximum, not its default); if it does
+  go to the background, wait on it before you reply. Only the review runs in the background.
 - A failing test written before the fix, then passing after it, is the proof. Where that test is
   cheap, write it first. No separate lint, typecheck or commit round for it.
 - A test must be able to fail for a defect: it calls the code the way a user does and checks the
