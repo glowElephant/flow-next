@@ -104,10 +104,12 @@ flowctl refuses the round, and the retry is a full fresh review instead of the s
 - `SHIP`: done. Report the verdict and any follow-ups.
 - `MAJOR_RETHINK`: the approach is wrong. Stop with `BLOCKED: DESIGN_CONFLICT` and the
   reviewer's rationale; do not patch finding by finding.
-- `NEEDS_HUMAN`: stop and hand the reviewer's question to the person. Unattended, when that
-  question is a human call that does not block the rest of the work (working-rules-unattended.md),
-  handle the other findings as for `NEEDS_WORK`, then print `OPEN_ITEM: <the question>` after the
-  verdict; the caller completes the task on it and the pull request opens as a draft.
+- `NEEDS_HUMAN` (flowctl reports it as `ESCALATE: reviewer requested human review`): stop and hand
+  the reviewer's question to the person. Unattended, when that question is a human call that does
+  not block the rest of the work (working-rules-unattended.md), run the `NEEDS_WORK` fix pass below
+  instead, declining the call itself with `Declined #<n>: open item for the person`; when that loop
+  ends, print `OPEN_ITEM: <the question>` after the verdict. The caller completes the task on it and
+  the pull request opens as a draft.
 - `NEEDS_WORK`: on the codex path, read [references/codex-fix-pass.md](references/codex-fix-pass.md)
   and run its one fix pass and re-review; other backends run their workflow file's fix loop.
 
@@ -115,7 +117,7 @@ On any backend, when an unattended loop ends with the reviewer keeping only find
 under working-rules.md's rule, all below Major, print `OVERRIDDEN: <n> declined findings` with
 each finding and both sides' reasons after `VERDICT=NEEDS_WORK`; the caller completes the task on it.
 
-If a review command ends without a verdict (a transport error), retry it once. `ESCALATE:`,
-`TRANSPORT_UNHEALTHY`, `NOT_RETRYABLE:` and other refusals end this review: report the message
+If a review command ends without a verdict (a transport error), retry it once. `ESCALATE:` (other
+than the `NEEDS_HUMAN` case above), `TRANSPORT_UNHEALTHY`, `NOT_RETRYABLE:` and other refusals end this review: report the message
 as printed and stop. Never widen the reviewer's sandbox, call `codex` directly, or reset review
 state to get past one.

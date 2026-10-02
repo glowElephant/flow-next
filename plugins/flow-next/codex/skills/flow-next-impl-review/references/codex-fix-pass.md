@@ -1,6 +1,7 @@
 # Codex path: NEEDS_WORK fix pass (gated reference)
 
-> Read from SKILL.md step 4 only when the codex verdict is `NEEDS_WORK`.
+> Read from SKILL.md step 4 only when the codex verdict is `NEEDS_WORK`, or an unattended
+> `NEEDS_HUMAN` over a call that does not block the rest of the work.
 
 - `NEEDS_WORK`: one fix pass, then one re-review. Fix only the findings working-rules says to
   fix; list the rest as follow-ups. Never ask the person which to fix. Run focused tests for the
