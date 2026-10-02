@@ -15,12 +15,7 @@ It operates ONLY on the normalized `comment` struct
 shape + pull fold policy.
 
 > **Append-only is the contract.** Comments are never edited or deleted by the
-> bridge. The ONE narrow exception is a single, clearly-marked, opt-in flow-owned
-> "flow-next status" rolling comment (one per issue, updated in place via its
-> marker) — described last, and explicitly bounded so it never weakens the
-> append-only rule for evidence / lifecycle / user comments. If the rolling comment
-> adds complexity, drop it and append; the append-only contract for every other
-> comment is non-negotiable.
+> bridge.
 
 > The worked fixtures and explicit oracles below are exercisable without a live tracker.
 
@@ -101,7 +96,7 @@ lists the comments and skips the post when the marker is already present.
 > **Marker reconciliation.** The normalized wire comment
 > ([adapter-interface.md](adapter-interface.md)) has no marker field: recognize a
 > flow comment by the HTML-comment marker line in its `body`. The flow-owned set
-> is **closed** — `flow-next:sync`, `flow-next:question`, and the rolling
+> is **closed** — `flow-next:sync`, `flow-next:question`, and
 > `flow-next:status`; detect the whole set, or a parked **question** is imported
 > into the Sync Log. **On read, normalize tracker mention-markup**
 > (`<issue …>KEY</issue>` → `KEY`) before parsing the line, so a linkified marker
@@ -261,32 +256,6 @@ dedup but is keyed on a stable `id` rather than `issue+evt+evidence`:
 This is additive to the marker dedup — the question-valve markers are a second
 marker *vocabulary* on the same marker channel, not a new dedup mechanism.
 
-## The ONE edit-in-place exception — the rolling "flow-next status" comment (opt-in)
-
-The **sole** edit-in-place surface, and only if opted in (`tracker.perEvent` policy
-or a dedicated config flag). It is a single comment per issue, clearly marked, that
-flow **updates in place** (not appends) to show the current spec status at a glance:
-
-```html
-<!-- flow-next:status issue=<uuid> spec=<id> rolling -->
-**flow-next status** — in-progress · 2/4 tasks done · last sync 3h ago
-```
-
-- Identified by its **distinct** marker `flow-next:status … rolling` (NOT the
-  `flow-next:sync` append marker) — so it is unmistakable and never collides with
-  the append fence.
-- On each sync, **find the rolling comment by its marker and update that one
-  comment** (the one place `postComment`'s update path / a `save_comment(id, body)`
-  is used to edit rather than create); if none exists, create it once.
-- It reflects **only** derived status (the [status-sync.md](status-sync.md)
-  normalized status + a task tally) — never user content, never evidence prose.
-
-**Hard boundary:** this rolling comment is the **only** edit-in-place surface. It
-does **NOT** apply to evidence, lifecycle, or user comments — those stay strictly
-append-only. **If the rolling comment adds complexity, drop it and append a status
-comment instead** — the append-only contract for every other comment must not be
-weakened to accommodate it. It is opt-in and droppable; the append-only fence is not.
-
 ## Worked fixtures (runnable without a live tracker)
 
 Each fixture is an input comment set + the expected dedup/append outcome — the
@@ -335,22 +304,6 @@ never re-import flow's structured comment into the sync log.
 **Oracle:** the sync log gains nothing from flow's own comment. PASS iff the marked
 comment is not echoed back into the spec.
 
-### Fixture C-E — rolling status comment updates in place, append fence intact
-
-**Setup:** the opt-in rolling `flow-next:status … rolling` comment exists; two prior
-`work.done` append comments also exist.
-
-**Action:** a status change triggers a rolling-comment refresh.
-
-**Expected:** the **rolling** comment is **updated in place** (one comment, edited);
-the two `work.done` append comments are **untouched** (append-only preserved). No new
-append comment is created by the rolling refresh.
-
-**Oracle:** the rolling comment's body changed, its id is unchanged, and exactly two
-`work.done` append comments remain (neither edited, none added). PASS iff edit-in-
-place is confined to the single rolling marker and the append fence holds for
-everything else.
-
 ### Fixture C-F — question-valve is idempotent by `id`
 
 **Setup:** the `ask` stage posted a `flow-next:question id=H1 status=open` comment for
@@ -395,9 +348,7 @@ threaded one.
   The 3-way body merge is [body-merge.md](body-merge.md); status who-wins
   is [status-sync.md](status-sync.md); the `postComment`/`listComments` wire detail
   is [linear-ladder.md](linear-ladder.md) / the GitHub adapter.
-- **Append-only is the default and the contract** — the rolling status comment is the
-  SOLE edit-in-place exception, opt-in and droppable; it never weakens append-only
-  for evidence / lifecycle / user comments.
+- **Append-only is the contract** — the bridge never edits or deletes a comment.
 - **Dedup is split** — the facade's exact marker check on post; on pull, the
   agent skips flow-marked comments and marker-less comments whose normalized body
   matches a flow-marked comment in the same listing. Any hit ⇒ skip.
