@@ -34,6 +34,12 @@ Build in small steps, each checked before the next, and commit them in an order 
 work is right (the failing test, then the fix). When two fixes built on the same idea have
 failed, question the idea before trying a third.
 
+Settle an observable question by running something only when that run is read-only or disposable.
+One that needs live or shared state, credentials, the network or a destructive command (a
+migration, a deployment, a write API) is a question when attended and a human call when
+unattended. When independent inputs (sources, scouts, reviewers, models) disagree wildly on one
+question, it was underspecified: reframe it and re-run, never average or pick one.
+
 ## Tests
 
 - Run the tests for the code you changed. Do not run the full suite unless the repository's
