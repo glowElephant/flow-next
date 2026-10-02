@@ -88,8 +88,8 @@ Report untraced changes but do NOT auto-reject. `UNDOCUMENTED_ADDITION` is a fla
 
 ## Blocking calibration
 
-- **P0** — following the plan produces a wrong or impossible implementation.
-- **P1** — material ambiguity likely to mislead a competent implementer.
+- **P0** — a stated requirement is missing, or the build breaks it.
+- **P1** — a requirement is only partly met in a way a user or caller would hit.
 - **P2/P3** — consistency or polish; never blocking.
 
 **Settled decisions:** A finding that re-litigates a recorded Decision Context
@@ -132,7 +132,9 @@ Problem: what is wrong
 Suggestion: how to fix]
 ```
 
-Put pre_existing gaps under `## Pre-existing issues`; they do not gate the verdict.
+A requirement this spec states is never `pre_existing`: when it is missing, it is a GAP. Put
+problems outside the spec's requirements that predate it under `## Pre-existing issues`; they do
+not gate the verdict.
 
 When applicable, add the Requirements coverage / Unaddressed R-IDs,
 Suppressed findings, Classification counts, and Protected-path filter outputs

@@ -9409,8 +9409,10 @@ Only flag issues in the **changed code** - not pre-existing patterns.
 ## Verdict Scope
 
 Your VERDICT only considers P0 and P1 findings that are **introduced** by this changeset or
-**directly broken** by it, and pre-existing issues that would **block shipping** this change.
-P2 and P3 findings never block: list them, and the author decides.
+**directly broken** by it, and pre-existing issues that would **block shipping** this change
+(classify those `introduced`: the change cannot ship without the fix). P2 and P3 findings never
+block: list them, and the author decides. A stated requirement (R-ID) the change leaves unaddressed
+blocks at any severity.
 
 Do NOT mark NEEDS_WORK for:
 - Pre-existing issues unrelated to the change
@@ -9508,8 +9510,10 @@ Only flag issues in the **changed code** - not pre-existing patterns.
 ## Verdict Scope
 
 Your VERDICT only considers P0 and P1 findings that are **introduced** by this changeset or
-**directly broken** by it, and pre-existing issues that would **block shipping** this change.
-P2 and P3 findings never block: list them, and the author decides.
+**directly broken** by it, and pre-existing issues that would **block shipping** this change
+(classify those `introduced`: the change cannot ship without the fix). P2 and P3 findings never
+block: list them, and the author decides. A stated requirement (R-ID) the change leaves unaddressed
+blocks at any severity.
 
 Do NOT mark NEEDS_WORK for:
 - Pre-existing issues unrelated to the change
@@ -9788,8 +9792,8 @@ Report untraced changes but do NOT auto-reject. `UNDOCUMENTED_ADDITION` is a fla
 
 ## Blocking calibration
 
-- **P0** — following the plan produces a wrong or impossible implementation.
-- **P1** — material ambiguity likely to mislead a competent implementer.
+- **P0** — a stated requirement is missing, or the build breaks it.
+- **P1** — a requirement is only partly met in a way a user or caller would hit.
 - **P2/P3** — consistency or polish; never blocking.
 
 **Settled decisions:** A finding that re-litigates a recorded Decision Context
@@ -9832,7 +9836,9 @@ Problem: what is wrong
 Suggestion: how to fix]
 ```
 
-Put pre_existing gaps under `## Pre-existing issues`; they do not gate the verdict.
+A requirement this spec states is never `pre_existing`: when it is missing, it is a GAP. Put
+problems outside the spec's requirements that predate it under `## Pre-existing issues`; they do
+not gate the verdict.
 
 When applicable, add the Requirements coverage / Unaddressed R-IDs,
 Suppressed findings, Classification counts, and Protected-path filter outputs
