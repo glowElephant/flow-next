@@ -278,9 +278,9 @@ is ❌.
 
 ### 2.9 Operability ladder computation (per-surface tiers → min-deployable headline)
 
-Grade the 4-tier ladder (0 static-parse-only / 1 compile-only / 2 compile+test-subset / 3 run)
-**from the executed evidence above, never from config existence** - the tier table + verify
-evidence live in the Operability-ladder section of the spec and [pillars.md](pillars.md):
+Grade the 4-tier ladder (0 static-parse-only / 1 compile-only / 2 compile + tests discoverable / 3 run)
+**from the executed evidence above, never from config existence** - the tier table is defined here and the
+verify evidence in [pillars.md](pillars.md) (G1):
 
 - **Per-surface tiers.** Each surface/member gets its own tier from its own executed evidence
   (§2.3 build → tier 1; §2.2 test discovery → tier 2; §2.5 boot probe → tier 3).
@@ -323,7 +323,7 @@ Read [pillars.md](pillars.md) for pillar definitions and criteria.
 
 This phase (a) scores the 48 legacy criteria into the maturity level, (b) evaluates the host-inline agent-readiness GROUPS (AO / DR / TO / HP) and consumes the emitter-owned scored FH rows, (c) derives the DR-core QA-readiness line, (d) computes the feedback-latency + gh-CLI lines, and (e) assembles the verdict headline inputs. Everything here is HOST-INLINE and synthesis-only - it introduces **no new execution budget** (the group probes reuse the Phase 2 boot / `--help` output plus bounded greps). **Emitter-owned signals are CONSUMED from the Phase 0.5 `flowctl prime classify --json` payload, never recomputed inline** - the probe-owner column of the [pillars.md](pillars.md) criterion-to-score map is authoritative on which rows are emitter-owned vs host-inline. All asks are suppressed in this phase; it is autonomous-safe (any low-confidence assumption is stated inline, never blocked on).
 
-**Three states, not two - and the denominator excludes the non-answers.** Map each criterion to ✅ pass, ❌ fail, or one of the excluded states: **N/A** (genuinely inapplicable - the single [pillars.md](pillars.md) N/A whitelist table is the ONLY source of N/A entries; the model may NOT invent N/A elsewhere), **⚠️** (scout couldn't check - e.g. `gh` unauth, not on GitHub), or **NOT ASSESSED** (scout failed per Phase 1). Excluded criteria are dropped from **both** numerator and denominator and listed separately - never counted as ❌. This stops a healthy library (no monorepo/E2E/Docker) from being capped at 67% and locked out of Level 5, and stops a GitLab-hosted repo from reporting missing GitHub branch-protection it doesn't need.
+**Three states, not two - and the denominator excludes the non-answers.** Map each criterion to ✅ pass, ❌ fail, or one of the excluded states: **N/A** (genuinely inapplicable - the single [pillars.md](pillars.md) N/A whitelist table is the ONLY source of N/A entries; the model may NOT invent N/A elsewhere), **⚠️ unavailable** (scout couldn't check - e.g. `gh` unauth, not on GitHub; a ⚠️ unverified grade that a probe could not prove still counts as ❌), or **NOT ASSESSED** (scout failed per Phase 1). Excluded criteria are dropped from **both** numerator and denominator and listed separately - never counted as ❌. This stops a healthy library (no monorepo/E2E/Docker) from being capped at 67% and locked out of Level 5, and stops a GitLab-hosted repo from reporting missing GitHub branch-protection it doesn't need.
 
 **Where each Pillar 1-5 criterion's grade comes from (probe-owner column, [pillars.md](pillars.md)).** Most criteria map from Phase 1 scout findings. The host-owned substance criteria draw their grade from executed evidence + host judgment, never the scout alone: SV5 / SV6 (check-mode lint / format), BS2 (bounded build), BS3 (boot probe), the DC2 execute check, DE1 (env cross-ref), DE4 / DE5 - all graded in Phase 2 and consumed here as-is. **SV4 (deterministic feedback gate) is a host-inline TOPOLOGY judgment made HERE in Phase 3:** grade which layer owns what from the CI required-check + verify-command + acceptance-requirement config plus the emitter-provided hook content, never from hook existence - report the L1/L2-absence headroom warn, the heavyweight-hook and advisory-only flags, and the "one verify command is the single source of truth" divergence flag per [pillars.md](pillars.md) SV4. SV4 grades gate TOPOLOGY only; workflow TRIGGER correctness is FH3, never double-scored.
 

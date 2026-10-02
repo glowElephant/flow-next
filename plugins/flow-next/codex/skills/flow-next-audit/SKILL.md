@@ -111,30 +111,7 @@ The full report is the deliverable — print it as markdown to stdout. Do not su
 
 **Host command form:** print every copy-pasteable flow-next command here in the spelling this host invokes — the flat `/flow-next-<name>` form when the resolved plugin root carries `.flow-next-opencode-manifest` (an OpenCode install — the same signal setup's host detection uses); on any other or indeterminate host, exactly as spelled here.
 
-Report structure (see [workflow.md](workflow.md) §5 for full schema):
-
-```text
-Memory Audit Summary
-====================
-Scanned: N entries
-Skipped legacy: M (run `$flow-next-memory-migrate` first to make these auditable)
-
-Kept: X
-Updated: Y  (of which retrieval fixes: RF)
-Consolidated: C
-Replaced: Z
-Deleted: W
-Hardened: H  (failed graduations: HF; un-graduated: HU)
-Marked stale: S
-
-Glossary
---------
-Files scanned: F (H husks)
-Terms scanned: T
-Kept: K_g
-Marked stale: S_g
-Alias-creep flagged: A_g
-```
+Report structure and schema: [workflow.md](workflow.md) §5.
 
 Then per-entry detail (id, classification, evidence, action taken). For Consolidate: which entry was canonical, what unique content was merged, what was deleted. For Replace: what the old entry recommended vs what current code does, path to successor (decision Replace also notes the old entry now carries `decision_status: superseded`). For Marked stale: why ambiguous. For Harden: gate type, artifact path, `--gate-ref`, and how the gate was verified live (a failed graduation names the reason and states the entry was left active). For glossary terms: only stale + alias-creep cases get per-term lines (Keep is silent); husks get a one-line advisory each.
 

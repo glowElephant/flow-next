@@ -200,10 +200,10 @@ Branch only on the envelope:
 | `external_action_required` | perform the named MCP action if authorized, then resume with `persist-external`; otherwise defer |
 
 A push `conflict` with subtype `tracker_diverged` means someone edited the
-tracker body since the last sync. With `UNATTENDED=0`, ask once: reconcile
+tracker body since the last sync. With `UNATTENDED=0` outside a forked call, ask once: reconcile
 (recommended, merges both sides), overwrite the tracker body (rerun the same
 push with `--overwrite-diverged`), or leave it. With `UNATTENDED=1` (including every
-stage `flow --auto` runs), never overwrite: record it with
+stage `flow --auto` runs) or in a forked call, never overwrite: record it with
 `flowctl sync defer <spec-id> --summary "tracker body diverged since last sync"
 --suggested "reconcile, or confirm an --overwrite-diverged push"` and continue.
 

@@ -29,15 +29,9 @@ done
 
 ---
 
-## Autonomy block — runs first, before everything else
+## Autonomy block
 
-```bash
-if [[ "${FLOW_AUTONOMOUS:-}" == "1" || "${AUTONOMOUS:-}" == "1" \
-   || " ${ARGUMENTS:-} " == *" mode:autonomous "* ]]; then
-  echo "Error: /flow-next:prospect requires a user at the terminal; not compatible with autonomous mode." >&2
-  exit 2
-fi
-```
+SKILL.md's autonomy block has already run: an autonomous run exits there and never reaches this file.
 
 **No env-var opt-in.** An autonomous run cannot decide what a repo should build next — that's a human judgement call. The block runs before `mkdir`, before any user prompt, before any scan; the artifact directory is not created and no question is surfaced.
 

@@ -59,7 +59,7 @@ Illustrative shape (Tooling category - the exact options come from the catalog f
 ### Rules for Questions
 
 1. **MUST ask via the plain-text numbered prompt described below**
-2. **Options come from the [playbooks.md](../playbooks.md) catalog** - each labelled with its tier (Critical / High / Medium / Bonus) and consent boundary; never an option outside the catalog
+2. **Options come from the [playbooks.md](../playbooks.md) catalog** - each labelled with its tier (Critical / High / Medium / Bonus) and consent boundary; never an option outside the catalog or the Pillars 1-5 templates
 3. **Mark recommended items** - Add "(Recommended)" to high-impact (Critical/High) options; "(Bonus)" to nice-to-have (Bonus tier)
 4. **Explain agent benefit** - Each description says WHY it helps agents AND names its catalog #/tier
 5. **Skip empty categories** - Don't ask if no gaps in that category
@@ -142,7 +142,7 @@ For each approved fix:
 3. Adapt template to match conventions
 4. Check if target file exists:
    - **New file**: Create it
-   - **Existing file**: Show diff and ask before modifying
+   - **Existing file**: Show diff and ask before modifying, unless `--fix-all` covers this append/merge edit
 5. Report what was created/modified
 
 **Non-destructive rules:**

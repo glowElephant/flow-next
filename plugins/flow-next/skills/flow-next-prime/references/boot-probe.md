@@ -18,7 +18,9 @@ BS3 and for AO3 (parseable ready line + deterministic port). Rules:
 ROOT="${ROOT:-.}"
 run_bounded() { _limit="$1"; shift; _mark=$(mktemp); python3 -c 'import os,sys; getattr(os,"setsid",int)(); os.execvp(sys.argv[1],sys.argv[1:])' "$@" & _pid=$!; ( sleep "$_limit"; echo fired > "$_mark"; kill -TERM -- -"$_pid" || kill -TERM "$_pid"; sleep 2; kill -KILL -- -"$_pid" || kill -KILL "$_pid" ) >/dev/null 2>&1 & _watch=$!; wait "$_pid" 2>/dev/null; _rc=$?; if [ -s "$_mark" ]; then wait "$_watch" 2>/dev/null; echo "TIMEOUT: exceeded ${_limit}s"; _rc=124; else kill "$_watch" 2>/dev/null; fi; rm -f "$_mark"; return "$_rc"; }
 # Boot only behind a detected ready signal; capture the ready line + bound port as evidence.
-run_bounded 60 sh -c 'cd "$0" && <stacks.md dev/boot command>' "$ROOT" 2>&1 | grep -aiE '(ready|listening|started).*[0-9]{2,5}' | head -3
+BOOT_OUT="$(mktemp)"
+run_bounded 60 sh -c 'cd "$0" && <stacks.md dev/boot command>' "$ROOT" > "$BOOT_OUT" 2>&1
+grep -aiE '(ready|listening|started).*[0-9]{2,5}' "$BOOT_OUT" | head -3   # the full output stays in $BOOT_OUT
 ```
 
 The boot probe's ready line + port also feed AO3; BS3 never triggers a second long-lived run

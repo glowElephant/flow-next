@@ -269,7 +269,7 @@ the run.
 ```bash
 # Unmapped state — surface it, reconcile the rest, never crash:
 $FLOWCTL sync defer "$SPEC_ID" \
-  --summary "Unmapped tracker state 'Pending Legal' (type 'started') — name not in statusMap" \
+  --summary "Unmapped tracker state 'Pending Legal' (type 'custom') — type and name not mapped" \
   --suggested "Add a tracker.perTracker.statusMap override, or confirm it means in-progress" \
   --reason "unmapped-state"
 ```

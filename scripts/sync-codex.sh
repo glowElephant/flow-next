@@ -2417,7 +2417,6 @@ flow-next-chart/references/briefing-and-reopen.md	running `/flow-next:capture .f
 flow-next-chart/references/chart-mode.md	Recommend `/flow-next:capture` or authoring	Recommend `$flow-next-capture` or authoring
 flow-next-chart/references/chart-mode.md	separate `/flow-next:chart <id>` (or pinned) invocations	separate `$flow-next-chart <id>` (or pinned) invocations
 flow-next-audit/SKILL.md	recommends `/flow-next:memory-migrate` first	recommends `$flow-next-memory-migrate` first
-flow-next-audit/SKILL.md	`/flow-next:memory-migrate` first to make these auditable	`$flow-next-memory-migrate` first to make these auditable
 flow-next-audit/workflow.md	`/flow-next:memory-migrate` first to make these auditable	`$flow-next-memory-migrate` first to make these auditable
 flow-next-flow/references/route-matrix-more.md	| `/flow-next:strategy`	| `$flow-next-strategy`
 flow-next-flow/references/route-matrix.md	| `/flow-next:capture`	| `$flow-next-capture`

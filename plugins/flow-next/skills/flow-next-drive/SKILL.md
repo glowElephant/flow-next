@@ -58,7 +58,7 @@ Refs (`@e1`, `@e2`, …) go **stale** after any navigation, click, or form submi
 ### Done when
 
 - Every act ran against refs from a snapshot taken after the last DOM change (or against a semantic locator that needs none).
-- Every verify carries three checks — expected text/state, clean console, no failed API/network request.
+- Every verify carries three checks — expected text/state, clean console, no failed API/network request. Native rungs (cua, computer use) have no console or network channel: verify the expected state plus any app log, and say those checks were unavailable.
 - Evidence was captured at the moment of interest and on failure — screenshot plus console/network output — so a downstream `/flow-next:qa` verdict rests on artifacts rather than narration.
 - **The session or tab is released when the pass is done.** A left-open session or daemon has broken this.
 
