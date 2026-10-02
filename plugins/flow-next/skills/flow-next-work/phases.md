@@ -203,7 +203,8 @@ here, inline.** Print `Scheduling: inline (single task)`.
 7. **Completion review**, only once every task in the spec is done. A task-id run whose spec
    still has unfinished tasks runs none: it commits the task receipt (the command below) and
    finishes. Skip it when the spec has this one task, its review reached SHIP (or a recorded
-   override), and every spec R-ID is in the task's `satisfies`: run `$FLOWCTL spec
+   override or unattended `OPEN_ITEM:`) or the risk rule skipped that review, and every spec R-ID is
+   in the task's `satisfies`: run `$FLOWCTL spec
    set-completion-review-status <spec-id> --status not_required --if-current unknown --json` and,
    when it reports `written: true` or the status already reads `not_required`, note `stage:
    completion-review - skipped(policy: single-task, per-task SHIP covers spec surface)`; any other

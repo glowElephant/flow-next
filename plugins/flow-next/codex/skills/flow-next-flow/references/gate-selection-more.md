@@ -13,7 +13,7 @@ Runs per `review.backend` or the invocation's `--review=<backend>` flag on every
 
 ## Completion review
 
-Unchanged single-task policy: with one minted task whose acceptance is the whole spec, the per-task implementation review is the integration check and completion review records `skipped(policy: single-task, per-task SHIP covers spec surface)`. Multi-task plans run `$flow-next-spec-completion-review` as configured.
+Unchanged single-task policy: with one minted task whose acceptance is the whole spec, the per-task implementation review (or the risk rule's skip of it) is the integration check and completion review records `skipped(policy: single-task, per-task SHIP covers spec surface)`. Multi-task plans run `$flow-next-spec-completion-review` as configured.
 
 ## Receipts
 
