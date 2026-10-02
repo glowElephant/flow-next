@@ -192,7 +192,8 @@ here, inline.** Print `Scheduling: inline (single task)`.
    background and report its verdict when it lands (`<mode>` is a backend the user named for this run, else
    `$FLOWCTL review-backend <task-id>` run from the repository root, so a task's own backend wins over the project default; `ASK` there means nothing is configured: skip review and say once in the handoff "no review backend set; run setup or set review.backend"); unattended, run it and wait. `done` waits for
    SHIP, or for an `OVERRIDDEN:` line from an unattended loop (its declined findings go in the
-   summary and the Decisions list) or from the person accepting an attended `NEEDS_WORK`. Not selected: record `stage: impl-review - skipped(policy: risk - <reason>)`. When a
+   summary and the Decisions list) or from the person accepting an attended `NEEDS_WORK`, or for an
+   `OPEN_ITEM:` line from an unattended review (the call goes in the summary as one left for the person). Not selected: record `stage: impl-review - skipped(policy: risk - <reason>)`. When a
    review went NEEDS_WORK then SHIP on a non-trivial fix and memory is enabled, capture the lesson
    per [references/worker-memory-capture.md](references/worker-memory-capture.md).
 6. **Done.** Write a short summary to `.flow/tmp/<task-id>-summary.md` (what changed, and one

@@ -259,9 +259,10 @@ task's own `review:` override; see the work skill's references/multi-task.md §3
 - **SHIP** → proceed to Phase 4.5.
 - **NEEDS_WORK** with an `OVERRIDDEN:` line → treat as SHIP: proceed to Phase 4.5 with the declined findings in the evidence and the Decisions list.
 - **NEEDS_WORK** → the skill already fixed and re-reviewed and findings still survive. Escalate rather than re-invoke: under `SPEC_MODE` / autonomous, stop with a typed `BLOCKED: <surviving-findings summary>` (the escalation format below); interactively, surface the surviving findings to the caller.
+- **NEEDS_HUMAN** with an `OPEN_ITEM:` line (unattended) → proceed to Phase 4.5 with the call in the summary as one left for the person; any other **NEEDS_HUMAN** → escalate it to the caller unchanged.
 - **MAJOR_RETHINK** → the design/approach is wrong, not patchable. Escalate `BLOCKED: DESIGN_CONFLICT` with the reviewer's rationale — never patch it, never re-invoke.
 
-Done when: one impl-review invocation has returned a terminal verdict, and the task either holds a SHIP (or a recorded `OVERRIDDEN:` override) or has been escalated with a typed `BLOCKED:` line.
+Done when: one impl-review invocation has returned a terminal verdict, and the task either holds a SHIP (or a recorded `OVERRIDDEN:` override, or an unattended `OPEN_ITEM:`) or has been escalated with a typed `BLOCKED:` line.
 
 ## Phase 4.5: Auto-capture on successful fix (after NEEDS_WORK → SHIP)
 

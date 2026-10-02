@@ -104,7 +104,10 @@ flowctl refuses the round, and the retry is a full fresh review instead of the s
 - `SHIP`: done. Report the verdict and any follow-ups.
 - `MAJOR_RETHINK`: the approach is wrong. Stop with `BLOCKED: DESIGN_CONFLICT` and the
   reviewer's rationale; do not patch finding by finding.
-- `NEEDS_HUMAN`: stop and hand the reviewer's question to the person.
+- `NEEDS_HUMAN`: stop and hand the reviewer's question to the person. Unattended, when that
+  question is a human call that does not block the rest of the work (working-rules-unattended.md),
+  handle the other findings as for `NEEDS_WORK`, then print `OPEN_ITEM: <the question>` after the
+  verdict; the caller completes the task on it and the pull request opens as a draft.
 - `NEEDS_WORK`: on the codex path, read [references/codex-fix-pass.md](references/codex-fix-pass.md)
   and run its one fix pass and re-review; other backends run their workflow file's fix loop.
 
