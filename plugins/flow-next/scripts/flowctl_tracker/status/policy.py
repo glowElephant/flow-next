@@ -165,8 +165,9 @@ def merge_evidence(config: dict, spec_data: dict, execute: Execute) -> str:
 
 # A merged PR whose whole diff is the spec's own text (one-PR-per-gate
 # convention) is not shipped work (#391). Paths under these prefixes never
-# count toward merge evidence.
-SPEC_TEXT_PREFIXES = (".flow/specs/", ".flow/tasks/")
+# count toward merge evidence. `.flow/artifacts/` holds the spec's records
+# (a pre-7.0 HTML lens, the PR aid), never shipped code (#501).
+SPEC_TEXT_PREFIXES = (".flow/specs/", ".flow/tasks/", ".flow/artifacts/")
 
 
 def _spec_only_merged_numbers(rows: list, execute: Execute) -> Optional[frozenset]:

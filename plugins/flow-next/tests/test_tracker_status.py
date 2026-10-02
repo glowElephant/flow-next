@@ -432,12 +432,16 @@ class MergeEvidence(unittest.TestCase):
                                 {"path": ".flow/tasks/fn-1.1.md"}]}
         mixed_files = {"files": [{"path": ".flow/specs/fn-1.md"},
                                  {"path": "src/app.py"}]}
+        lens_files = {"files": [{"path": ".flow/specs/fn-1.md"},
+                                {"path": ".flow/artifacts/fn-1/spec.html"}]}
         merged = {"state": "MERGED", "number": 7}
         cases = [
             ("spec-only", [merged], {"merge-evidence-files": ok(spec_files)},
              "none"),
             ("spec-only alongside open", [merged, {"state": "OPEN"}],
              {"merge-evidence-files": ok(spec_files)}, "open"),
+            ("spec text plus its own lens (#501)", [merged],
+             {"merge-evidence-files": ok(lens_files)}, "none"),
             ("mixed", [merged], {"merge-evidence-files": ok(mixed_files)},
              "merged"),
             ("two merged, one spec-only",

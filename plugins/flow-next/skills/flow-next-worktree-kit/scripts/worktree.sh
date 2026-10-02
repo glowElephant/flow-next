@@ -10,6 +10,12 @@ if [[ -z "$repo_root" ]]; then
   echo "not a git repo" >&2
   exit 1
 fi
+# From inside a linked worktree, --show-toplevel is that worktree; .worktrees/ lives in the
+# main clone, which owns the shared .git directory.
+common_dir="$(git rev-parse --git-common-dir 2>/dev/null || true)"
+if [[ -n "$common_dir" && "$(basename "$common_dir")" == ".git" ]]; then
+  repo_root="$(cd "$common_dir/.." && pwd)"
+fi
 
 worktrees_dir="$repo_root/.worktrees"
 

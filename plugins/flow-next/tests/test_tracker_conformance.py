@@ -1035,6 +1035,40 @@ class SpecVerbRelateAllFour(unittest.TestCase):
                     f"{provider}: ledger must persist the edge key")
 
 
+    def test_github_second_parent_is_queued_not_fatal(self) -> None:
+        """#502: GitHub gives a sub-issue one parent; the second blocker edge is
+        rejected 422. relate queues it for a person and returns, releasing its
+        claim, instead of failing the facade."""
+        with tempfile.TemporaryDirectory() as tmp:
+            flow = Path(tmp)
+            base = {"url": "u", "depRelations": [], "linkState": "linked"}
+            self._write_pair(flow, gh_cfg(),
+                             {**base, "id": GH_NODE, "identifier": "#42"},
+                             {**base, "id": "I_kwDOTestNode2", "identifier": "#43"})
+            ex = fake_execute({
+                "relate-parent-read": [
+                    ok({"id": 999001, "node_id": GH_NODE, "number": 42}),
+                    ok({"id": 999002, "node_id": "I_kwDOTestNode2", "number": 43})],
+                "wire-relate-probe": ok([]),
+                "relate-child-read": ok({"id": 999001, "node_id": GH_NODE, "number": 42}),
+                "relate-list": ok([]),
+                # as the executor classifies GitHub's 422 (issue #502's own output)
+                "relate-create": TrackerError(
+                    ErrorClass.INVALID_INPUT, "rejected (422)", subtype="http"),
+            })
+            out = R.relate(flow, "fn-1-demo", blocked_by="fn-2-dep", execute=ex)
+            self.assertNotIsInstance(out, TrackerError, out)
+            self.assertEqual(out["kind"], "queued")
+            self.assertEqual(out["reason"], "github_single_parent")
+            saved = json.loads((flow / "specs" / "fn-1-demo.json").read_text(
+                encoding="utf-8"))["tracker"]
+            self.assertFalse(
+                any(isinstance(r, dict) and r.get("status") == "pending"
+                    for r in saved.get("depRelations") or []),
+                "the claim is released, so nothing reads as an interrupted create")
+            sink = flow / "review-deferred" / "tracker-relate.md"
+            self.assertIn("only one parent", sink.read_text(encoding="utf-8"))
+
 class SpecVerbSyncBodyAllFour(unittest.TestCase):
     """sync-body push: pushed + paired merge base committed on all four."""
 
