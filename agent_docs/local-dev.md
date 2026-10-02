@@ -97,8 +97,7 @@ Run after any change touching `flowctl config get / set`, `cmd_init`'s config up
 ```bash
 mkdir -p /tmp/fn-crossspec-smoke && cd /tmp/fn-crossspec-smoke
 flowctl init   # or run /flow-next:setup once
-# (`flowctl` is the plugin's own launcher — bare on Claude Code via plugin bin/
-#  PATH injection, otherwise call <plugin-root>/scripts/flowctl by path.
+# (`flowctl` here means <plugin-root>/scripts/flowctl, called by path.
 #  Nothing is copied into the repo.)
 ```
 
