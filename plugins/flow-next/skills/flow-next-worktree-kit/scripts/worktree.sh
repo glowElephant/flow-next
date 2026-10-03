@@ -14,7 +14,7 @@ fi
 # main clone, which owns the shared .git directory.
 common_dir="$(git rev-parse --git-common-dir 2>/dev/null || true)"
 if [[ -n "$common_dir" && "$(basename "$common_dir")" == ".git" ]]; then
-  repo_root="$(cd "$common_dir/.." && pwd)"
+  repo_root="$(git -C "$common_dir/.." rev-parse --show-toplevel)"
 fi
 
 worktrees_dir="$repo_root/.worktrees"
