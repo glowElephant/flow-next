@@ -85,7 +85,9 @@ mkdir -p "$CODEX_DIR/skills" "$CODEX_DIR/agents" "$CODEX_DIR/scripts" \
 # ====================
 SKILL_COUNT=0
 for skill_dir in "$CODEX_SRC/skills/"*/; do
-    [ -d "$skill_dir" ] || continue
+    # Only a dir with a SKILL.md is a skill. A folder git left behind when a release
+    # removed the skill (untracked files keep it alive) must not replace a live install.
+    [ -f "$skill_dir/SKILL.md" ] || continue
     rm -rf "$CODEX_DIR/skills/$(basename "$skill_dir")"
     cp -r "${skill_dir%/}" "$CODEX_DIR/skills/"
     SKILL_COUNT=$((SKILL_COUNT + 1))
@@ -169,14 +171,17 @@ fi
 # pilot and interview stubs). Same two safety layers as above: retire only an artifact
 # that carries the generator's own identity, and only by moving it.
 #   - skill: a `flow-next-*` dir this release does not ship whose SKILL.md `name:` is the
-#     dir name (every generated skill is named exactly that);
+#     dir name (every generated skill is named exactly that), or that has no SKILL.md at
+#     all (an empty leftover an older installer copied over the real skill);
 #   - prompt: a prompt this release does not ship whose `name:` is its file stem and whose
-#     body is the generated redirect ("This command MUST invoke the skill `flow-next-...`").
+#     body is the generated redirect ("This command MUST invoke the skill `flow-next-...`")
+#     or a generated deprecated-alias stub (heading "# `/flow-next:<stem>` is ...").
 for stale_skill in "$CODEX_DIR/skills/"flow-next-*/; do
     [ -d "$stale_skill" ] || continue
     sname="$(basename "$stale_skill")"
-    [ -d "$CODEX_SRC/skills/$sname" ] && continue
-    if [ "$(frontmatter_name "$stale_skill/SKILL.md")" = "$sname" ]; then
+    [ -f "$CODEX_SRC/skills/$sname/SKILL.md" ] && continue
+    if [ ! -e "$stale_skill/SKILL.md" ] \
+        || [ "$(frontmatter_name "$stale_skill/SKILL.md")" = "$sname" ]; then
         retire_artifact "${stale_skill%/}" "skills" "skill $sname"
     else
         echo -e "${YELLOW}!${NC} kept ${stale_skill%/} (frontmatter name is not ours — left untouched)"
@@ -187,8 +192,13 @@ for stale_prompt in "$CODEX_DIR/prompts/"*.md; do
     pname="$(basename "$stale_prompt")"
     [ -f "$PLUGIN_DIR/commands/$pname" ] && continue
     [ "$pname" = "epic-review.md" ] && continue
-    if [ "$(frontmatter_name "$stale_prompt")" = "${pname%.md}" ] \
-        && grep -qxF "# IMPORTANT: This command MUST invoke the skill \`flow-next-${pname%.md}\`" "$stale_prompt" 2>/dev/null; then
+    [ "$(frontmatter_name "$stale_prompt")" = "${pname%.md}" ] || continue
+    # The generated redirect, or a generated deprecated-alias stub (7.0 dropped the
+    # interview and pilot aliases): its heading names this command and its body
+    # redirects to a flow-next skill.
+    if grep -qxF "# IMPORTANT: This command MUST invoke the skill \`flow-next-${pname%.md}\`" "$stale_prompt" 2>/dev/null \
+        || { grep -qF "# \`/flow-next:${pname%.md}\` is " "$stale_prompt" 2>/dev/null \
+             && grep -qE '^This command MUST invoke the skill `flow-next-[a-z0-9-]+`' "$stale_prompt" 2>/dev/null; }; then
         retire_artifact "$stale_prompt" "prompts" "prompt $pname"
     fi
 done
