@@ -102,7 +102,7 @@ Tag only what capture authored: `[paraphrase]`, `[inferred]`, `[strategy:<track>
 
 ### 2.2 — Apply the resolved template
 
-The section structure comes from the canonical [the bundled `templates/spec.md`](../../templates/spec.md) (cross-link, never re-embed the list), resolved first-match from `<repo_root>/SPEC.md` → `<repo_root>/spec.md` → the bundled file. **The resolved template decides what goes in the spec:** write the sections it names as headings or in `auxiliary_sections`, in its order and positions, follow its instructions, and add no section it leaves out (the bundled entries put `Conversation Evidence` at the top and `Requirement coverage` at the end). A section with no conversation signal stays absent; empty beats fabricated.
+The section structure comes from the canonical [the bundled `templates/spec.md`](../../templates/spec.md) (cross-link, never re-embed the list), resolved first-match from `<repo_root>/SPEC.md` → `<repo_root>/spec.md` → the bundled file. Read only the template that resolves: when the repo has `SPEC.md` or `spec.md`, do not open the bundled file. **The resolved template decides what goes in the spec:** write the sections it names as headings or in `auxiliary_sections`, in its order and positions, follow its instructions, and add no section it leaves out (the bundled entries put `Conversation Evidence` at the top and `Requirement coverage` at the end). A section with no conversation signal stays absent; empty beats fabricated.
 
 - **`## Acceptance Criteria`** — `- **R1:** ...` prose bullets, allocated from R1 (fresh spec, no renumber concern). When `.flow/criteria.md` exists, never restate a G-ID as an R-ID; reference it in prose and write an R only for what this spec adds.
 - **`## Requirement coverage`** — only when the template names it, `NO_PLAN_OPT=0`, and §2.8 resolved to `plan`: each R-ID mapped to `fn-N.M (TBD - populate via /flow-next:plan)`. Omitted on the `direct` and `refine` routes: work's single implicit task is the coverage, and a placeholder nobody fills would mislead completion review. Capture writes no tasks.
@@ -255,7 +255,7 @@ Only when §5.2's tracker gate fired: `references/tracker-integration.md` §5.7 
 
 ### 5.8 — Glossary term-adds (interactive only)
 
-With glossary proposals, ask the separate `Glossary?` question in [references/glossary-terms.md](references/glossary-terms.md) unless already answered, and write only consented terms. Autofix never writes terms.
+With glossary proposals, ask the separate `Glossary?` question in [references/glossary-consent.md](references/glossary-consent.md) unless already answered, and write only consented terms. Autofix never writes terms.
 
 ### 5.9 — Mark-ready write (interactive only)
 

@@ -125,13 +125,6 @@ Use `spec=-` and `stage=-` when no spec was selected. Stage values are exactly `
 
 `DEFERRED_TO_LAND` is a distinct *non-terminal-work* verdict (stage `land`): without current landing authority, every remaining all-done candidate has an open PR that land owns. An authorized landing tick also uses it for an observed external wait per `references/tail.md`. It is deliberately separated from `NO_WORK` so a driver can route it to `$flow-next-land` instead of stopping; an all-done spec with an open PR is real outstanding work, never absence of work.
 
-Driver condition examples (the default recipe is one `flow --auto` per item; the tick shape is for hosts without stable long sessions):
-
-```text
-/goal keep running /flow-next:flow --auto until it prints PILOT_VERDICT=NO_WORK, or stop after 20 turns
-/goal keep running /flow-next:flow --auto --tick --review=codex until PILOT_VERDICT=NO_WORK or PILOT_VERDICT=NEEDS_HUMAN
-```
-
 ## Forbidden
 
 **Ask the user via plain text.** Render the options below as a numbered list `1.` … `N.`, followed by a final option `N+1. Other — type your own answer`. Print the question, then the numbered list, then **stop and wait for the user's next message before continuing**. Parse the reply as: a bare number `1`–`N+1` → that option; the literal text of an option label → that option; free text after `Other` → custom answer.

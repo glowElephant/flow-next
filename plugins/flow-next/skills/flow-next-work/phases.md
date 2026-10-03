@@ -70,7 +70,7 @@ task as it says.
 
 Done when: the input is classified into exactly one of the five kinds, the mode (`SPEC_MODE` / `SINGLE_TASK_MODE`) is recorded, and a spec id exists to carry into Phase 2.
 
-Before any scout dispatch apply [references/judge-tier.md](references/judge-tier.md).
+Only when this run dispatches a scout: read [references/judge-tier.md](references/judge-tier.md) before that dispatch.
 
 ## Phase 2: Apply Branch Choice
 

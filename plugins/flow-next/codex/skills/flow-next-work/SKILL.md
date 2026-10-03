@@ -58,14 +58,6 @@ Accepts:
 - Idea text (creates minimal spec + single task, then executes)
 - Chained instructions like "then review with /flow-next:impl-review"
 
-Examples:
-- `/flow-next:work fn-1-add-oauth`
-- `/flow-next:work fn-1-add-oauth.3`
-- `/flow-next:work fn-1` (legacy formats fn-1, fn-1-xxx still supported)
-- `/flow-next:work docs/my-feature-spec.md`
-- `/flow-next:work Add rate limiting`
-- `/flow-next:work fn-1-add-oauth then review via /flow-next:impl-review`
-
 If no input provided, ask for it.
 
 ## FIRST: Parse Options

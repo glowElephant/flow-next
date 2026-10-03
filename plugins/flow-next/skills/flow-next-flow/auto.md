@@ -125,13 +125,6 @@ Use `spec=-` and `stage=-` when no spec was selected. Stage values are exactly `
 
 `DEFERRED_TO_LAND` is a distinct *non-terminal-work* verdict (stage `land`): without current landing authority, every remaining all-done candidate has an open PR that land owns. An authorized landing tick also uses it for an observed external wait per `references/tail.md`. It is deliberately separated from `NO_WORK` so a driver can route it to `/flow-next:land` instead of stopping; an all-done spec with an open PR is real outstanding work, never absence of work.
 
-Driver condition examples (the default recipe is one `flow --auto` per item; the tick shape is for hosts without stable long sessions):
-
-```text
-/goal keep running /flow-next:flow --auto until it prints PILOT_VERDICT=NO_WORK, or stop after 20 turns
-/goal keep running /flow-next:flow --auto --tick --review=codex until PILOT_VERDICT=NO_WORK or PILOT_VERDICT=NEEDS_HUMAN
-```
-
 ## Forbidden
 
 - Asking the user anything on the run path. The run is autonomous; ambiguity maps to `NEEDS_HUMAN`. `references/prototype-before-ask.md` licenses no blocking question here: an unattended fork that is not observable is `NEEDS_HUMAN` in ready mode and `ASKED` in backlog mode; an observable fork may be settled by running something only inside the dispatched stage's existing license, never by the run itself.
