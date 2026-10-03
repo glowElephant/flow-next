@@ -40,8 +40,10 @@ Only flag issues in the **changed code** - not pre-existing patterns.
 ## Verdict Scope
 
 Your VERDICT only considers P0 and P1 findings that are **introduced** by this changeset or
-**directly broken** by it, and pre-existing issues that would **block shipping** this change.
-P2 and P3 findings never block: list them, and the author decides.
+**directly broken** by it, and pre-existing issues that would **block shipping** this change
+(classify those `introduced`: the change cannot ship without the fix). P2 and P3 findings never
+block: list them, and the author decides. A stated requirement (R-ID) the change leaves unaddressed
+blocks at any severity.
 
 Do NOT mark NEEDS_WORK for:
 - Pre-existing issues unrelated to the change

@@ -1,6 +1,6 @@
-# Capture — source tags and confidence tiers
+# Capture — source tags
 
-The calibration companion to [workflow.md](workflow.md): how drafted lines are tagged, and how question bodies state confidence.
+The calibration companion to [workflow.md](workflow.md): how drafted lines are tagged. Question bodies state confidence per [references/confidence-tiers.md](references/confidence-tiers.md).
 
 ## Source-tag taxonomy
 
@@ -21,15 +21,3 @@ Tags mark what capture authored. Content the user said verbatim carries **no tag
 Narrative sections (Goal & Context, an architecture overview) take no per-line tags; they carry one breakdown note, e.g. `<!-- Source: 70% user / 20% [paraphrase] / 10% [inferred] -->`. The summary's `[inferred]` tally counts per-line tags plus those inferred shares; the user's words count under `[user]` in the shared tally shape. Zero `[inferred]` is rare; thirty suggests the conversation was too thin and `/flow-next:refine` fits better.
 
 Chart D-ID evidence, chart facts, assets, and briefing membership are structural links and are never tagged; the full provenance-lane rule loads with the chart-briefing gate (workflow.md §0.5b).
-
-## Confidence tiers
-
-Question bodies carry the recommendation and its tier; option labels stay neutral so the user is not anchored.
-
-| Tier | When | Example body |
-|------|------|--------------|
-| `[high]` | Strong codebase or convention signal | `Recommended: extend fn-12-oauth-callback — 3 strong title matches, same module. Confidence: [high].` |
-| `[judgment-call]` | A lean; reasonable people disagree | `Recommended: proceed-anyway — 2 matches, the specs may co-exist. Confidence: [judgment-call].` |
-| `[your-call]` | No signal; the user's priorities decide | `No recommendation — pick what fits your priority. Confidence: [your-call].` |
-
-`[your-call]` is deliberate: always recommending trains users to defer. Under it, list the trade-offs without a preference.

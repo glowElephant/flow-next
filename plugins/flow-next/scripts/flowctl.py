@@ -9409,8 +9409,10 @@ Only flag issues in the **changed code** - not pre-existing patterns.
 ## Verdict Scope
 
 Your VERDICT only considers P0 and P1 findings that are **introduced** by this changeset or
-**directly broken** by it, and pre-existing issues that would **block shipping** this change.
-P2 and P3 findings never block: list them, and the author decides.
+**directly broken** by it, and pre-existing issues that would **block shipping** this change
+(classify those `introduced`: the change cannot ship without the fix). P2 and P3 findings never
+block: list them, and the author decides. A stated requirement (R-ID) the change leaves unaddressed
+blocks at any severity.
 
 Do NOT mark NEEDS_WORK for:
 - Pre-existing issues unrelated to the change
@@ -9508,8 +9510,10 @@ Only flag issues in the **changed code** - not pre-existing patterns.
 ## Verdict Scope
 
 Your VERDICT only considers P0 and P1 findings that are **introduced** by this changeset or
-**directly broken** by it, and pre-existing issues that would **block shipping** this change.
-P2 and P3 findings never block: list them, and the author decides.
+**directly broken** by it, and pre-existing issues that would **block shipping** this change
+(classify those `introduced`: the change cannot ship without the fix). P2 and P3 findings never
+block: list them, and the author decides. A stated requirement (R-ID) the change leaves unaddressed
+blocks at any severity.
 
 Do NOT mark NEEDS_WORK for:
 - Pre-existing issues unrelated to the change
@@ -9788,8 +9792,8 @@ Report untraced changes but do NOT auto-reject. `UNDOCUMENTED_ADDITION` is a fla
 
 ## Blocking calibration
 
-- **P0** — following the plan produces a wrong or impossible implementation.
-- **P1** — material ambiguity likely to mislead a competent implementer.
+- **P0** — a stated requirement is missing, or the build breaks it.
+- **P1** — a requirement is only partly met in a way a user or caller would hit.
 - **P2/P3** — consistency or polish; never blocking.
 
 **Settled decisions:** A finding that re-litigates a recorded Decision Context
@@ -9832,7 +9836,9 @@ Problem: what is wrong
 Suggestion: how to fix]
 ```
 
-Put pre_existing gaps under `## Pre-existing issues`; they do not gate the verdict.
+A requirement this spec states is never `pre_existing`: when it is missing, it is a GAP. Put
+problems outside the spec's requirements that predate it under `## Pre-existing issues`; they do
+not gate the verdict.
 
 When applicable, add the Requirements coverage / Unaddressed R-IDs,
 Suppressed findings, Classification counts, and Protected-path filter outputs
@@ -23927,6 +23933,9 @@ def judge_https_connection(host: str, timeout: float):
     if not proxy or excluded:
         return http.client.HTTPSConnection(host, timeout=timeout)
     parts = urllib.parse.urlsplit(proxy if "://" in proxy else "http://" + proxy)
+    if parts.scheme != "http":
+        # Only an HTTP CONNECT proxy is supported; never guess a port for another scheme.
+        raise OSError(f"unsupported proxy scheme: {parts.scheme}")
     connection = http.client.HTTPSConnection(parts.hostname, parts.port or 80, timeout=timeout)
     headers = {}
     if parts.username:
@@ -31010,7 +31019,11 @@ def cmd_dep_add(args: argparse.Namespace) -> None:
         print(f"Dependency {args.depends_on} added to {args.task}")
 
 
-SPEC_SHOW_OMITTED_KEYS = frozenset({"review_attempts", "tracker"})
+SPEC_SHOW_OMITTED_KEYS = frozenset({"review_attempts", "tracker"})  # pilot_snapshot lean_spec
+# `show` keeps tracker identity (`id`, `identifier`, `linkState`, `url`): link checks read it
+# there (#484). Only the two full-body copies are trimmed; `sync get-state` returns them.
+CMD_SHOW_OMITTED_KEYS = frozenset({"review_attempts"})
+TRACKER_SHOW_OMITTED_KEYS = frozenset({"mergeBaseFlow", "mergeBaseTracker"})
 
 
 def cmd_show(args: argparse.Namespace) -> None:
@@ -31061,16 +31074,20 @@ def cmd_show(args: argparse.Namespace) -> None:
         # tasks order by suffix (parse_id is fn-only → None for wor-* tasks).
         tasks.sort(key=lambda t: id_sort_key(t["id"]))
 
-        # fn-258 R2: the two large ledgers have dedicated readers
-        # (`review-rounds attempts`, `sync get-state`); the record omits them.
+        # fn-258 R2: `review_attempts` has a dedicated reader (`review-rounds attempts`);
+        # `tracker` keeps its identity fields and drops only its full-body copies.
         result = {
             **{
                 k: v
                 for k, v in epic_data.items()
-                if k not in SPEC_SHOW_OMITTED_KEYS
+                if k not in CMD_SHOW_OMITTED_KEYS
             },
             "tasks": tasks,
         }
+        if isinstance(result.get("tracker"), dict):
+            result["tracker"] = {
+                k: v for k, v in result["tracker"].items() if k not in TRACKER_SHOW_OMITTED_KEYS
+            }
         # fn-58.1 (R1): lazy on-disk, explicit in output — the spread omits an
         # absent `ready` key, so default it explicitly (absent reads false).
         result["ready"] = bool(epic_data.get("ready", False))

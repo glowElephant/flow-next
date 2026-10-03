@@ -17,7 +17,7 @@ Prospect is plural ("what should we do?"). Chart is singular ("how do we get thi
 
 **Role**: idea-prospecting coordinator (sequential single-chat - generate -> critique -> rank -> write -> handoff). Personas are prompt-level scaffolding inside this skill, not parallel subagent dispatch.
 
-Read [working-rules.md](../../references/working-rules.md) first; it holds for every step of this skill.
+Read [working-rules.md](../../references/working-rules.md) first unless you already have this run; it holds for every step of this skill.
 
 ## Preamble
 
@@ -62,10 +62,10 @@ No env-var opt-in. Autonomous runs never decide direction.
 
 Execute the phases in [workflow.md](workflow.md) in order:
 
-0. **Resume check** — list active artifacts <30d; ask extend / fresh / open via blocking question. Corrupt artifacts surfaced but never offered for extension.
+0. **Resume check** — list active artifacts <30d; ask fresh / open via blocking question. Corrupt artifacts surfaced but never offered.
 1. **Ground** — scan repo with graceful degradation: git log (30d), open specs, CHANGELOG top, memory matches, memory audit (if present), strategy snapshot (verbatim `name` / `target_problem` / `approach` / `tracks` / `last_updated` from `flowctl strategy read --json` when `sections_filled >= 1`; husk-vs-presence gate uses `sections_filled`, NOT `[[ -f STRATEGY.md ]]`). Emit a structured 30-50 line snapshot — titles + tags only, never raw bodies.
 2. **Generate** — divergent-convergent + persona seeding (≥2 of `senior-maintainer` / `first-time-user` / `adversarial-reviewer`, picked by focus hint per [personas.md](personas.md)). One divergent prompt; no self-judging.
-3. **Critique** — separate prompt pass that does NOT see the focus hint or persona texts; rejection floor ≥40% (≥60% under `raise the bar`); fixed taxonomy (`duplicates-open-epic | out-of-scope | out-of-scope-vs-strategy | insufficient-signal | too-large | backward-incompat | other`); `out-of-scope-vs-strategy` is advisory only (user can override at promote time via existing `--force` flag); floor violation surfaces blocking question with frozen options `regenerate | loosen-floor | ship-anyway`.
+3. **Critique** — separate prompt pass that does NOT see the focus hint or persona texts; rejection floor ≥40% (≥60% under `raise the bar`); fixed taxonomy (`duplicates-open-epic | out-of-scope | out-of-scope-vs-strategy | insufficient-signal | too-large | backward-incompat | other`); `out-of-scope-vs-strategy` is advisory only (to pursue a rejected idea anyway, capture it with `/flow-next:capture`); floor violation surfaces blocking question with frozen options `regenerate | loosen-floor | ship-anyway`.
 4. **Rank** — bucketed: high leverage 1-3, worth-considering 4-7, if-you-have-the-time 8+. Forced-format leverage sentence per survivor (`Small-diff lever because X; impact lands on Y.`); no numeric scores.
 5. **Write artifact** — atomic write-then-rename to `.flow/prospects/<slug>-<date>.md` via `flowctl prospect write --from-json`. Same-day collisions suffix with `-2`, `-3`. Optional `floor_violation` / `generation_under_volume` flags round-trip when upstream phases set them.
 6. **Handoff** - blocking prompt for promote / chart (only if still singular+oversized+unclear) / interview / skip via the platform's question tool; frozen numbered-options fallback when no blocking tool is available.

@@ -23,7 +23,7 @@ auxiliary_sections:
   - Resolved via Experiment  # written by /flow-next:refine when a question was settled by running something
   - Resolved via Research    # written by /flow-next:refine --scope=research, or by plan when its research scouts ran
   - Parked unknowns          # optional fog slot; one bullet per genuinely-unknown item, emptied as they resolve
-  - Requirement coverage     # written by /flow-next:capture on a planned route; /flow-next:plan fills it; closes the body unless you place it as a heading
+  - Requirement coverage     # written by /flow-next:capture only when it judges the route plan; /flow-next:plan fills it; closes the body unless you place it as a heading
 template_kind: static-scaffold  # no {{var}} substitution; read for structure, write via flowctl spec set-plan
 ---
 

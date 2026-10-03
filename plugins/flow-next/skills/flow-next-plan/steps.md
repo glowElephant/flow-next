@@ -24,30 +24,8 @@ The SKILL.md preflight already ran `init` and wrote the config snapshot at `${TM
 
 **Handle recognition.** Before treating a single-token argument as a new idea, run `$FLOWCTL show <arg> --json`. A tracker key (`wor-17`, `wor-17.2`) resolves to its linked spec or task. If it resolves, use the canonical id and take Route A in Step 5; only a token that does not resolve is a new idea (Route B).
 
-**Existing id.** Fetch it once, with the readiness check in the same bash block (variables do not survive across tool calls; never run a second `show --json`). The readiness check applies only to an existing spec, not to a task id:
-
-```bash
-$FLOWCTL cat <id>
-SHOW_JSON=$($FLOWCTL show <id> --json)
-echo "$SHOW_JSON"
-# Readiness soft-check (spec ids only): warn, never block. Fires only in repos that
-# use readiness (any spec marked ready, or tracker.readyState configured).
-SPEC_READY=$(jq -r '.ready // false' <<< "$SHOW_JSON")
-READINESS_WARN=false
-# The owner-reconciliation stop (Planning choice, below) comes before any readiness prompt.
-OWNER_STOP=$(jq -r 'if .no_plan == true and ((.tasks // []) | length) == 1 and .tasks[0].implicit_owner == true then 1 else 0 end' <<< "$SHOW_JSON" 2>/dev/null)
-[[ "$OWNER_STOP" == "1" ]] && echo "OWNER RECONCILIATION — STOP. Apply Planning choice below; skip the readiness check."
-if [[ "$SPEC_READY" != "true" && "$OWNER_STOP" != "1" ]]; then
-  READY_STATE=$(jq -r '.value.tracker.readyState // empty' "${TMPDIR:-/tmp}/flow-plan-config-<suffix>.json" 2>/dev/null)
-  READY_ADOPTED=$($FLOWCTL specs --json 2>/dev/null | jq '[.specs[] | select(.ready == true)] | length' 2>/dev/null || echo 0)
-  if [[ -n "$READY_STATE" || "$READY_ADOPTED" -ge 1 ]]; then
-    READINESS_WARN=true
-    echo "READINESS GATE ACTIVE — STOP. Read references/readiness-warn.md before continuing."
-  fi
-fi
-```
-
-When the sentinel prints, read [`references/readiness-warn.md`](references/readiness-warn.md) before any further step. Otherwise continue silently.
+**Existing id** (the input resolved): read [references/existing-id.md](references/existing-id.md) and run its
+fetch-and-readiness block once, before research; then apply the Planning choice below.
 
 **Planning choice.** Read the spec's metadata (for a task id, `$FLOWCTL show <spec-id> --json` on its parent). If `no_plan: true` and the spec has exactly one task, marked `implicit_owner: true`, stop with `NEEDS_HUMAN: needs-owner-reconciliation`, naming the owner and the decision needed about its whole-spec scope and existing work; never convert, delete or duplicate the owner, and never prompt under autonomy. Otherwise, for `no_plan: true`, run `$FLOWCTL spec clear-no-plan <spec-id> --json` before creating or changing tasks, and stop if it fails.
 
@@ -97,8 +75,7 @@ Collect: file paths with line refs, code to reuse, similar prior work, project c
 
 - Name who the change affects (users, developers, operators); that sets how much detail the plan needs.
 - If you cannot state the open question precisely, that is a chart signal: recommend `/flow-next:chart` and stop. A sharp question that only the human can answer and that would change what gets built belongs to refine, per the when-to-refine rule in [`plan-vs-no-plan.md`](../flow-next-flow/references/plan-vs-no-plan.md).
-- Settle a fork the plan hinges on with a throwaway probe when it can be observed, and read the answer back; never park it as an open question or put it to the user. Only a non-mutating or fully disposable probe runs this way. A fork that needs a stateful or destructive command (a migration, a deployment, a write API, live state) stays an open question or goes to the user.
-- When independent inputs (scouts, reviewers, consulted models) disagree wildly on one question, the question was underspecified: reframe it and re-run, never average or quietly pick one.
+- Settle a fork the plan hinges on with a throwaway probe when it can be observed, and read the answer back; never park it as an open question or put it to the user. The working rules' limit on experiments decides which probes run.
 - Every task traces to an R-ID and every R-ID to the request. A capability nobody asked for is one out-of-scope line in `## Boundaries`. Prefer removing a risk structurally (a closed schema, an inert format, a capability not exposed) over machinery that manages it; a rejected bigger design gets one line in `## Decision Context`. Trimming scope never trims rigor: each R-ID's error cases, Boundaries, coverage, and the containment, permission and concurrency guards a feature needs all stay.
 - When a rejection is product judgment (we could build this and choose not to), read [declined-scope.md](../../references/declined-scope.md) and record it.
 

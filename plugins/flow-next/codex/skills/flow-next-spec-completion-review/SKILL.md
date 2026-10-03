@@ -24,7 +24,7 @@ Verify that the combined implementation of all tasks in a spec satisfies the spe
 - When `RP_ELIGIBLE=1`: RepoPrompt (rp), Codex CLI (codex), GitHub Copilot CLI (copilot), Cursor CLI (cursor), Claude Code CLI (claude), or host-native (`host`)
 - When `RP_ELIGIBLE=0`: Codex CLI (codex), GitHub Copilot CLI (copilot), Cursor CLI (cursor), Claude Code CLI (claude), or host-native (`host`) — rp is macOS-only; never list it in guidance you surface (`--review=rp` stays accepted)
 
-Read [working-rules.md](../../references/working-rules.md) first; it holds for every step of this skill.
+Read [working-rules.md](../../references/working-rules.md) first unless you already have this run; it holds for every step of this skill.
 
 ## Preamble — execute Phase 0 exactly once
 
@@ -37,31 +37,14 @@ When `RP_ELIGIBLE=0` (not macOS, no supported RepoPrompt CLI), never *steer* the
 ## Backend Selection
 
 **Priority** (first match wins):
-1. `--review=rp|codex|copilot|cursor|claude|host|none` argument
+1. `--review=<backend>` or `--review <backend>` argument (`rp|codex|copilot|cursor|claude|host|none`)
 2. `FLOW_REVIEW_BACKEND` env var — bare backend (`rp`, `codex`, `copilot`, `cursor`, `claude`, `host`, `none`) OR spec form (`codex:<model>:xhigh`, `copilot:<model>`, `cursor:<model>`, `claude:<model>:<effort>`); `host` is bare-only (`host:<model>` is rejected)
 3. `.flow/config.json` → `review.backend` (same bare / spec forms)
 4. **Error** - no auto-detection
 
-### Parse from arguments first
-
-Check $ARGUMENTS for:
-- `--review=rp` or `--review rp` → use rp
-- `--review=codex` or `--review codex` → use codex
-- `--review=copilot` or `--review copilot` → use copilot
-- `--review=cursor` or `--review cursor` → use cursor
-- `--review=claude` or `--review claude` → use claude
-- `--review=host` or `--review host` → use host
-- `--review=none` or `--review none` → skip review
-
-If found, use that backend and skip all other detection.
-
-### Otherwise: Phase 0 resolves it
-
-No `--review` flag → `$BACKEND` comes from [workflow-common.md](workflow-common.md) Phase 0 (executed once per the Preamble): the single `flowctl review-backend "$SPEC_ID"` call with ASK handling included. Do not re-resolve here.
-
 ### Backend at a glance
 
-The per-backend summary (models, env vars, `--spec` forms) and the `backend[:model[:effort]]` spec grammar live in [references/backend-at-a-glance.md](references/backend-at-a-glance.md). Read it **only** when you surface backend guidance to the user (ASK branch, recommendation, override hint) — routing does not need it.
+The per-backend summary (models, env vars, `--spec` forms and `FLOW_REVIEW_BACKEND` spec-form examples) and the `backend[:model[:effort]]` spec grammar live in [references/backend-at-a-glance.md](references/backend-at-a-glance.md). Read it **only** when you surface backend guidance to the user (ASK branch, recommendation, override hint) — routing does not need it.
 
 ## Critical Rules
 

@@ -24,19 +24,6 @@ subcommand and accepts no model/effort suffix.
    cross-family check decides — never a CLI fallback.
 
 
-**Host is the documented always-inject exception.** The `codex` backend
-resumes the reviewer's own session on a re-review and therefore sends the
-shrink-only contract WITHOUT re-rendering prior findings; `cursor` and `copilot`
-keep injecting unconditionally until their resume semantics are measured the way
-codex's were (copilot's `--resume` is create-or-resume via a marker, so "resumed"
-and "created" are not separable there). `host` cannot resume at all: rule 3
-above makes each re-review a fresh subagent with `session_id: null`, so the
-reviewer holds nothing from the previous round. The prior findings must travel in
-the prompt here, and the reply grammar below is what makes them machine-readable.
-This is a deliberate exception, tested (`test_review_prompt_no_embed_ratchet`
-asserts `host` has no flowctl dispatch, and the capability set is asserted
-exactly), not an oversight to be "simplified" later.
-
 Everything else on the identities side still applies: point the subagent at the
 `base..head` range and the changed-path list and let it read the diff and the
 spec from the checkout itself. Do not paste diff hunks or spec bodies into the
@@ -117,35 +104,8 @@ Render the dispatch file with the shared backend builder:
 Dispatch the generated prompt verbatim; it already supplies paths, rubric and
 prior-finding grammar. Do not reconstruct its contents by hand.
 
-The generated prompt carries repo-relative PATHS to the current spec and every task spec — not
-their contents (the subagent has the same checkout you do, and a plan
-review is judged against the spec on disk, so a pasted copy can only go stale).
-On re-review the builder supplies the receipt's
-structured `findings.items` (ordinal, severity, classification, status, title,
-and file:line) rather than the legacy review prose. Include focus areas and the
-plan-review rubric from
-[references/plan-review-prompt.md](references/plan-review-prompt.md). Require
-exactly one `SHIP`, `NEEDS_WORK`, `MAJOR_RETHINK`, or `NEEDS_HUMAN` verdict tag. Wait
-blocking for the result.
-
-On re-review, also state the **prior-finding reply grammar verbatim**. These lines are
-machine-read, and prose resolutions are invisible to the parser — a reviewer that
-resolves priors in prose only leaves them carried forward and the loop cannot converge.
-Require one line per prior finding, at the start of a line, echoing the ordinal it was
-rendered with:
-
-```
-Prior finding #1: fixed
-Prior finding #2: not-fixed
-Prior finding #3: withdrawn
-```
-
-Allowed statuses: `fixed`, `not-fixed`, `withdrawn` — nothing else parses. With exactly
-one prior finding the number may be omitted (`Prior finding: fixed`). When every prior
-finding is fixed — and only then — the single line `Prior findings: all fixed` may
-replace the per-finding lines; the two must not be mixed, because any per-finding line
-present wins and disables the aggregate. The `unaddressed` array in the JSON tail is about spec R-ID coverage and does
-**not** vouch for prior findings.
+It also carries the verdict tags and, on re-review, the prior findings. Add only the focus
+areas, and wait blocking for the result.
 
 ## Receipt and status
 

@@ -2,25 +2,6 @@
 
 (Branch chosen in SKILL.md before reading this file)
 
-**CRITICAL**: If you are about to create:
-- a markdown TODO list,
-- a task list outside `.flow/`,
-- or any plan files outside `.flow/`,
-
-**STOP** and instead:
-- create/update tasks in `.flow/` using `flowctl`,
-- record details in the spec/task markdown.
-
-## Preamble
-
-**CRITICAL: flowctl is BUNDLED — NOT installed globally.** `which flowctl` will fail (expected). Define once; subsequent blocks use `$FLOWCTL`:
-
-```bash
-FLOWCTL="${DROID_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/flowctl"
-[ -x "$FLOWCTL" ] || FLOWCTL="<plugin-root>/scripts/flowctl"   # <plugin-root> = the directory two levels above this skill's SKILL.md file (the harness gave you that file's absolute path when the skill loaded); substitute it literally
-[ -x "$FLOWCTL" ] || FLOWCTL=".flow/bin/flowctl"
-```
-
 ## Phase 1: Resolve Input
 
 Detect input type in this order (first match wins):
@@ -46,21 +27,10 @@ re-invoke work. Stop before route writes, task minting, claims or dispatch,
 including when no review backend is available. Work's `--review` selects
 implementation review; it does not satisfy this gate.
 
-**Direct-owner resume admission (both modes):** for the sole implicit-owner shape
-above, fetch `$FLOWCTL show <owner-id> --json` after reading the parent spec.
-If that owner is `in_progress`, admit it for resume only with a matching actor
-claim and positive evidence identifying its ended prior invocation (terminal host
-session/process record or explicit user confirmation). Read any carried host
-context for the owner ID and evidence reference; these are context, not target
-arguments. Resolve that reference and verify it identifies the current actor/claim
-and its ended prior invocation. Missing, inaccessible, ambiguous or mismatched
-evidence stops with `NEEDS_HUMAN` before claims or dispatch. Age, silence and an
-empty ready list prove nothing. `flowctl start` refuses an `in_progress` task held
-by this same actor unless `--reclaim` is passed (a second run on one clone shares
-the actor string, so a plain start cannot tell itself from a crash resume); the
-admission above is the evidence check that licenses the flag, and 3b passes it
-only for an owner admitted here. Retain the input's `SINGLE_TASK_MODE` or `SPEC_MODE`
-and carry the admitted owner to 3a.
+**Direct-owner resume admission (both modes):** for the sole implicit-owner shape above,
+fetch `$FLOWCTL show <owner-id> --json` after reading the parent spec. Only when that owner
+reads `in_progress`: read [references/direct-owner-resume.md](references/direct-owner-resume.md)
+and apply it before any claim; `--reclaim` is passed only for an owner it admits.
 
 ---
 
@@ -94,34 +64,19 @@ and carry the admitted owner to 3a.
 - Read the ready frontier: `$FLOWCTL ready --spec <id> --json`. An admitted
   direct owner is selected by 3a even when this list is empty.
 
-**Spec file start (.md path that exists)**:
-1. Check file exists: `test -f "<path>"` — if not, treat as idea text
-2. Initialize: `$FLOWCTL init --json`
-3. Read file and extract title from first `# Heading` or use filename
-4. Create spec — mint gate (tracker-first vs flow-first): [references/spec-id-mint.md](references/spec-id-mint.md), read only when minting. Take the ONE root config snapshot the gate reads (one config read, never a per-leaf `config get tracker.specIds`; re-type the literal path, bash vars die across tool calls):
-
-   ```bash
-   WORK_CFG="${TMPDIR:-/tmp}/flow-work-config-<suffix>.json"
-   $FLOWCTL config get --json > "$WORK_CFG" 2>/dev/null || printf '{"key":null,"value":{}}' > "$WORK_CFG"
-   ```
-
-5. Set spec from file: `$FLOWCTL spec set-plan <spec-id> --file <path> --json`
-6. Create single task: `$FLOWCTL task create --spec <spec-id> --title "Implement <title>" --json`
-7. Continue with spec-id
-
-**Spec-less start (idea text)**:
-1. Initialize: `$FLOWCTL init --json`
-2. Create spec — run the **same tracker-first gate as Spec file start above**, verbatim, with `<idea>` as the title. Do not restate it here; that block is the single source.
-3. Create single task: `$FLOWCTL task create --spec <spec-id> --title "Implement <idea>" --json`
-4. Continue with spec-id
+**Spec file (kind 4) or idea text (kind 5):** read
+[references/spec-less-start.md](references/spec-less-start.md) and create the spec and its single
+task as it says.
 
 Done when: the input is classified into exactly one of the five kinds, the mode (`SPEC_MODE` / `SINGLE_TASK_MODE`) is recorded, and a spec id exists to carry into Phase 2.
 
-Before any scout dispatch apply [references/judge-tier.md](references/judge-tier.md).
+Only when this run dispatches a scout: read [references/judge-tier.md](references/judge-tier.md) before that dispatch.
 
 ## Phase 2: Apply Branch Choice
 
-**Chain check first.** Before any branch is created or any task starts, ask flowctl whether the spec is chain-eligible; the predicate lives in one place and this skill never re-derives it. A dependent spec whose parent is open with every task done and its branch on origin is **chained**: the spec branch is created from the parent's fetched remote-tracking ref, and that ref is the base for the spec base, gate classification, and the quality auditor's diff range. Work never creates a local branch named after the parent and never deletes or resets an existing parent branch. An `eligible: false` answer (an unfinished parent, two open parents, an unpushed parent, a sibling already chained, a failed remote query) stops the run with `BLOCKED: <reason from the command>` before any task starts; the same reason parked the spec at selection under `flow --auto`.
+**Chain check first.** The fence below asks `flowctl spec chain` before any branch is created.
+Only when the spec's `depends_on_epics` (in `$FLOWCTL show <spec-id> --json`) is non-empty, or
+the fence prints `BLOCKED:`: read [references/chained-spec.md](references/chained-spec.md).
 
 ```bash
 # fence:work-branch — inputs: FLOWCTL, SPEC_ID, BRANCH_NAME, BRANCH_MODE (new|current), DEFAULT_BASE (optional; defaults to origin/HEAD); origin reachable
@@ -191,13 +146,13 @@ branch_git merge-base HEAD "$BASE_BRANCH" > .flow/tmp/spec_base || exit 2
 rm -f .flow/tmp/spec_base_repos   # sibling bases are per run; recorded below
 ```
 
-Based on user's answer from setup questions (`BRANCH_MODE`):
+Based on the resolved branch mode (`BRANCH_MODE`):
 
 - **Worktree**: use `skill: flow-next-worktree-kit`, with the same `BASE_BRANCH` the fence resolved (the parent's remote-tracking ref on a chained spec, the default branch otherwise).
 - **New branch**: the fence's `new` arm - from `origin/<parent_branch>` on a chained spec (carrying the spec's own tracked `.flow/specs/<id>.*` and `.flow/tasks/<id>.*` files from the pre-checkout commit when the start point lacks them or holds an older version, as one bookkeeping commit), else the resolved default base (refreshed from origin when remote). Existing task branches are checked out unchanged.
 - **Current branch**: proceed; on a chained spec the fence's `current` arm requires the parent tip in the branch's ancestry and blocks naming the missing ancestry otherwise.
 
-The fence persists the SPEC-RUN BASE once (`git merge-base HEAD "$BASE_BRANCH" > .flow/tmp/spec_base`); the base is the run's `BASE_BRANCH`, never a hard-coded `origin/main`. Like the worker `BASE_COMMIT`, bash variables do not survive across tool calls, so later phases re-read this persisted base via `$(cat .flow/tmp/spec_base)`. Capture it once at branch setup; Phase 4 uses it for classify calls and the auditor dispatch. When the spec changes code in git repos beside this one (a home-base workspace; the project instructions or the spec name them), record each repo's merge-base with its own base branch the same way, one `<repo path> <sha>` line per repo in `.flow/tmp/spec_base_repos` (the fence clears it, so a previous run's repos never carry over; a resumed run records its repos again); a repo first touched later gets its line before its first edit. Publication is unchanged: the spec branch is pushed as today, and no PR exists until make-pr, which detects the chain from history (`flow-next-make-pr/workflow.md` Phase 0).
+The fence persists the SPEC-RUN BASE once (`git merge-base HEAD "$BASE_BRANCH" > .flow/tmp/spec_base`); the base is the run's `BASE_BRANCH`, never a hard-coded `origin/main`. Like the worker `BASE_COMMIT`, bash variables do not survive across tool calls, so later phases re-read this persisted base via `$(cat .flow/tmp/spec_base)`. Capture it once at branch setup; Phase 4 uses it for classify calls and the auditor dispatch. When the spec changes code in git repos beside this one (the project instructions or the spec name them): read [references/multi-repo-base.md § Phase 2](references/multi-repo-base.md#phase-2). Publication is unchanged: the spec branch is pushed as today, and no PR exists until make-pr, which detects the chain from history (`flow-next-make-pr/workflow.md` Phase 0).
 
 Done when: `spec chain` reported `eligible: true`, the run is on the branch the choice named (under autonomy, exactly the spec's `branch_name`; on a chained spec created from `origin/<parent_branch>`), and `.flow/tmp/spec_base` holds the merge-base with the run's base.
 
@@ -234,9 +189,11 @@ here, inline.** Print `Scheduling: inline (single task)`.
 5. **Review, by the risk rule in working-rules.md.** Selected, and the review mode is not `none`:
    attended, hand the result back first, then run
    `flow-next:flow-next-impl-review <task-id> --base <base_commit> --review=<mode>` in the
-   background and report its verdict when it lands; unattended, run it and wait. `done` waits for
+   background and report its verdict when it lands (`<mode>` is a backend the user named for this run, else
+   `$FLOWCTL review-backend <task-id>` run from the repository root, so a task's own backend wins over the project default; `ASK` there means nothing is configured: skip review and say once in the handoff "no review backend set; run setup or set review.backend"); unattended, run it and wait. `done` waits for
    SHIP, or for an `OVERRIDDEN:` line from an unattended loop (its declined findings go in the
-   summary and the Decisions list) or from the person accepting an attended `NEEDS_WORK`. Not selected: record `stage: impl-review - skipped(policy: risk - <reason>)`. When a
+   summary and the Decisions list) or from the person accepting an attended `NEEDS_WORK`, or for an
+   `OPEN_ITEM:` line from an unattended review (the call goes in the summary as one left for the person). Not selected: record `stage: impl-review - skipped(policy: risk - <reason>)`. When a
    review went NEEDS_WORK then SHIP on a non-trivial fix and memory is enabled, capture the lesson
    per [references/worker-memory-capture.md](references/worker-memory-capture.md).
 6. **Done.** Write a short summary to `.flow/tmp/<task-id>-summary.md` (what changed, and one
@@ -246,10 +203,13 @@ here, inline.** Print `Scheduling: inline (single task)`.
 7. **Completion review**, only once every task in the spec is done. A task-id run whose spec
    still has unfinished tasks runs none: it commits the task receipt (the command below) and
    finishes. Skip it when the spec has this one task, its review reached SHIP (or a recorded
-   override), and every spec R-ID is in the task's `satisfies`: run `$FLOWCTL spec
-   set-completion-review-status <spec-id> --status not_required --if-current unknown --json` and
-   note `stage: completion-review - skipped(policy: single-task, per-task SHIP covers spec
-   surface)`. Otherwise invoke `flow-next:flow-next-spec-completion-review <spec-id>` with the same
+   override or unattended `OPEN_ITEM:`) or the risk rule skipped that review, and every spec R-ID is
+   in the task's `satisfies`: run `$FLOWCTL spec
+   set-completion-review-status <spec-id> --status not_required --if-current unknown --json` and,
+   when it reports `written: true` or the status already reads `not_required`, note `stage:
+   completion-review - skipped(policy: single-task, per-task SHIP covers spec surface)`; any other
+   result means the skip did not land: a verdict already recorded stands, and `refused` (another task
+   appeared) waits, like any spec with unfinished tasks, until every task is done. Otherwise invoke `flow-next:flow-next-spec-completion-review <spec-id>` with the same
    `--review`. Commit the task receipt and this status together:
    `git add -- .flow/ && git commit -m "chore(flow): task receipt <task-id>"`.
 
@@ -258,30 +218,13 @@ here, inline.** Print `Scheduling: inline (single task)`.
 After all tasks complete:
 
 - When `.flow/features/` exists, once all tasks are done, run [references/feature-map-update.md](references/feature-map-update.md) first: it updates the feature files whose user route this change altered.
-- Run `$FLOWCTL gate classify --base "$(cat .flow/tmp/spec_base)"`; exit 0 means docs-only tier-B: run lint/format only and note `Gates: docs-only tier-B` for the Phase 5 final summary. On nonzero, run the full gates only when the repository's instructions or the user ask for a full suite: once, here, and not again after later fixes (re-check those with focused tests). A full gate that already ran this run (rolling quiesce, the wave join) is not run again here. With `.flow/tmp/spec_base_repos`, also run classify inside each listed repo against its recorded sha: tier-B needs exit 0 in every repo, and a repo that exits nonzero (including a missing path or unresolvable base) runs its full gates. Name each listed repo and its sha in the auditor dispatches below.
-- For each full gate (test) command that would run, first probe `$FLOWCTL gate check --gate <gate_id> --command "<cmd>"`; exit 0 means skip that re-run and note `Gates: baseline reused (green receipt <sha8>)` for the Phase 5 final summary. On nonzero, run it. After any passing full gate run here, write its receipt with `$FLOWCTL gate receipt --gate <gate_id> --command "<cmd>"`.
+- Run `$FLOWCTL gate classify --base "$(cat .flow/tmp/spec_base)"`; exit 0 means docs-only tier-B: run lint/format only and note `Gates: docs-only tier-B` for the Phase 5 final summary. On nonzero, run the full gates only when the repository's instructions or the user ask for a full suite: once, here, and not again after later fixes (re-check those with focused tests). When nobody asked, note `Gates: focused (full suite not requested)`; that is the normal outcome, not a gap to fill. A full gate that already ran this run (rolling quiesce, the wave join) is not run again here. When `.flow/tmp/spec_base_repos` exists: read
+  [references/multi-repo-base.md § Phase 4](references/multi-repo-base.md#phase-4) as well.
+- Only when a full gate (test) command is about to run here: read
+  [references/full-gate-receipts.md](references/full-gate-receipts.md) first.
 - Run lint/format per repo
-- If change is large/risky, run the quality auditor subagent as **two axis-scoped dispatches of the same agent**, both named in ONE message:
-  - Task flow-next:quality-auditor("AXIS: correctness — review recent changes; base <sha>")
-  - Task flow-next:quality-auditor("AXIS: standards — review recent changes; base <sha>")
-
-  `<sha>` is the spec base you already resolved this phase (`cat .flow/tmp/spec_base`) — substitute the value into both dispatch strings. A dispatch that shipped the literal `<sha>` has broken this.
-
-  **Both axis dispatches go out in the same message.** A run that dispatched one axis and waited for its report before sending the other has broken this — the split exists so neither axis can spend the whole budget on the other's territory, and serializing them re-imports the cost the split removed.
-
-  The auditor grades work someone else produced, so it is the **reviewer** tier. **Routing precedence, highest first: an explicit argument in the invocation, then the project routing block in the instruction file, then the agent definition's own default, then the session model.**
-
-  **Aggregation — both reports verbatim, under two headings:**
-  - `### Correctness axis` — that report, unedited.
-  - `### Standards axis` — that report, unedited.
-
-  Never merged, never reranked, never interleaved; neither axis's findings may bury the other's. A run that folded the two reports into one ranked list, or dropped an axis because the other looked worse, has broken this. After the two reports, one line per axis: finding count + worst tier **within that axis**. There is no single winner across axes.
-
-- Fix rule:
-  - Fix **Critical** findings. Only the correctness axis can carry them — the standards axis's ceiling is Should Fix by charter, so a Critical attributed to the standards axis is a charter break, not a blocker.
-  - **Should Fix** from either axis: conductor judgment.
-  - **Consider** never blocks.
-  - When deciding fixes, read each `Out-of-axis observation:` as belonging to the named axis's territory. This is a fix-decision step only — the presented reports above stay verbatim.
+- If change is large/risky: read [references/quality-auditor.md](references/quality-auditor.md)
+  and run the two-axis audit and its fix rule as it says.
 
 - **Caught gate manipulation strengthens the gate, never just reverts the
   edit.** When this phase (or any review) catches a test, gate, or baseline
@@ -315,41 +258,12 @@ A run that closed the spec on its own initiative has broken this.
 
 Then push + open PR if user wants.
 
-**Tracker-sync end-of-run check - LAST action before the final summary.** Read-only audit: did every lifecycle touchpoint that triggered this run actually fire (receipt-backed)? It runs independently of the touchpoints, so a wholesale-skipped facade call is still caught. With no tracker configured, `sync check` exits silently in constant time; the summary slot then reads `n/a (bridge inactive)` and nothing else changes.
-
-```bash
-# Tasks worked this run = the task ids Phase 3 claimed/completed (you know these
-# from the loop; substitute them).
-WORKED="<task-id-1> <task-id-2> ..."
-
-# --since: earliest claimed_at among tasks worked this run. On-disk anchor —
-# bash vars do NOT survive across tool calls; flowctl show re-derives it anytime.
-SINCE=""
-for T in $WORKED; do
-  TS="$($FLOWCTL show "$T" --json | jq -r '.claimed_at // empty')"
-  [ -n "$TS" ] && { [ -z "$SINCE" ] || [ "$TS" \< "$SINCE" ]; } && SINCE="$TS"
-done
-
-# --events: ONLY what actually triggered this run (triggered-set contract):
-#   ≥1 task claimed this run            → include work.firstClaim
-#   ≥1 task reached done this run       → include work.done
-#   completion review ran this run (3g) → include completionReview
-# Configured-but-not-triggered events are never checked, never MISSING.
-EVENTS="work.firstClaim,work.done"   # ← substitute the actual triggered set
-
-"$FLOWCTL" sync check "$SPEC_ID" --events "$EVENTS" --since "$SINCE" --json
-# Empty output → bridge inactive → slot = `n/a (bridge inactive)`. Otherwise
-# `.missing` empty → slot = `OK`; non-empty → retro-fire (below).
-```
-
-(Nothing triggered at all — no claims, no dones, no 3g, e.g. a resumed no-op run — skip the check; the slot is vacuously `OK`.)
-
-**Retro-fire on MISSING — exactly ONE cycle, never blocking.** When `.missing` is
-non-empty, read [references/tracker-retro-fire.md](references/tracker-retro-fire.md)
-and execute its cycle (anchor → per-event inline tracker-sync wrapper call → re-check
-the missed events only → record the final state in the summary slot). Still MISSING
-after the one cycle is a recorded, visible outcome — never a second retro-fire, never
-a block.
+**Tracker-sync end-of-run check - LAST action before the final summary.** Run a fresh
+`$FLOWCTL sync active --json` now (the run may have changed the config since its first probe).
+Only when it parses and reads `active: false`: the slot reads `n/a (bridge inactive)` and the check
+is skipped. Otherwise, including when the probe fails or is unreadable: read
+[references/tracker-touchpoints.md § End-of-run check](references/tracker-touchpoints.md#end-of-run-check)
+and run it.
 
 **Final summary (mandatory template).** End the run with this block. **`Tracker sync:` is a required field carrying exactly one of its four states** — an explicit `n/a` proves the check ran, and an absent field reads as a skipped check. A summary printed without the slot has broken this. The `Gates:` slot is where host-layer gate skips surface — one `Gates:` line per accumulated Phase 4 outcome (repeat the line for each skip/honor so none is overwritten); worker-layer skips live in each task's evidence `tests[]`.
 
@@ -393,37 +307,11 @@ prescribe:** write the model that *executed*, not the one your routing block ask
 for; omit the annotation entirely when the harness did not expose it (absent reads
 as `unknown`), and never write a selector placeholder (`auto`, `default`,
 `unknown`) — an unrouted stage and a ladder floor are both honestly unknown.
-Recording the configured preference as if it were an observation has broken this.
 
 **A skipped stage is an event with a reason, never an absence** — review treats a
 stage with no line as failed (that inversion is the point: "no record" can never
 again masquerade as "nothing to do"). A stage this run reached
-that left no line has broken this. Timestamps ride the line only where this
-orchestrator knows them; there is no separate timing store. Token/cost telemetry
-is out of scope — it is host-side data flowctl cannot observe (a future host
-integration could report it; nothing here does). Reading them back:
-`flowctl usage --stages <spec-id>` summarizes ran/skipped/failed counts + reasons
-from the committed receipts.
+that left no line has broken this. Timestamps ride the line only where this orchestrator knows
+them; there is no separate timing store.
 
-Done when: all tasks read `done`, `flowctl validate` passes, the tracker-sync check has run, and the final summary block is printed with its `Tracker sync:` slot and one `Gates:` line per Phase 4 outcome.
-
-## Definition of Done
-
-Confirm before ship:
-- All tasks have status "done"
-- `$FLOWCTL validate --spec <id>` passes
-- Tests pass
-- Lint/format pass
-- Docs updated only where the change alters behaviour they document and the request covers it, or the repository requires it
-- Working tree is clean
-- Final summary printed with the mandatory `Tracker sync:` slot (one of the four states — explicit `n/a (bridge inactive)` when no tracker is configured)
-
-## Example flow
-
-```
-Phase 1 (resolve) -> Phase 2 (branch) -> Phase 3:
-  one task: inline (claim, anchor, implement, commit, review by risk, done, completion-review skip)
-  several tasks, or a worker asked for: references/multi-task.md (rolling by default; wave when
-    plan-sync is on or the tasks form a sequential chain; completion review at 3g)
--> Phase 4 (quality) -> Phase 5 (ship: verify, commit, tracker check, summary)
-```
+Done when: all tasks read `done`, `flowctl validate` passes, the tests and lint/format pass, the working tree is clean, the tracker-sync check has run (or the fresh probe read `active: false`), and the final summary block is printed with its `Tracker sync:` slot and one `Gates:` line per Phase 4 outcome.

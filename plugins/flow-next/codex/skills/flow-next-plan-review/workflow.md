@@ -81,16 +81,7 @@ For host and rp, provide the current spec/task material and review focus.
 
 ## Phase 2: Select One Backend Workflow
 
-Read exactly one:
-
-| `$BACKEND` | File |
-|---|---|
-| `codex` | [workflow-codex.md](workflow-codex.md) |
-| `copilot` | [workflow-copilot.md](workflow-copilot.md) |
-| `cursor` | [workflow-cursor.md](workflow-cursor.md) |
-| `claude` | [workflow-claude.md](workflow-claude.md) |
-| `host` | [workflow-host.md](workflow-host.md) |
-| `rp` | [workflow-rp.md](workflow-rp.md) |
+Read exactly one backend file, per SKILL.md's routing list.
 
 Do not read any other backend file. Unknown/malformed values fail closed with
 the same `ASK`/error behavior; never guess a backend.

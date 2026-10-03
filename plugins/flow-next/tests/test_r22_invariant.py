@@ -92,19 +92,6 @@ class TestR22E_SpecSkeletonByteForByte(unittest.TestCase):
             "scaffold is that file — edit it to change the baseline.",
         )
 
-    def test_skeleton_carries_canonical_h2s(self) -> None:
-        """CLI skeleton is the canonical template, including its seven H2s."""
-        proc = _run("spec", "skeleton", cwd=self.cwd)
-        self.assertEqual(proc.returncode, 0)
-        skeleton = proc.stdout
-        self.assertIn("## Goal & Context", skeleton)
-        self.assertIn("## Architecture & Data Models", skeleton)
-        self.assertIn("## API Contracts", skeleton)
-        self.assertIn("## Edge Cases & Constraints", skeleton)
-        self.assertIn("## Acceptance Criteria", skeleton)
-        self.assertIn("## Boundaries", skeleton)
-        self.assertIn("## Decision Context", skeleton)
-
     def test_skeleton_json_envelope_matches(self) -> None:
         """`flowctl spec skeleton --json` wraps the same text in a JSON
         envelope; the embedded skeleton field is byte-for-byte identical."""

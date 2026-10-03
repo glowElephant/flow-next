@@ -22,8 +22,10 @@ value to `comment`. Work events use their fixed operation. Make PR and the
 successful land merge have their documented unconditional active-bridge paths.
 
 Manual runs use the matching granular `flowctl tracker` verb and carry no event
-tag. The `tracker sync` facade is event-only and always receives the caller's
-real event key; never invoke that facade without `--event`.
+tag, except pull and reconcile: their body preparation (§4) exists only in the
+facade, so a manual one calls it with `--event manual`. Otherwise the `tracker
+sync` facade always receives the caller's real event key; never invoke it
+without `--event`.
 
 All autonomous signals collapse into one no-prompt gate:
 
@@ -79,36 +81,10 @@ Three supported starts share one durable locator:
   fails after the remote create, retry links the recovery record and never
   creates a duplicate.
 
-#### Receipt / retry contract
-
-Before creating remotely, derive the first 16 hex characters of
-`sha256(type NUL title NUL body)` with `sync create-first-key`, then query that
-key with `sync create-first-get`. A hit resumes by linking the recorded issue;
-it never creates another.
-
-After a successful remote create, immediately persist the returned identity
-with `sync create-first-put`. Keep that recovery record across any later
-failure. **After minting the local spec, record the claim with
-`sync create-first-put --spec-id <id> --if-absent`** - the CAS
-form, so two promoters racing on the same candidate end with one recorded
-spec. On exit `10` with `subtype=spec_already_minted`, another promoter won:
-adopt `details.recordedSpecId` and retire the locally minted duplicate with
-`flowctl spec close <loser-id>` plus a one-line note naming the adopted
-winner - a closed duplicate is inert and auditable, and there is deliberately
-no spec-delete verb. Never re-put. On `subtype=record_missing`, the candidate
-was already promoted and cleared (or never recorded here): locate the issue's
-attached spec via the tracker id and adopt it. **Under any autonomy marker**
-(`FLOW_AUTONOMOUS=1`, `mode:autonomous`) a CAS conflict resolves to `sync defer` like every other
-collision - adopting a winner and retiring a spec is a human-confirmed
-resolution, not an autonomous one. Only after the linked mint, merge-base seed,
-back-reference, and the normal spec-keyed receipt all succeed may the caller
-consume the record with `sync create-first-clear`. These four helpers
-exclusively own the retry record; do not recompute its hash or read, write, or
-delete its file directly.
-
-**Back-reference:** write `flow:<spec-id>` only after the durable local link
-exists. A failed back-reference leaves the recovery record available for a
-safe retry.
+Before any remote create (create-first, or a Flow-first issue create), a retry or recovery of
+one, or linking an existing issue that needs a back-reference: read
+[references/create-first.md](references/create-first.md) for the retry-key receipt contract and
+the back-reference rule.
 
 Linear MCP creation is allowed only as the MCP judgment surface. Pass its result
 to `tracker persist-external`; the deterministic path completes the durable id
@@ -226,10 +202,10 @@ Branch only on the envelope:
 | `external_action_required` | perform the named MCP action if authorized, then resume with `persist-external`; otherwise defer |
 
 A push `conflict` with subtype `tracker_diverged` means someone edited the
-tracker body since the last sync. With `UNATTENDED=0`, ask once: reconcile
+tracker body since the last sync. With `UNATTENDED=0` outside a forked call, ask once: reconcile
 (recommended, merges both sides), overwrite the tracker body (rerun the same
 push with `--overwrite-diverged`), or leave it. With `UNATTENDED=1` (including every
-stage `flow --auto` runs), never overwrite: record it with
+stage `flow --auto` runs) or in a forked call, never overwrite: record it with
 `flowctl sync defer <spec-id> --summary "tracker body diverged since last sync"
 --suggested "reconcile, or confirm an --overwrite-diverged push"` and continue.
 
@@ -239,61 +215,8 @@ diagnostic prose, never a routing API.
 
 ## 7. Backlog and question operations
 
-Backlog enumeration uses the deterministic `wire list-open` contract and the
-resolved ready lane. It returns normalized issues only. It does not create Flow
-specs by itself. On Linear with `tracker.readyState` unset, `list-open` refuses
-with an `unresolved`/`ready_state` error: treat that refusal as
-"no ready lane configured" and fall back to Flow-ready specs - it is not an
-empty board and not a transport failure.
-
-For each returned issue, build its locator from the same normalized row
-(`durable = issue.id`, `display = issue.identifier`). `list-comments` is the
-read-only parked-question call:
-
-```bash
-$FLOWCTL tracker wire comment-list --locator "$LOCATOR" --json
-```
-
-It returns normalized `created_at` timestamps. Reject truncated listings.
-When the same stable question id has both question and answer markers, compare
-their immutable timestamps: latest question means parked; latest answer means
-answered. Missing or tied chronology fails closed.
-
-`list-relations` is the read-only dependency-ordering call:
-
-```bash
-$FLOWCTL tracker wire relation-list --locator "$LOCATOR" --json
-```
-
-Treat `class: transport`, `subtype: truncated` as a failed read and route it
-through normal structured-error recovery. Never order work from a partial
-dependency graph.
-
-For `question`, the caller owns the semantic body and the four stable identity
-inputs. Write only the free-prose body to a mode `0600` temporary file. The wire
-verb computes the id, adds the canonical marker, lists existing comments, and
-posts only when the latest round for that id is answered or no question exists:
-
-```bash
-$FLOWCTL tracker wire question --locator "$LOCATOR" \
-  --subject-id "$SUBJECT_ID" --blocked-stage "$BLOCKED_STAGE" \
-  --reason-code "$REASON_CODE" --question-slug "$QUESTION_SLUG" \
-  --body-file "$BODY_FILE" --json
-```
-
-Before listing, flowctl takes a local claim keyed by provider, durable issue id,
-and stable question id; it releases the claim after dedup/post. A concurrent
-identical ask returns retryable `question_in_flight`, then deduplicates against
-the winner on retry.
-
-`SUBJECT_ID` is the spec id for a spec-backed item and the normalized durable
-`issue.id` for a tracker-only item; never use the display key in the hash.
-Spec-backed questions also write the returned `data.question_id` into the
-matching `## Open Questions` anchor. A tracker-only question has no local
-receipt or spec write. In autonomous mode, a question resumes only from the
-matching answer marker. If no tracker transport exists, retain the existing
-spec-only floor; a tracker-only subject has nowhere durable to park and returns
-`NEEDS_HUMAN`.
+Only for `wire list-open`, `comment-list`, `relation-list` or `question` (backlog enumeration,
+dependency ordering, parked questions): read [references/backlog-ops.md](references/backlog-ops.md).
 
 ## 8. Completion
 

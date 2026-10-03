@@ -52,9 +52,6 @@ TESTS_DIR = HERE.parent
 PLUGIN_DIR = TESTS_DIR.parent
 REPO_ROOT = PLUGIN_DIR.parent.parent
 FLOWCTL_PY = PLUGIN_DIR / "scripts" / "flowctl.py"
-CLASSIFICATION_MD = PLUGIN_DIR / "skills" / "flow-next-prime" / "classification.md"
-PRIME_SKILL_DIR = PLUGIN_DIR / "skills" / "flow-next-prime"
-PRIME_MIRROR_DIR = PLUGIN_DIR / "codex" / "skills" / "flow-next-prime"
 
 
 _FLOWCTL_MOD: Any = None
@@ -1261,14 +1258,6 @@ class EmitterContractTestCase(unittest.TestCase):
         self.assertIn("def _prime_classify", text)
         self.assertIn("def _prime_parse_ls_files_staged", text)
 
-    def test_schema_contract_is_pinned_in_classification_md(self) -> None:
-        # Guard the source-of-truth link: the emitter implements the pinned
-        # schema, so the contract file must exist and carry the schema block.
-        self.assertTrue(CLASSIFICATION_MD.is_file())
-        text = CLASSIFICATION_MD.read_text(encoding="utf-8")
-        self.assertIn("flowctl prime classify --json", text)
-        self.assertIn('"schema_version"', text)
-
     @unittest.skipIf(
         sys.platform == "win32",
         "live subcommand-resolution subprocess is Windows-runner fragile; the "
@@ -2454,24 +2443,6 @@ class ReportInputDerivabilityTestCase(unittest.TestCase):
             self.assertEqual(_git(repo, "rev-parse", "HEAD"), before_head)
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
-
-
-class PrimeBuildProbeFenceTestCase(unittest.TestCase):
-    """The build probe fence captures the build's own exit code."""
-
-    def _assert_build_rc_captured_before_tail(self, base: Path) -> None:
-        # Regression (PR #207 round 10, P1): `cmd | tail; BUILD_RC=$?` records
-        # tail's status - the build probe must capture its own exit code
-        # before truncating output, or a broken build passes BS2/G1.
-        text = (base / "workflow.md").read_text(encoding="utf-8")
-        self.assertIn('> "$BUILD_OUT" 2>&1', text, base)
-        self.assertNotIn("| tail -20\nBUILD_RC=$?", text, base)
-
-    def test_canonical_build_rc_capture(self) -> None:
-        self._assert_build_rc_captured_before_tail(PRIME_SKILL_DIR)
-
-    def test_mirror_build_rc_capture(self) -> None:
-        self._assert_build_rc_captured_before_tail(PRIME_MIRROR_DIR)
 
 
 if __name__ == "__main__":

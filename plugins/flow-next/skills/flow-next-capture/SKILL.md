@@ -13,19 +13,14 @@ flowctl supplies thin plumbing (`spec create`, `spec set-plan`, `spec set-branch
 
 Clear ideas and finished chart briefings route here; capture never manufactures a chart for clear work. Unsure: `/flow-next:flow --explain`.
 
-**Read [workflow.md](workflow.md) for the phases and [phases.md](phases.md) for the source tags and confidence tiers.** Branch-specific machinery lives in `references/*.md`, loaded only when its gate fires.
+**Read [workflow.md](workflow.md) for the phases and [phases.md](phases.md) for the source tags.** Branch-specific machinery lives in `references/*.md`, loaded only when its gate fires.
 
-Read [working-rules.md](../../references/working-rules.md) first; it holds for every step of this skill.
+Read [working-rules.md](../../references/working-rules.md) first unless you already have this run; it holds for every step of this skill.
 
 ## Preamble
 
-**CRITICAL: flowctl is BUNDLED — NOT installed globally.** `which flowctl` will fail (expected). Define once; subsequent blocks (here and in `workflow.md` / `phases.md`) use `$FLOWCTL`:
-
-```bash
-FLOWCTL="${DROID_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/flowctl"
-[ -x "$FLOWCTL" ] || FLOWCTL="<plugin-root>/scripts/flowctl"   # <plugin-root> = the directory two levels above this skill's SKILL.md file (the harness gave you that file's absolute path when the skill loaded); substitute it literally
-[ -x "$FLOWCTL" ] || FLOWCTL=".flow/bin/flowctl"
-```
+**CRITICAL: flowctl is BUNDLED — NOT installed globally.** `which flowctl` will fail (expected).
+workflow.md's Preamble defines `$FLOWCTL`; later blocks (there and in `phases.md`) use it.
 
 **Inline skill (no `context: fork`)** — `AskUserQuestion` must stay reachable across phases; subagents cannot call blocking question tools.
 
@@ -99,7 +94,7 @@ When the sentinel prints, read [references/autofix-mode.md](references/autofix-m
 Interactive capture follows the working rules' attended contract, plus:
 
 - Use `AskUserQuestion` (load it with `ToolSearch` `select:AskUserQuestion` if needed); plain-text numbered options only when the tool is unreachable. Never skip a question silently.
-- The body leads with the recommendation, a one-sentence reason, and a confidence tier (`[high]` / `[judgment-call]` / `[your-call]`, [phases.md](phases.md) §Confidence tiers). Option labels stay neutral and state their consequence.
+- The body leads with the recommendation, a one-sentence reason, and a confidence tier (`[high]` / `[judgment-call]` / `[your-call]`; before asking, read [references/confidence-tiers.md](references/confidence-tiers.md)). Option labels stay neutral and state their consequence.
 - Plain language: one sentence of stakes, everyday words, a short gloss for any needed term (`R-ID`, `[inferred]`).
 - Never ask for facts the conversation already gave. Phase 3 asks only its must-ask cases; other `[inferred]` content surfaces in the summary instead.
 
@@ -119,13 +114,5 @@ These protect spec trust:
 ## Workflow
 
 Execute [workflow.md](workflow.md) in order:
-
-0. **Pre-flight** — duplicates, compaction, strategy, chart-briefing and rewrite gates.
-1. **Evidence** — verbatim user quotes first; the draft cites them, not memory.
-2. **Synthesis** — the resolved template's sections, tags on paraphrase and inference only, route judgment.
-3. **Must-ask cases** — ambiguous title, untestable criterion, scope conflict.
-4. **Prepare the write** — materialize the body once, verify findability, settle any split, snapshot readiness.
-5. **Write and review** — `spec create --plan-file`, summary, editor offer, then the separately consented follow-ups; §5.9b sets `no_plan` on `--no-plan`, or under `from:flow` when the route resolves to direct.
-6. **Close** — tracker-sync check, then `Recommended next:` unless `/flow-next:flow` dispatched the run.
 
 The spec at `.flow/specs/<spec-id>.md` is the deliverable. Autofix without `--yes` prints the draft summary and exits 0 with no spec allocated.

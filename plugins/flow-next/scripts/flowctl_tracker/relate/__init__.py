@@ -881,6 +881,34 @@ def _relate_txn(flow_dir: Path, spec_id: str, *, blocked_by: str,
     else:
         out = fn(config, ex, **kwargs)
 
+    # GitHub models a blocker as the parent issue, and an issue takes only one
+    # parent: a second blocker edge is rejected 422 (#502). The edge cannot be
+    # projected, so queue it for a person and continue instead of failing the
+    # whole sync.
+    if (provider == "github" and isinstance(out, TrackerError)
+            and out.cls == ErrorClass.INVALID_INPUT and "422" in out.message):
+        _ledger_release(flow_dir, spec_id, key=key)
+        qerr = _queue_conflict(
+            flow_dir, spec_id,
+            summary=f"GitHub rejected the blocked-by edge to {blocked_by} (422); "
+                    "a GitHub sub-issue takes only one parent",
+            reason="not projectable as a sub-issue; record the dependency by hand")
+        if qerr:
+            return qerr
+        rerr = _write_relate_receipt(
+            write_receipt,
+            flow_dir, spec_id=spec_id, status="queued",
+            tracker_id=from_id, event=event, transport=provider,
+            note="GitHub sub-issue already has a parent; edge queued")
+        if rerr:
+            return rerr
+        return {
+            "kind": "queued",
+            "reason": "github_single_parent",
+            "from": spec_id, "to": blocked_by, "key": key,
+            "lastSyncedAt": tracker_a.get("lastSyncedAt"),
+        }
+
     if isinstance(out, TrackerError):
         # OBSERVED create failure. When the mutation definitely did NOT land
         # (parsed rejection / process never spawned), release OUR pending

@@ -85,6 +85,22 @@ CURRENT_CALLER_GATES = {
         "fired": '[ "$ACTIVE" = "1" ]',
         "reference": "references/autonomy.md",
     },
+    # The make-pr linkage fence moved into the reference create-and-finalize.md
+    # gates on `sync active`; the test runs the same fence from there.
+    "makePr": {
+        "fence": (
+            SKILLS / "flow-next-make-pr/tracker-finalize.md",
+            ("PR_URL", "tracker sync"),
+        ),
+    },
+    # resolve-pr's Phase 9.5 fence moved into the reference its sync-active
+    # gate loads; the test runs the same fence from there.
+    "resolvePr": {
+        "fence": (
+            SKILLS / "flow-next-resolve-pr/tracker-comment.md",
+            ("tracker.perEvent.resolvePr", "tracker sync"),
+        ),
+    },
     "chart": {
         "split_gate": (
             SKILLS / "flow-next-chart/workflow.md",

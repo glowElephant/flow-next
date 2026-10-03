@@ -440,7 +440,9 @@ for nf in \
   "$CODEX_DIR/skills/flow-next-make-pr/create-and-finalize.md" \
   "$CODEX_DIR/skills/flow-next-refine/SKILL.md" \
   "$CODEX_DIR/skills/flow-next-refine/references/write-back.md" \
+  "$CODEX_DIR/skills/flow-next-refine/references/write-back-task-file.md" \
   "$CODEX_DIR/skills/flow-next-prospect/workflow.md" \
+  "$CODEX_DIR/skills/flow-next-prospect/references/failure-branches.md" \
   "$CODEX_DIR/skills/flow-next-chart/references/briefing-and-reopen.md" \
   "$CODEX_DIR/skills/flow-next-chart/references/chart-mode.md" \
   "$CODEX_DIR/skills/flow-next-audit/SKILL.md" \
@@ -451,7 +453,8 @@ for nf in \
   "$CODEX_DIR/skills/flow-next-flow/auto.md" \
   "$CODEX_DIR/skills/flow-next-work/phases.md" \
   "$CODEX_DIR/skills/flow-next-work/references/multi-task.md" \
-  "$CODEX_DIR/skills/flow-next-work/references/no-plan-route.md"; do
+  "$CODEX_DIR/skills/flow-next-work/references/no-plan-route.md" \
+  "$CODEX_DIR/skills/flow-next-work/references/no-plan-ask.md"; do
   [ -f "$nf" ] || continue
   sed -i.bak \
     -e 's|Recommended next: /flow-next:<stage>|Recommended next: $flow-next-<stage>|g' \
@@ -665,8 +668,10 @@ SECTION3C
     -e 's|Next: /flow-next:make-pr <spec-id>   # or /flow-next:qa <spec-id> first|Next: $flow-next-make-pr <spec-id>   # or $flow-next-qa <spec-id> first|g' \
     -e 's/spawn worker/run worker agent/g' \
     -e 's/\*\*For each task\*\*, spawn a worker subagent with fresh context/**For each task**, use the worker agent with fresh context/g' \
-    "$phases" "$CODEX_DIR/skills/flow-next-work/phases.md"
-  rm -f "${phases}.bak" "$CODEX_DIR/skills/flow-next-work/phases.md.bak"
+    "$phases" "$CODEX_DIR/skills/flow-next-work/phases.md" \
+    "$CODEX_DIR/skills/flow-next-work/references/quality-auditor.md"
+  rm -f "${phases}.bak" "$CODEX_DIR/skills/flow-next-work/phases.md.bak" \
+    "$CODEX_DIR/skills/flow-next-work/references/quality-auditor.md.bak"
 
   # fn-208.2 guard: SECTION3C above is a HARDCODED replacement of canonical 3c,
   # so a canonical dispatch-template field the heredoc misses vanishes silently
@@ -2397,23 +2402,21 @@ flow-next-work/phases.md	Next: /flow-next:make-pr <spec-id>	Next: $flow-next-mak
 flow-next-make-pr/create-and-finalize.md	Reviewer feedback → /flow-next:resolve-pr	Reviewer feedback → $flow-next-resolve-pr
 flow-next-make-pr/create-and-finalize.md	Body inspection → /flow-next:make-pr	Body inspection → $flow-next-make-pr
 flow-next-make-pr/create-and-finalize.md	re-run /flow-next:make-pr (skill detects	re-run $flow-next-make-pr (skill detects
-flow-next-refine/SKILL.md	Use `/flow-next:plan fn-N`	Use `$flow-next-plan fn-N`
 flow-next-refine/SKILL.md	→ `/flow-next:work fn-N` (or more refine	→ `$flow-next-work fn-N` (or more refine
 flow-next-refine/SKILL.md	→ `/flow-next:work fn-N.M`	→ `$flow-next-work fn-N.M`
 flow-next-refine/SKILL.md	→ `/flow-next:capture` to turn the refined document	→ `$flow-next-capture` to turn the refined document
 flow-next-refine/SKILL.md	`/flow-next:visual fn-N` for a spec input	`$flow-next-visual fn-N` for a spec input
 flow-next-refine/SKILL.md	`/flow-next:visual fn-N.M` for a task input	`$flow-next-visual fn-N.M` for a task input
 flow-next-refine/SKILL.md	`/flow-next:visual <file-path>` for the file input	`$flow-next-visual <file-path>` for the file input
-flow-next-refine/references/write-back.md	instead: `/flow-next:refine <spec-id>`	instead: `$flow-next-refine <spec-id>`
-flow-next-refine/references/write-back.md	suggest `/flow-next:capture` to turn it into a spec	suggest `$flow-next-capture` to turn it into a spec
-flow-next-prospect/workflow.md	(ask /flow-next:refine what to refine)	(ask $flow-next-refine what to refine)
+flow-next-refine/references/write-back-task-file.md	instead: `/flow-next:refine <spec-id>`	instead: `$flow-next-refine <spec-id>`
+flow-next-refine/references/write-back-task-file.md	suggest `/flow-next:capture` to turn it into a spec	suggest `$flow-next-capture` to turn it into a spec
+flow-next-prospect/references/failure-branches.md	(ask /flow-next:refine what to refine)	(ask $flow-next-refine what to refine)
 flow-next-prospect/workflow.md	Run /flow-next:chart on the selected survivor	Run $flow-next-chart on the selected survivor
 flow-next-prospect/workflow.md	Run /flow-next:refine <spec-or-task-id> to refine	Run $flow-next-refine <spec-or-task-id> to refine
 flow-next-chart/references/briefing-and-reopen.md	running `/flow-next:capture .flow/charts/	running `$flow-next-capture .flow/charts/
 flow-next-chart/references/chart-mode.md	Recommend `/flow-next:capture` or authoring	Recommend `$flow-next-capture` or authoring
 flow-next-chart/references/chart-mode.md	separate `/flow-next:chart <id>` (or pinned) invocations	separate `$flow-next-chart <id>` (or pinned) invocations
 flow-next-audit/SKILL.md	recommends `/flow-next:memory-migrate` first	recommends `$flow-next-memory-migrate` first
-flow-next-audit/SKILL.md	`/flow-next:memory-migrate` first to make these auditable	`$flow-next-memory-migrate` first to make these auditable
 flow-next-audit/workflow.md	`/flow-next:memory-migrate` first to make these auditable	`$flow-next-memory-migrate` first to make these auditable
 flow-next-flow/references/route-matrix-more.md	| `/flow-next:strategy`	| `$flow-next-strategy`
 flow-next-flow/references/route-matrix.md	| `/flow-next:capture`	| `$flow-next-capture`
@@ -2421,10 +2424,9 @@ flow-next-flow/references/route-matrix.md	| `/flow-next:work <spec-id> --no-plan
 flow-next-flow/references/route-matrix.md	then `/flow-next:make-pr <spec-id>`	then `$flow-next-make-pr <spec-id>`
 flow-next-flow/references/plan-vs-no-plan.md	Recommended next: /flow-next:work <spec-id> --no-plan	Recommended next: $flow-next-work <spec-id> --no-plan
 flow-next-flow/references/plan-vs-no-plan.md	Recommended next: /flow-next:plan <spec-id>	Recommended next: $flow-next-plan <spec-id>
-flow-next-refine/SKILL.md	recommend `/flow-next:work fn-N --no-plan`	recommend `$flow-next-work fn-N --no-plan`
-flow-next-work/references/no-plan-route.md	spec has no tasks - choose /flow-next:work <spec-id> --no-plan or /flow-next:plan <spec-id>	spec has no tasks - choose $flow-next-work <spec-id> --no-plan or $flow-next-plan <spec-id>
-flow-next-work/references/no-plan-route.md	stop; run /flow-next:plan (reviewed task breakdown	stop; run $flow-next-plan (reviewed task breakdown
-flow-next-work/references/no-plan-route.md	pointer: run `/flow-next:plan <spec-id>`, then re-run `/flow-next:work <spec-id>`	pointer: run `$flow-next-plan <spec-id>`, then re-run `$flow-next-work <spec-id>`
+flow-next-work/references/no-plan-ask.md	spec has no tasks - choose /flow-next:work <spec-id> --no-plan or /flow-next:plan <spec-id>	spec has no tasks - choose $flow-next-work <spec-id> --no-plan or $flow-next-plan <spec-id>
+flow-next-work/references/no-plan-ask.md	stop; run /flow-next:plan (reviewed task breakdown	stop; run $flow-next-plan (reviewed task breakdown
+flow-next-work/references/no-plan-ask.md	pointer: run `/flow-next:plan <spec-id>`, then re-run `/flow-next:work <spec-id>`	pointer: run `$flow-next-plan <spec-id>`, then re-run `$flow-next-work <spec-id>`
 flow-next-work/references/no-plan-route.md	with a pointer to `/flow-next:plan` or	with a pointer to `$flow-next-plan` or
 flow-next-work/references/no-plan-route.md	`/flow-next:refine` — never mint an empty task	`$flow-next-refine` — never mint an empty task
 flow-next-work/references/no-plan-route.md	`/flow-next:plan-review`	`$flow-next-plan-review`
@@ -2457,7 +2459,7 @@ from pathlib import Path
 source, mirror = map(Path, sys.argv[1:])
 passive = {
     ("references/route-matrix.md", "flow"),
-    ("references/gate-selection.md", "impl-review"),
+    ("references/gate-selection-more.md", "impl-review"),
 }
 inline = re.compile(r"`(/flow-next:|flow-next:flow-next-|\$flow-next-)([a-z-]+)([^`]*)`")
 

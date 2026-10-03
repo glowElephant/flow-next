@@ -28,5 +28,6 @@
 <!-- Resolution at each dispatch site: an explicit instruction in the moment,
      then this block, then the agent definition's own default, then the session
      model. A model this harness cannot reach falls back to the session model
-     with one note - routing never fails closed, and nothing here is validated. -->
+     with one note; nothing here is validated. Host review is the exception: it stops
+     rather than review with the writer's own model family. -->
 <!-- flow-next:model-routing:end -->

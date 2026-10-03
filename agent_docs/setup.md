@@ -33,7 +33,7 @@ Repos set up before fn-197 carry those snapshots. They are inert: nothing reads 
 - Canonical usage guide: `plugins/flow-next/templates/usage.md`; `flowctl usage` resolution is covered by `tests/test_cmd_usage.py`.
 - Canonical spec scaffold: `plugins/flow-next/templates/spec.md`; the resolution walker is single-sourced in `plugins/flow-next/references/spec-template-discovery.md`.
 - Legacy-artifact list (the single source both cleanup touchpoints read): `LEGACY_COPY_ARTIFACTS` in `plugins/flow-next/scripts/flowctl.py`.
-- Launcher pair: `plugins/flow-next/bin/flowctl` is byte-identical to `scripts/flowctl` except the exec target line (`tests/test_bin_launcher_parity.py`); `scripts/flowctl.cmd` is the cmd.exe / PowerShell sibling.
+- Launcher: `plugins/flow-next/scripts/flowctl`; `scripts/flowctl.cmd` is the cmd.exe / PowerShell sibling. There is no top-level `bin/`: claude.ai, Cowork and organization sync refuse a plugin that ships one (#506).
 - Lifecycle-skill division of responsibility (setup owns snippet integrity and stamping; plan performs no version preflight): `tests/test_precheck_mode_contract.py`.
 - Probe evidence for the resolution chain (skill-path derivation on Cursor + Grok, zero-`.flow/bin` e2e): fn-197 spec Evidence.
 

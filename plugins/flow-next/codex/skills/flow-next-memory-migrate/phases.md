@@ -93,51 +93,6 @@ Take the mechanical default. The post-migration report flags it as `needs-review
 
 ---
 
-## Idempotency rules
-
-### Pre-migration (Phase 0)
-
-Before classifying anything from a legacy file, check whether it's already been migrated:
-
-```bash
-if [[ -f "$MEMORY_DIR/_migrated/${filename}.bak" ]]; then
-    echo "Skipped (already migrated): ${filename}"
-    # Skip this file — Phase 4 already renamed it on a prior run.
-    # Surface in report as "Skipped (already migrated): <filename>"
-fi
-```
-
-The presence of `_migrated/<filename>.bak` is the canonical signal. Cheaper than diffing legacy entries against the categorized tree.
-
-### Mid-migration (Phase 2)
-
-`flowctl memory add` always creates unless `--update <id>` is passed. Overlap scoring still runs and the JSON response emits `matches` (with scores). If a high-overlap match already exists (e.g. someone manually migrated one entry already, then re-ran the skill), re-run with `--update <match-id>` to fold into the existing entry rather than accepting a sibling create.
-
-### Post-migration (Phase 4)
-
-After a successful run, Phase 4 renames originals:
-
-```bash
-mv "$MEMORY_DIR/$filename" "$MEMORY_DIR/_migrated/${filename}.bak"
-```
-
-Self-ignoring directory: on first cleanup, write `.flow/memory/_migrated/.gitignore` containing `*`. Standard pattern (used by `node_modules`, `__pycache__` tooling). Every file under `_migrated/` is gitignored, including the `.gitignore` itself. No top-level `.gitignore` change required.
-
-### Re-running the skill
-
-Re-running `/flow-next:memory-migrate` after a clean Phase 4:
-
-- Phase 0 detects `_migrated/<filename>.bak`, skips that file, reports it as "Skipped (already migrated)".
-- Net result: no-op for already-migrated files. Only newly-introduced legacy files (rare — would require someone re-creating `pitfalls.md` post-migration) get processed.
-
-Re-running after Phase 4 was declined (originals still in place):
-
-- Phase 0 sees no backups → all files in scope.
-- `flowctl memory add` emits `matches` on high/moderate overlap; the skill re-runs with `--update <match-id>` when a prior migration already wrote the same entry, otherwise accepts the create (moderate sets `related_to`).
-- Net result: skill-owned idempotency at the categorized-tree level. The skill does not track per-entry "already migrated" state beyond reading `matches` from each add.
-
----
-
 ## Decision tree (quick reference)
 
 ```
@@ -163,17 +118,3 @@ For each legacy entry:
 
   Phase 2: flowctl memory add --track <t> --category <c> --title "..." --body-file <tmp>
 ```
-
----
-
-## Rationale for the mechanical-default-first stance
-
-The temptation in an LLM-driven migration is to "use AI to classify each entry intelligently" — but most legacy entries are pre-schema ad-hoc memos, often without strong category signal. The mechanical default works:
-
-- `pitfalls.md` was originally a build-failure / gotcha bucket → `bug/build-errors` is the median fit.
-- `conventions.md` was a coding-style bucket → `knowledge/conventions` is the median fit.
-- `decisions.md` was an architecture / tool-choice bucket → `knowledge/tooling-decisions` is the median fit.
-
-The agent's intelligence is best spent on the 20-30% of entries that genuinely don't fit the median (the override examples above). Aggressive over-classification produces inconsistent results across runs and obscures the mechanical baseline that `_memory_classify_mechanical` already gets right cheaply.
-
-The `needs-review` flag is the escape hatch: better to migrate everything with a sane default and surface uncertainty in the report than to block on ambiguous decisions or invent classifications without evidence.

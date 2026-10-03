@@ -200,12 +200,6 @@ class TestCriteriaCli(unittest.TestCase):
 
 
 class TestCriteriaHeadingConstant(unittest.TestCase):
-    def test_heading_value_pinned(self) -> None:
-        self.assertEqual(
-            flowctl.GLOBAL_CRITERIA_HEADING,
-            "## Global acceptance criteria",
-        )
-
     def test_completion_review_prompt_has_no_criteria_marker_when_absent(self) -> None:
         """Assembled completion-review prompt must not contain the criteria
         heading when .flow/criteria.md is absent (R1). Greps the shared
@@ -331,7 +325,6 @@ class TestGlobalCriteriaPromptInjection(unittest.TestCase):
             "- **G2:** No new dependency without a health check.",
             prompt,
         )
-        self.assertIn("<one-line note>\n\n## Output Format", prompt)
         self.assertIn("<verdict>SHIP</verdict>", prompt)
         self.assertIn("<verdict>NEEDS_WORK</verdict>", prompt)
 

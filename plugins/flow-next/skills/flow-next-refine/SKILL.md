@@ -12,7 +12,7 @@ All task state is read and written through `flowctl`; `.flow/` is the only track
 
 Refine clarifies a spec that can already be specified. Route back to `/flow-next:chart` only when the answers show the effort itself is not yet specifiable; unsure of the hop, use `flow-next:flow-next-flow --explain`.
 
-Read [working-rules.md](../../references/working-rules.md) first; it holds for every step of this skill.
+Read [working-rules.md](../../references/working-rules.md) first unless you already have this run; it holds for every step of this skill.
 
 ## Preamble
 
@@ -33,7 +33,7 @@ A Flow spec id, a Flow task id, a tracker handle linked to one, or a file path. 
 - `/flow-next:refine fn-1-add-oauth` (legacy `fn-1`, `fn-1-xxx` and task ids like `fn-1-add-oauth.3` work too)
 - `/flow-next:refine docs/oauth-spec.md`
 - `/flow-next:refine fn-1-add-oauth --scope=qa` (the same interview, focused on what QA decides)
-- `/flow-next:refine fn-1-add-oauth --scope=research` (external-docs pass; no questions)
+- `/flow-next:refine fn-1-add-oauth --scope=research` (external-docs pass; no interview, one write-back approval)
 
 Empty: ask "What should I refine? Give me a Flow ID (e.g. fn-1-add-oauth) or a file path (e.g. docs/spec.md)."
 
@@ -43,7 +43,7 @@ Empty: ask "What should I refine? Give me a Flow ID (e.g. fn-1-add-oauth) or a f
 
 **Research pass.** With `--scope=research`, skip the doc-aware gate and the interview: detect the input, then read [references/research-scope.md](references/research-scope.md) and follow it. The interview never reads that file.
 
-**Doc flags.** When the arguments carry any of `--docs`, `--no-docs`, `--strategy`, `--no-strategy`, read [references/doc-aware.md](references/doc-aware.md) § Flag parsing before detecting the input; it strips them and sets the two force values used below.
+**Doc flags.** When the arguments carry any of `--docs`, `--no-docs`, `--strategy`, `--no-strategy`, read [references/doc-flags.md](references/doc-flags.md) § Flag parsing before detecting the input; it strips them and sets the two force values used below.
 
 **Doc-aware gate.** Doc-aware mode adds glossary, decision-record and strategy behaviours to the interview. It turns on when the repo has a glossary term, a decision entry, or a filled strategy section (counts, not file presence); the doc flags override. Run once per interview:
 
@@ -51,7 +51,7 @@ Empty: ask "What should I refine? Give me a Flow ID (e.g. fn-1-add-oauth) or a f
 REFINE_PREFLIGHT="${TMPDIR:-/tmp}/flow-refine-preflight-<suffix>.json"   # literal path; reused after the write-back
 # One preflight bundle per interview. A failed, missing or empty probe counts as signal (fail open).
 "$FLOWCTL" preflight --json > "$REFINE_PREFLIGHT" 2>/dev/null || printf '{}' > "$REFINE_PREFLIGHT"
-# DOC_AWARE_FORCE / STRATEGY_AWARE_FORCE keep the "on" / "off" that doc-aware.md § Flag parsing set; unset = autodetect.
+# DOC_AWARE_FORCE / STRATEGY_AWARE_FORCE keep the "on" / "off" that doc-flags.md § Flag parsing set; unset = autodetect.
 GATES="$(jq -er '
   def v(p): if p.status == "ok" then p.value else null end;
   [ (if v(.probes.glossary) == null or v(.probes.decisions) == null
@@ -98,10 +98,10 @@ Before the first round, read `STRATEGY.md` and search the other project docs for
 
 - **The code answers it** (what exists, how it is wired, which conventions hold): read and search; log it under `## Resolved via Codebase` with `file:line` evidence.
 - **The project docs answer it** (what the strategy says, what shipped, what was decided): log it under `## Resolved via Project Docs` with `path:line` evidence.
-- **Running something settles it** (behaviour, timing, layout, output, whether an eval separates two options): run a throwaway experiment in `.flow/tmp/experiments/` and log the question, what ran, what you observed and the decision under `## Resolved via Experiment`. Run it without asking only when it is read-only or fully disposable; one that needs live or shared state, credentials, the network, or a destructive command (a migration, a deployment, a write API) becomes a question. An inconclusive result (noise larger than the difference) is logged as inconclusive and goes to the person with the data. The experiment is evidence, never product code.
+- **Running something settles it** (behaviour, timing, layout, output, whether an eval separates two options): run a throwaway experiment in `.flow/tmp/experiments/` and log the question, what ran, what you observed and the decision under `## Resolved via Experiment`. The working rules' limit on experiments decides which run without asking. An inconclusive result (noise larger than the difference) is logged as inconclusive and goes to the person with the data. The experiment is evidence, never product code.
 - **It is a judgment** (what should exist, which trade-off, what priority): ask it.
 
-Answering a "should" question by grep is the bug; so is asking something the docs already answer. Use multi-select for options that are not exclusive, and probe answers that contradict each other. When independent sources disagree wildly on the same question, reframe it more precisely and re-run it instead of averaging or picking a favourite.
+Answering a "should" question by grep is the bug; so is asking something the docs already answer. Use multi-select for options that are not exclusive, and probe answers that contradict each other.
 
 While the person answers a round you may dispatch one read-only fact scout for lookups that gate the next round; before dispatching one, read [references/fact-scouts.md](references/fact-scouts.md). Investigating inline needs nothing from it.
 
@@ -143,11 +143,7 @@ A recommendation never implies consent. Three answer shapes:
 
 Park each skip under `## Open Questions` as `**<question>** — skipped during refine; leaning <X>, unconfirmed. *(owner: engineering | product)*`. A skipped judgment question stays a judgment question; never backfill it by grep. Keep a skip count.
 
-With one or more skips, ask one checkpoint before the write-back:
-
-- **header:** `Skipped items`
-- **body:** `<N> question(s) were skipped. Recommended: park-open — record them under ## Open Questions with my unconfirmed leanings; nothing skipped becomes a decision. Confidence: [high].`
-- **options:** `park-open` (Open Questions entries only), `fill-assumptions` (write the recommendation into its section marked inline `*(assumed — unconfirmed)*`, plus one Open Questions entry pointing at the markers), `re-ask` (ask the skipped questions once more; answers and delegations resolve normally, a second skip parks).
+With one or more skips: read [references/skipped-items.md](references/skipped-items.md) and ask its checkpoint before the write-back.
 
 ### Out of scope
 
@@ -164,7 +160,7 @@ Write each answer into the section it belongs in, whatever the lens: a target us
 
 When the person declines a feature as product judgment (we could build it and choose not to), read [declined-scope.md](../../references/declined-scope.md) and record it.
 
-Before the write-back, when the refined criteria reach 8 or more or visibly serve more than one independently shippable outcome, read [references/split.md](references/split.md).
+Before the write-back on a spec (a task or a plain file never splits), when the refined criteria reach 8 or more or visibly serve more than one independently shippable outcome, read [references/split.md](references/split.md).
 
 ## Write-back
 
@@ -212,7 +208,7 @@ The question count and the sections-changed line always appear.
 
 Next step by input:
 
-- Spec without tasks → recommend `/flow-next:work fn-N --no-plan` for a ready, cohesive spec. Use `/flow-next:plan fn-N` when dependencies, ownership, staged delivery or execution constraints make decomposition useful; use `/flow-next:plan-review fn-N` for an independent design review. Risk or file count alone does not call for decomposition.
+- Spec without tasks → print the `Recommended next:` line from [plan-vs-no-plan.md](../flow-next-flow/references/plan-vs-no-plan.md) (direct by default; plan only on its positive signals); use `/flow-next:plan-review fn-N` for an independent design review.
 - Spec with tasks → `/flow-next:work fn-N` (or more refine on specific tasks).
 - Task → `/flow-next:work fn-N.M`.
 - File → `/flow-next:capture` to turn the refined document into a spec.

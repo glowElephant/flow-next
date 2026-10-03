@@ -59,7 +59,7 @@ def keep(judge_output):
 class JudgeConsumerTests(unittest.TestCase):
     @unittest.skipUnless(SHELL, "POSIX shell and jq")
     def test_judge_check_runs_once_and_never_prints_the_key(self):
-        check = fence(WORKFLOW, "JUDGE=on")
+        check = fence("skills/flow-next-flow/references/prototype-before-ask.md", "JUDGE=on")
         with tempfile.TemporaryDirectory() as tmp:
             subprocess.run([*FLOWCTL_CMD, "init", "--json"], cwd=tmp, check=True, capture_output=True)
             for key, enabled, expected in (("secret-never-printed", "true", "on"), ("", "true", "off"),

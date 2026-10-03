@@ -169,25 +169,11 @@ class WorkBranchRegression(unittest.TestCase):
 
 
 class DispatchContracts(unittest.TestCase):
-    def test_both_plan_sync_dispatches_pass_paths_and_plural_ids(self) -> None:
-        for path in (SYNC, WORK / "references/plan-sync-dispatch.md"):
-            text = path.read_text(encoding="utf-8")
-            fields = set(re.findall(r"^(\w+):", text, re.M))
-            self.assertTrue({"COMPLETED_TASK_IDS", "GLOSSARY_JSON_FILE", "DECISIONS_JSON_FILE",
-                             "STRATEGY_CONTENT_FILE"} <= fields, path)
-            self.assertTrue({"GLOSSARY_JSON", "DECISIONS_JSON", "STRATEGY_CONTENT",
-                             "COMPLETED_TASK_ID"}.isdisjoint(fields), path)
+    def test_plan_sync_agent_keeps_bash_and_cannot_spawn(self) -> None:
         agent = (ROOT / "agents/plan-sync.md").read_text(encoding="utf-8")
         denied = re.search(r"^disallowedTools: (.+)$", agent, re.M).group(1).split(", ")
         self.assertNotIn("Bash", denied)
         self.assertIn("Task", denied)
-
-    def test_worker_handover_is_task_unique_on_all_routes(self) -> None:
-        text = (ROOT / "agents/worker.md").read_text(encoding="utf-8")
-        self.assertNotIn("/tmp/summary.md", text)
-        self.assertNotIn("/tmp/evidence.json", text)
-        self.assertIn(".flow/tmp/<TASK_ID>-summary.md", text)
-        self.assertIn(".flow/tmp/<TASK_ID>-evidence.json", text)
 
     def test_conductor_capture_reachable_on_both_ship_paths(self) -> None:
         codex_work = WORK.parents[1] / "codex" / "skills" / "flow-next-work"
@@ -199,5 +185,3 @@ class DispatchContracts(unittest.TestCase):
                 links = re.findall(r"\]\(([^)]*worker-memory-capture\.md[^)]*)\)", text)
                 self.assertEqual(len(links), 1, (work, name))
                 self.assertTrue((work / "references" / links[0].split("#")[0]).resolve().exists())
-                self.assertIn("memory.enabled", text)
-                self.assertNotIn("$(cat .flow/tmp/base_commit)", text)

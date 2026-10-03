@@ -69,8 +69,8 @@ if OUT=$("$FLOWCTL" triage-skip --json "${TRIAGE[@]}" 2>/dev/null); then
 fi
 args=(); [ -n "$TASK_ID" ] && args+=("$TASK_ID")
 args+=(--base "$DIFF_BASE" --receipt "$RECEIPT_PATH" --json)
-# The default is three reviewers. For a small diff in one area that touches no persisted or
-# shared state, concurrency, security or data layout, set ONE_REVIEWER=1 for a single reviewer.
+# The default is three reviewers. For a small diff in one area (one module or feature, not spread
+# across subsystems) that touches no persisted or shared state, concurrency, security or data layout, set ONE_REVIEWER=1 for a single reviewer.
 ONE_REVIEWER=0
 [ "$ONE_REVIEWER" = 1 ] && args+=(--draw correctness)
 "$FLOWCTL" codex impl-review-fanout "${args[@]}"
@@ -99,37 +99,25 @@ receipt. Report `VERDICT=<verdict>` with the kept findings; your own reading nev
 Finalize before you change or commit anything: a commit moves HEAD past the reviewed head,
 flowctl refuses the round, and the retry is a full fresh review instead of the scoped re-review.
 
-## 4. Act on the verdict (codex path)
+## 4. Act on the verdict (every backend)
 
 - `SHIP`: done. Report the verdict and any follow-ups.
 - `MAJOR_RETHINK`: the approach is wrong. Stop with `BLOCKED: DESIGN_CONFLICT` and the
   reviewer's rationale; do not patch finding by finding.
-- `NEEDS_HUMAN`: stop and hand the reviewer's question to the person.
-- `NEEDS_WORK`: one fix pass, then one re-review. Fix only the findings working-rules says to
-  fix; list the rest as follow-ups. Never ask the person which to fix. Run focused tests for the
-  fixes and commit only the files you changed, with one `Declined #<n>: <reason>` line in the
-  commit message for each finding you listed as a follow-up (the re-review reads them). Then
-  re-review once, in the foreground:
+- `NEEDS_HUMAN` (flowctl reports it as `ESCALATE: reviewer requested human review`): stop and hand
+  the reviewer's question to the person. Unattended, when that question is a human call that does
+  not block the rest of the work (working-rules-unattended.md), run the `NEEDS_WORK` fix pass below
+  instead, declining the call itself with `Declined #<n>: open item for the person`; when that loop
+  ends, print `OPEN_ITEM: <the question>` after the verdict. The caller completes the task on it and
+  the pull request opens as a draft.
+- `NEEDS_WORK`: on the codex path, read [references/codex-fix-pass.md](references/codex-fix-pass.md)
+  and run its one fix pass and re-review; other backends run their workflow file's fix loop.
 
-```bash
-FLOWCTL="${CODEX_HOME:-$HOME/.codex}/scripts/flowctl"
-[ -x "$FLOWCTL" ] || FLOWCTL="<plugin-root>/scripts/flowctl"   # <plugin-root> = the directory two levels above this skill's SKILL.md file (the harness gave you that file's absolute path when the skill loaded); substitute it literally
-[ -x "$FLOWCTL" ] || FLOWCTL=".flow/bin/flowctl"
-REVIEW_ID="<literal or empty>"; DIFF_BASE="<literal>"
-ROUTE="$("$FLOWCTL" review-route ${REVIEW_ID:+"$REVIEW_ID"} --json)"
-TASK_ID="$(jq -r '.task_id // empty' <<<"$ROUTE")"; RECEIPT_PATH="$(jq -r '.receipt_path' <<<"$ROUTE")"
-"$FLOWCTL" codex impl-review ${TASK_ID:+"$TASK_ID"} --base "$DIFF_BASE" --receipt "$RECEIPT_PATH"
-```
+On any backend, when an unattended loop ends with the reviewer keeping only findings you declined
+under working-rules.md's rule, all below Major, print `OVERRIDDEN: <n> declined findings` with
+each finding and both sides' reasons after `VERDICT=NEEDS_WORK`; the caller completes the task on it.
 
-  The re-review resumes the reviewer's session and its verdict is terminal: report surviving
-  findings, never start a second fix pass, unless working-rules.md's review loop applies (an
-  unattended run, or a request to review until SHIP). In that loop, fix and re-review the same
-  way until SHIP or an `ESCALATE:` (round cap or stall). When the reviewer keeps only findings
-  you declined under working-rules.md's rule, all below Major, end the loop and print
-  `OVERRIDDEN: <n> declined findings` with each finding and both sides' reasons after
-  `VERDICT=NEEDS_WORK`; the caller completes the task on it.
-
-If a review command ends without a verdict (a transport error), retry it once. `ESCALATE:`,
-`TRANSPORT_UNHEALTHY`, `NOT_RETRYABLE:` and other refusals end this review: report the message
+If a review command ends without a verdict (a transport error), retry it once. `ESCALATE:` (other
+than the `NEEDS_HUMAN` case above), `TRANSPORT_UNHEALTHY`, `NOT_RETRYABLE:` and other refusals end this review: report the message
 as printed and stop. Never widen the reviewer's sandbox, call `codex` directly, or reset review
 state to get past one.

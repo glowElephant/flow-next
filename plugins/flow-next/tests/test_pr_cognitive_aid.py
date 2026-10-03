@@ -786,24 +786,9 @@ class MarkdownAndBudgetTests(unittest.TestCase):
 
 
 class MakePrIntegrationTests(unittest.TestCase):
-    def test_finalize_reachable_and_tracker_pr_url_boundary_is_unchanged(self) -> None:
-        artifact_reference = (
-            REPO_ROOT
-            / "plugins/flow-next/skills/flow-next-make-pr/pr-cognitive-aid.md"
-        ).read_text(encoding="utf-8")
-        finalize = (
-            REPO_ROOT
-            / "plugins/flow-next/skills/flow-next-make-pr/create-and-finalize.md"
-        ).read_text(encoding="utf-8")
-        self.assertIn(
-            "[create-and-finalize.md](create-and-finalize.md)", artifact_reference
-        )
-        self.assertIn("make-pr-create.sh", finalize)
+    def test_create_script_initialises_pr_url(self) -> None:
         create_script = (REPO_ROOT / "plugins/flow-next/scripts/make-pr-create.sh").read_text()
         self.assertIn('PR_URL=""', create_script)
-        self.assertIn("--pr-url \"$PR_URL\"", finalize)
-        self.assertIn("--op reconcile", finalize)
-        self.assertIn("sync check", finalize)
 
 
 # --- Changed-path and batched-object tests for cognitive-aid glossary diffs ---

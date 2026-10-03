@@ -165,6 +165,33 @@ if [ -f "$LEGACY_PROMPT" ]; then
         echo -e "${YELLOW}!${NC} kept $LEGACY_PROMPT (frontmatter name is not ours — left untouched)"
     fi
 fi
+# Any other skill or prompt a release stopped shipping (7.0 removed ralph-init and the
+# pilot and interview stubs). Same two safety layers as above: retire only an artifact
+# that carries the generator's own identity, and only by moving it.
+#   - skill: a `flow-next-*` dir this release does not ship whose SKILL.md `name:` is the
+#     dir name (every generated skill is named exactly that);
+#   - prompt: a prompt this release does not ship whose `name:` is its file stem and whose
+#     body is the generated redirect ("This command MUST invoke the skill `flow-next-...`").
+for stale_skill in "$CODEX_DIR/skills/"flow-next-*/; do
+    [ -d "$stale_skill" ] || continue
+    sname="$(basename "$stale_skill")"
+    [ -d "$CODEX_SRC/skills/$sname" ] && continue
+    if [ "$(frontmatter_name "$stale_skill/SKILL.md")" = "$sname" ]; then
+        retire_artifact "${stale_skill%/}" "skills" "skill $sname"
+    else
+        echo -e "${YELLOW}!${NC} kept ${stale_skill%/} (frontmatter name is not ours — left untouched)"
+    fi
+done
+for stale_prompt in "$CODEX_DIR/prompts/"*.md; do
+    [ -f "$stale_prompt" ] || continue
+    pname="$(basename "$stale_prompt")"
+    [ -f "$PLUGIN_DIR/commands/$pname" ] && continue
+    [ "$pname" = "epic-review.md" ] && continue
+    if [ "$(frontmatter_name "$stale_prompt")" = "${pname%.md}" ] \
+        && grep -qxF "# IMPORTANT: This command MUST invoke the skill \`flow-next-${pname%.md}\`" "$stale_prompt" 2>/dev/null; then
+        retire_artifact "$stale_prompt" "prompts" "prompt $pname"
+    fi
+done
 
 # ====================
 # Agents (pre-built .toml)

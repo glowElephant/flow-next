@@ -15,8 +15,8 @@ two halves with very different testability:
      These have no executable entry point. Modelling them in Python would mean
      re-implementing the prose and asserting the model against itself: a
      parallel construction that can pass while the prose it mirrors is wrong.
-     This repo has been bitten by exactly that, so those stay pinned by the
-     prose-contract tests in `test_spec_id_routing_prose.py` instead.
+     This repo has been bitten by exactly that, so they are not modelled
+     here.
 
 Only the network boundary is faked. `_CountedTransport` stands in for the
 adapter's `writeIssue` / `postComment` and counts both, so the load-bearing

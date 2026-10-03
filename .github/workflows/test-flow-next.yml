@@ -370,7 +370,6 @@ jobs:
           cd plugins/flow-next/tests
           python -m unittest \
             test_startup_bootstrap \
-            test_bin_launcher_parity \
             test_cmd_usage \
             test_precheck_mode_contract \
             -q

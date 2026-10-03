@@ -12,7 +12,7 @@ Wire this repo to the plugin: the versioned docs snippet plus flow-next configur
 
 - Other AI agents (Codex, Cursor, etc.) can read instructions from CLAUDE.md/AGENTS.md
 
-Read [working-rules.md](../../references/working-rules.md) first; it holds for every step of this skill.
+Read [working-rules.md](../../references/working-rules.md) first unless you already have this run; it holds for every step of this skill.
 
 ## Workflow
 

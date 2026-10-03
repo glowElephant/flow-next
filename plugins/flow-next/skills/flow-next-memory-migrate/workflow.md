@@ -268,7 +268,7 @@ The exit status decides success. A non-zero exit is a failed write: surface `ADD
 
 ### 2.3 — Overlap signal (`flowctl memory add` matches; skill decides)
 
-`flowctl memory add` always creates unless `--update <id>` is passed. Overlap scoring still runs; the JSON response always emits `matches` (with scores). High overlap: re-run with `--update <match-id>` to fold into the existing entry AND delete the file the first call just created (its `.path` - a fresh duplicate of ours; `rm -f` it so migration never leaves a near-copy), or accept the create and surface the match in the report. Moderate overlap: creates a new entry with `related_to: [<existing-id>]`. Never pass `--no-overlap-check`. Surface the outcome (folded + duplicate removed vs created) in the report.
+`flowctl memory add` always creates unless `--update <id>` is passed. Overlap scoring still runs; the JSON response always emits `matches` (with scores). High overlap: re-run with `--update <match-id>` to fold into the existing entry AND delete the file the first call just created (its `.path` - a fresh duplicate of ours; `rm -f` it so migration never leaves a near-copy), or accept the create and surface the match in the report. When the high-overlap match is an entry a prior migration already wrote (a rerun), always fold with `--update <match-id>`; accept a sibling create only for a genuinely different entry. Moderate overlap: creates a new entry with `related_to: [<existing-id>]`. Never pass `--no-overlap-check`. Surface the outcome (folded + duplicate removed vs created) in the report.
 
 ### 2.4 — Cleanup tempfile
 
@@ -367,56 +367,6 @@ Autofix: skip the gate; default-decline cleanup; surface as a recommendation in 
 
 **Goal:** rename originals to `.flow/memory/_migrated/<filename>.bak` for traceability, under a self-ignoring directory pattern. **Legacy originals are renamed only after consent, and are never deleted.** A run where a legacy file is gone from disk instead of sitting under `_migrated/` has broken this.
 
-### 4.1 — When to run
-
-- **Interactive mode + user picked option 1** in the Phase 3 cleanup gate.
-- **Autofix mode** — never. Surface as recommendation in the Phase 3 report instead. Originals stay in place.
-
-### 4.2 — Create `_migrated/` directory + self-ignoring gitignore
-
-```bash
-mkdir -p "$MIGRATED_DIR"
-
-# Self-ignoring directory pattern: write `.gitignore: *` on first cleanup.
-# This is the standard pattern (used by node_modules tooling, __pycache__, etc.).
-# Avoids requiring the user to update the top-level .gitignore.
-GITIGNORE_PATH="$MIGRATED_DIR/.gitignore"
-if [[ ! -f "$GITIGNORE_PATH" ]]; then
-  printf '*\n' > "$GITIGNORE_PATH"
-fi
-```
-
-The `.gitignore` content is just `*` — every file in `_migrated/` is ignored by git, including the `.gitignore` itself. Standard self-ignoring pattern.
-
-### 4.3 — Rename each migrated original
-
-For each filename whose entries were migrated in this run (not already in `ALREADY_MIGRATED`):
-
-```bash
-mv "$MEMORY_DIR/$filename" "$MIGRATED_DIR/${filename}.bak"
-```
-
-Use `mv`, not `cp + rm`. Preserves filesystem inode for any reflinks.
-
-### 4.4 — Bounds on the rename
-
-- **Do not `git rm`** the originals. Rename only — leaves them on disk for the user to inspect.
-- **Do not delete `_migrated/`** on subsequent runs. The presence of `<filename>.bak` is what Phase 0's idempotency check uses to skip already-migrated files.
-- **Do not commit** the rename automatically. The skill itself doesn't commit — the user runs `git status` post-migration and decides. The `.gitignore: *` ensures the renamed `.bak` files won't accidentally get committed.
-
-### 4.5 — Report cleanup outcome
-
-Append to the Phase 3 report:
-
-```
-Cleanup
--------
-Renamed: <list of originals → _migrated/.../*.bak>
-Created: .flow/memory/_migrated/.gitignore (self-ignoring; first run only)
-```
-
-### Done when
-
-- All migrated originals renamed (interactive + user consented).
-- `_migrated/.gitignore` exists with content `*` if any rename happened.
-- Cleanup outcome logged in the report.
+Only when the run is interactive and the user picked option 1 at the §3.4 gate: read
+[references/cleanup.md](references/cleanup.md) and run it. Autofix never runs this phase; the
+Phase 3 report carries the recommendation instead.

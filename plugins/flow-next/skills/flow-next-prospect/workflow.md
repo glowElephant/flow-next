@@ -29,15 +29,9 @@ done
 
 ---
 
-## Autonomy block — runs first, before everything else
+## Autonomy block
 
-```bash
-if [[ "${FLOW_AUTONOMOUS:-}" == "1" || "${AUTONOMOUS:-}" == "1" \
-   || " ${ARGUMENTS:-} " == *" mode:autonomous "* ]]; then
-  echo "Error: /flow-next:prospect requires a user at the terminal; not compatible with autonomous mode." >&2
-  exit 2
-fi
-```
+SKILL.md's autonomy block has already run: an autonomous run exits there and never reaches this file.
 
 **No env-var opt-in.** An autonomous run cannot decide what a repo should build next — that's a human judgement call. The block runs before `mkdir`, before any user prompt, before any scan; the artifact directory is not created and no question is surfaced.
 
@@ -45,7 +39,7 @@ fi
 
 ## Phase 0: Resume check
 
-**Goal:** if the user already has an active prospect artifact <30 days old, surface it and ask whether to extend it, start fresh, or open it. Corrupt artifacts must be detected and listed with `status: corrupt` so the user knows they exist, but never offered for extension or promote.
+**Goal:** if the user already has an active prospect artifact <30 days old, surface it and ask whether to start fresh or open it. Corrupt artifacts must be detected and listed with `status: corrupt` so the user knows they exist, but never offered for extension or promote.
 
 ### 0.1 — Discover candidates (gate)
 
@@ -66,11 +60,11 @@ if [ "$ACTIVE" = "1" ]; then
 fi
 ```
 
-When the sentinel prints, STOP and Read [references/resume-artifacts.md](references/resume-artifacts.md) before any further step — it carries §0.2 parse + classify, §0.3 surface rules, §0.4 the frozen `fresh | extend N | open N` blocking question, and §0.5 routing (including the `EXTEND_TARGET` Phase 5 appends to). When the sentinel does not print, `.flow/prospects/` holds no artifacts: skip the rest of Phase 0 — go straight to Phase 1.
+When the sentinel prints, STOP and Read [references/resume-artifacts.md](references/resume-artifacts.md) before any further step — it carries §0.2 parse + classify, §0.3 surface rules, §0.4 the frozen `fresh | open N` blocking question, and §0.5 routing. When the sentinel does not print, `.flow/prospects/` holds no artifacts: skip the rest of Phase 0 — go straight to Phase 1.
 
 ### Done when
 
-- The gate has been evaluated, and — when it fired — the reference's routing has resolved to fresh or to a named `EXTEND_TARGET`.
+- The gate has been evaluated, and — when it fired — the reference's routing has resolved to fresh or exited on open.
 - Corrupt artifacts, if any, are listed with `status: corrupt` and excluded from extension.
 
 ---
@@ -103,10 +97,10 @@ Each subsection writes a small structured block into a single snapshot buffer. E
 #### git log (last 30 days)
 
 ```bash
-if [[ -d "$REPO_ROOT/.git" ]] && command -v git >/dev/null 2>&1; then
+if [[ -e "$REPO_ROOT/.git" ]] && command -v git >/dev/null 2>&1; then
   GIT_FILES=$(git -C "$REPO_ROOT" log --since="30 days ago" --name-only --pretty=format: 2>/dev/null \
     | grep -v '^$' | sort -u)
-  GIT_COUNT=$(printf "%s\n" "$GIT_FILES" | grep -c .)
+  GIT_COUNT=$(printf "%s\n" "$GIT_FILES" | grep -c . || true)
   GIT_TOP=$(printf "%s\n" "$GIT_FILES" | head -10)
   GIT_BLOCK="git_log_30d: ${GIT_COUNT} files modified
 top:
@@ -441,16 +435,8 @@ Any candidate missing `title`, `summary`, or `affected_areas` is dropped before 
 
 Hand the printed JSON list (valid YAML) to Phase 3 as `CANDIDATES_YAML`, so downstream prompts get a clean shape.
 
-If fewer than `floor(GENERATION_TARGET_MIN * 0.7)` valid candidates survive validation, surface a blocking question:
-
-```
-Phase 2 produced only K valid candidates (target was M-N). Options:
-  retry      — re-run Phase 2 with the same prompt
-  loosen     — proceed with K candidates anyway (Phase 3 floor still applies)
-  abort      — exit; no artifact written
-```
-
-The `loosen` path keeps the run going but flags the under-volume in the eventual artifact frontmatter (`generation_under_volume: true`) so downstream readers know the spread was narrow.
+If fewer than `floor(GENERATION_TARGET_MIN * 0.7)` valid candidates survive validation: read
+[references/failure-branches.md § Under-volume](references/failure-branches.md#under-volume) and ask its blocking question.
 
 ### Done when
 
@@ -482,7 +468,7 @@ backward-incompat          — would break public contracts / users without stro
 other                      — explain in `reason` field; use sparingly
 ```
 
-`out-of-scope-vs-strategy` is **advisory only**. It fires when a candidate's direction contradicts an active track from the strategy snapshot (Phase 1 §1.2). The rejection cites the violated track verbatim: `Rejected: [out-of-scope-vs-strategy] — contradicts active track "<track-name>"`. The user can `flowctl prospect promote <id> --idea N --force` to override (existing flag, no new plumbing). When the strategy snapshot scanned `none`, this category is unreachable — Phase 3 will not emit it.
+`out-of-scope-vs-strategy` is **advisory only**. It fires when a candidate's direction contradicts an active track from the strategy snapshot (Phase 1 §1.2). The rejection cites the violated track verbatim: `Rejected: [out-of-scope-vs-strategy] — contradicts active track "<track-name>"`. Promote reads only survivors, so a rejected idea cannot be promoted; to pursue it anyway, capture it with `/flow-next:capture`. When the strategy snapshot scanned `none`, this category is unreachable — Phase 3 will not emit it.
 
 Prompt template:
 
@@ -540,19 +526,8 @@ Pair each critique entry with its candidate by `index`. Compute:
 rejection_rate = drops / total
 ```
 
-If `rejection_rate < REJECTION_FLOOR`, surface a **blocking question** with the frozen options:
-
-```
-Critique rejected only X% (below the ≥Y% floor). Options:
-  regenerate    — re-run Phase 2 + Phase 3 from scratch (new candidates)
-  loosen-floor  — accept this critique result; ship survivors as-is
-  ship-anyway   — same as loosen-floor; preserved for clarity in transcripts
-```
-
-Frozen string format (anchor — must match across backends): `regenerate | loosen-floor | ship-anyway`. Use `AskUserQuestion`; fall back to numbered-options when the tool is unreachable. Validate the choice; reject anything outside the three options.
-
-- `regenerate` → loop back to Phase 2 §2.3 with a fresh prompt invocation. Cap at **1 regeneration**; a second floor violation auto-routes to `loosen-floor` with a printed warning (avoids infinite loops on a model that genuinely can't reject).
-- `loosen-floor` / `ship-anyway` → continue to Phase 4. Record `floor_violation: true` in the eventual artifact frontmatter.
+If `rejection_rate < REJECTION_FLOOR`: read [references/failure-branches.md § Critique floor](references/failure-branches.md#critique-floor) and ask
+its blocking question with the frozen options.
 
 ### 3.3 — Hand off survivors + drops to Phase 4
 
@@ -750,12 +725,11 @@ Empty buckets render `_(none)_`. Empty `## Rejected` renders `_(none)_`.
 
 ### 6.1 — Use the blocking-question tool
 
-Use `AskUserQuestion` (deferred — load via `ToolSearch select:AskUserQuestion` if its schema isn't yet in scope). If the tool is unreachable, print the frozen-string format below and read the user's reply from chat.
+Use `AskUserQuestion` (deferred — load via `ToolSearch select:AskUserQuestion` if its schema isn't yet in scope). If the tool is unreachable, print the frozen-string format §6.2 points to and read the user's reply from chat.
 
 If the tool is available, use it with these labelled choices (one per survivor + chart when warranted + skip + refine):
 
-- `Promote #1: <title>`
-- `Promote #2: <title>`
+- `Promote #<position>: <title>` (the survivor's artifact position)
 - ... (one per survivor across all buckets)
 - `Chart #N: <title>` (offer **only** when that survivor is still singular, oversized, and unclear - never for clear candidates)
 - `Skip`
@@ -765,22 +739,8 @@ The tool's free-text `description` field gets the artifact path so the user has 
 
 ### 6.2 — Frozen numbered-options fallback
 
-When no blocking tool is reachable (or the platform tool errors), print this **exact** string format. Do not paraphrase, re-order, or add commentary — the smoke test in task 6 grep-checks this format:
-
-```
-Saved: .flow/prospects/<artifact-id>.md
-
-Promote a survivor to a spec?
-  1) Promote #1: <title>
-  2) Promote #2: <title>
-  ...
-  N) Skip
-  i) Refine (ask /flow-next:refine what to refine)
-
-Enter choice [1-N|i|skip]:
-```
-
-Number the survivors 1-N in the same order they appear in the artifact (high_leverage first, then worth_considering, then if_you_have_the_time). `Skip` is the last numeric option (`N`); `i` is the alphabetic interview shortcut. (The frozen menu does not advertise chart; a typed `c`/`chart` reply still routes via 6.3.)
+When no blocking tool is reachable (or the platform tool errors): print the exact frozen menu in
+[references/failure-branches.md § Numbered-options fallback](references/failure-branches.md#numbered-options-fallback).
 
 ### 6.3 — Reply parsing
 
@@ -788,8 +748,8 @@ Normalize the reply (strip whitespace, lowercase). Route by exact match:
 
 | Reply | Action |
 |-------|--------|
-| `1`, `2`, ..., `N-1` (where `N` is the Skip slot) | Run `flowctl prospect promote <artifact-id> --idea <reply>`. Echo the new spec id and exit. |
-| `N`, `skip`, empty string | Print `Skipped. Artifact saved at .flow/prospects/<artifact-id>.md` and exit. |
+| A survivor position, or a `Promote #<position>` label | Run `flowctl prospect promote <artifact-id> --idea <position>`. Echo the new spec id and exit. |
+| `s`, `skip`, `Skip`, empty string | Print `Skipped. Artifact saved at .flow/prospects/<artifact-id>.md` and exit. |
 | `c`, `chart` | Print suggestion: `Run /flow-next:chart on the selected survivor only if it is still singular, oversized, and unclear; otherwise capture/promote. Artifact saved at .flow/prospects/<artifact-id>.md`. **Do not auto-invoke.** |
 | `i`, `refine`, `interview` | Print suggestion: `Run /flow-next:refine <spec-or-task-id> to refine. Artifact saved at .flow/prospects/<artifact-id>.md`. **Do not auto-invoke** - the user picks the target id. |
 | anything else | Reprint the menu once with `Unrecognized choice: <reply>`. On second invalid reply, print `Skipped (no valid choice). Artifact saved at .flow/prospects/<artifact-id>.md` and exit cleanly. |

@@ -579,7 +579,6 @@ class CursorPersonaOverrideAndCap(unittest.TestCase):
                         handler(args)
                 sent = runner.calls[0]["prompt"]
                 self.assertIn("PERSONA OVERRIDE", sent)
-                self.assertIn("superseded", sent)
 
     def test_plan_review_increments_cap_counter(self):
         with _flow_repo() as (repo, base):

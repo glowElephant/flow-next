@@ -121,7 +121,7 @@ If `RESUMABLE_COUNT == 0` and `CORRUPT_COUNT == 0`, skip to Phase 1 silently.
 
 If `CORRUPT_COUNT > 0`, print a single warning line per corrupt artifact (`<file>: corrupt — <reason>`). They are visible but not offered.
 
-If `RESUMABLE_COUNT == 0` (only corrupt artifacts), skip to Phase 1 — nothing to extend.
+If `RESUMABLE_COUNT == 0` (only corrupt artifacts), skip to Phase 1 — nothing to open.
 
 ### 0.4 — Blocking question
 
@@ -131,15 +131,13 @@ Frozen option strings (anchor — must match exactly across backends):
 
 ```
 fresh         — start a new prospect artifact (Phase 1)
-extend N      — append a new dated section to artifact #N (resumable list above)
 open N        — print the path to artifact #N and exit Phase 0
 ```
 
-`extend` and `open` indices reference the **resumable** list only — never the corrupt list. Validate the index; reject `extend 0`, out-of-range numbers, or selecting a non-resumable artifact.
+`open` indices reference the **resumable** list only — never the corrupt list. Validate the index; reject `open 0`, out-of-range numbers, or selecting a non-resumable artifact.
 
 ### 0.5 — Routing
 
 - `fresh` → continue to Phase 1 with no prior-session context.
-- `extend N` → record `EXTEND_TARGET=<artifact path>` for use in Phase 5 (which appends a dated section to it); continue to Phase 1 noting the target in the snapshot.
 - `open N` → print `Artifact: <absolute path>` to stdout and exit 0. Do not run Phase 1.
 

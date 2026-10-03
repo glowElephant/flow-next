@@ -115,37 +115,8 @@ threads as `null`, not only `false`. Never re-filter open threads with
 }
 ```
 
-**Targeted mode** — narrow `FEEDBACK_JSON` to the single item identified by the URL.
-
-For `TARGETED_TYPE=review_thread` (inline review comment):
-
-```bash
-COMMENT_NODE_ID=$(gh api "repos/$OWNER/$REPO/pulls/comments/$COMMENT_REST_ID" --jq .node_id)
-THREAD_JSON=$(bash "$SCRIPTS/get-thread-for-comment" "$PR_NUMBER" "$COMMENT_NODE_ID" "$OWNER/$REPO")
-THREAD_ID=$(jq -r .id <<<"$THREAD_JSON")
-# Keep only the matching thread; drop pr_comments + review_bodies; zero cross-invocation signal.
-FEEDBACK_JSON=$(jq --arg tid "$THREAD_ID" '
-  .review_threads |= map(select(.id == $tid))
-  | .pr_comments = []
-  | .review_bodies = []
-  | .cross_invocation = {signal: false, resolved_threads: []}
-' <<<"$FEEDBACK_JSON")
-```
-
-For `TARGETED_TYPE=pr_comment` (top-level PR comment) — bypass thread lookup entirely, fetch the single comment via REST and build a minimal feedback payload:
-
-```bash
-PR_COMMENT_JSON=$(gh api "repos/$OWNER/$REPO/issues/comments/$COMMENT_REST_ID" \
-  --jq '{id: .node_id, author: .user.login, body: .body, createdAt: .created_at}')
-FEEDBACK_JSON=$(jq --argjson c "$PR_COMMENT_JSON" --arg pr "$PR_NUMBER" '
-  {
-    pr_number: ($pr | tonumber),
-    review_threads: [],
-    pr_comments: [$c],
-    review_bodies: [],
-    cross_invocation: {signal: false, resolved_threads: []}
-  }' <<<'{}')
-```
+`MODE=targeted`: read [targeted.md](targeted.md) and narrow `FEEDBACK_JSON` as it says; it
+also holds the Phase 2 and Phase 3 skips for that mode.
 
 If `FEEDBACK_JSON` is empty (`review_threads=[]`, `pr_comments=[]`, `review_bodies=[]`), skip to Phase 10 with "no open feedback" message.
 
@@ -170,14 +141,7 @@ as hints to inspect thread counts, not as proof there is no actionable feedback.
 
 ## Phase 2: Triage — new vs pending vs dropped
 
-**Targeted mode skips this phase entirely** — the user explicitly asked for that one item, treat it as `new` regardless of triage heuristics:
-
-```bash
-if [[ "$MODE" == "targeted" ]]; then
-  echo "Triage: skipped (targeted mode — single item)."
-  # Fall through to Phase 3 with the single item marked new.
-fi
-```
+Targeted mode skips this phase ([targeted.md](targeted.md)).
 
 Full-mode triage rules below.
 
@@ -213,23 +177,19 @@ If `N == 0`, skip to Phase 10 (summary) with a "nothing new to address" message.
 
 ## Phase 3: Cluster analysis (gated)
 
-In full mode without `--no-cluster`, read [cluster-analysis.md](cluster-analysis.md) for full gate logic and dispatch rules; targeted mode and `--no-cluster` never read it.
-
-**Targeted mode skips this phase entirely** — single-item dispatch, no cluster surface:
-
-```bash
-if [[ "$MODE" == "targeted" ]]; then
-  echo "Cluster analysis: skipped (targeted mode — single item)."
-  # Skip to Phase 4 with the single item as its own unit.
-fi
-```
+Targeted mode skips this phase ([targeted.md](targeted.md)).
 
 Full-mode gate (both must pass):
 
 1. `FEEDBACK_JSON.cross_invocation.signal == true` (≥1 resolved thread exists).
 2. Spatial-overlap precheck — ≥1 new `review_thread` shares a file path or directory subtree with a resolved thread.
 
+If the signal stage passes but the resolved threads don't carry file paths (older GraphQL responses), signal stage governs alone and the precheck is skipped.
+
 If gate fails **or** `NO_CLUSTER=1`: skip clustering → every new item is its own unit.
+
+Only when the gate passes and `NO_CLUSTER=0`: read [cluster-analysis.md](cluster-analysis.md) for
+categorization and cluster-dispatch rules; targeted mode, `--no-cluster` and a failed gate never read it.
 
 If gate passes:
 
@@ -373,7 +333,15 @@ git commit -m "Address PR review feedback (#$PR_NUMBER)
 $(echo "$VERDICTS" | jq -r '.[] | select(.files_changed|length>0) | "- " + .reason')
 ${PRE_EXISTING_FAILURE_NOTE:-}"
 
-git push
+# On the PR branch a plain push works; from a detached checkout (land's isolated worktree)
+# push to the PR's head repository and branch by name (a fork PR's head is not origin).
+if git symbolic-ref -q HEAD >/dev/null; then
+  git push
+else
+  HEAD_REPO_URL=$(gh pr view "$PR_NUMBER" --json headRepository,headRepositoryOwner \
+    -q '"https://github.com/" + .headRepositoryOwner.login + "/" + .headRepository.name + ".git"')
+  git push "$HEAD_REPO_URL" "HEAD:$(gh pr view "$PR_NUMBER" --json headRefName -q .headRefName)"
+fi
 ```
 
 ---
@@ -453,33 +421,8 @@ The 2-cycle bound is identical in both modes. Under `AUTONOMOUS=1` the escalatio
 
 ## Phase 9.5: Tracker sync (opt-in) — optional resolution comment
 
-**Optional. Runs only when the tracker bridge is active AND `resolvePr` is opted in, after the resolution pass settles (Phase 9 found nothing left to loop on, or only `needs-human` threads remain). With no tracker configured this is a no-op.** Posts an optional resolution comment to the linked tracker issue summarizing what was addressed on the PR — append-only, conflict-free.
-
-The linked spec id comes from the PR's spec association (the same `SPEC_ID` make-pr used; resolve `flowctl show <spec-id>` from the branch as elsewhere in this skill).
-
-```bash
-LEAF="$($FLOWCTL config get tracker.perEvent.resolvePr --json | jq -r '.value')"   # read the leaf ONCE (shared gating predicate — work SKILL.md)
-case "$LEAF" in
-  pull|push|reconcile|comment) OP="comment" ;;
-  off|null)                    OP="off" ;;
-  *)                           OP="off" ;; # malformed config stays silent
-esac
-if [ "$($FLOWCTL sync active --json | jq -r '.active')" = "true" ] \
-   && [ "$OP" != "off" ]; then
-  # Resolve PR synthesizes the comment content by name: "Addressed N of M
-  # review items on PR #<NUMBER>" plus the terminal resolution counts. Its
-  # FIRST line is `evidence=<post-resolution-pr-head-sha>`. Write it to a mode
-  # 0600 temporary body file, never argv. The inline
-  # flow-next-tracker-sync wrapper makes exactly one facade call and deletes it:
-  #   "$FLOWCTL" tracker sync "$SPEC_ID" --op comment --event resolvePr --body-file "$BODY_FILE"
-  # Unlinked specs create and link inside the facade. Best-effort; never blocks
-  # the resolve-pr summary.
-  :
-fi
-```
-
-The facade emits one receipt tagged `--event resolvePr`. Structured errors are
-routed by the inline wrapper and remain best-effort.
+Run `"$FLOWCTL" sync active --json`. Only when it reads `active: false`: nothing runs here.
+Otherwise, including an error: read [tracker-comment.md](tracker-comment.md) and run it.
 
 ---
 

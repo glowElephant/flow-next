@@ -55,7 +55,7 @@ Count remaining entries (`TOTAL`). Route:
 
 | TOTAL | Path | Notes |
 |-------|------|-------|
-| 0 | exit cleanly | Print `No categorized memory entries found.` plus legacy skip note if any |
+| 0 | skip the memory phases | Print `No categorized memory entries found.` plus legacy skip note if any; continue with Phase 0.5 and the report |
 | 1-2 | **Focused** | Investigate directly, then present recommendation(s) |
 | 3-8 | **Batch** | Investigate (parallel subagents on 3+), then present grouped recommendations |
 | 9+ | **Broad** | Triage first: pick highest-impact cluster, recommend starting there (interactive) or process all clusters in impact order (autofix) |
@@ -120,7 +120,7 @@ An entry is **recurrence-qualified** when `UPDATE_HEADINGS >= 2` OR `ENTRY_COMMI
 A `related_to` **cluster** qualifies only as a corroborated whole, never on size alone: a cluster of `>= 3` entries qualifies when **any member** has at least one `## Update` heading, or **any member** meets the commit signal. Cluster aggregates must therefore be computed here too, before anything is auto-Kept — a cluster whose members all have unchanged modules would otherwise be auto-Kept entry-by-entry and never seen:
 
 
-A bare `related_to >= 3` with no `## Update` anywhere and no member meeting the commit signal **proposes nothing** — see [phases.md](phases.md) §Harden for the thresholds and the calibration evidence behind them.
+A bare `related_to >= 3` with no `## Update` anywhere and no member meeting the commit signal **proposes nothing** — see [references/harden-classify.md](references/harden-classify.md) for the thresholds and the calibration evidence behind them.
 
 - **Recurrence-qualified → bypass auto-Keep.** The entry — or, for a qualified cluster, **every member of that cluster** — enters the Phase-1 investigation set for Harden consideration even when its module is unchanged. Record why: `recurrence bypass — 2 Update headings, module unchanged`, or `recurrence bypass — cluster of 4, 1 Update heading on <member-id>`.
 - Not qualified → fall through to the normal auto-Keep decision below.
@@ -154,6 +154,9 @@ probes keep investigation enabled.
 **Auto-Kept entries still flow into Phase 1.75 cross-doc analysis and the Phase-5 report.** An auto-Kept entry missing from the contradiction scan or from the report has broken this — the pre-filter skips only the expensive per-entry investigation, never the cheap pairwise contradiction scan, so an entry that went stale because a *different* entry changed is still caught. Autofix always applies the pre-filter; interactive mode may offer "re-investigate all anyway" (rare, user-driven).
 
 A recurrence-qualified entry (§0.75.1) is never auto-Kept, even when its module is untouched.
+
+When §0.75.1 marked any entry or cluster recurrence-qualified: read
+[references/harden-classify.md](references/harden-classify.md) before Phase 1.
 
 ### Done when
 
@@ -325,7 +328,10 @@ Apply [phases.md](phases.md) §Outcome precedence: **correctness (Replace / Dele
 
 ### Harden gate (both conditions required)
 
-**A Harden classification rests on two independent conditions.** A Harden proposed on one of them alone has broken this: it needs both a recurrence signal from §0.75.1 (`>= 2` `## Update` headings or `>= 4` entry-file commits; `related_to >= 3` corroborates only) and an LLM judgment that the lesson is mechanizable. Missing recurrence → Keep. **Recurrence present but not mechanizable → Update (retrieval fix), when the retrieval surface is actually deficient:** the lesson was re-learned while a correct entry sat in the store, so the defect is in how the entry is found, not what it says. Name the defect first — the field or fields (`title`, `tags`, `module`, `applies_when`, placement) that would miss the query this lesson's topic gets searched by. **No nameable defect → no retrieval fix**, recurrence notwithstanding (the entry falls through to the ordinary reference-drift check, so Keep unless it has drift of its own): the recurrence counters are all-history and never decrease, and a retrieval repair is itself a substantive commit in the §0.75.1 scan, so a branch that fired on recurrence alone would re-fire on every later audit forever and churn a repaired entry's metadata once per run in autofix. Evidence bullets cite the write-side artifacts (the `## Update` headings, the entry-file commits), never a usage count; the fix is scoped by [phases.md](phases.md) §Update, retrieval-fix variant. The duplication guard runs before the candidate reaches Phase 3: an already-enforced-and-active class becomes a pointer-demotion proposal with no new artifact; a matched-but-inactive rule is a broken gate, so the entry stays `active` and the finding is reported. **In autofix mode, Harden candidates are never applied** — they are classified and reported under Recommended only.
+Recurrence-qualified entries (§0.75.1), or ones whose evidence you judge recurring below the
+numeric thresholds (state that evidence): apply
+[references/harden-classify.md § Phase 2 Harden gate](references/harden-classify.md#phase-2-harden-gate).
+**In autofix mode, Harden candidates are never applied** — they are classified and reported under Recommended only.
 
 ### Replace evidence sufficiency check
 
@@ -415,7 +421,7 @@ Execute per [phases.md](phases.md) §Replace — the authoritative copy:
 
 - Evidence **sufficient** (Phase 2 check) → §Replace "Action steps (sufficient evidence)".
 - Evidence **insufficient** → §Replace's mark-stale fallback (same helper as §4.6).
-- `knowledge/decisions/` entries → §"Replace = supersede": the old entry is **never** `git rm`'d — decision history stays on disk (round-trip rules from §4.2 apply when editing its frontmatter).
+- `knowledge/decisions/` entries → [references/decision-entries.md](references/decision-entries.md) §"Replace = supersede": the old entry is **never** `git rm`'d — decision history stays on disk (round-trip rules from §4.2 apply when editing its frontmatter).
 
 ### 4.4.1 — Glossary stale-marking (Phase 0.5 outcomes)
 
@@ -541,7 +547,7 @@ Skip Phase 5 commit logic if no files were modified (all Keep, all writes failed
 If `GIT_BRANCH` matches `main` / `master` / `$GIT_DEFAULT`:
 
 ```
-1. Create a branch + commit + open PR (recommended)
+1. Create a branch + commit (recommended; push or open a PR only when asked)
    Branch: docs/audit-memory-<date>  (or topic-specific if scope was narrow)
 2. Commit directly to <GIT_BRANCH>
 3. Don't commit — I'll handle it
@@ -568,7 +574,7 @@ If `GIT_BRANCH` is a feature branch + dirty tree (other uncommitted changes):
 
 | Context | Default action |
 |---------|---------------|
-| On main/master/default | Create branch `docs/audit-memory-<date>`, commit, attempt `gh pr create`. If PR creation fails, report the branch name |
+| On main/master/default | Create branch `docs/audit-memory-<date>`, commit, and report the branch name. Never push or open a PR unless asked |
 | On feature branch | Commit as a separate commit on the current branch |
 | Git operations fail | Include the recommended git commands in the report and continue |
 

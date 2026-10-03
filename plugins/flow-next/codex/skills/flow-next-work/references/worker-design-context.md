@@ -1,8 +1,8 @@
 # Worker design context (gated reference)
 
-> **Read by the worker only when the task spec contains `## Design context`** (worker.md Phase 1.5).
+> **Read by the worker only when the task spec contains a `Design context` heading** (`##` or `###`; worker.md Phase 1.5).
 
-**If the task spec contains `## Design context`:**
+**If the task spec contains a `Design context` heading:**
 
 Read `DESIGN.md` (path noted in design context section). Focus on:
 - Color tokens referenced in the task's design context

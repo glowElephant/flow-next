@@ -628,13 +628,16 @@ assert_grep "already archived" "$out" "Case 9d: error mentions 'already archived
 # =============================================================================
 echo -e "${YELLOW}--- Case 10: numbered-options fallback (R19) ---${NC}"
 
+# The frozen menu lives in the fallback reference workflow.md §6.2 gates on.
+FB_TEXT="$(cat "$PLUGIN_ROOT/skills/flow-next-prospect/references/failure-branches.md")"
+
 # Workflow.md must carry the literal frozen-format strings the smoke greps.
 # Spec §6.2 freezes the format; this is the smoke contract.
-assert_grep "Saved: .flow/prospects/<artifact-id>.md"   "$WF_TEXT" "Case 10: 'Saved: …' literal present in workflow.md"
-assert_grep "Promote a survivor to a spec?"           "$WF_TEXT" "Case 10: 'Promote a survivor to a spec?' literal present"
-assert_grep "Enter choice [1-N|i|skip]:"               "$WF_TEXT" "Case 10: 'Enter choice [1-N|i|skip]:' literal present"
-assert_grep "i) Refine"                                "$WF_TEXT" "Case 10: refine alphabetic shortcut present"
-assert_grep "N) Skip"                                  "$WF_TEXT" "Case 10: numeric Skip slot present"
+assert_grep "Saved: .flow/prospects/<artifact-id>.md"   "$FB_TEXT" "Case 10: 'Saved: …' literal present in the fallback reference"
+assert_grep "Promote a survivor to a spec?"           "$FB_TEXT" "Case 10: 'Promote a survivor to a spec?' literal present"
+assert_grep "Enter choice [<position>|i|s]:"           "$FB_TEXT" "Case 10: 'Enter choice [<position>|i|s]:' literal present"
+assert_grep "i) Refine"                                "$FB_TEXT" "Case 10: refine alphabetic shortcut present"
+assert_grep "s) Skip"                                  "$FB_TEXT" "Case 10: alphabetic Skip option present"
 
 # Reply routing simulator: the workflow defines exact reply-parsing rules.
 # Drive the parser via a shell snippet (matches §6.3) and verify routing for
@@ -642,42 +645,39 @@ assert_grep "N) Skip"                                  "$WF_TEXT" "Case 10: nume
 ROUTE_SH="$TEST_DIR/route_reply.sh"
 cat > "$ROUTE_SH" <<'BASH'
 #!/usr/bin/env bash
-# Mimics workflow.md §6.3 reply parsing. Inputs: $1=N (skip slot), $2=reply.
-SKIP_SLOT="${1:-3}"
+# Mimics workflow.md §6.3 reply parsing. Inputs: $1=space-separated survivor positions, $2=reply.
+POSITIONS="${1:-1 4}"
 REPLY="${2:-}"
 NORM="$(printf '%s' "$REPLY" | tr '[:upper:]' '[:lower:]' | awk '{$1=$1};1')"
 case "$NORM" in
-  ""|skip)             echo "ROUTE=SKIP"; exit 0 ;;
+  ""|s|skip)           echo "ROUTE=SKIP"; exit 0 ;;
   i|interview)         echo "ROUTE=INTERVIEW"; exit 0 ;;
 esac
-if [[ "$NORM" =~ ^[0-9]+$ ]]; then
-  if [[ "$NORM" -eq "$SKIP_SLOT" ]]; then
-    echo "ROUTE=SKIP"; exit 0
-  elif (( NORM >= 1 && NORM < SKIP_SLOT )); then
-    echo "ROUTE=PROMOTE($NORM)"; exit 0
-  fi
+NORM="${NORM#promote #}"
+if [[ "$NORM" =~ ^[0-9]+$ ]] && [[ " $POSITIONS " == *" $NORM "* ]]; then
+  echo "ROUTE=PROMOTE($NORM)"; exit 0
 fi
 echo "ROUTE=UNRECOGNIZED"
 exit 1
 BASH
 chmod +x "$ROUTE_SH"
 
-# Skip-slot = 3 (2 survivors + 1 skip)
-out="$(bash "$ROUTE_SH" 3 "1")"
-assert_grep "ROUTE=PROMOTE(1)" "$out" "Case 10a: reply '1' → PROMOTE(1)"
+# Survivors at positions 1 and 4 (positions can skip numbers)
+out="$(bash "$ROUTE_SH" "1 4" "4")"
+assert_grep "ROUTE=PROMOTE(4)" "$out" "Case 10a: reply '4' → PROMOTE(4), the stored position"
 
-out="$(bash "$ROUTE_SH" 3 "i")"
+out="$(bash "$ROUTE_SH" "1 4" "i")"
 assert_grep "ROUTE=INTERVIEW" "$out" "Case 10b: reply 'i' → INTERVIEW"
 
-out="$(bash "$ROUTE_SH" 3 "skip")"
+out="$(bash "$ROUTE_SH" "1 4" "skip")"
 assert_grep "ROUTE=SKIP" "$out" "Case 10c: reply 'skip' → SKIP"
 
-out="$(bash "$ROUTE_SH" 3 "")"
+out="$(bash "$ROUTE_SH" "1 4" "")"
 assert_grep "ROUTE=SKIP" "$out" "Case 10d: empty reply → SKIP"
 
 # Unrecognized
 rc=0
-out="$(bash "$ROUTE_SH" 3 "garbage" || rc=$?)"
+out="$(bash "$ROUTE_SH" "1 4" "garbage" || rc=$?)"
 assert_grep "UNRECOGNIZED" "$out" "Case 10e: garbage reply → UNRECOGNIZED"
 
 # =============================================================================

@@ -4,6 +4,53 @@ All notable changes to the flow-next.
 
 Flow-Next changed shape with 5.0.0. One command, `/flow-next:flow`, reads whatever you have and picks the route, and `flow --auto` runs the same route unattended. If you are arriving from 4.x, start with [the 5.0.0 entry](#flow-next-500---2026-09-12) and [the flow skill](plugins/flow-next/skills/flow-next-flow/SKILL.md) before reading the items below.
 
+## [flow-next 7.1.0] - 2026-10-03
+
+7.1 is the release where Flow-Next does what you asked and less of what you didn't. When you're at the keyboard it hands the change back and waits for you to say "open the PR". When you hand it the merge with `--until=merge`, it makes the small, reversible calls itself, writes each one down, and stops before merging if something is really yours to decide. Underneath, most skills now read only the instructions that apply to the run in front of it: a typical attended run reads about a quarter less text than in 7.0 (roughly 19,000 words down to 14,600), and larger features come back a little faster. The rest is a long list of fixes, most of them reported by people running Flow-Next on real work. Thank you.
+
+**What changes when you upgrade.** Flow no longer opens a pull request on an attended run unless you ask for one, and work and plan stop asking setup questions. The plugin's top-level `bin/flowctl` is gone, so a bare `flowctl` typed outside a skill needs its full path (the setup snippet says where); skills are unaffected and nothing needs re-running. RepoPrompt is deprecated and leaves in 8.0.0, and so does the `review.backend` setting: 8.0.0 picks the reviewer from the model-routing block. Codex, OpenCode and Cursor-script installs pick all of this up when you re-run their installer, as usual.
+
+### Changed
+
+- **Attended runs open the pull request when you ask.** A build finishes, commits on a local branch and ends with one line: say "open the PR" when you want it. Nothing is pushed until then. `flow --auto` still stops at an open PR, and a PR a run just opened no longer gets a "land it now?" question.
+- **`--until=merge` decides what it can and stops on what it can't.** When you give a run the merge, it makes a call itself if the call is reversible, inside the spec and backed by evidence (updating a snapshot your change legitimately altered, say) and records it in the PR's Decisions list. Anything else, like an irreversible step or a product choice the spec leaves open, stops the run before the merge. Land never marks a draft ready on an unattended merge; it stops and names the open items. You saying "land it" still merges a draft.
+- **A reviewer's question no longer ends an unattended run empty-handed.** When the reviewer asks for a human call that doesn't block the rest of the work, the run fixes everything else, opens a draft PR and lists the question as an open item.
+- **Work and plan stop asking setup questions.** With no review backend configured, review is off and the handoff says so once. Plan uses its default depth. Set a backend in setup, with `review.backend`, or in the prompt.
+- **A check you ask for finishes before the reply.** Ask for the full suite or a command and the run waits for it, instead of handing back while it's still running.
+- **Experiments stay read-only on every route.** Running something to settle a question is limited to read-only or throwaway runs. Anything that needs live state, credentials, the network or a destructive command becomes a question when you're there and a human call when you're not.
+- **Skills read less.** Text that only matters in some runs (tracker steps, unattended rules, stacked PRs, the no-plan route, feature-map writes and many more) now loads only when the run needs it, and each skill reads the working rules once per run.
+- **Flow-Next installs through claude.ai, Cowork and organization sync.** Those surfaces refuse a plugin with a top-level `bin/` directory. The launcher in it was a second copy of `scripts/flowctl`, which every skill already uses. Thanks @sn-furali (#506).
+- **Audit's autofix stops at a local branch.** It used to open a pull request on its own; it now commits to `docs/audit-memory-<date>` and tells you the branch.
+
+### Deprecated
+
+- **The `review.backend` setting leaves in 8.0.0.** From 8.0.0 the reviewer is chosen in the model-routing block of your CLAUDE.md or AGENTS.md, the one setup proposes, the same way implementers and scouts already are. That block lets you name a reviewer model and route review to another model family. Until then `review.backend` keeps working exactly as it does today, and a reviewer named in the prompt still wins.
+- **RepoPrompt support leaves in 8.0.0.** That covers the `rp` review backend and `/flow-next:export-context`. Projects already on `rp` keep working until then and get one notice per run. To move off it now, pick another backend (`flowctl config set review.backend codex`, or `host`, `claude`, `copilot`, `cursor`); in 8.0.0 the routing block takes over.
+
+### Fixed
+
+- **Review ran on repos that have a reviewer configured.** Work could check the backend from the skill's own folder, read "nothing configured" and quietly skip review. It now resolves the backend per task from the repository root.
+- **Reviewer prompts stopped contradicting themselves.** A pre-existing problem that blocks shipping now counts against the change, a requirement left unaddressed blocks at any severity, and completion review grades the finished build instead of using plan review's scale.
+- **A one-task build with a skipped review skips completion review too**, instead of running a full review on a change the risk rule said needed none.
+- **Land merges a pull request opened without a spec**, through the same gates as any other.
+- **Land's repairs can push.** It fixes review threads and red CI in a detached worktree at the PR head and pushes to the branch by name; resolve-pr does the same when detached.
+- **An unattended merge stops once when a review thread needs you**, instead of retrying the same thread every 30 minutes.
+- **An attended flow run commits QA's verdict** on the spec branch. Running `/flow-next:qa` yourself still leaves commits to you.
+- **Upgrading Codex clears out skills a release removed.** `install-codex.sh` moves any flow-next skill or prompt the release no longer ships into `~/.codex/.flow-next-retired/`. Your own files are untouched.
+- **`flowctl show` keeps a spec's tracker link.** It had been dropping the whole `tracker` key, so link checks reported a correct link as missing. Thanks @sn-furali for the report and the fix (#484, #483).
+- **A second GitHub blocker no longer stops tracker sync.** GitHub allows one parent per sub-issue; the second edge is now queued for you and the rest of the sync runs. Thanks @TechupBusiness (#502).
+- **Tracker pulls stop duplicating comments** in the spec's Sync Log and on the tracker.
+- **A spec-only PR carrying old render files isn't counted as shipped work** by the tracker. Thanks @sn-furali (#501).
+- **Worktree Kit works from inside a worktree.** Thanks @sn-furali (#469).
+- **A formatter's blank line no longer marks your setup block as customized** (#481).
+- **Codex setup keeps your edited agent files.** It adds missing ones and asks once about any that differ.
+- **Memory migration keeps lessons it didn't migrate**, instead of moving the whole file into the ignored `_migrated/` folder.
+- **Prospect promotes the idea you picked.** The `extend` option, which never worked, is gone.
+- **Prime asks before creating CI or devcontainer files, and never runs a full suite to assess.**
+- **Drive only closes apps it opened.**
+- **A reviewer's `NEEDS_HUMAN` stops on every backend**, not just Codex.
+- **Smaller fixes:** refine splits only spec inputs; the worker reads design context under a `###` heading; capture writes a requirement-coverage table only on a planned route; the judge refuses an `https://` proxy instead of silently using port 80; QA infers its first viewport instead of asking; refine stops asking "Mark ready?" when flow started it.
+
 ## [flow-next 7.0.0] - 2026-10-01
 
 **7.0.0, codename Roadrunner. Flow-Next is now blazing fast.**

@@ -34,6 +34,12 @@ Build in small steps, each checked before the next, and commit them in an order 
 work is right (the failing test, then the fix). When two fixes built on the same idea have
 failed, question the idea before trying a third.
 
+Settle an observable question by running something only when that run is read-only or disposable.
+One that needs live or shared state, credentials, the network or a destructive command (a
+migration, a deployment, a write API) is a question when attended and a human call when
+unattended. When independent inputs (sources, scouts, reviewers, models) disagree wildly on one
+question, it was underspecified: reframe it and re-run, never average or pick one.
+
 ## Tests
 
 - Run the tests for the code you changed. Do not run the full suite unless the repository's
@@ -41,8 +47,9 @@ failed, question the idea before trying a third.
   (re-check those with focused tests). CI owns regressions.
 - A check the person asks for by name (the full suite, a command, a scenario) is run as asked,
   every time they ask; these rules never override it. Wait for it to finish and report its result
-  in the same reply; do not hand back while it is still running. Only the review runs in the
-  background.
+  in the same reply; do not hand back while it is still running. Run it in the foreground with a
+  timeout long enough for it (a long check needs the tool's maximum, not its default); if it does
+  go to the background, wait on it before you reply. Only the review runs in the background.
 - A failing test written before the fix, then passing after it, is the proof. Where that test is
   cheap, write it first. No separate lint, typecheck or commit round for it.
 - A test must be able to fail for a defect: it calls the code the way a user does and checks the
@@ -62,18 +69,13 @@ failed, question the idea before trying a third.
 - **Attended** (a person is in the session): they want fast feedback. Ask only what only they can
   answer, and put related questions in one prompt rather than one per turn; settle anything
   observable by running it. Do not ask where a sensible default exists (a branch, a readiness
-  flag): take it and say so in one line. Outside a spec build (which commits its task and opens its
-  pull request through make-pr), commit on a local branch only when review needs it (review reads
-  commits); never push or open a pull request unless asked. List discoveries in the handoff as follow-ups ("found X, not part of this");
+  flag): take it and say so in one line. Commit on a local branch only when review needs it (review
+  reads commits) or a spec build commits its task; never push or open a pull request unless asked.
+  When the change is ready for one, end the handoff with one line saying so ("Say 'open the PR'
+  when you want it"), not a question. List discoveries in the handoff as follow-ups ("found X, not part of this");
   the person decides what to pick up.
-- **Unattended** (`--auto`): nobody is waiting. Never ask; decide from evidence, and stop only
-  for a call only a human can make or an irreversible action. A human call that does not block
-  the rest of the work (refreshing a frozen fixture, a requirement only CI can prove) goes in the
-  pull request as an open item, on a draft pull request; finish the rest instead of stopping.
-  Fix a discovery only when it blocks the goal, as its own commit; list the rest as follow-ups
-  in the final report. Keep a
-  Decisions list in the final report and the pull request body: each default you chose, finding
-  you declined and review you skipped, with the evidence behind it.
+- **Unattended** (`--auto`): read [working-rules-unattended.md](working-rules-unattended.md) and
+  follow its Unattended rules in place of the attended ones above.
 
 ## Review
 
@@ -97,18 +99,11 @@ tests, not another review. Hand the result back first, in its own message, and e
 start the review in the background and report its verdict (and any fix) when it lands. If the
 re-review still finds the change wrong, give the person the remaining findings with the
 reviewer's reasons and leave the task open until they decide; when they accept it as is, record
-an `OVERRIDDEN:` line with their words and complete the task.
+an `OVERRIDDEN:` line with their words in the task's done summary and complete the task.
 
-Unattended (`--auto`, with or without `--until=merge`), nobody is there to decide what is left, so
-aim for the best result: fix, re-review the fixes, and repeat until SHIP, with flowctl's round cap
-and stall check as the backstop (an `ESCALATE:` from either is a stop). A person or project instruction that asks for it ("review
-until SHIP") loops the same way. In the loop, decline hardening, scope creep and problems that
-existed before the change, one `Declined #<n>: <reason>` line each in the fix commit. If the
-reviewer keeps only findings like that, all below Major, end the loop yourself: report the
-override and list each disagreement, with both sides' reasons, in the Decisions list and the pull
-request. Never end it over a finding that shows a stated requirement broken; fix that. The verdict
-stays the reviewer's: the receipt keeps it, and you never write a SHIP. The loop's end (SHIP, or a
-recorded override) gates the handoff and any merge.
+Unattended (`--auto`, with or without `--until=merge`), or when a person or project instruction
+asks to review until SHIP: read [working-rules-unattended.md § Review loop](working-rules-unattended.md#review-loop)
+and loop as it says.
 
 ## Pull requests and follow-ups
 

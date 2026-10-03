@@ -58,7 +58,7 @@ Refs (`@e1`, `@e2`, …) go **stale** after any navigation, click, or form submi
 ### Done when
 
 - Every act ran against refs from a snapshot taken after the last DOM change (or against a semantic locator that needs none).
-- Every verify carries three checks — expected text/state, clean console, no failed API/network request.
+- Every verify carries three checks — expected text/state, clean console, no failed API/network request. Native rungs (cua, computer use) have no console or network channel: verify the expected state plus any app log, and say those checks were unavailable.
 - Evidence was captured at the moment of interest and on failure — screenshot plus console/network output — so a downstream `/flow-next:qa` verdict rests on artifacts rather than narration.
 - **The session or tab is released when the pass is done.** A left-open session or daemon has broken this.
 
@@ -72,7 +72,7 @@ Probe availability top-down and use the **highest rung that passes**; fail soft 
 | 2 | **chrome-devtools-mcp** | You want built-in auto-wait (fewer stale-ref failures), DevTools-grade network/console inspection, Lighthouse, or to **attach to your real signed-in Chrome** (`--browser-url` / `--autoConnect`) so bot defenses don't challenge an automated profile. | `references/chrome-devtools-mcp.md` |
 | 3 | **Playwright** (CLI or MCP) | The repo already has Playwright configured, or you need a headless CI-style run / large cross-browser regression suite. | `references/playwright.md` |
 | 4 | **cursor-ide-browser** MCP | On a Cursor host: no install, no `command -v`. Probe the server by id `cursor-ide-browser` (a catalog omission is not absence). If that probe fails in an attended session, ask once for `@Browser` (no space) or the Browser pane showing connected, then re-probe once — skip the ask when unattended. Real snapshot YAML + `browser_cdp`. **Cannot satisfy verify (console + network) unaided** — a `/flow-next:qa` pass here must set `QA_OUTCOME=BLOCKED` with `blocked_reason` naming the missing channels (do not invent `console_path` / network path values). When higher rungs are missing, prefer this over instructing an install. | `references/cursor-ide-browser.md` |
-| 5 (terminal) | **Manual + screenshot relay** | No browser driver available — drive yourself, paste console errors and screenshots into chat. | — |
+| 5 (terminal) | **Manual + screenshot relay** | No browser driver available — drive yourself, paste console errors and screenshots into chat (attended only; unattended reports no driver and QA records BLOCKED). | — |
 
 **Surface B note: an Electron / WebView2 app is driven through this same web ladder, over its CDP debug port.** Routing a Chromium-backed desktop app to the native rung has broken this. Attach to the app's remote-debugging port (`agent-browser --cdp <port>` / `--auto-connect`; chrome-devtools-mcp `--browser-url=http://127.0.0.1:<port>`). Launch the app with a dedicated debug port and a dedicated user-data-dir; treat the open debug port as a security exposure (any local app can drive that session).
 
@@ -80,19 +80,9 @@ Probe availability top-down and use the **highest rung that passes**; fail soft 
 
 ## Step 4 — Native rung (surface C): Cua Driver, then Computer Use
 
-A genuinely native app (or a non-CDP webview) has no browser tab to attach to — the model has to drive the live machine. This rung is provider-agnostic; probe for the best available driver in this order, prefer the highest that passes, degrade to the next:
-
-| Probe | Driver | Reference |
-|-------|--------|-----------|
-| `cua-driver` MCP registered / `command -v cua-driver` (real display) | **Cua Driver** — MIT, provider-agnostic, **background** (no focus steal), macOS/Windows (Linux pre-release), accessibility-tree-based. Preferred when present. | `references/cua.md` |
-| Codex CU available, or a Claude Computer-Use harness present | **Computer Use** — Codex CU (macOS/Windows) / Anthropic Claude CU (the API `computer` tool via its own harness). Screen-takeover. | `references/computer-use.md` |
-| **Headless / CI** (no display) and a sandbox backend (`lume`/Docker/QEMU, or opted-in cloud) | **Cua Sandbox** — drive inside an isolated VM/container; the **only** native option with no real screen. Opt-in per run, torn down each run; local backend default, cua.ai cloud explicit opt-in. | `references/cua.md` |
-| None present | **Documented limitation** — document the gap and stop; never fail silently. | — |
-
-All share the universal flow (Step 2) — `observe → act → verify → capture`, described as goal + success state, not pixel coordinates; only the actuation differs. **Detect, never assume** (`command -v`, MCP list, `uname -s`); no native driver is ever a hard dependency. **Attended vs headless splits the precedence:** on a real display, prefer the background Cua Driver → Computer Use; on a **headless/CI** host (no screen) the **Cua Sandbox** is the only native option — the explicit ordering, the local-default/cloud-opt-in split, and provisioning/teardown live in `references/cua.md`.
-
-→ Read `references/cua.md` for Cua Driver detection, the install/permission walkthrough (multi-host MCP wiring), the AX-tree driving loop, the macOS permission-split evidence mode, the Native-rung precedence list, licensing, and degradation.
-→ Read `references/computer-use.md` for Computer Use availability detection, the enable/permission walkthrough, the driving loop, safety/hygiene, and the full graceful-degradation table.
+Only for surface C (a genuinely native app or a non-CDP webview): read
+[references/cua.md § Native rung (surface C)](references/cua.md#native-rung-surface-c) first; it holds
+the driver probe order and routes to Computer Use.
 
 ## Driver detection & graceful degradation (all surfaces)
 

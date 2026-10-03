@@ -1,5 +1,7 @@
 # Plan Review Workflow — RepoPrompt Backend
 
+> **Deprecated.** RepoPrompt support is deprecated and will be removed in flow-next 8.0.0. When this runs, say so once in the report and suggest another review backend (`codex`, `host`, `claude`, `copilot` or `cursor`).
+
 Use only when `BACKEND="rp"` after [workflow.md](workflow.md).
 
 ## Critical rules

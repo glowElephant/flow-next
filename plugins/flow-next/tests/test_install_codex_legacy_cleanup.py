@@ -522,6 +522,50 @@ class TestInstallCodexLegacyCleanup(unittest.TestCase):
             )
             self.assertEqual((retired / "epic-review.md").read_text(), PROMPT_BODY)
 
+    def test_any_skill_or_prompt_a_release_dropped_is_retired(self) -> None:
+        """7.0 removed ralph-init and the pilot/interview stubs; an upgrade must not leave them live."""
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            codex = home / ".codex"
+            skills = codex / "skills"
+            prompts = codex / "prompts"
+            for name in ("flow-next-ralph-init", "flow-next-pilot", "flow-next-interview"):
+                (skills / name).mkdir(parents=True)
+                (skills / name / "SKILL.md").write_text(f"---\nname: {name}\ndescription: old\n---\n\nbody\n")
+            # A user skill in our namespace that is not ours (different frontmatter name).
+            (skills / "flow-next-mine").mkdir(parents=True)
+            (skills / "flow-next-mine" / "SKILL.md").write_text("---\nname: my-own-skill\n---\n\nmine\n")
+            prompts.mkdir(parents=True)
+            generated = (
+                "---\nname: ralph-init\ndescription: old\n---\n\n"
+                "# IMPORTANT: This command MUST invoke the skill `flow-next-ralph-init`\n"
+            )
+            (prompts / "ralph-init.md").write_text(generated)
+            # A user prompt with no generated redirect body.
+            (prompts / "notes.md").write_text("---\nname: notes\n---\n\nmy notes\n")
+            # User prompts that quote a redirect line: inside a sentence, or naming another skill.
+            quoted = ("---\nname: my-review\n---\n\nExample: # IMPORTANT: This command MUST invoke the skill "
+                      "`flow-next-my-review`\n")
+            (prompts / "my-review.md").write_text(quoted)
+            other = ("---\nname: wrapper\n---\n\n"
+                     "# IMPORTANT: This command MUST invoke the skill `flow-next-ralph-init`\n")
+            (prompts / "wrapper.md").write_text(other)
+
+            result = _run_installer(home)
+            self.assertEqual(result.returncode, 0, result.stderr)
+
+            retired = codex / ".flow-next-retired"
+            for name in ("flow-next-ralph-init", "flow-next-pilot", "flow-next-interview"):
+                self.assertFalse((skills / name).exists(), f"{name} still live")
+                self.assertTrue((retired / "skills" / name / "SKILL.md").is_file(), f"{name} not recoverable")
+            self.assertFalse((prompts / "ralph-init.md").exists())
+            self.assertEqual((retired / "prompts" / "ralph-init.md").read_text(), generated)
+            self.assertEqual((skills / "flow-next-mine" / "SKILL.md").read_text(), "---\nname: my-own-skill\n---\n\nmine\n")
+            self.assertEqual((prompts / "notes.md").read_text(), "---\nname: notes\n---\n\nmy notes\n")
+            self.assertEqual((prompts / "my-review.md").read_text(), quoted)
+            self.assertEqual((prompts / "wrapper.md").read_text(), other)
+            self.assertTrue((skills / "flow-next-flow" / "SKILL.md").is_file(), "a shipped skill was retired")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -8,7 +8,7 @@ user-invocable: false
 
 Manually trigger plan-sync to update downstream task specs.
 
-Read [working-rules.md](../../references/working-rules.md) first; it holds for every step of this skill.
+Read [working-rules.md](../../references/working-rules.md) first unless you already have this run; it holds for every step of this skill.
 
 ## Preamble
 

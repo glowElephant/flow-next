@@ -19,7 +19,7 @@ There is no subprocess judgment or deterministic classification. `memory audit-s
 
 **Read [workflow.md](workflow.md) for the full phase-by-phase execution. Read [phases.md](phases.md) for the 6-outcomes lookup with memory-schema-specific calibration.**
 
-Read [working-rules.md](../../references/working-rules.md) first; it holds for every step of this skill.
+Read [working-rules.md](../../references/working-rules.md) first unless you already have this run; it holds for every step of this skill.
 
 ## Preamble
 
@@ -43,7 +43,7 @@ MODE="interactive"
 if [[ "$RAW_ARGS" == *"mode:autofix"* || "$RAW_ARGS" == *"mode:autonomous"* || "${FLOW_AUTONOMOUS:-}" == "1" || "${AUTONOMOUS:-}" == "1" ]]; then
   MODE="autofix"
   # Strip token, collapse whitespace, trim.
-  SCOPE_HINT=$(printf "%s" "$RAW_ARGS" | sed 's/mode:autofix//' | tr -s ' ' | sed 's/^ //;s/ $//')
+  SCOPE_HINT=$(printf "%s" "$RAW_ARGS" | sed 's/mode:autofix//; s/mode:autonomous//' | tr -s ' ' | sed 's/^ //;s/ $//')
 else
   SCOPE_HINT="$RAW_ARGS"
 fi
@@ -101,16 +101,9 @@ The goal is automated maintenance with human oversight on judgment calls — not
 
 Execute the phases in [workflow.md](workflow.md) in order:
 
-0. **Discover & Triage** — walk `.flow/memory/{bug,knowledge}/<category>/`, group by module / category, count, choose interaction path (focused / batch / broad), skip legacy + `_*` directories with a counted warning. `knowledge/decisions/` entries are picked up automatically by the same glob.
-0.5 **Glossary scan** — enumerate `GLOSSARY.md` files via `flowctl glossary list --json`; per term, grep tracked code for the term and each `_Avoid_` alias (case-insensitive whole-word, normalized whitespace); zero hits + zero alias hits → mark stale via Edit tool (HTML comment after the term heading); alias hits → surface as alias-creep finding for Phase 3 (interactive) or report (autofix); skip husk files (`count: 0`) with a single advisory.
-0.75 **Change-detection pre-filter** — pre-scan recurrence artifacts (`## Update` heading count, entry-file commit count, `related_to` size) BEFORE the auto-Keep decision, so a recurrence-qualified entry reaches Phase 1 even when its module is unchanged; hardened entries get a cheap gate-liveness check instead of re-investigation.
-1. **Investigate** — per entry: read frontmatter + body, verify referenced files / symbols / modules against current code via Read / Grep / Glob, check git log in the area, form Keep / Update / Consolidate / Replace / Delete / Harden recommendation with 2-4 evidence bullets and confidence. For 3+ independent entries, dispatch parallel investigation subagents (read-only). Decision entries use the calibrated judging question — "does the constraint still hold?" — see [phases.md](phases.md) §Decision-entry calibration.
-1.75 **Cross-doc analysis** — compare entries sharing module / category for overlap (problem, solution, root cause, files), supersession (newer canonical entry covers older narrower precursor), contradictions.
-2. **Classify** — apply [phases.md](phases.md) decision criteria and the outcome-precedence rule (correctness > Consolidate > Harden). For Replace, verify evidence is sufficient to write a trustworthy successor; mark stale otherwise. For decision entries, Replace = supersede (write new entry; mark old `decision_status: superseded`, `superseded_by: <new-id>`; never `git rm` the old). Harden requires a recurrence signal AND mechanizability, and passes the duplication guard first.
-3. **Ask** — interactive only; autofix skips. Group obvious Keeps + Updates → confirm batch. Present Consolidate / Replace / non-auto-Delete individually. Present each Harden candidate individually with gate type, draft artifact, evidence bullets, and accept / different-gate-type / decline. Surface glossary alias-creep findings per alias. Lead with recommendation. One question at a time.
-4. **Execute** — Keep: no content edit; stamp `flowctl memory mark-fresh`. Update: agent edits frontmatter / body via Write tool, preserving unknown fields (a retrieval-fix placement move is a `git mv` into the new category directory first, then that edit on the moved file). Consolidate: merge unique content into canonical, `git rm` subsumed. Replace: write new entry, `git rm` old (decisions: write new + edit old's frontmatter to mark superseded, never `git rm`). Delete: `git rm` (only when code AND problem domain both gone). Harden: write the artifact, verify the gate fires, then `flowctl memory mark-hardened <id> --gate-ref "<path>#<rule-id> -- <note>"` — never `git rm`; verification failure leaves the entry active. Glossary stale: Edit comment after term heading. Ambiguous in autofix: `flowctl memory mark-stale`.
-5. **Report + Commit** — print Kept / Updated / Consolidated / Replaced / Deleted / Hardened / Marked-stale / Skipped counts plus per-entry detail and a Glossary section (Kept / Marked stale / Alias-creep / Husks). Detect git context (current branch, dirty tree). Interactive: ask commit options. Autofix: branch-and-PR on main, commit on feature branch, stage only audit-modified files.
-6. **Discoverability check** — verify the substantive CLAUDE.md / AGENTS.md (the one not just `@`-including the other) mentions `.flow/memory/` with schema basics (track / category / module / tags / status) and when to consult. Add a minimal line if missing — interactive asks consent, autofix surfaces as recommendation.
+Discover & Triage (0), Glossary scan (0.5), Change-detection pre-filter (0.75), Investigate (1),
+Cross-doc analysis (1.75), Classify (2), Ask (3, interactive only), Execute (4), Report + Commit (5),
+Discoverability check (6).
 
 ## Output rules
 
@@ -118,30 +111,7 @@ The full report is the deliverable — print it as markdown to stdout. Do not su
 
 **Host command form:** print every copy-pasteable flow-next command here in the spelling this host invokes — the flat `/flow-next-<name>` form when the resolved plugin root carries `.flow-next-opencode-manifest` (an OpenCode install — the same signal setup's host detection uses); on any other or indeterminate host, exactly as spelled here.
 
-Report structure (see [workflow.md](workflow.md) §5 for full schema):
-
-```text
-Memory Audit Summary
-====================
-Scanned: N entries
-Skipped legacy: M (run `$flow-next-memory-migrate` first to make these auditable)
-
-Kept: X
-Updated: Y  (of which retrieval fixes: RF)
-Consolidated: C
-Replaced: Z
-Deleted: W
-Hardened: H  (failed graduations: HF; un-graduated: HU)
-Marked stale: S
-
-Glossary
---------
-Files scanned: F (H husks)
-Terms scanned: T
-Kept: K_g
-Marked stale: S_g
-Alias-creep flagged: A_g
-```
+Report structure and schema: [workflow.md](workflow.md) §5.
 
 Then per-entry detail (id, classification, evidence, action taken). For Consolidate: which entry was canonical, what unique content was merged, what was deleted. For Replace: what the old entry recommended vs what current code does, path to successor (decision Replace also notes the old entry now carries `decision_status: superseded`). For Marked stale: why ambiguous. For Harden: gate type, artifact path, `--gate-ref`, and how the gate was verified live (a failed graduation names the reason and states the entry was left active). For glossary terms: only stale + alias-creep cases get per-term lines (Keep is silent); husks get a one-line advisory each.
 

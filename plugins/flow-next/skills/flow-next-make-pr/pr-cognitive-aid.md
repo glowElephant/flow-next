@@ -21,10 +21,6 @@ Replace skeleton identities, paths and evidence with export values; declare ever
 Use a unique portable `artifactId`; optional `supersedesArtifactId` names `latestArtifactId`.
 Export `tasks[].evidence.commits` are SHORT SHAs: expand with `git rev-parse` before citing full 40-hex commit refs.
 
-- When export has `specs`, set `specIds` to their IDs in export order; keep `specId` as host. Declare every
-  spec's requirements with qualified refs and `rIds` (`fn-8:R4`). At least one group per spec in review order
-  (two allowed above ten must-read files), short ID in each title, using its task/evidence summary; no-spec commits get a group.
-  Past the seven-step cap, merge the smallest specs into one group whose title names each short ID.
 - `changeWalkthrough.thesis`: intent and approach. Optional authored strings:
   `userImpact` describes user/operator changes; `blastRadius` names scope, reading order and what is unproven;
   `tradeoffs` records rejected alternatives; `openItems` records unfinished work.
@@ -37,13 +33,8 @@ Export `tasks[].evidence.commits` are SHORT SHAs: expand with `git rev-parse` be
   Omit `outcome` only for a recorded fact that is neither passed nor failed, such as a measurement; it renders as a plain item.
 - Summarize a task's `Defect route:` block (`flow-next-work/references/defect-route.md`) in the existing prose fields and proof cells:
   prior-fix findings, confirmed cause, introducing commit, and base/head/live observations. Cite the task records; show missing evidence as `not done: <reason>`.
-- Summarize a task's `Hill climb:` block (`flow-next-work/references/hill-climb.md`) in the existing prose fields and proof cells:
-  metric and target, baseline to final with the percent change, attempt counts (kept, reverted, inconclusive), the kept commits in order,
-  the harness proof, the final gate, and the best untried idea. A value the record lacks renders `unverified` with the gap; an unmet target is `unverified`, never `pass`.
-- QA receipts use `qa_outcome`, not the projected `verdict`: SHIP maps to pass,
-  NEEDS_WORK to fail, BLOCKED/NA to unverified with their reason. Open findings go in `openItems` and make the PR a draft; QA never blocks it.
-  Verify head freshness against code, allowing only leading QA-receipt and spec-close bookkeeping commits;
-  stale/malformed receipts cannot justify a pass.
+- When export has several `specs`, a task carries a `Hill climb:` block, or a QA receipt exists:
+  read the matching section of [aid-rare-inputs.md](aid-rare-inputs.md).
 - At most 11 ordered `groups[]`: optional `problem`, optional `principle`, 1–7 `step`,
   optional `kept`, optional `verify`; author `ordinal`, `title`, `summary`, `sourceRefs`, `rIds`, `taskIds`.
   Group order is review order; `files` is required even when `[]`. Group `summary` renders "what to check here" in one or two sentences.

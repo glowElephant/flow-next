@@ -21,26 +21,12 @@ Detect which platform is running:
 PLATFORM="codex"
 ```
 
-**Cursor ordering matters.** Cursor exposes **no** plugin-root env var, so without the `CURSOR_AGENT` check it would fall through to the `codex` branch and get Codex-shaped project instructions (`$flow-next-plan` command names + `.codex/` setup) — wrong, because a Cursor install (local or team-marketplace) drives the workflow with `/flow-next:*` slash commands. `CURSOR_AGENT` is Cursor's own signal (set in its agent shell; it also sets `CI=1` / `CURSOR_TRACE_ID`, but `CURSOR_AGENT` is the canonical one). The `CURSOR_AGENT` branch MUST come before the `else → codex` fallback.
-
-**Why the `.cursor-plugin/plugin.json` guard (don't classify Codex-hosted-in-Cursor as Cursor).** `CURSOR_AGENT` is **inherited by child processes** — so when Codex is launched *from* a Cursor Agent shell, the Codex process also sees `CURSOR_AGENT`, and a bare env check would misclassify a genuine Codex setup as `cursor` (skipping the `.codex/` agent + hook copy and writing the `/flow-next:` snippet instead of the Codex `$flow-next-` one — leaving the Codex setup incomplete). The env var alone only proves "a Cursor agent is somewhere in the process ancestry," not "this plugin is a Cursor install." So the branch ALSO requires the `.cursor-plugin/plugin.json` manifest at the **resolved `PLUGIN_ROOT`**: present in real Cursor installs and in the dual-manifest source tree, but **absent** from a pure `~/.codex` install. A Codex process that merely inherited `CURSOR_AGENT` and resolves a Codex-home `PLUGIN_ROOT` (no Cursor manifest) correctly falls through to `codex`. (Same inherited-env-var class as the `CLAUDECODE` host guard below.)
-
-**Positive path discriminator — `PLUGIN_ROOT` under `~/.cursor/` (never `codex/` absence).** The manifest + env checks alone are not enough when Codex runs from the **checked-in plugin source** inside a Cursor shell (Codex marketplace points at `./plugins/flow-next`, which carries `.cursor-plugin/`, `.codex-plugin/`, and the `codex/` mirror) — there the Cursor manifest is present in the workspace tree, so env+manifest would misfire. The positive signal is that a **real Cursor install** resolves `PLUGIN_ROOT` under `~/.cursor/` — local `install-cursor.sh`/`.ps1` → `~/.cursor/plugins/local/flow-next/`; team-marketplace repo-import → Cursor's marketplace plugin cache under `~/.cursor/` (and that cache **may contain `codex/`** because the whole plugin source is imported; explicit component paths in `.cursor-plugin/plugin.json` keep Cursor from loading the mirror as skills). A genuine Codex install resolves under `$CODEX_HOME` (default `~/.codex`); the shared source tree resolves to a workspace path. Neither is under `~/.cursor/`, so both correctly fall through to `codex` even with inherited `CURSOR_AGENT`. **Do not** key detection on the `codex/` directory being absent — that misclassifies marketplace repo-imports as Codex.
-
-**Claude Code signal - `CLAUDECODE` + the Claude plugin manifest, and why the rung sits low.** `CLAUDE_PLUGIN_ROOT` is **never set in the Bash environment of a running plugin skill** on Claude Code, so a rung keyed on it never fires there: setup would fall through to `else -> codex` and write Codex `$flow-next-` snippets into a repo driven by `/flow-next:` slash commands. The signal that IS present is `CLAUDECODE=1`. It is set by Claude Code itself, in every install mode (marketplace cache, local marketplace, `--plugin-dir` dev load), so it needs no plugin-root env var; `PLUGIN_ROOT` is already resolved from this file's own location.
-
-`CLAUDECODE` is **inherited by child processes** - same class as the `CURSOR_AGENT` misfire above - so it is paired with a positive discriminator and a lowered position, never used bare:
-
-- **Positive discriminator:** the Claude plugin manifest `.claude-plugin/plugin.json` must exist at the resolved `PLUGIN_ROOT`. That is present in every Claude-format install and **absent** from a Codex install root (`$CODEX_HOME`, whose manifest is a top-level `plugin.json`), so a `codex exec` child that inherited `CLAUDECODE` from its Claude parent still classifies `codex`.
-- **Position: after Droid / Cursor / Grok / OpenCode, before the `codex` fallback.** Each of those hosts proves itself with a signal set by its OWN process or install (`DROID_PLUGIN_ROOT`, `CURSOR_AGENT` + a `~/.cursor/` install, `GROK_AGENT`, the OpenCode ownership manifest), and all of them read the canonical Claude plugin format - so a Cursor or Grok agent launched **from** a Claude Code shell inherits `CLAUDECODE` and would be misclassified `claude-code` by a higher rung. Ordering is what keeps an inherited marker from outranking a host's own signal.
-
-**Grok ordering matters.** Grok Build (xAI's `grok` CLI) reads the canonical Claude plugin format AS-IS and drives with `/flow-next-*` / `/flow-next:` slash commands — not the Codex `$flow-next-` form. Without a positive signal it would fall through to `else → codex` and setup would write Codex-shaped `$flow-next-` snippets into AGENTS.md. **Signal:** `GROK_AGENT=1` is set BY grok in its agent shell (absent from a plain-shell control on the same machine). **Rejected non-signals:** `~/.grok/` exists on the machine regardless (install dir), and `~/.grok/bin` on `PATH` is profile-level — neither distinguishes a grok session. The `GROK_AGENT` branch MUST come after Droid / Cursor (so a real Cursor/Droid host that merely inherited `GROK_AGENT` from a parent grok shell still classifies by its own higher-precedence signal), BEFORE the inherited-marker `CLAUDECODE` rung, and BEFORE the `else → codex` fallback.
-
-**OpenCode ordering matters.** OpenCode has no plugin-root env var and no host-process marker. Without a positive signal it would fall through to `else → codex` and setup would write Codex-shaped `$flow-next-` snippets — wrong, because OpenCode command stubs are the flat `/flow-next-<name>` form (filenames, not `/flow-next:<name>`). **Installer signal:** the OpenCode installer (`install-opencode.sh`) writes `.flow-next-opencode-manifest` at the config root, which IS the plugin root two levels above SKILL.md. After `PLUGIN_ROOT` is derived, `[ -f "${PLUGIN_ROOT}/.flow-next-opencode-manifest" ]` → `PLATFORM=opencode`. Never an env var, never an absence signal. The OpenCode rung MUST come after Grok, BEFORE the inherited-marker `CLAUDECODE` rung, and BEFORE the `else → codex` fallback.
-
-**Known nesting edge (Droid → Grok) — NEEDS-HUMAN.** A grok child inherits `CLAUDECODE` from a Claude parent, and the Claude rung now sits BELOW grok, so Claude-from-parent does not misfire. It did **not** disprove `DROID_PLUGIN_ROOT` propagation: if a grok child inherits `DROID_PLUGIN_ROOT` from a Droid parent shell, the cascade classifies as `droid` (higher precedence). Treat nested Droid→Grok as **unsupported pending a this-process-is-grok discriminator** unless a NEEDS-HUMAN smoke confirms `DROID_PLUGIN_ROOT` does not propagate. Cursor-from-grok remains correct via its higher-precedence signal. The mirror-image nesting edge is Claude-from-Grok / Claude-from-Cursor: a Claude Code session launched inside a grok or Cursor agent shell inherits that host's marker and classifies as the parent host. That trade is deliberate - both markers are set by the parent's own process, and the reverse (Claude outranking them on an inherited `CLAUDECODE`) is the far more common nesting, since Claude sessions routinely spawn grok / cursor-agent bridges.
-
-**Matrix (detection fixtures):** (1) marketplace whole-repo import under `~/.cursor/` + may have `codex/` → `cursor`; (2) local `install-cursor` under `~/.cursor/plugins/local/` (no `codex/`) → `cursor`; (3) Codex under `$CODEX_HOME` / `~/.codex` with inherited `CURSOR_AGENT` → `codex`; (4) Droid (`DROID_PLUGIN_ROOT`) still wins first — Droid/Cursor precedence unchanged; (5) standalone `GROK_AGENT=1` (no higher signal) → `grok`; (6) `GROK_AGENT=1` + `CURSOR_AGENT`(+cursor install) / `DROID_PLUGIN_ROOT` → higher host wins; (7) plain shell (no host signal) → `codex`; (8) Claude Code plugin skill — `CLAUDECODE=1`, `CLAUDE_PLUGIN_ROOT` **unset** (it never reaches a skill's Bash env), `PLUGIN_ROOT` carrying `.claude-plugin/plugin.json` → `claude-code`; (9) `CLAUDECODE=1` inherited by a Cursor / Grok / Droid child → that host's own signal wins (Claude rung is last before the fallback); (10) `CLAUDECODE=1` with a Codex-home `PLUGIN_ROOT` (no `.claude-plugin/plugin.json`) → `codex`; (11) `PLUGIN_ROOT` carrying `.flow-next-opencode-manifest` (no higher signal) → `opencode`; (12) same + `GROK_AGENT=1` → `grok`; (13) same + inherited `CLAUDECODE=1` without `.claude-plugin/plugin.json` → `opencode`.
+**Never reorder the rungs.** Each host's own signal (Droid, Cursor, Grok, OpenCode) outranks the
+inherited `CLAUDECODE` marker, and `codex` is the fallback. Nested Droid → Grok is unsupported: a
+grok child that inherits `DROID_PLUGIN_ROOT` classifies as `droid`, so stop NEEDS_HUMAN unless a
+smoke confirms `DROID_PLUGIN_ROOT` does not propagate. The rationale for each rung and the
+detection fixture matrix are in
+[docs/platforms.md § Setup host detection](../../docs/flow-next/platforms.md#setup-host-detection-rung-order-and-rationale).
 
 Store `PLATFORM` for use in later steps. This determines:
 - Which manifest to read for version (`plugin.json`)
@@ -169,52 +155,9 @@ On `Copy template`: write the file via Bash `cp` with absolute paths.
 cp "${PLUGIN_ROOT}/templates/spec.md" SPEC.md
 ```
 
-**2. `HITS=1` (one file: a single name, OR a case-insensitive FS where both names resolve to one inode)** — capture whichever filename actually exists into `EXISTING` (no prompt). Both the read-for-compare and the overwrite target route through `EXISTING` so lowercase `spec.md` repos do not silently fall back to a missing `SPEC.md`:
-
-```bash
-EXISTING=$(ls -1 SPEC.md spec.md 2>/dev/null | head -1)
-```
-
-Fall through to the byte-compare re-setup gate below.
-
-**3. `HITS=2` (case-sensitive FS with both distinct files)** — prefer uppercase + print a stderr warning, then fall through to the byte-compare gate against `SPEC.md`:
-
-```bash
-echo "warn: both SPEC.md and spec.md exist at repo root; preferring uppercase. Unusual setup likely from cross-platform sync." >&2
-EXISTING=SPEC.md
-```
-
-**Re-setup byte-compare gate** (when a repo-root spec file exists from a prior `/flow-next:setup`-`Copy template` and the user may have edited it). Read both sides via `EXISTING` and normalize before comparing:
-
-```bash
-# Normalize: strip trailing newlines + replace CRLF with LF
-USER_CONTENT=$(cat "$EXISTING" | tr -d '\r')
-CANONICAL_CONTENT=$(cat "${PLUGIN_ROOT}/templates/spec.md" | tr -d '\r')
-# Strip trailing newlines from both
-USER_NORM=$(printf '%s' "$USER_CONTENT")
-CANONICAL_NORM=$(printf '%s' "$CANONICAL_CONTENT")
-```
-
-Or in Python:
-
-```python
-def normalize(b: bytes) -> bytes:
-    return b.replace(b"\r\n", b"\n").rstrip(b"\n")
-identical = normalize(user_bytes) == normalize(canonical_bytes)
-```
-
-Then:
-
-- **Identical** (after normalization): no-op. Skip the write — re-running setup must not bump mtime on unchanged files.
-- **Customized** (any deviation after normalization): **the file is never replaced without an explicit answer** — a customized `SPEC.md` overwritten silently has broken this. Ask the user via `plain-text numbered prompt`:
-  - **header**: `Spec file`
-  - **question**: `Overwrite the customized <repo-root>/$EXISTING? It exists and differs from the canonical template shipped with this plugin version (CRLF and trailing newlines ignored). Overwriting replaces your edits. Keeping skips this file (you can manually merge later via diff against \`${PLUGIN_ROOT}/templates/spec.md\`).`
-  - **options**:
-    - `Keep mine (Recommended)` — leave `<repo-root>/$EXISTING` unchanged. Print the path to the canonical template so the user can diff manually.
-    - `Overwrite with canonical` — replace `<repo-root>/$EXISTING` (same filename — do NOT rename lowercase `spec.md` to uppercase `SPEC.md` here; preserve the user's casing) with the bundled template content. Repo customization is lost.
-    - `abort` — exit cleanly. Earlier steps (Step 1 `flowctl init`, and Step 2b's leftover cleanup if you accepted it) may already have run; init is idempotent and safe to leave, and a completed cleanup means the instruction-file snippet has NOT yet been refreshed - finish setup (or re-run it) before relying on direct `flowctl` instructions in CLAUDE.md/AGENTS.md. No `<repo-root>/$EXISTING` write; Step 4b onward skipped. Re-run `/flow-next:setup` later to complete setup.
-
-**Note:** Setup writes uppercase `SPEC.md` only on the **fresh-seed** path (`HITS=0` `Copy template`). Never seed lowercase `spec.md` from scratch. The lowercase entry in the cascade is read-only at discovery time — present only for users who deliberately created lowercase. On the **re-setup overwrite** path above, preserve the user's existing filename casing via `$EXISTING` (so a lowercase `spec.md` stays lowercase after `Overwrite with canonical`).
+**2-3. `HITS>=1` (a repo-root `SPEC.md` or `spec.md` exists):** read
+[references/existing-spec.md](references/existing-spec.md) and follow it. A customized file is never
+replaced without an explicit answer. Setup seeds uppercase `SPEC.md` only on the `HITS=0` path.
 
 ## Step 4b: Codex-specific project setup (PLATFORM=codex only)
 
@@ -231,12 +174,20 @@ AGENTS_SRC="${PLUGIN_ROOT}/codex/agents"
 
 if [ -d "$AGENTS_SRC" ]; then
   mkdir -p .codex/agents
-  cp "$AGENTS_SRC"/*.toml .codex/agents/
-  echo "Copied $(ls .codex/agents/*.toml 2>/dev/null | wc -l | tr -d ' ') agent configs to .codex/agents/"
+  DIFFERING=()
+  for f in "$AGENTS_SRC"/*.toml; do
+    t=".codex/agents/$(basename "$f")"
+    if [ ! -e "$t" ]; then cp "$f" "$t"; elif ! cmp -s "$f" "$t"; then DIFFERING+=("$t"); fi
+  done
+  echo "Agent configs in .codex/agents/: $(ls .codex/agents/*.toml 2>/dev/null | wc -l | tr -d ' '); differing from this release: ${#DIFFERING[@]}"
 else
   echo "Warning: No agent .toml files found at ${PLUGIN_ROOT}/codex/agents/ or ${CODEX_HOME:-$HOME/.codex}/agents/"
 fi
 ```
+
+A file in `DIFFERING` was edited locally or comes from an older release. Attended, ask once whether
+to replace those files with this release's versions (local edits are lost); otherwise leave them
+and list them in the summary.
 
 ### Done when
 
@@ -351,148 +302,16 @@ Available questions (include only if corresponding config is unset):
 }
 ```
 
-**Review question** (include if CURRENT_BACKEND is empty):
-
-**Four options, not seven.** Each menu below is a catalog; the question carries four of its options, in the menu's order: Host, None, and the first two CLI options whose `HAVE_*` is 1 (when fewer than two are detected, fill from the undetected ones in menu order; on `PLATFORM=codex`, take Codex CLI last, since it is the writer's family). A backend left off the menu is set with `flowctl config set review.backend <name>`, which Step 8's summary names.
-
-**When `PLATFORM=cursor`** — lead with `host` (Recommended); keep every existing backend selectable; label the Cursor CLI option as circular/secondary from inside Cursor:
-```json
-{
-  "header": "Review",
-  "question": "Which review backend? Plans and implementations get reviewed before they land. From inside Cursor, prefer a host-native fresh-context subagent pinned cross-family via AGENTS.md model-routing (no second CLI). External CLIs remain available. Each review round is a serial pass the pipeline waits on - usually the largest wall-clock item in a run. Guide: https://flow-next.dev/guides/review-workflow/",
-  "options": [
-    {"label": "Host (Recommended)", "description": "Fresh-context host-native subagent; name a cross-family model on the `reviewer` tier of the AGENTS.md routing block (setup writes that block commented out; the slugs are yours to fill in). No external CLI. Preferred from inside Cursor."},
-    {"label": "Codex CLI", "description": "OpenAI's codex CLI, reviews on its top reasoning tier (GPT family). Cross-platform, simple setup. <detected if HAVE_CODEX=1, (not detected) if HAVE_CODEX=0>"},
-    {"label": "Copilot CLI", "description": "Routes to Claude- or GPT-family reviewers via your GitHub Copilot plan. Requires gh copilot auth. <detected if HAVE_COPILOT=1, (not detected) if HAVE_COPILOT=0>"},
-    {"label": "Cursor CLI (secondary — circular from inside Cursor)", "description": "Runs the external cursor-agent CLI. Circular when already inside Cursor — prefer Host. Still selectable for multi-family reach via the cursor-agent model menu. <detected if HAVE_CURSOR=1, (not detected) if HAVE_CURSOR=0>"},
-    {"label": "Claude Code CLI", "description": "Runs claude -p headless, read-only, on a Claude-family reviewer. Cross-platform; needs the claude CLI on PATH. Same-family when Claude Code is the writer - the receipt records it; prefer Codex or Host there when family independence matters. <detected if HAVE_CLAUDE=1, (not detected) if HAVE_CLAUDE=0>"},
-    {"label": "RepoPrompt", "description": "macOS only. Auto-discovers git diffs + context, reviews scoped to actual changes, far fewer tokens than full-repo approaches. <detected if HAVE_RP=1, (not detected) if HAVE_RP=0>"},
-    {"label": "None", "description": "No review gates. Fastest runs; tests/lint still gate and work still audits large or risky diffs in-host, but nothing checks R-ID coverage at spec completion - fits diffs you read yourself. Set later: flowctl config set review.backend <name>, or per-run via --review"}
-  ],
-  "multiSelect": false
-}
-```
-
-**When `PLATFORM=grok`** — offer `host` with the fail-closed cross-family caveat (this host reaches only one model family natively) plus every external backend; when `HAVE_CODEX=1` mark Codex Recommended (true cross-family vs a Grok writer):
-```json
-{
-  "header": "Review",
-  "question": "Which review backend? Plans and implementations get reviewed before they land. This host reaches only one model family natively — host-native review fails closed unless the writer is from another family; cross-family review comes via bridge backends (codex/cursor/copilot/claude). Each review round is a serial pass the pipeline waits on - usually the largest wall-clock item in a run. Guide: https://flow-next.dev/guides/review-workflow/",
-  "options": [
-    {"label": "Host", "description": "Fresh-context host-native subagent; name the model on the `reviewer` tier of the AGENTS.md routing block (setup writes it commented out; you fill in the slug). Fail-closed: this host is single-native-family — native host review refuses same-family self-review (interactive → ask; autonomous → NEEDS_HUMAN) unless the writer is non-Grok. Cross-family via bridges."},
-    {"label": "Codex CLI", "description": "OpenAI's codex CLI, reviews on its top reasoning tier (GPT family). Cross-platform, simple setup. <detected if HAVE_CODEX=1, (not detected) if HAVE_CODEX=0>"},
-    {"label": "Copilot CLI", "description": "Routes to Claude- or GPT-family reviewers via your GitHub Copilot plan. Requires gh copilot auth. <detected if HAVE_COPILOT=1, (not detected) if HAVE_COPILOT=0>"},
-    {"label": "Cursor CLI", "description": "Runs cursor-agent with a multi-family model menu (pick the family that did not write the diff). Billed to your Cursor subscription. <detected if HAVE_CURSOR=1, (not detected) if HAVE_CURSOR=0>"},
-    {"label": "Claude Code CLI", "description": "Runs claude -p headless, read-only, on a Claude-family reviewer. Cross-platform; needs the claude CLI on PATH. Same-family when Claude Code is the writer - the receipt records it; prefer Codex or Host there when family independence matters. <detected if HAVE_CLAUDE=1, (not detected) if HAVE_CLAUDE=0>"},
-    {"label": "RepoPrompt", "description": "macOS only. Auto-discovers git diffs + context, reviews scoped to actual changes, far fewer tokens than full-repo approaches. <detected if HAVE_RP=1, (not detected) if HAVE_RP=0>"},
-    {"label": "None", "description": "No review gates. Fastest runs; tests/lint still gate and work still audits large or risky diffs in-host, but nothing checks R-ID coverage at spec completion - fits diffs you read yourself. Set later: flowctl config set review.backend <name>, or per-run via --review"}
-  ],
-  "multiSelect": false
-}
-```
-
-**When `PLATFORM` is neither `cursor` nor `grok`** (Claude Code / Droid / Codex / OpenCode — unchanged; Cursor and Grok each use their dedicated menu above; OpenCode uses this default Host + None menu):
-```json
-{
-  "header": "Review",
-  "question": "Which review backend? Plans and implementations get reviewed before they land; a review backend is a second AI CLI - ideally a DIFFERENT model family than the one writing the code, for uncorrelated blind spots. Each review round is a serial pass the pipeline waits on - usually the largest wall-clock item in a run - so pick the gate you will actually keep. Each CLI needs its own install/subscription. Guide: https://flow-next.dev/guides/review-workflow/",
-  "options": [
-    {"label": "Codex CLI", "description": "OpenAI's codex CLI, reviews on its top reasoning tier (GPT family). Cross-platform, simple setup. <detected if HAVE_CODEX=1, (not detected) if HAVE_CODEX=0>"},
-    {"label": "Copilot CLI", "description": "Routes to Claude- or GPT-family reviewers via your GitHub Copilot plan. Requires gh copilot auth. <detected if HAVE_COPILOT=1, (not detected) if HAVE_COPILOT=0>"},
-    {"label": "Cursor CLI", "description": "Runs cursor-agent with a multi-family model menu (pick the family that did not write the diff). Billed to your Cursor subscription. <detected if HAVE_CURSOR=1, (not detected) if HAVE_CURSOR=0>"},
-    {"label": "Claude Code CLI", "description": "Runs claude -p headless, read-only, on a Claude-family reviewer. Cross-platform; needs the claude CLI on PATH. Same-family when Claude Code is the writer - the receipt records it; prefer Codex or Host there when family independence matters. <detected if HAVE_CLAUDE=1, (not detected) if HAVE_CLAUDE=0>"},
-    {"label": "RepoPrompt", "description": "macOS only. Auto-discovers git diffs + context, reviews scoped to actual changes, far fewer tokens than full-repo approaches. <detected if HAVE_RP=1, (not detected) if HAVE_RP=0>"},
-    {"label": "Host", "description": "Host-native fresh-context subagent - no second CLI to install. Name a cross-family model on the `reviewer` tier of the routing block (setup writes it commented out; you fill in the slug). Keeps every review gate at the lowest setup cost."},
-    {"label": "None", "description": "No review gates. Fastest runs; tests/lint still gate and work still audits large or risky diffs in-host, but nothing checks R-ID coverage at spec completion - fits diffs you read yourself. Set later: flowctl config set review.backend <name>, or per-run via --review"}
-  ],
-  "multiSelect": false
-}
-```
-
-When `HAVE_CODEX=1` AND `PLATFORM` is NOT `codex` AND `PLATFORM` is NOT `cursor`, append ` (Recommended - cross-family default)` to the `Codex CLI` label: the recommended multi-model pipeline reviews cross-family FROM THE WRITER, and on a Claude Code / Droid / Grok host codex review is a different family than the session writer - so this question carries the ceremony's `review.backend codex` offer while the key is unset. On `PLATFORM=cursor` do NOT add the Codex Recommended label — `Host (Recommended)` already leads. On a Codex host (`PLATFORM=codex`) do NOT add the label: the writer is GPT-family (the session model, or an `implementer` tier pointing at the same family), so codex review would be SAME-family - prefer a detected non-GPT backend there (claude, or copilot / cursor with a Claude-family model) and leave the options unannotated when none is detected. When `review.backend` is ALREADY set to something else, this question is skipped (existing config is never silently overwritten) - the user changes it later with `flowctl config set review.backend <name>`, surfaced in 6c's current-config notice.
-
-Stored value is a bare backend name by default (`host` / `codex` / `copilot` / `cursor` / `claude` / `rp` / `none`). Power users can also write a full spec like `codex:<model>:high`, `copilot:<model>:xhigh`, `cursor:<model>` (cursor takes a model only — no `:effort`), or `claude:<model>:<effort>` via `flowctl config set review.backend <spec>` after setup — the review commands accept both forms. Backend `host` is bare only (no `host:<model>` — the model is named on the `reviewer` tier of the AGENTS.md routing block).
+**Review question** (include if CURRENT_BACKEND is empty): read
+[references/review-question.md](references/review-question.md) for the four-option rule, the
+per-platform menu and the stored value.
 
 **No Model Routing question exists.** Setup never asks which models to route to,
 never probes a CLI for slugs, and never proposes a pin. Step 7 writes one
 commented example block and says so — that is the whole ceremony.
 
-**Docs question** (include only when unanswered and docs are not current — adjust default based on platform):
-
-For **Codex** (`PLATFORM=codex`):
-```json
-{
-  "header": "Docs",
-  "question": "Update project documentation with Flow-Next instructions? Adds a marker-bounded section teaching any agent that opens this repo how to track work via flowctl; your text outside the markers is never touched.",
-  "options": [
-    {"label": "AGENTS.md only (Recommended)", "description": "Add flow-next section to AGENTS.md (Codex reads this)"},
-    {"label": "CLAUDE.md only", "description": "Add flow-next section to CLAUDE.md"},
-    {"label": "Both", "description": "Add flow-next section to both files"},
-    {"label": "Skip", "description": "Don't update documentation"}
-  ],
-  "multiSelect": false
-}
-```
-
-For **Claude Code / Droid**:
-```json
-{
-  "header": "Docs",
-  "question": "Update project documentation with Flow-Next instructions? Adds a marker-bounded section teaching any agent that opens this repo how to track work via flowctl; your text outside the markers is never touched.",
-  "options": [
-    {"label": "CLAUDE.md only", "description": "Add flow-next section to CLAUDE.md"},
-    {"label": "AGENTS.md only", "description": "Add flow-next section to AGENTS.md"},
-    {"label": "Both", "description": "Add flow-next section to both files"},
-    {"label": "Skip", "description": "Don't update documentation"}
-  ],
-  "multiSelect": false
-}
-```
-
-For **Cursor** (`PLATFORM=cursor`) — Cursor reads AGENTS.md, so recommend it (the `/flow-next:` snippet is wired in Step 7's write mapping, NOT the Codex `$flow-next-` one):
-```json
-{
-  "header": "Docs",
-  "question": "Update project documentation with Flow-Next instructions? Adds a marker-bounded section teaching any agent that opens this repo how to track work via flowctl; your text outside the markers is never touched.",
-  "options": [
-    {"label": "AGENTS.md only (Recommended)", "description": "Add flow-next section to AGENTS.md (Cursor reads this)"},
-    {"label": "CLAUDE.md only", "description": "Add flow-next section to CLAUDE.md"},
-    {"label": "Both", "description": "Add flow-next section to both files"},
-    {"label": "Skip", "description": "Don't update documentation"}
-  ],
-  "multiSelect": false
-}
-```
-
-For **Grok** (`PLATFORM=grok`) — Grok reads BOTH CLAUDE.md and AGENTS.md; lifecycle snippet defaults to CLAUDE.md (canonical Claude-format target, named by Claude-format skill id — NOT the Codex `$flow-next-` form). A pre-existing wrong Codex `$flow-next-` marker block is consent-refreshed to the slash form (marker-scoped; text outside markers untouched). The routing block still targets AGENTS.md (where host-review workflows read it):
-```json
-{
-  "header": "Docs",
-  "question": "Update project documentation with Flow-Next instructions? Adds a marker-bounded section teaching any agent that opens this repo how to track work via flowctl; your text outside the markers is never touched. Grok loads both CLAUDE.md and AGENTS.md.",
-  "options": [
-    {"label": "CLAUDE.md only (Recommended)", "description": "Add flow-next section to CLAUDE.md (canonical Grok lifecycle target; Claude-format skill ids)"},
-    {"label": "AGENTS.md only", "description": "Add flow-next section to AGENTS.md"},
-    {"label": "Both", "description": "Add flow-next section to both files (recommended when you also want the routing block's sibling lifecycle snippet nearby)"},
-    {"label": "Skip", "description": "Don't update documentation"}
-  ],
-  "multiSelect": false
-}
-```
-
-For **OpenCode** (`PLATFORM=opencode`) — OpenCode reads AGENTS.md. Command stubs are the flat `/flow-next-<name>` form (not `/flow-next:<name>`, not `$flow-next-`). The Claude-flavor snippet is rewritten `/flow-next:` → `/flow-next-` before apply (6b temp-template block); the routing block also targets AGENTS.md:
-```json
-{
-  "header": "Docs",
-  "question": "Update project documentation with Flow-Next instructions? Adds a marker-bounded section teaching any agent that opens this repo how to track work via flowctl; your text outside the markers is never touched.",
-  "options": [
-    {"label": "AGENTS.md only (Recommended)", "description": "Add flow-next section to AGENTS.md (OpenCode reads this; slash form is /flow-next-<name>)"},
-    {"label": "CLAUDE.md only", "description": "Add flow-next section to CLAUDE.md"},
-    {"label": "Both", "description": "Add flow-next section to both files"},
-    {"label": "Skip", "description": "Don't update documentation"}
-  ],
-  "multiSelect": false
-}
-```
+**Docs question** (include only when unanswered and docs are not current): read
+[references/docs-question.md](references/docs-question.md) and use the block for this `PLATFORM`.
 
 **Star question** (include only when unanswered):
 ```json
@@ -511,7 +330,7 @@ Send the config call, then the files call, each through `plain-text numbered pro
 
 **Note:** If docs are already current, skip the Docs question entirely.
 
-**Note:** If no supported RepoPrompt CLI, codex, copilot, cursor-agent, or claude is detected, add this note to the Review question: "No review backend detected. Install RepoPrompt CE (`rpce-cli`), codex, copilot, cursor-agent, or claude for review support."
+**Note:** If no codex, copilot, cursor-agent, or claude is detected, add this note to the Review question: "No review backend detected. Install codex, copilot, cursor-agent, or claude for review support, or choose Host."
 
 ### Done when
 

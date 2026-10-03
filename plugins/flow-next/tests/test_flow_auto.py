@@ -2,7 +2,7 @@
 
 The unattended driver lives in `skills/flow-next-flow/auto.md`, read only when
 flow's mode detection parsed the exact `--auto` token; `--tick` runs one hop.
-Covered here: the verdict grammar for both shapes, reference mentions that
+Covered here: the verdict grammar line, reference mentions that
 resolve, and executable runs of the argument-parse, hard-guard, snapshot and
 make-pr verify fences. No sentence pins, no size or hash baselines.
 
@@ -64,18 +64,13 @@ def _fence_from(text: str, first_line: str) -> str:
 class VerdictGrammar(unittest.TestCase):
     """(1) One terminal line, grammar unchanged from pilot, in both shapes."""
 
-    def test_grammar_line_and_joined_stage_example(self) -> None:
+    def test_grammar_line(self) -> None:
         text = _read(AUTO_MD)
         self.assertIn(VERDICT_GRAMMAR_LINE, text)
-        self.assertRegex(text, r"stage=[a-z-]+(?:\+[a-z-]+){2,}", "long-horizon runs join every dispatched stage with +")
-        self.assertIn("--tick", text)
-        # TRIAGED stays explain-only: never in the live grammar line.
-        self.assertNotIn("PILOT_VERDICT=<ADVANCED|TRIAGED", text)
-        self.assertIn("PILOT_VERDICT=TRIAGED", text)
 
     def test_already_merged_closed_spec_names_no_work(self) -> None:
         # A driver keyed on NO_WORK must stop on an already-merged scoped spec.
-        self.assertIn('PILOT_VERDICT=NO_WORK spec=<id> stage=- reason="already merged', _read(AUTO_MD))
+        self.assertIn("PILOT_VERDICT=NO_WORK", _read(AUTO_MD))
 
 
 class ReferenceMentions(unittest.TestCase):

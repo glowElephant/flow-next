@@ -30,7 +30,7 @@ Conduct a John Carmack-level review of spec plans.
 - When `RP_ELIGIBLE=0`: Codex CLI, GitHub Copilot CLI, Cursor CLI, Claude Code CLI, or
   host-native — rp remains accepted explicitly but errors at runtime
 
-Read [working-rules.md](../../references/working-rules.md) first; it holds for every step of this skill.
+Read [working-rules.md](../../references/working-rules.md) first unless you already have this run; it holds for every step of this skill.
 
 ## Preamble — execute common routing exactly once
 
@@ -81,7 +81,8 @@ and anti-pattern rules live only in the selected backend file.
 
 Arguments: $ARGUMENTS
 
-Format: `<flow-spec-id> [focus areas] [--review=<mode>]`
+Format: `<flow-spec-id> [focus areas] [--review=<mode>] [mode:autonomous]`. `mode:autonomous` marks an
+unattended run (working-rules.md's review loop applies); it is not a focus area.
 
 ## Workflow
 
@@ -97,8 +98,8 @@ Format: `<flow-spec-id> [focus areas] [--review=<mode>]`
 **The fix loop never pauses for user confirmation**; never use AskUserQuestion in it. Which findings it fixes, and which it lists as follow-ups, follows the Review section of [working-rules.md](../../references/working-rules.md).
 
 `MAJOR_RETHINK` is not a fix-loop input. Surface the reviewer's rationale and
-stop with `BLOCKED: DESIGN_CONFLICT`. Only
-`NEEDS_WORK` enters the loop.
+stop with `BLOCKED: DESIGN_CONFLICT`. `NEEDS_HUMAN` is not one either: stop and hand the
+reviewer's question to the person, on every backend. Only `NEEDS_WORK` enters the loop.
 
 Attended: one fix pass, then one re-review, whose verdict is terminal. When working-rules.md's
 review loop applies (an unattended run, or a request to review until SHIP), repeat the steps
@@ -151,14 +152,9 @@ backend, a re-review `NEEDS_WORK` with its surviving findings surfaced, a
 with a `NEEDS_WORK` neither fixed in the current spec nor re-entered into the
 same backend has broken this.
 
-**Maintainability pointer.** The verdict's `maintainability:` block is
-advisory and lives in the verdict artifact. When either key names a finding
-(anything other than `none identified`), append one line to the current
-spec's `## Decision Context` with `spec set-plan` in the round the finding
-arrived, whatever the verdict: `Maintainability (plan review): duplication -
-<finding or none identified>; structure - <finding or none identified>`. Both
-keys `none identified` writes nothing; a verdict without the block reads as
-"not asked", never as "no risk". No new section, no new flag.
+**Maintainability pointer.** When the verdict's `maintainability:` block names a finding
+(anything other than `none identified`): read
+[references/maintainability-pointer.md](references/maintainability-pointer.md) and record it.
 
 Recovery after context compaction:
 

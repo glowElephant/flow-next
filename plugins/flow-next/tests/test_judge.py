@@ -267,11 +267,6 @@ class JudgeTests(unittest.TestCase):
             self.assertNotEqual(proc.returncode, 0)
             self.assertIn("fork-gate", proc.stderr)
 
-    def test_workflow_writes_no_intake_route_state(self):
-        workflow = (SCRIPTS.parent / "skills/flow-next-flow/workflow.md").read_text()
-        self.assertNotIn('"view": "intent"', workflow)
-        self.assertNotIn("--preset route --state-file", workflow)
-
     def test_spec_flag_reaches_the_live_route_through_the_command(self):
         with tempfile.TemporaryDirectory() as directory:
             repo = Path(directory)

@@ -39,19 +39,9 @@ Design the fix only after the mechanism is confirmed. Temporary instrumentation 
 
 ## 3. Bisect when a known-good revision exists
 
-When the report or the history names a revision where the behaviour was correct (a tag, a release, "it worked last week"), bisect with the reproduction as the test: a script outside the repository that exits `0` on good, `1` on bad and `125` when a revision cannot be tested.
-
-```bash
-git worktree add --detach <tmp-dir> <bad-rev>
-git -C <tmp-dir> bisect start <bad-rev> <good-rev>
-git -C <tmp-dir> bisect run <script>
-git -C <tmp-dir> bisect reset
-git worktree remove <tmp-dir>
-```
-
-Read the introducing commit and the pull request that carried it (`gh pr list --state merged --search <sha>`). Its intent feeds the fix design, and the commit is cited in the diagnosis.
-
-Skip this step, and record why, when there is no known-good revision, no bisectable history (a new repository, a squashed import, a shallow clone), or no reproduction cheap enough to run once per revision.
+Only when the report or the history names a revision where the behaviour was correct (a tag, a
+release, "it worked last week"): read [defect-bisect.md](defect-bisect.md) and run it. Otherwise
+skip this step and record `introduced by: skipped: no known-good revision`.
 
 ## 4. Prove on base and head
 
@@ -59,7 +49,7 @@ When the reproduction is a cheap test, write it before the fix and run it: seein
 
 - It must fail on base and pass on head.
 - **It passes on base:** it does not capture this defect. Record that, do not claim the fix, and return to step 2 for a reproduction that does.
-- **A live surface** (a web or desktop app): the pre-fix reproduction on the live app is the base observation; repeat it on the head through `$flow-next-drive`. Both drives read the feature map first per the "Live-app stages" section of [feature-entry-contract.md](../../flow-next-features/references/feature-entry-contract.md). When the app cannot be started, the test-level proof stands and the live check is recorded as not run, with the reason.
+- **A live surface** (a web or desktop app): read [defect-live-surface.md](defect-live-surface.md) for the base and head drives.
 - **A library with no live surface:** the test alone is the proof.
 
 ## Record

@@ -24,7 +24,6 @@ ROOT = Path(__file__).resolve().parents[1]
 BOOTSTRAP = ROOT / "scripts" / "flowctl_bootstrap.py"
 HELP_TEXT = ROOT / "scripts" / "flowctl-help.txt"
 SCRIPT_LAUNCHER = ROOT / "scripts" / "flowctl"
-BIN_LAUNCHER = ROOT / "bin" / "flowctl"
 BUNDLED_USAGE = ROOT / "templates" / "usage.md"
 
 spec = importlib.util.spec_from_file_location("flowctl_bootstrap", BOOTSTRAP)
@@ -154,10 +153,10 @@ class StartupBootstrapTest(unittest.TestCase):
         os.name == "nt",
         "extensionless launchers are covered by the Git Bash smoke on Windows",
     )
-    def test_plugin_launchers_share_exact_usage_fast_path(self) -> None:
+    def test_plugin_launcher_serves_exact_usage_fast_path(self) -> None:
         expected = BUNDLED_USAGE.read_text(encoding="utf-8")
         with tempfile.TemporaryDirectory() as tmp:
-            for launcher in (SCRIPT_LAUNCHER, BIN_LAUNCHER):
+            for launcher in (SCRIPT_LAUNCHER,):
                 result = subprocess.run(
                     [str(launcher), "usage"],
                     cwd=tmp,

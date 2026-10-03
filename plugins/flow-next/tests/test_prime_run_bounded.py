@@ -23,13 +23,22 @@ from pathlib import Path
 
 
 HERE = Path(__file__).resolve()
-PRIME_WF = HERE.parent.parent / "skills" / "flow-next-prime" / "workflow.md"
+PRIME_DIR = HERE.parent.parent / "skills" / "flow-next-prime"
+# workflow.md plus the gated boot-probe reference, which carries the 2.5 definition.
+PRIME_FILES = (PRIME_DIR / "workflow.md", PRIME_DIR / "references" / "boot-probe.md")
 
 SHELLS = [s for s in ("bash", "zsh") if shutil.which(s)]
 
 
 def _definitions() -> list[str]:
-    lines = PRIME_WF.read_text(encoding="utf-8").splitlines()
+    defs = []
+    for path in PRIME_FILES:
+        defs.extend(_file_definitions(path))
+    return defs
+
+
+def _file_definitions(path: Path) -> list[str]:
+    lines = path.read_text(encoding="utf-8").splitlines()
     defs = []
     for i, line in enumerate(lines):
         if not line.startswith("run_bounded() {"):

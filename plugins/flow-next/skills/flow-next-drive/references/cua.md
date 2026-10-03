@@ -1,5 +1,25 @@
 # Cua Driver — the local computer-use rung (provider-agnostic, background)
 
+## Native rung (surface C)
+
+> Moved from SKILL.md Step 4; read first for surface C.
+
+A genuinely native app (or a non-CDP webview) has no browser tab to attach to — the model has to drive the live machine. This rung is provider-agnostic; probe for the best available driver in this order, prefer the highest that passes, degrade to the next:
+
+| Probe | Driver | Reference |
+|-------|--------|-----------|
+| `cua-driver` MCP registered / `command -v cua-driver` (real display) | **Cua Driver** — MIT, provider-agnostic, **background** (no focus steal), macOS/Windows (Linux pre-release), accessibility-tree-based. Preferred when present. | `cua.md` (this file) |
+| Codex CU available, or a Claude Computer-Use harness present | **Computer Use** — Codex CU (macOS/Windows) / Anthropic Claude CU (the API `computer` tool via its own harness). Screen-takeover. | `computer-use.md` |
+| **Headless / CI** (no display) and a sandbox backend (`lume`/Docker/QEMU, or opted-in cloud) | **Cua Sandbox** — drive inside an isolated VM/container; the **only** native option with no real screen. Opt-in per run, torn down each run; local backend default, cua.ai cloud explicit opt-in. | `cua.md` (this file) |
+| None present | **Documented limitation** — document the gap and stop; never fail silently. | — |
+
+All share the universal flow (Step 2) — `observe → act → verify → capture`, described as goal + success state, not pixel coordinates; only the actuation differs. **Detect, never assume** (`command -v`, MCP list, `uname -s`); no native driver is ever a hard dependency. **Attended vs headless splits the precedence:** on a real display, prefer the background Cua Driver → Computer Use; on a **headless/CI** host (no screen) the **Cua Sandbox** is the only native option — the explicit ordering, the local-default/cloud-opt-in split, and provisioning/teardown live in `cua.md` (this file).
+
+→ Read `cua.md` (this file) for Cua Driver detection, the install/permission walkthrough (multi-host MCP wiring), the AX-tree driving loop, the macOS permission-split evidence mode, the Native-rung precedence list, licensing, and degradation.
+→ Read `computer-use.md` for Computer Use availability detection, the enable/permission walkthrough, the driving loop, safety/hygiene, and the full graceful-degradation table.
+
+## About Cua Driver
+
 The native rung of the ladder (SKILL.md Step 4) has, until now, been served only
 by **Computer Use** (Codex CU / Anthropic Claude CU) — provider-locked,
 macOS/Windows-only, and focus-stealing. **Cua Driver** ([trycua/cua](https://github.com/trycua/cua), MIT)
@@ -186,7 +206,7 @@ get_window_state      → fresh AX tree (element_index / role / label / frame)  
 act                   → click / type_text on an element_index (NOT pixels) toward the next step
 verify                → confirm the expected element / label / state appeared in the AX tree
 capture               → get_window_state screenshot (Screen Recording) OR the AX tree as evidence
-kill_app + end_session → clean teardown, no leaked session
+end_session (+ kill_app only for an app this run launched; never a user's running app) → clean teardown
 ```
 
 This is the universal flow (SKILL.md Step 2) expressed in Cua tools — only the

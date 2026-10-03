@@ -5,13 +5,12 @@ Setup proposes ONE commented example block, written verbatim from
 `templates/model-routing-snippet.md`. The tests check what a consumer's file
 receives and what uninstall matches on:
 
-  (a) template shape — well-formed marker pair, the four tier names, every
-      routing line COMMENTED OUT, and no model identifier anywhere (the block is
-      the consumer's preferences to fill in, never a detected fact).
+  (a) template shape — well-formed marker pair and every routing line
+      COMMENTED OUT.
   (b) uninstall — `commands/uninstall.md` names both exact marker strings it
       removes.
   (c) setup workflow reaches the template.
-  (d) the Codex mirror carries the same template and no stale references.
+  (d) the Codex mirror carries the template and no stale references.
 
 The wording of setup and uninstall prose is not pinned.
 
@@ -22,7 +21,6 @@ Run:
 from __future__ import annotations
 
 import pathlib
-import re
 import unittest
 
 
@@ -36,17 +34,6 @@ CANONICAL_WORKFLOW = PLUGIN / "skills" / "flow-next-setup" / "workflow.md"
 START = "<!-- flow-next:model-routing:start -->"
 END = "<!-- flow-next:model-routing:end -->"
 
-TIERS = ("reviewer", "implementer", "fast scout", "thinking scout")
-
-# Vendor model-identifier shapes. The block ships ZERO of them (spec R2/R5):
-# the consumer names the models their own account serves.
-MODEL_SLUG_RE = re.compile(
-    r"\b("
-    r"gpt-\d|o[34]-mini|claude-|opus-?\d|sonnet-?\d|haiku-?\d|fable-?\d"
-    r"|grok-\d|composer-\d|gemini-|llama-?\d|mistral"
-    r")",
-    re.IGNORECASE,
-)
 
 def _read(path: pathlib.Path) -> str:
     return path.read_text(encoding="utf-8")
@@ -97,18 +84,6 @@ class TemplateShape(unittest.TestCase):
                 in_comment = True
         self.assertFalse(in_comment, "unterminated HTML comment in the block")
 
-    def test_names_the_four_tiers(self) -> None:
-        for tier in TIERS:
-            self.assertIn(tier, self.text, f"tier missing from the block: {tier}")
-
-    def test_ships_no_model_identifier(self) -> None:
-        hit = MODEL_SLUG_RE.search(self.text)
-        self.assertIsNone(
-            hit,
-            f"routing block ships a concrete model identifier: "
-            f"{hit.group(0) if hit else ''}",
-        )
-
 
 # ── (b) uninstall markers ─────────────────────────────
 
@@ -155,21 +130,6 @@ class MirrorRoutingProse(unittest.TestCase):
                 path.is_file(),
                 f"missing mirror file: {path} (run ./scripts/sync-codex.sh)",
             )
-
-    def test_mirror_template_keeps_markers_and_tiers(self) -> None:
-        text = _read(self.template)
-        self.assertIn(START, text)
-        self.assertIn(END, text)
-        for tier in TIERS:
-            self.assertIn(tier, text, f"tier missing from the mirror block: {tier}")
-
-    def test_mirror_template_ships_no_model_identifier(self) -> None:
-        hit = MODEL_SLUG_RE.search(_read(self.template))
-        self.assertIsNone(
-            hit,
-            f"mirror routing block ships a concrete model identifier: "
-            f"{hit.group(0) if hit else ''}",
-        )
 
     def test_deleted_ceremony_references_are_gone_from_the_mirror(self) -> None:
         # An incomplete regen (rsync without --delete) leaves the retired

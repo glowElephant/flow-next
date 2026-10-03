@@ -178,6 +178,17 @@ class WorktreeCleanupNonInteractive(RepoCase):
         self.assertNotIn(target.resolve().as_posix(), listed.stdout)
         self.assertFalse(target.exists())
 
+    def test_cleanup_from_inside_a_sibling_worktree(self) -> None:
+        """#469: names resolve against the main clone's .worktrees/, not the current worktree."""
+        for name in ("alpha", "beta"):
+            made = run(self.repo, "create", name)
+            self.assertEqual(made.returncode, 0, made.stderr)
+        beta = self.repo / ".worktrees" / "beta"
+        result = run(self.repo / ".worktrees" / "alpha", "cleanup", "beta", "--yes", stdin="")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn(beta.resolve().as_posix(), git(self.repo, "worktree", "list").stdout)
+        self.assertFalse(beta.exists())
+
     def test_cleanup_with_name_without_yes_refuses_off_terminal(self) -> None:
         created = run(self.repo, "create", "feature")
         self.assertEqual(created.returncode, 0, created.stderr)

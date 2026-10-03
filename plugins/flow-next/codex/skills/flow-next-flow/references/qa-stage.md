@@ -1,14 +1,11 @@
-# QA stage - freshness probe (gated reference)
+# QA stage - freshness rule
 
-> **Loaded only when `auto.md` Phase 2's QA gate prints its active read/execute/continue
-> sentinel** (the gate flags resolved per `gate-selection.md`, or the gate's probe/parse
-> errored, fail open). A run whose gate printed no sentinel never reads this file. Contract: this file states
-> how to compute `QA_FRESH` (and resolve `BRANCH_NAME`); the **consumption stays
-> inline in `auto.md`**: the all-done PR probe's no-PR branch reads
-> `QA_STAGE_ENABLED` / `QA_STAGE_AUTO` / `QA_FRESH` there, and the Phase 5
-> post-dispatch verify keeps its own receipt re-read.
+> **The rule, not a step to run.** `flow --auto` gets `QA_FRESH` from the pilot snapshot
+> (`selected.qa_fresh`), which implements the receipt identity, outcome and branch-head checks
+> below. Read this file to understand what counts as a fresh QA verdict; never run the probe
+> it describes.
 
-## QA-stage freshness probe (only when the gate printed its sentinel)
+## QA-stage freshness (what the snapshot checks)
 
 When the gate selects QA, the all-done juncture classifies `qa` **only when no *fresh* `qa_verdict` receipt exists** for the spec. Every hop re-classifies from disk. The freshness check prevents repeated QA from blocking make-pr. The receipt lives at the committed path `.flow/review-receipts/qa-<spec-id>.json` (the QA skill's default). A receipt is **fresh** iff all three hold:
 

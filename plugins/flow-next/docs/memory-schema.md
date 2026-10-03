@@ -258,6 +258,18 @@ flowctl memory list-legacy --json     # {files: [{filename, entry_count, entries
 
 `memory list-legacy` is the parsing helper the skill consumes; also useful for ad-hoc inspection. Each entry carries `mechanical_track` / `mechanical_category` derived from the source filename so the agent has a sane default to override only when content warrants.
 
+### Rationale for the mechanical-default-first stance
+
+The temptation in an LLM-driven migration is to "use AI to classify each entry intelligently" — but most legacy entries are pre-schema ad-hoc memos, often without strong category signal. The mechanical default works:
+
+- `pitfalls.md` was originally a build-failure / gotcha bucket → `bug/build-errors` is the median fit.
+- `conventions.md` was a coding-style bucket → `knowledge/conventions` is the median fit.
+- `decisions.md` was an architecture / tool-choice bucket → `knowledge/tooling-decisions` is the median fit.
+
+The agent's intelligence is best spent on the 20-30% of entries that genuinely don't fit the median (the override examples above). Aggressive over-classification produces inconsistent results across runs and obscures the mechanical baseline that `_memory_classify_mechanical` already gets right cheaply.
+
+The `needs-review` flag is the escape hatch: better to migrate everything with a sane default and surface uncertainty in the report than to block on ambiguous decisions or invent classifications without evidence.
+
 ### Automation / CI fallback
 
 ```bash

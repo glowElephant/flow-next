@@ -17,7 +17,7 @@ The skill validates the four-H2 shape itself. Its flowctl calls on the maintain 
 
 This skill and work's feature-map update step (entries its own change altered, [feature-map-update.md](../flow-next-work/references/feature-map-update.md)) are the only map writers; every other stage reads the map and files drift notes ([references/feature-entry-contract.md](references/feature-entry-contract.md), "Writers and drift notes").
 
-Read [working-rules.md](../../references/working-rules.md) first; it holds for every step of this skill.
+Read [working-rules.md](../../references/working-rules.md) first unless you already have this run; it holds for every step of this skill.
 
 ## Preamble
 

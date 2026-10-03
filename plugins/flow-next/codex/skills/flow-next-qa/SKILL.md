@@ -24,7 +24,7 @@ setting or reading that key, read [gate-selection.md](../flow-next-flow/referenc
 `/flow-next:prime` reports the app is QA-ready (seeded data, a documented dev login, a drivable
 surface, readable runtime evidence); otherwise every run ends BLOCKED.
 
-Read [working-rules.md](../../references/working-rules.md) first; it holds for every step.
+Read [working-rules.md](../../references/working-rules.md) first unless you already have this run; it holds for every step.
 
 ## The hard rule
 

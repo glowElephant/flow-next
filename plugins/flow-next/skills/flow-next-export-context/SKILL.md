@@ -5,6 +5,8 @@ description: Export RepoPrompt context to a markdown file for review with an ext
 
 # Export Context Mode
 
+> **Deprecated.** RepoPrompt support is deprecated and will be removed in flow-next 8.0.0. When this runs, say so once in the report and suggest another review backend (`codex`, `host`, `claude`, `copilot` or `cursor`).
+
 Build RepoPrompt context and export to a markdown file for use with external LLMs (ChatGPT Pro, Claude web, etc.).
 
 **Use case**: When you want Carmack-level review but prefer to use an external model.

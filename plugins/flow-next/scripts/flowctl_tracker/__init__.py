@@ -2,11 +2,10 @@
 
 WHY THIS IS A PACKAGE, AND WHY THE NAME IS NAMESPACED.
 
-flowctl ships as *named files*, not a package: `install-codex.sh` copies
-`flowctl` and `flowctl.py` by name. So a
-package only reaches a user if the distribution paths are taught about it -
-that is task .5, and until it lands this package is importable from a checkout
-but NOT from an install.
+flowctl ships as *named files*, not a package, so a package only reaches a
+user when the distribution paths copy it. The Codex, Cursor and OpenCode
+installers copy this package and verify it against its manifest
+(`scripts/lib/verify_tracker_manifest.py`); Claude Code installs the whole plugin.
 
 The name is `flowctl_tracker`, never a bare `tracker`: the launcher runs
 `flowctl_bootstrap.py` as a script, so `sys.path[0]` is that file's directory

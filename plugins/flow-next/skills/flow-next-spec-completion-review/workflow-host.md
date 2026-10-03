@@ -14,19 +14,6 @@ Use when `BACKEND="host"`. Prerequisite: Phase 0 backend detection in [workflow-
 6. **`host` never shells out to another CLI** — a `codex exec` / `cursor-agent` / `claude -p` / `grok` subprocess inside a host review is a broken run; the CLI backends exist for exactly that, and the user chose `host` to avoid them. Dispatch through the harness's own subagent primitive with the model named in the dispatch; an unhonored model request degrades to the session model, and then rule 5 decides — never a CLI fallback
 
 
-**Host is the documented always-inject exception.** The `codex` backend
-resumes the reviewer's own session on a re-review and therefore sends the
-shrink-only contract WITHOUT re-rendering prior findings; `cursor` and `copilot`
-keep injecting unconditionally until their resume semantics are measured the way
-codex's were (copilot's `--resume` is create-or-resume via a marker, so "resumed"
-and "created" are not separable there). `host` cannot resume at all: rule 3
-above makes each re-review a fresh subagent with `session_id: null`, so the
-reviewer holds nothing from the previous round. The prior findings must travel in
-the prompt here, and the reply grammar below is what makes them machine-readable.
-This is a deliberate exception, tested (`test_review_prompt_no_embed_ratchet`
-asserts `host` has no flowctl dispatch, and the capability set is asserted
-exactly), not an oversight to be "simplified" later.
-
 Everything else on the identities side still applies: point the subagent at the
 `base..head` range and the changed-path list and let it read the diff and the
 spec from the checkout itself. Do not paste diff hunks or spec bodies into the
@@ -160,41 +147,9 @@ Render and dispatch the shared backend prompt verbatim:
   --out "${TMPDIR:-/tmp}/flow-completion-review-${SPEC_ID}.md" --json || exit $?
 ```
 
-The generated prompt supplies these fields; do not hand-assemble them:
-- The completion rubric ([references/completion-review-prompt.md](references/completion-review-prompt.md)) — its verification-budget rail applies by pointer; never restate or widen it in the dispatch prompt
-- Spec requirements / R-IDs / acceptance criteria
-- The exact output of `$FLOWCTL criteria prompt-block`, appended verbatim when
-  non-empty (global acceptance criteria + the `## Global criteria` output
-  grammar; the command prints nothing when `.flow/criteria.md` is absent -
-  include nothing in that case. A nonzero exit is a validation error - fix
-  `.flow/criteria.md` before re-running the review)
-- Task list + evidence that work claims done
-- Diff / implementation surfaces to check compliance (not code-quality taste — that is impl-review)
-- Prior findings for convergence as structured `findings.items` (on re-review; render
-  ordinal, severity, classification, status, title, and file:line; use legacy
-  review prose only when the structured field is absent)
-- **The prior-finding reply grammar, stated verbatim** (on re-review). These lines are
-  machine-read, and prose resolutions are invisible to the parser — a reviewer that
-  resolves priors in prose only leaves them carried forward and the loop cannot
-  converge. Require one line per prior finding, at the start of a line, echoing the
-  ordinal it was rendered with:
-
-  ```
-  Prior finding #1: fixed
-  Prior finding #2: not-fixed
-  Prior finding #3: withdrawn
-  ```
-
-  Allowed statuses: `fixed`, `not-fixed`, `withdrawn` — nothing else parses. With
-  exactly one prior finding the number may be omitted (`Prior finding: fixed`). When
-  every prior finding is fixed — and only then — the single line
-  `Prior findings: all fixed` may replace the per-finding lines; the two must not be
-  mixed, because any per-finding line present wins and disables the aggregate. The `unaddressed` array in the JSON tail is about spec R-ID
-  coverage and does **not** vouch for prior findings.
-- For every gap: Severity, Confidence `0|25|50|75|100`, and Classification
-  `introduced|pre_existing`
-- Required exact verdict tags: `<verdict>SHIP</verdict>` /
-  `<verdict>NEEDS_WORK</verdict>` / `<verdict>NEEDS_HUMAN</verdict>`
+The generated prompt already supplies the completion rubric, requirements, global criteria, task
+and diff identities, prior findings with their reply grammar, and the verdict tags; dispatch it
+verbatim and never hand-assemble, restate or widen them.
 
 Wait for the subagent result (blocking — do not background).
 

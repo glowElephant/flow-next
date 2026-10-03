@@ -8,9 +8,9 @@ user-invocable: false
 
 Turn an idea or an existing spec into a spec with right-sized tasks in `.flow/`, grounded in repo research. Plan writes no code.
 
-Read [working-rules.md](../../references/working-rules.md) first; it holds for every step of this skill.
+Read [working-rules.md](../../references/working-rules.md) first unless you already have this run; it holds for every step of this skill.
 
-**`.flow/` is the only task tracker.** Every spec and task is created or changed through `flowctl`. A markdown TODO list, a TodoWrite call, or a plan file outside `.flow/` has broken this.
+**`.flow/` is the only task tracker.** Every spec and task is created or changed through `flowctl`. A markdown TODO list, a TodoWrite call, or a plan file kept outside `.flow/` as the record has broken this.
 
 ## Preamble
 
@@ -59,9 +59,8 @@ A ready or captured spec is plan input. An unshaped, oversized idea with several
 
 **Review.** `--review=codex` ("review with codex", "codex review", "use codex"), `--review=rp` ("rp chat", "repoprompt review"), `--review=host` ("host review", "use host": the host-native fresh-context reviewer), `--review=export` ("export review", "external llm"), `--review=none` or `--no-review` ("no review", "skip review").
 
-An option found in the arguments, as a flag or in these words, skips its setup question.
 
-Initialize and capture one preflight snapshot before routing or scouting (also under autonomy). Every later config read uses this literal path:
+Initialize and capture one preflight snapshot before routing or scouting (also under autonomy), from the repository root (never this skill's directory, where flowctl finds no config). Every later config read uses this literal path:
 
 ```bash
 $FLOWCTL init --json
@@ -69,24 +68,13 @@ PLAN_CFG="${TMPDIR:-/tmp}/flow-plan-config-<suffix>.json"
 $FLOWCTL preflight --json > "$PLAN_CFG" 2>/dev/null || printf '{"key":null,"value":{}}' > "$PLAN_CFG"
 ```
 
-```bash
-ACTIVE=0
-# No pipelines in the probe: capture raw first, rc-checked; parse separately.
-RAW="$(jq -er 'if .probes.review_backend.status == "ok" then .probes.review_backend.value.backend else error("review backend probe") end' "${TMPDIR:-/tmp}/flow-plan-config-<suffix>.json" 2>/dev/null)" || ACTIVE=1        # probe error => ACTIVE
-if [ "$ACTIVE" = "0" ]; then
-  REVIEW_BACKEND="$(printf '%s' "$RAW" | tr -d '[:space:]' 2>/dev/null)" || ACTIVE=1   # parse error => ACTIVE
-  [ "$REVIEW_BACKEND" = "ASK" ] && ACTIVE=1
-fi
-[ "${AUTONOMOUS:-0}" = "1" ] && ACTIVE=0        # autonomous never asks
-if [ "$ACTIVE" = "1" ]; then
-  echo "SETUP-QUESTIONS GATE ACTIVE — STOP. Read references/setup-questions.md before continuing."
-fi
-```
-
-When the sentinel prints, read [`references/setup-questions.md`](references/setup-questions.md) before any further step. When a backend is configured (`rp`, `codex`, `copilot`, `cursor`, `claude`, `host`, `none`), ask nothing: flags win, depth defaults, review uses that backend. Show the hint:
+Plan asks no setup question: flags win, depth takes its default, and review uses the configured
+backend from the snapshot (`.probes.review_backend.value.backend`). When that reads `ASK` (nothing
+configured), review is `none` and the handoff says once "no review backend set; run setup or set
+review.backend". Show the hint:
 
 ```
-(Tip: --depth=short|standard|deep, --review=rp|codex|copilot|cursor|claude|host|none)
+(Tip: --depth=short|standard|deep, --review=codex|copilot|cursor|claude|host|none)
 ```
 
 ## Workflow
@@ -98,4 +86,4 @@ Read [steps.md](steps.md) and follow each step in order. Its optional paths (rea
 ## Output
 
 - Spec: `.flow/specs/<spec-id>.json` + `.md`; tasks: `.flow/tasks/<spec-id>.M.json` + `.md`.
-- No code changes and no plan files outside `.flow/`.
+- No code changes. Specs and tasks live in `.flow/`; temporary drafts (the `/tmp` bodies steps.md writes) are fine.
