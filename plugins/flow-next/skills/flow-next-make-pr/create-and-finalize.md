@@ -20,8 +20,8 @@ source "$(dirname "$FLOWCTL")/make-pr-create.sh"
 The script owns the draft matrix, closed-head check, push, create/update retries,
 tracker linkage and optional stack link. It retains `PR_URL`, `DRAFT_FLAG` and
 `STACK_LINE` for finalize. Exit 1 stops finalization. `FLOW_PR_CREATE_CMD` defaults
-to `gh pr create`: whitespace-split, no eval; successful output must contain a PR
-URL. The 3-attempt retry loop retries eventual-consistency failures only.
+to `gh pr create` and runs through `sh -c`, so it may carry its own arguments; successful output must contain a PR
+URL (`.../pull/<n>`, or Bitbucket's `.../pull-requests/<n>`). The 3-attempt retry loop retries eventual-consistency failures only.
 After an exhausted create retry, wait 30 seconds and re-run /flow-next:make-pr (skill detects the existing branch and re-tries).
 
 ## Finalize
