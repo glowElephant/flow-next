@@ -4,13 +4,18 @@ All notable changes to the flow-next.
 
 Flow-Next changed shape with 5.0.0. One command, `/flow-next:flow`, reads whatever you have and picks the route, and `flow --auto` runs the same route unattended. If you are arriving from 4.x, start with [the 5.0.0 entry](#flow-next-500---2026-09-12) and [the flow skill](plugins/flow-next/skills/flow-next-flow/SKILL.md) before reading the items below.
 
-## [Unreleased]
+## [flow-next 7.1.1] - 2026-10-03
+
+A small patch from the first day of 7.1 in the wild. Upgrading from an older checkout now leaves you with exactly the skills and commands this release ships, memory-migrate keeps every lesson from very old memory files, and make-pr works with a Bitbucket create command. Thank you to everyone who reported these.
+
+**What changes when you upgrade.** Codex users: re-run `scripts/install-codex.sh` once. It moves any leftover skill folder and the old `interview` and `pilot` prompts into `~/.codex/.flow-next-retired/`, where nothing is deleted. OpenCode and Cursor-script installs pick up the fix the same way.
 
 ### Fixed
 
-- **Installers skip folders that aren't skills.** When a release removes a skill, `git pull` can leave its folder behind if untracked files such as `__pycache__` are still in it. The Codex, OpenCode and Cursor installers treated that folder as a skill. The Codex installer even copied the empty folder over the real installed skill, which also stopped its retire step from cleaning it up. Every installer now counts a folder as a skill only when it has a `SKILL.md`. Re-running the Codex installer moves any such empty leftover, or the old skill it hid, into `~/.codex/.flow-next-retired/` like any other retired skill.
-- **`memory list-legacy` lists one entry per lesson.** Memory files from older flow-next versions put each lesson under a `## <date> manual [<type>]` header, with no `---` between them. `list-legacy` read each of those files as a single entry, so memory-migrate merged the lessons into one entry per file and created an empty entry for a file that held only its header. It now splits on those headers as well and skips header-only files. `memory list`, `search` and `read legacy/<file>#N` count the same way. Thanks @TechupBusiness (#509).
-- **The Codex installer retires the old `interview` and `pilot` prompts.** 7.0 removed both aliases, but the 7.1 retire step only recognised the usual generated prompt, and these two were alias stubs that point at a different skill. It now recognises that shape too and moves them into the retired folder. A prompt you wrote yourself is still left alone.
+- **Installers skip folders that aren't skills.** When a release removes a skill, `git pull` can leave its folder behind if untracked files such as `__pycache__` are still in it. The Codex, OpenCode and Cursor installers treated that folder as a skill, and the Codex installer even copied the empty folder over the real installed skill, which also stopped its cleanup step from catching it. A folder now counts as a skill only when it has a `SKILL.md`.
+- **The Codex installer retires the old `interview` and `pilot` prompts.** 7.0 removed both commands, but 7.1's cleanup only recognised the usual generated prompt, and these two were alias stubs pointing at a different skill. A prompt you wrote yourself is still left alone.
+- **memory-migrate keeps every lesson.** Memory files from flow-next before 0.33 put each lesson under a `## <date> manual [<type>]` header with nothing between them, and `memory list-legacy` read each file as one entry. Migration merged the lessons into one entry per file and made an empty entry for a file holding only its header. Each lesson is now its own entry, and `memory list`, `search` and `read` count them the same way. Thanks @TechupBusiness (#509).
+- **make-pr accepts Bitbucket pull request links.** A `FLOW_PR_CREATE_CMD` that prints a `.../pull-requests/<n>` URL no longer reads as a failed create. Thanks @CWayman (#504).
 
 ## [flow-next 7.1.0] - 2026-10-03
 
