@@ -6356,7 +6356,11 @@ def _parse_review_findings_v1(
             """,
             output,
         )
-        and re.search(r"<verdict>\s*SHIP\s*</verdict>", output, re.IGNORECASE)
+        # An empty review is an all-clear only under SHIP: that catches a reviewer writing
+        # NEEDS_WORK and listing nothing. QA's text is written by `qa receipt` from validated
+        # JSON, and QA can end short of SHIP with no findings (a criterion nobody could drive
+        # live, a BLOCKED run), so for QA an empty result is accepted with any verdict.
+        and (review_kind == "qa" or re.search(r"<verdict>\s*SHIP\s*</verdict>", output, re.IGNORECASE))
     )
     # fn-168: an aggregate all-clear IS a prior-finding record for PRESENCE
     # purposes. It is matched separately from the canonical per-ordinal regex
