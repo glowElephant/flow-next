@@ -541,6 +541,23 @@ class ReviewFindingsReceiptIntegrationTest(unittest.TestCase):
         self.assertEqual(blocked["items"][0]["status"], "not_fixed")
         self.assertEqual(resolved["items"][0]["status"], "fixed")
 
+    def test_empty_result_is_an_all_clear_for_qa_only(self) -> None:
+        # QA can end short of SHIP with no findings (BLOCKED, or a criterion nobody could drive
+        # live); its text comes from `qa receipt`, not a model. Code reviews keep the SHIP-only rule.
+        def parse(kind: str, verdict: str) -> dict | None:
+            return FLOWCTL.parse_review_findings(
+                f"No findings.\n<verdict>{verdict}</verdict>\n",
+                source_receipt_id="r1", review_kind=kind, backend="interactive", round_number=1,
+                head_sha=HEAD_SHA, anchor_side="head",
+            )
+
+        for verdict in ("NEEDS_WORK", "SHIP"):
+            container = parse("qa", verdict)
+            self.assertIsNotNone(container, verdict)
+            self.assertEqual(container["items"], [])
+        self.assertIsNone(parse("implementation", "NEEDS_WORK"))
+        self.assertIsNotNone(parse("implementation", "SHIP"))
+
     def test_direct_attach_rejects_stale_explicit_prior_snapshot(self) -> None:
         receipt = self.repo / "qa.json"
         response = self.repo / "qa-review.md"

@@ -79,5 +79,16 @@ class ArtifactWritersTest(unittest.TestCase):
         self.assertEqual(json.loads(path.read_text())["findings"]["items"][0]["status"], "fixed")
 
 
+    def test_qa_receipt_without_findings_writes_needs_work_and_blocked(self):
+        # 7.1.1 refused these with "QA findings could not be parsed; receipt unchanged".
+        for outcome, extra in (("NEEDS_WORK", {}), ("BLOCKED", {"blocked_reason": "no app to drive"})):
+            data = {"id": f"fn-2-{outcome.lower().replace('_', '-')}", "qa_outcome": outcome, "findings": [],
+                    "rid_coverage": {"rids": [{"id": "R1", "coverage": "no_live_scenario"}]}, **extra}
+            receipt = json.loads(Path(self.cli("qa", "receipt", data=data)["receipt"]).read_text())
+            self.assertEqual(receipt["qa_outcome"], outcome)
+            self.assertEqual(receipt["verdict"], "NEEDS_WORK")
+            self.assertEqual(receipt["findings"]["items"], [])
+
+
 if __name__ == "__main__":
     unittest.main()
