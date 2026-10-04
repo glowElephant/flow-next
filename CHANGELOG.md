@@ -4,6 +4,12 @@ All notable changes to the flow-next.
 
 Flow-Next changed shape with 5.0.0. One command, `/flow-next:flow`, reads whatever you have and picks the route, and `flow --auto` runs the same route unattended. If you are arriving from 4.x, start with [the 5.0.0 entry](#flow-next-500---2026-09-12) and [the flow skill](plugins/flow-next/skills/flow-next-flow/SKILL.md) before reading the items below.
 
+## [flow-next 7.1.2] - 2026-10-04
+
+### Fixed
+
+- **QA can record a NO or BLOCKED pass that has no findings.** A QA pass can end short of SHIP without any finding to list: a criterion nobody could drive in the running app, or a run blocked before it started. `flowctl qa receipt` refused to write those receipts ("QA findings could not be parsed"), so the result never reached the pull request, and an unattended `flow --auto` run treated QA as if it had errored. Those receipts are written again, with their coverage and blocked reason as the explanation. Code reviews still reject an empty NEEDS_WORK.
+
 ## [flow-next 7.1.1] - 2026-10-03
 
 A small patch from the first day of 7.1 in the wild. Upgrading from an older checkout now leaves you with exactly the skills and commands this release ships, memory-migrate keeps every lesson from very old memory files, and make-pr works with a Bitbucket create command. Thank you to everyone who reported these.
